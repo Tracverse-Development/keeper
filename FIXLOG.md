@@ -66,3 +66,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** both limits raised to 5,000 (still bounded); hot memory loads them once per graph, so the cost is paid at the first recall only (94 ms cold for 1,000 facts; hot recall 7.5 ms).
 - **Guard:** live test `live_scale_thousand_facts` asserts the oldest of 1,000 facts is in hot memory; `queries::tests::every_query_is_bounded_and_typed` keeps the queries bounded.
 - **Evidence:** before: 200 facts loaded, oldest missing; after: 1000 loaded, oldest present.
+
+### FIX-0009 — Keeper's own memory node never came back after a reboot (2026-11-25)
+- **Area:** `src-tauri/src/dkg/own_node.rs` (new), `lib.rs` (launch)
+- **Symptom:** found reading the code after the round-2 VM test: the node Keeper installs is started once, during setup; after a reboot or a crash nothing started it, so recall failed and the keeper answered without memory.
+- **Root cause:** no launch-time check; the DKG daemon has no login item of its own.
+- **Fix:** at launch, when the node in use is Keeper's own and does not answer, `dkg start` runs with Keeper's Node.js and Keeper waits up to a minute for it. A node the person runs themselves is never started or stopped.
+- **Guard:** `own_node::tests::only_keepers_own_node_is_ever_started_or_stopped`; the VM reboot test in round 2.
+- **Evidence:** VM: after quitting Keeper the daemon kept running, after deleting the app too (removal now stops it).
