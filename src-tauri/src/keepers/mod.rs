@@ -151,6 +151,7 @@ pub fn keepers_activate(state: State<'_, AppState>, id: String) -> Result<Keeper
         return Err(DeskError::Invalid("There is no such keeper.".into()));
     }
     state.update_settings(|s| s.active_keeper = id)?;
+    crate::assistant::warm::warm_keeper(&state, "");
     Ok(list(&state))
 }
 

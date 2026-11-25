@@ -1,5 +1,6 @@
 # The checks on every push and pull request: typecheck, the TypeScript tests (structure guards
-# included) and the Rust tests. Release builds live in release.yml.
+# included) and the Rust tests, on Linux: macOS is never built or checked on GitHub's runners
+# (founder 2026-11-25: in-house); the Mac checks run on our own Macs. Release builds: release.yml.
 name: check
 
 on:
@@ -16,9 +17,15 @@ concurrency:
 
 jobs:
   check:
-    runs-on: macos-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
+
+      - name: Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            build-essential curl wget file libxdo-dev libssl-dev
 
       - uses: actions/setup-node@v5
         with:
@@ -42,10 +49,7 @@ jobs:
       - name: TypeScript tests
         run: find src -name '*.test.ts' -print0 | xargs -0 node --test --experimental-strip-types
 
-      # tauri-build requires the externalBin sidecar to exist, and generate_context! the built window.
-      - name: Voice helper
-        run: bash scripts/build-voice-helper.sh
-
+      # generate_context! needs the built window. (The macOS-only voice sidecar is not bundled here.)
       - name: Window build
         run: npx vite build
 

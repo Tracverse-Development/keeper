@@ -19,3 +19,8 @@
 - **Context:** The 0.6 live tests found that a second write under an asset name answers 409 (`KA_ASSERTION_ALREADY_FINALIZED`), and that treating every error as "node down" filled the outbox with writes that could never succeed. The same 409 means "graph already exists".
 - **Lesson:** On the DKG an asset is immutable once written: a record that changes (a soul, a cached scene, a setting) is a series of versions read newest-first, never an overwrite. And an error class decides what happens next: "unreachable" may retry, "already there" is done, "refused" is reported. Never collapse them into one.
 - **Rule added:** `DeskError::Exists` for 409; `Memory::write` and the outbox never queue it; changing records use time-versioned asset names with newest-first reads (`inventory::version_name`, `scene_cache`).
+
+### LES-005 — Measure speed through the real app, not a shell (2026-11-25)
+- **Context:** A shell test said Claude Code took 4.7 s cold and 0.93 s warm, which suggested a 5x win from warm processes. Through Keeper's own code the gain was about 0.3 s: the shell runs included 3 s the CLI spends waiting for stdin when it is started with a prompt argument and an open stdin. The real costs were the model's first token (2.0 s main model, 1.0 s Haiku), recall (85 ms) and DKG writes before the reply (55 ms each).
+- **Lesson:** Speed claims come from the app's own path with its own timings (`TurnResult.timings`), repeated over several rounds, never from a lookalike shell command.
+- **Rule added:** `scripts/bench/run.sh` drives an isolated real Keeper through its test link and reports first words and done per turn; every speed change is judged by it.

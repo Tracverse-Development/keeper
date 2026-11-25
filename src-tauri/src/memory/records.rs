@@ -13,6 +13,10 @@ pub trait Record {
     /// A stable lowercase KA name: the same record always gets the same name.
     fn asset_name(&self) -> String;
     fn quads(&self) -> Vec<Quad>;
+    /// What writing this record changes in hot memory (`hot`), if anything recall reads.
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        None
+    }
 }
 
 /// Normalised text for identity: case, spacing and final punctuation do not make a new fact.
@@ -39,6 +43,9 @@ impl Fact {
 }
 
 impl Record for Fact {
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        Some(super::hot::HotChange::Fact(self.clone()))
+    }
     fn asset_name(&self) -> String {
         format!("desk-fact-{}", self.id)
     }
@@ -84,6 +91,9 @@ impl Turn {
 }
 
 impl Record for Turn {
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        Some(super::hot::HotChange::Turn(self.clone()))
+    }
     fn asset_name(&self) -> String {
         format!("desk-turn-{}", self.id)
     }
@@ -221,6 +231,9 @@ pub struct Retraction {
 }
 
 impl Record for Retraction {
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        Some(super::hot::HotChange::Retract(self.fact_id.clone()))
+    }
     fn asset_name(&self) -> String {
         format!("desk-retraction-{}", self.fact_id)
     }

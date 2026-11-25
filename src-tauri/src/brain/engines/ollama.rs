@@ -30,8 +30,8 @@ pub async fn think(model: &str, ctx: &Context) -> Result<Thought> {
         "format": "json",
         "options": { "temperature": 0.6 },
         "messages": [
-            { "role": "system", "content": prompt::system(ctx) },
-            { "role": "user", "content": ctx.said },
+            { "role": "system", "content": prompt::system_static(ctx) },
+            { "role": "user", "content": prompt::turn_message(ctx) },
         ]
     });
     let res = http().post(format!("{BASE}/api/chat")).json(&body).timeout(THINK_TIMEOUT).send().await.map_err(|e| DeskError::Brain(format!("Ollama: {e}")))?;

@@ -10,6 +10,7 @@
 use serde_json::Value;
 
 use super::cli::{self, ACT_TIMEOUT, CHAT_TIMEOUT};
+use super::warm;
 use crate::brain::context::{AgentStep, Context, Progress, Thought};
 use crate::stage::stream::PanelStream;
 use crate::brain::prompt;
@@ -17,22 +18,38 @@ use crate::kernel::{DeskError, Result};
 
 const ACTING_TOOLS: &str = "Bash Edit Write MultiEdit NotebookEdit WebFetch WebSearch Task";
 
+/// The command line for this keeper and mode. The message itself goes on stdin (stream-json
+/// input), so the command line depends only on the fixed instructions: a warm spare can be
+/// started with it before the person speaks (`warm`).
 pub fn args(ctx: &Context, model: &str) -> Vec<String> {
-    let mut a: Vec<String> = ["-p", &ctx.said, "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--strict-mcp-config", "--no-session-persistence"]
+    let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--strict-mcp-config", "--no-session-persistence"]
         .iter()
         .map(|s| s.to_string())
         .collect();
     if ctx.may_act {
-        a.extend(["--append-system-prompt".to_string(), prompt::system(ctx)]);
+        a.extend(["--append-system-prompt".to_string(), prompt::system_static(ctx)]);
         a.extend(["--permission-mode", "bypassPermissions", "--max-turns", "40"].map(String::from));
     } else {
-        a.extend(["--system-prompt".to_string(), prompt::system(ctx)]);
+        a.extend(["--system-prompt".to_string(), prompt::system_static(ctx)]);
         a.extend(["--tools", "", "--disable-slash-commands", "--setting-sources", "", "--disallowedTools", ACTING_TOOLS, "--max-turns", "2"].map(String::from));
     }
     if !model.is_empty() {
         a.extend(["--model".to_string(), model.to_string()]);
     }
     a
+}
+
+/// The person's turn as one stream-json input line.
+pub fn message_line(ctx: &Context) -> String {
+    let line = serde_json::json!({ "type": "user", "message": { "role": "user", "content": prompt::turn_message(ctx) } });
+    format!("{line}\n")
+}
+
+/// Start a spare for this keeper and mode now, so its next turn skips Claude Code's start-up.
+pub fn warm_up(ctx: &Context, model: &str) {
+    let Some(program) = cli::program("claude") else { return };
+    let (a, cwd) = (args(ctx, model), cli::workdir(ctx.may_act));
+    warm::fill(warm::key(&program, &cwd, &a), program, cwd, a);
 }
 
 /// The text a partial-message event adds (`stream_event` → `content_block_delta` → `text_delta`).
@@ -76,10 +93,21 @@ pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sy
     let mut result = None;
     let mut panels = PanelStream::default();
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
-    let run = cli::run(&program, &args(ctx, model), &cli::workdir(ctx.may_act), timeout, |line| {
+    let (a, cwd) = (args(ctx, model), cli::workdir(ctx.may_act));
+    let key = warm::key(&program, &cwd, &a);
+    // A warm spare skips the start-up; then the next spare starts at once for the turn after.
+    let child = match warm::take(&key) {
+        Some(child) => child,
+        None => cli::spawn(&program, &a, &cwd, true)?,
+    };
+    warm::fill(key, program.clone(), cwd, a);
+    let run = cli::drive(child, Some(message_line(ctx)), timeout, |line| {
         if let Some(text) = text_delta(line) {
             for p in panels.push(&text) {
                 progress(Progress::Panel(p));
+            }
+            if let Some(words) = panels.take_reply_delta() {
+                progress(Progress::ReplyText(words));
             }
             if let Some(reply) = panels.take_reply() {
                 progress(Progress::Reply(reply));

@@ -45,9 +45,34 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
             return answer;
         }
     }
-    // Pointing at a panel is a quick follow-up: the helper model answers it when one is set.
-    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && ctx.said.starts_with(FOLLOW_UP) && !ctx.may_act;
+    // Pointing at a panel, or a short conversational turn, goes to the quick helper model when
+    // one is set: about 1 s to the first words against about 2 s (measured 2026-11-25).
+    let quick_turn = ctx.said.starts_with(FOLLOW_UP) || (settings.quick_replies && conversational(&ctx.said));
+    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act;
     let keeper = if quick { KeeperProfile { model: settings.fast_model.clone(), ..keeper.clone() } } else { keeper.clone() };
-    let (thought, mind) = brain::think(&keeper, ctx, progress).await;
+    let (thought, mut mind) = brain::think(&keeper, ctx, progress).await;
+    if quick && mind.id == "claude" {
+        mind.label = format!("{} (quick)", mind.label);
+    }
     Answer { thought, mind, cached: false }
+}
+
+/// A short conversational turn: not a lesson, a comparison or anything to build. These words
+/// keep a turn on the keeper's own model, where depth matters more than speed.
+pub fn conversational(said: &str) -> bool {
+    const DEEP: [&str; 16] = ["explain", "teach", "show me", "compare", "analy", "plan ", "write ", "draft", "code", "step by step", "visual", "diagram", "lesson", "quiz", "why does", "how does"];
+    let s = said.to_lowercase();
+    s.chars().count() <= 160 && !DEEP.iter().any(|w| s.contains(w))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn quick_turns_are_short_and_conversational() {
+        assert!(super::conversational("What's my sister's name?"));
+        assert!(super::conversational("Remind me to call Maya at 5"));
+        assert!(!super::conversational("Explain fractions to me"));
+        assert!(!super::conversational("Compare the iPhone and the Pixel"));
+        assert!(!super::conversational(&"tell me a story ".repeat(20)));
+    }
 }

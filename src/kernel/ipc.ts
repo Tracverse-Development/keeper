@@ -22,6 +22,7 @@ export const EVENTS = {
   assistantReply: 'assistant://reply',
   stagePanel: 'stage://panel',
   earlyReply: 'assistant://early-reply',
+  replyDelta: 'assistant://reply-delta',
 } as const;
 
 export type * from './ipc-types';
@@ -63,6 +64,8 @@ export const core = {
   stageAction: (action: PanelAction, keeper?: string) => invoke<ActionDone>('stage_action', { keeper, action }),
   planDecide: (token: string, approve: boolean) => invoke<TurnResult>('plan_decide', { token, approve }),
   briefToday: () => invoke<TurnResult | null>('brief_today'),
+  /** Start the next turn's engine now (opening, switching keeper, coming back); returns spares ready. */
+  warm: (keeper?: string) => invoke<number>('assistant_warm', { keeper }),
   pimAccess: () => invoke<PimAccess>('pim_access'),
   pinnedScenes: (keeper?: string) => invoke<PinnedScene[]>('scenes_pinned', { keeper }),
   pinScene: (title: string, panels: unknown[], keeper?: string) => invoke<PinnedScene>('scene_pin', { keeper, title, panels }),

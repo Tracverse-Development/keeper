@@ -22,6 +22,10 @@
 .bubble.you { align-self: flex-end; background: linear-gradient(180deg, rgba(211, 151, 68, 0.28), rgba(181, 123, 44, 0.22)); border: 1px solid rgba(240, 201, 138, 0.3); color: var(--cream-50); border-bottom-right-radius: 6px; }
 .bubble.them { align-self: flex-start; background: var(--surface-strong); border: 1px solid var(--border); border-bottom-left-radius: 6px;
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.bubble.is-live .caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--gold-300); animation: caret-blink 900ms steps(2) infinite; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bubble.is-live .caret { animation: none; } }
+.turn-speed { margin: 6px 0 0; font-size: 11px; letter-spacing: 0.02em; }
 .learned { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .learned li { font-size: 12.5px; color: var(--gold-300); }
 .learned li::before { content: '◆ '; font-size: 9px; vertical-align: 1px; }

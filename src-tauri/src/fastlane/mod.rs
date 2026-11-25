@@ -3,12 +3,13 @@
 //! else goes on to the keeper's brain. What these answers do is recorded like any other turn.
 //!
 //! - "find my NZCC deck", "where is my resume"   Spotlight → a files panel (`pim::find_files`)
-//! - "open my downloads / documents / desktop"    the folder opens
+//! - "where is my Downloads folder", "open my documents"  a live folder view (`folders`)
 //! - "how's my computer", "system status"         CPU and memory → a chart panel
 //! - "brief me", "good morning", "what's on today" the morning brief (`brief`)
 //! - "what do you know about me"                   your facts → a facts panel (forget / pin)
 
 pub mod brief;
+pub mod folders;
 
 use std::sync::OnceLock;
 
@@ -37,6 +38,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     static BRIEF: OnceLock<Regex> = OnceLock::new();
     static FACTS: OnceLock<Regex> = OnceLock::new();
 
+    static FOLDER: OnceLock<Regex> = OnceLock::new();
+    if let Some(c) = re(&FOLDER, r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$").captures(s) {
+        return Some(folders::view(&folders::known(&c[1])?, false));
+    }
+
     if let Some(c) = re(&FIND, r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$").captures(s) {
         let query = c[1].trim_end_matches(" file").trim_end_matches(" files").to_string();
         let hits = crate::pim::find_files(&query, 8).await.ok()?;
@@ -49,11 +55,9 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     }
 
     if let Some(c) = re(&OPEN, r"(?i)^(?:please\s+)?open\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|music|movies|home)(?:\s+folder)?\s*\.?$").captures(s) {
-        let home = dirs::home_dir()?;
-        let name = c[1].to_lowercase();
-        let path = if name == "home" { home } else { home.join(format!("{}{}", name[..1].to_uppercase(), &name[1..])) };
+        let path = folders::known(&c[1])?;
         crate::platform::open_url(&path.display().to_string()).ok()?;
-        return Some(shown(format!("Opened your {name} folder."), json!([])));
+        return Some(folders::view(&path, true));
     }
 
     if re(&SYSTEM, r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$").is_match(s) {

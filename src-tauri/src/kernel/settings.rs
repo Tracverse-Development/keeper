@@ -91,6 +91,8 @@ pub struct Settings {
     pub prefetch_scenes: bool,
     /// The quick helper model for prepared scenes and follow-ups on a panel ("" = off).
     pub fast_model: String,
+    /// Short conversational turns are answered by the quick helper model (about twice as fast).
+    pub quick_replies: bool,
     /// Before an agent acts on the computer, show its plan and wait for Approve.
     pub ask_before_acting: bool,
     /// The day the morning brief was last shown (YYYY-MM-DD).
@@ -130,6 +132,7 @@ impl Default for Settings {
             prefetch_scenes: true,
             fast_model: "haiku".into(),
             ask_before_acting: true,
+            quick_replies: true,
             last_brief: String::new(),
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,

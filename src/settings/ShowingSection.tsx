@@ -29,6 +29,13 @@ export function ShowingSection({ settings, save }: { settings: Settings; save: (
           <span className="muted small">While you read a lesson, the keeper quietly prepares each card's scene, so clicking one opens instantly. Uses a little of your Claude Code allowance.</span>
         </span>
       </label>
+      <label className="toggle">
+        <input type="checkbox" checked={settings.quickReplies} onChange={(e) => save({ quickReplies: e.target.checked })} />
+        <span>
+          <strong>Quick replies</strong>
+          <span className="muted small">Short everyday messages are answered by the quick helper below (first words in about a second). Lessons, comparisons and anything visual stay with the keeper's own model.</span>
+        </span>
+      </label>
       <div className="model-row">
         <label className="muted small" htmlFor="helper-model">Quick helper</label>
         <select id="helper-model" className="field" value={settings.fastModel} onChange={(e) => save({ fastModel: e.target.value })}>

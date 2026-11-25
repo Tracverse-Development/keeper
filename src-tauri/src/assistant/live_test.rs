@@ -78,3 +78,27 @@ async fn live_claude_v06_guard_stops_outside_the_plan() {
     assert!(!outside.join("b.txt").exists(), "and never happened");
     let _ = std::fs::remove_dir_all(&base);
 }
+
+/// Speed: a cold turn, then turns on the warm spare (`warm`), through Keeper's own engine code.
+#[tokio::test]
+#[ignore]
+async fn live_claude_v07_warm_spare_speed() {
+    let mut c = ctx("What is the capital of France? One sentence.");
+    c.visual = false;
+    for (label, model) in [("cold", ""), ("warm", ""), ("warm", ""), ("haiku cold", "haiku"), ("haiku warm", "haiku")] {
+        if label.ends_with("warm") {
+            claude::warm_up(&c, model);
+            tokio::time::sleep(std::time::Duration::from_secs(6)).await;
+        }
+        let started = std::time::Instant::now();
+        let early: Mutex<Option<u128>> = Mutex::new(None);
+        let t = claude::think(&c, model, &|p: Progress| {
+            if let Progress::Reply(_) = p {
+                early.lock().unwrap().get_or_insert(started.elapsed().as_millis());
+            }
+        })
+        .await
+        .expect("claude answered");
+        println!("SPEED {label:>10}: reply ready {:?} ms, done {} ms: {}", early.into_inner().unwrap(), started.elapsed().as_millis(), t.reply);
+    }
+}

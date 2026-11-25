@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { DkgTrail } from './DkgTrail';
+import { speedWords } from './speed-words';
 import type { Exchange } from './useAssistant';
 
 interface Props {
@@ -57,7 +58,16 @@ export function ConversationDock(p: Props) {
                     ))}
                   </ul>
                 )}
+                {x.result.timings && <p className="turn-speed muted small">{speedWords(x.result.timings)}</p>}
                 {x.result.traces.length + x.result.writes.length > 0 && <DkgTrail result={x.result} />}
+              </div>
+            )}
+            {!x.result && !x.error && x.live && (
+              <div className="bubble them is-live">
+                <p className="selectable">
+                  {x.live}
+                  <span className="caret" aria-hidden />
+                </p>
               </div>
             )}
             {x.error && <p className="bubble them error-line">{x.error}</p>}

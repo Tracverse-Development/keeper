@@ -73,3 +73,27 @@ async fn live_pin_and_unpin_a_scene() {
     memory.unpin_scene(&pin.id).await;
     assert!(!memory.pinned_scenes().await.unwrap().iter().any(|p| p.id == pin.id), "unpinned");
 }
+
+/// Speed baseline: what one turn's memory work costs on the real node.
+#[tokio::test]
+#[ignore]
+async fn live_bench_memory() {
+    let memory = live_memory().await;
+    let t = std::time::Instant::now();
+    let r = memory.recall("what is my sister's name").await.unwrap();
+    let recall = t.elapsed();
+    let t = std::time::Instant::now();
+    let _ = memory.recall("what is my sister's name").await.unwrap();
+    let hot_recall = t.elapsed();
+    let marker = format!("Your bench cousin is {}", crate::kernel::time::now_iso());
+    memory.write(&Fact::new(&marker, "person", &crate::kernel::time::now_iso())).await;
+    let again = memory.recall("bench cousin").await.unwrap();
+    assert!(again.facts.iter().any(|f| f.text == marker), "a new fact is recalled at once");
+    println!("BENCH cold recall {recall:?}; hot recall {hot_recall:?}");
+    let t = std::time::Instant::now();
+    for i in 0..5 {
+        memory.write(&Fact::new(&format!("bench fact {i} {}", crate::kernel::time::now_iso()), "general", &crate::kernel::time::now_iso())).await;
+    }
+    let write5 = t.elapsed();
+    println!("BENCH recall {:?} ({} facts, {} turns); 5 writes {:?} ({:?} each)", recall, r.facts.len(), r.recent.len(), write5, write5 / 5);
+}

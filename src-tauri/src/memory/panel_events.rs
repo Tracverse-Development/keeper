@@ -27,6 +27,14 @@ pub struct PanelEvent {
 }
 
 impl Record for PanelEvent {
+    /// Pins and practice change what recall reads (pinned facts, recent practice).
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        match self.kind.as_str() {
+            "pin" => Some(super::hot::HotChange::Pin(self.value.clone())),
+            "quiz" | "card" => Some(super::hot::HotChange::Practice(practice_fact(&self.kind, &self.item, &self.value))),
+            _ => None,
+        }
+    }
     fn asset_name(&self) -> String {
         format!("desk-panelevent-{}", short_hash(&format!("{}\u{0}{}\u{0}{}\u{0}{}", self.at, self.kind, self.panel, self.item), 16))
     }
@@ -50,6 +58,17 @@ impl PanelEvent {
     }
 }
 
+/// One practice result as a fact the brain reads ("You answered "7 x 8?" wrong").
+fn practice_fact(kind: &str, item: &str, value: &str) -> Fact {
+    let right = value == "yes";
+    let text = if kind == "quiz" {
+        format!("You answered \"{item}\" {}", if right { "right" } else { "wrong" })
+    } else {
+        format!("You {} the flashcard \"{item}\"", if right { "knew" } else { "didn't know yet" })
+    };
+    Fact::new(&text, "practice", &time::now_iso())
+}
+
 impl Memory {
     /// The latest events of one kind (a validated literal from a fixed list), newest first.
     async fn events_of(&self, kind: &'static str, limit: usize) -> Result<Vec<(String, String)>> {
@@ -67,11 +86,9 @@ impl Memory {
     /// Recent practice as facts for the next turn ("You answered 'What is 7 x 8?' wrong").
     pub async fn practice(&self) -> Vec<Fact> {
         let mut out = Vec::new();
-        for (kind, words_yes, words_no) in [("quiz", "right", "wrong"), ("card", "knew", "didn't know yet")] {
-            for (item, value) in self.events_of(if kind == "quiz" { "quiz" } else { "card" }, 6).await.unwrap_or_default() {
-                let verdict = if value == "yes" { words_yes } else { words_no };
-                let text = if kind == "quiz" { format!("You answered \"{item}\" {verdict}") } else { format!("You {verdict} the flashcard \"{item}\"") };
-                out.push(Fact::new(&text, "practice", &time::now_iso()));
+        for kind in ["quiz", "card"] {
+            for (item, value) in self.events_of(kind, 6).await.unwrap_or_default() {
+                out.push(practice_fact(kind, &item, &value));
             }
         }
         out

@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CharacterStage, DEFAULT_WEARABLES } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
 import { useAssistant } from '../conversation/useAssistant';
-import { sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
+import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
 import { useKit } from '../keepers/useKit';
 import { focusQuestion } from '../kernel/panel-spec';
@@ -69,6 +69,14 @@ export function Dashboard({ initial }: { initial: Settings }) {
   speakRef.current = voice.speak;
 
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
+  // The next turn's engine starts before the person speaks: on opening, on switching keeper, and
+  // whenever the window comes back to the front (a spare retires after 20 minutes).
+  useEffect(() => {
+    const warm = () => void core.warm(keeper?.id).catch(() => undefined);
+    warm();
+    window.addEventListener('focus', warm);
+    return () => window.removeEventListener('focus', warm);
+  }, [keeper?.id]);
   const actions = usePanelActions({
     keeper: keeper?.id ?? null,
     speak: (t) => speakRef.current(t),

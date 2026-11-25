@@ -120,6 +120,8 @@ export interface Settings {
   fastModel: string;
   /** Show the plan and wait for Approve before acting on the computer. */
   askBeforeActing: boolean;
+  /** Short conversational turns go to the quick helper model. */
+  quickReplies: boolean;
   autoUpdate: boolean;
 }
 
@@ -298,6 +300,18 @@ export interface TurnResult {
   traces: QueryTrace[];
   writes: WriteReceipt[];
   memoryOffline: boolean;
+  /** How long the turn took (absent on turns rebuilt from history). */
+  timings?: Timings;
+}
+
+/** One turn's timing in milliseconds (`assistant::Timings`). */
+export interface Timings {
+  recallMs: number;
+  /** The person first saw something (the reply ready, or a panel). */
+  firstMs: number | null;
+  thinkMs: number;
+  totalMs: number;
+  source: string;
 }
 
 export interface Counts {
@@ -319,7 +333,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 

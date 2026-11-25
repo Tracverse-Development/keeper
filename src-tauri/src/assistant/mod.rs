@@ -16,6 +16,7 @@ pub mod persona;
 mod prefetch;
 mod source;
 mod turn;
+pub mod warm;
 #[cfg(test)]
 mod live_test;
 
@@ -53,6 +54,24 @@ pub struct TurnResult {
     pub writes: Vec<WriteReceipt>,
     /// Recall failed (the node is down): the answer was made without memory.
     pub memory_offline: bool,
+    /// How long each part of the turn took (shown to the person; the speed tests read it).
+    pub timings: Timings,
+}
+
+/// One turn's timing, in milliseconds from the moment it started.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Timings {
+    /// Memory recalled (hot memory: well under 1 ms; a cold load: tens of ms).
+    pub recall_ms: u128,
+    /// The person first saw something: the reply ready to speak, or the first panel.
+    pub first_ms: Option<u128>,
+    /// The answer's source (instant, cache, plan, engine) took this long.
+    pub think_ms: u128,
+    /// The whole turn, up to the reply (the DKG writes happen after it).
+    pub total_ms: u128,
+    /// Which mind or source answered ("instant", "cache", "claude"…).
+    pub source: String,
 }
 
 pub(super) fn phase(app: &AppHandle, name: &str, detail: &str) {

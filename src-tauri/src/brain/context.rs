@@ -33,6 +33,8 @@ pub enum Progress<'a> {
     Panel(crate::stage::Panel),
     /// The spoken reply, ready before the rest of the answer.
     Reply(String),
+    /// New words of the reply while it is being written (live typing in the chat).
+    ReplyText(String),
 }
 
 /// Something learned about the person, written in the second person ("Your sister is Maya").

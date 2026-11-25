@@ -13,6 +13,8 @@ export interface Exchange {
   said: string;
   result: TurnResult | null;
   error: string | null;
+  /** The reply's words so far, while the keeper is still writing it (live typing). */
+  live?: string;
 }
 
 const KEEP = 40;
@@ -40,6 +42,22 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
       on<{ phase: Phase; detail: string }>(EVENTS.assistantPhase, (p) => {
         setPhase(p.phase);
         setDetail(p.detail ?? '');
+      }),
+    [],
+  );
+
+  // The reply arrives word by word: the pending exchange types it live.
+  const keeperRef = useRef(keeper);
+  keeperRef.current = keeper;
+  useEffect(
+    () =>
+      on<{ keeper: string; text: string }>(EVENTS.replyDelta, (e) => {
+        if (e.keeper !== keeperRef.current) return;
+        setExchanges((list) => {
+          const last = list[list.length - 1];
+          if (!last || last.result || last.error) return list;
+          return [...list.slice(0, -1), { ...last, live: (last.live ?? '') + e.text }];
+        });
       }),
     [],
   );

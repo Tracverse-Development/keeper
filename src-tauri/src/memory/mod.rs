@@ -5,6 +5,8 @@
 //! the assistant knows what the graph says, and every answer can show the queries behind it.
 
 pub mod catalog;
+pub mod hot;
+pub mod later;
 pub mod outbox;
 pub mod panel_events;
 pub mod pinned_scenes;
@@ -90,9 +92,16 @@ impl Memory {
 
     /// Write one record. A node that is down never loses the record: it waits in the outbox.
     pub async fn write(&self, record: &impl Record) -> WriteReceipt {
-        let name = record.asset_name();
-        let quads = record.quads();
-        match self.client.write_asset(&self.graph, &name, &quads).await {
+        // Hot memory first: the next recall sees this record even before the node has it.
+        if let Some(change) = record.hot() {
+            hot::apply(&self.graph, change);
+        }
+        self.write_quads(record.asset_name(), &record.quads()).await
+    }
+
+    /// Send one asset to the node (used by `write` and by `later`, which applied hot memory itself).
+    pub async fn write_quads(&self, name: String, quads: &[crate::dkg::Quad]) -> WriteReceipt {
+        match self.client.write_asset(&self.graph, &name, quads).await {
             Ok(w) => {
                 if outbox::waiting() > 0 {
                     outbox::flush(&self.client).await;
@@ -102,7 +111,7 @@ impl Memory {
             // Already kept (an identical record written before): done, never queued to retry.
             Err(crate::kernel::DeskError::Exists(_)) => WriteReceipt { name, ual: String::new(), status: "already in memory".into(), queued: false },
             Err(_) => {
-                outbox::hold(&self.graph, &name, &quads);
+                outbox::hold(&self.graph, &name, quads);
                 WriteReceipt { name, ual: String::new(), status: "waiting for the node".into(), queued: true }
             }
         }
@@ -237,17 +246,31 @@ impl Memory {
 
     /// Everything a brain needs for one turn: the relevant facts and the last few exchanges.
     pub async fn recall(&self, said: &str) -> Result<Recall> {
-        let (mut facts, facts_trace) = self.facts().await?;
+        let started = Instant::now();
+        let snap = match hot::get(&self.graph) {
+            Some(snap) => snap,
+            None => {
+                let snap = self.load_hot().await?;
+                hot::load(&self.graph, snap.clone());
+                snap
+            }
+        };
+        let mut facts = snap.facts;
         // Pinned facts always come along, as if they were identity.
-        let pinned = self.pinned().await;
-        for f in facts.iter_mut().filter(|f| pinned.contains(&f.id)) {
+        for f in facts.iter_mut().filter(|f| snap.pinned.contains(&f.id)) {
             f.category = "identity".into();
         }
-        let (recent, turns_trace) = self.recent_turns().await?;
         let mut ranked = rank::relevant(&facts, said, 14);
         // What the person practised lately shapes the next lesson.
-        ranked.extend(self.practice().await.into_iter().take(6));
-        Ok(Recall { facts: ranked, recent, traces: vec![facts_trace, turns_trace] })
+        ranked.extend(snap.practice.into_iter().take(6));
+        let trace = QueryTrace { label: "hot memory (kept in step with your DKG graph)".into(), sparql: String::new(), rows: ranked.len() + snap.recent.len(), ms: started.elapsed().as_millis(), layer: LAYER_NAME };
+        Ok(Recall { facts: ranked, recent: snap.recent, traces: vec![trace] })
+    }
+
+    /// What recall needs, read from the DKG (fills hot memory).
+    async fn load_hot(&self) -> Result<hot::Snapshot> {
+        let ((facts, _), (recent, _), pinned, practice) = tokio::try_join!(self.facts(), self.recent_turns(), async { Ok(self.pinned().await) }, async { Ok(self.practice().await) })?;
+        Ok(hot::Snapshot { facts, pinned, recent, practice })
     }
 
     /// Retract the remembered facts that best match `what`; returns what was forgotten.

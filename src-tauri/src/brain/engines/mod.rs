@@ -8,6 +8,7 @@ pub mod codex;
 pub mod gemini;
 pub mod hermes;
 pub mod ollama;
+pub mod warm;
 
 use serde::Serialize;
 

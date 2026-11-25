@@ -11,7 +11,7 @@ use crate::kernel::{DeskError, Result};
 
 pub fn args(ctx: &Context, model: &str) -> Vec<String> {
     let sandbox = if ctx.may_act { "danger-full-access" } else { "read-only" };
-    let prompt_text = format!("{}\n\nThe person says: {}", prompt::system(ctx), ctx.said);
+    let prompt_text = prompt::system(ctx);
     let mut a: Vec<String> = ["exec", "--json", "--skip-git-repo-check", "-s", sandbox].iter().map(|s| s.to_string()).collect();
     if !model.is_empty() {
         a.extend(["-m".to_string(), model.to_string()]);

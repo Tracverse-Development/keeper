@@ -12,28 +12,42 @@ Everything you do is recorded in the person's DKG memory.";
 const NOT_ACTING: &str = "Acting on this computer is switched off: do not use tools. If the person asks you to do something on the computer, \
 say you can once they allow it in Settings (\"Let my assistant act on this computer\").";
 
-pub fn system(ctx: &Context) -> String {
+/// The part of the instructions that does not change from turn to turn for a keeper: who it is,
+/// its skills, whether it may act, how it shows things, and the answer format. Stable, so a
+/// warm process can be started with it before the person speaks (`engines::warm`), and the model
+/// provider can reuse it from its prompt cache.
+pub fn system_static(ctx: &Context) -> String {
+    format!(
+        "You are {name}, a personal keeper (assistant) on the person's own computer. {identity} \
+Your memory is the person's private OriginTrail DKG knowledge graph: each message brings the facts just queried from it. \
+Use them naturally; never invent facts about the person. Keep spoken replies short (1-3 sentences), friendly, plain words, no markdown, no lists unless asked.\n\n\
+Skills you can use (put them in \"actions\"):\n{skills}\n\n{acting}\n\n\
+Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [{{\"text\": string, \"category\": string}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
+Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
+        name = ctx.assistant_name,
+        identity = ctx.identity,
+        skills = skills::catalogue(),
+        acting = if ctx.may_act { ACTING } else { NOT_ACTING },
+        stage = if ctx.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES },
+    )
+}
+
+/// This turn's context and words: the time, the facts recalled for it, the recent conversation,
+/// then what the person said.
+pub fn turn_message(ctx: &Context) -> String {
     let facts = if ctx.facts.is_empty() {
         "(nothing yet)".to_string()
     } else {
         ctx.facts.iter().map(|f| format!("- {}", f.text)).collect::<Vec<_>>().join("\n")
     };
     let recent = ctx.recent.iter().rev().map(|t| format!("Person: {}\nYou: {}", t.said, t.replied)).collect::<Vec<_>>().join("\n");
-    format!(
-        "You are {name}, a personal keeper (assistant) on the person's own computer. {identity} \
-Your memory is the person's private OriginTrail DKG knowledge graph: the facts below were just queried from it. \
-Use them naturally; never invent facts about the person. Keep spoken replies short (1-3 sentences), friendly, plain words, no markdown, no lists unless asked.\n\n\
-It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nRecent conversation:\n{recent}\n\n\
-Skills you can use (put them in \"actions\"):\n{skills}\n\n{acting}\n\n\
-Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [{{\"text\": string, \"category\": string}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
-{stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
-        name = ctx.assistant_name,
-        identity = ctx.identity,
-        now = ctx.now_local,
-        skills = skills::catalogue(),
-        acting = if ctx.may_act { ACTING } else { NOT_ACTING },
-        stage = if ctx.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES },
-    )
+    let recent = if recent.is_empty() { "(this is the start)".to_string() } else { recent };
+    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nRecent conversation:\n{recent}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
+}
+
+/// Everything in one text, for engines that take a single prompt.
+pub fn system(ctx: &Context) -> String {
+    format!("{}\n\n{}", system_static(ctx), turn_message(ctx))
 }
 
 /// Read a model's answer. Models sometimes wrap JSON in prose or code fences, so take the

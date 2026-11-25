@@ -60,6 +60,18 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 state.refresh_souls().await;
+                // Testing only: KEEPER_TEST_LINK=1 opens the phone link at launch and writes its
+                // address to a private file, so a test harness can send real turns. Never set in
+                // normal use; the link still needs its random token.
+                if std::env::var_os("KEEPER_TEST_LINK").is_some() {
+                    if let Ok(status) = state.phone.start(&app_handle) {
+                        let _ = crate::kernel::paths::write_private(&crate::kernel::paths::app_home().join("test-link.txt"), status.url.as_bytes());
+                    }
+                }
+                // The first turn should not pay the engine's start-up either.
+                if state.settings().setup_complete {
+                    assistant::warm::warm_keeper(&state, "");
+                }
                 for keeper in state.settings().keepers {
                     if let Ok(memory) = state.memory_for(&keeper) {
                         for r in memory.upcoming_reminders().await.unwrap_or_default() {
@@ -86,6 +98,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             assistant::assistant_turn,
             assistant::brief_today,
+            assistant::warm::assistant_warm,
             pim::commands::pim_access,
             memory::pinned_scenes::scenes_pinned,
             memory::pinned_scenes::scene_pin,

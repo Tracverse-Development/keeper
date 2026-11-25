@@ -42,6 +42,13 @@ pub struct CachedScene {
     pub at: String,
 }
 
+impl CachedScene {
+    /// The scene to keep for this question (None when it showed nothing).
+    pub fn new(question: &str, reply: &str, panels: &[Panel]) -> Option<CachedScene> {
+        (!panels.is_empty()).then(|| CachedScene { key: key(question), question: question.to_string(), reply: reply.to_string(), panels: panels.to_vec(), at: crate::kernel::time::now_iso() })
+    }
+}
+
 impl Record for CachedScene {
     fn asset_name(&self) -> String {
         // A new version each time (finalized assets never change); the lookup takes the newest.
@@ -77,11 +84,9 @@ impl Memory {
 
     /// Keep a scene under its question.
     pub async fn cache_scene(&self, question: &str, reply: &str, panels: &[Panel]) {
-        if panels.is_empty() {
-            return;
+        if let Some(scene) = CachedScene::new(question, reply, panels) {
+            self.write(&scene).await;
         }
-        let scene = CachedScene { key: key(question), question: question.to_string(), reply: reply.to_string(), panels: panels.to_vec(), at: crate::kernel::time::now_iso() };
-        self.write(&scene).await;
     }
 }
 

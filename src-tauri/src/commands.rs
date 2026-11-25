@@ -34,6 +34,7 @@ pub struct SettingsChange {
     pub prefetch_scenes: Option<bool>,
     pub fast_model: Option<String>,
     pub ask_before_acting: Option<bool>,
+    pub quick_replies: Option<bool>,
 }
 
 #[tauri::command]
@@ -59,6 +60,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         }
         if let Some(a) = change.ask_before_acting {
             s.ask_before_acting = a;
+        }
+        if let Some(q) = change.quick_replies {
+            s.quick_replies = q;
         }
         if let Some(v) = change.voice.filter(|v| !v.trim().is_empty()) {
             s.voice = v;
@@ -93,6 +97,8 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
             state.voice.stop_listening(&app).await?;
         }
     }
+    // Showing mode, acting or the helper model may have changed the next turn's command line.
+    crate::assistant::warm::warm_keeper(&state, "");
     Ok(saved)
 }
 

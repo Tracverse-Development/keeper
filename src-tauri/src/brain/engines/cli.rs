@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
-use tokio::process::Command;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, Command};
 
 use crate::kernel::{paths, programs, DeskError, Result};
 
@@ -38,19 +38,37 @@ pub struct Run {
     pub stderr: String,
 }
 
-/// Run `program args` in `cwd`; `on_line` sees every stdout line as it comes and returns
-/// whether to keep going: `false` kills the program at once (the caller knows why).
-pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration, mut on_line: impl FnMut(&str) -> bool) -> Result<Run> {
-    let mut child = Command::new(program)
+/// Start `program args` in `cwd`, with stdin open when `stdin` is true (an engine that takes
+/// its message on stdin, or a warm spare that waits for one: `warm`).
+pub fn spawn(program: &Path, args: &[String], cwd: &Path, stdin: bool) -> Result<Child> {
+    Command::new(program)
         .args(args)
         .current_dir(cwd)
         .env("PATH", programs::child_path(None))
-        .stdin(Stdio::null())
+        .stdin(if stdin { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| DeskError::Brain(format!("could not start {}: {e}", program.display())))?;
+        .map_err(|e| DeskError::Brain(format!("could not start {}: {e}", program.display())))
+}
+
+/// Run `program args` in `cwd`; see `drive`.
+pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration, on_line: impl FnMut(&str) -> bool) -> Result<Run> {
+    drive(spawn(program, args, cwd, false)?, None, timeout, on_line).await
+}
+
+/// Drive a started program: write `input` to its stdin and close it, then hand every stdout line
+/// to `on_line` as it comes; `on_line` returns whether to keep going (`false` kills the program
+/// at once; the caller knows why). Bounded by `timeout`.
+pub async fn drive(mut child: Child, input: Option<String>, timeout: Duration, mut on_line: impl FnMut(&str) -> bool) -> Result<Run> {
+    if let Some(stdin) = child.stdin.take() {
+        let mut stdin = stdin;
+        if let Some(text) = input {
+            stdin.write_all(text.as_bytes()).await.map_err(|e| DeskError::Brain(format!("could not send the message: {e}")))?;
+        }
+        drop(stdin);
+    }
     let stdout = child.stdout.take().ok_or_else(|| DeskError::Brain("no output".into()))?;
     let mut stderr = child.stderr.take().ok_or_else(|| DeskError::Brain("no error output".into()))?;
     let work = async {

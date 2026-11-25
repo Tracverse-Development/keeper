@@ -75,12 +75,15 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                         json_reply(req, 400, json!({ "error": "That message could not be read." }));
                         continue;
                     }
-                    let text = serde_json::from_str::<serde_json::Value>(&body).ok().and_then(|v| v["text"].as_str().map(str::to_string)).unwrap_or_default();
+                    let body: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+                    let text = body["text"].as_str().unwrap_or_default().to_string();
+                    // Continue a chat the phone started (its id came back with the last reply).
+                    let chat: String = body["chat"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_hexdigit()).take(32).collect();
                     let state = app.state::<AppState>();
-                    match tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", "", &text)) {
+                    match tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", &chat, &text)) {
                         Ok(result) => {
                             let _ = app.emit(events::PHONE_TURN, json!({ "said": text, "result": &result }));
-                            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
+                            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "chat": result.chat, "panels": result.panels.len(), "timings": result.timings, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
                         }
                         Err(e) => json_reply(req, 400, json!({ "error": e.to_string() })),
                     }

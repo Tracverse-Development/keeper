@@ -21,6 +21,8 @@ pub struct PanelStream {
     emitted: usize,
     /// The spoken reply, handed over once when its closing quote arrives (`take_reply`).
     reply_given: bool,
+    /// Characters of the reply already handed over as live text (`take_reply_delta`).
+    reply_shown: usize,
 }
 
 impl PanelStream {
@@ -72,6 +74,45 @@ impl PanelStream {
             }
         }
         None
+    }
+
+    /// The reply's new words since the last call, while it is still being written (live typing).
+    /// A half-arrived escape (`\` or `\u12`) is held back until it is complete.
+    pub fn take_reply_delta(&mut self) -> Option<String> {
+        let key = self.buf.find("\"reply\"")?;
+        let after = self.buf[key + 7..].trim_start().strip_prefix(':')?.trim_start();
+        let body = after.strip_prefix('"')?;
+        // The string so far: up to its closing quote if it has one, else everything that arrived.
+        let mut end = body.len();
+        let mut escaped = false;
+        for (i, ch) in body.char_indices() {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                end = i;
+                break;
+            }
+        }
+        let mut raw = &body[..end];
+        // Hold back an unfinished escape at the end.
+        if let Some(slash) = raw.rfind('\\') {
+            let tail = &raw[slash..];
+            let complete = tail.len() >= 2 && (!tail.starts_with("\\u") || tail.len() >= 6);
+            let escaped_slash = slash > 0 && raw[..slash].ends_with('\\') && raw[..slash].chars().rev().take_while(|c| *c == '\\').count() % 2 == 1;
+            if !complete && !escaped_slash {
+                raw = &raw[..slash];
+            }
+        }
+        let text: String = serde_json::from_str(&format!("\"{raw}\"")).ok()?;
+        let count = text.chars().count();
+        if count <= self.reply_shown {
+            return None;
+        }
+        let delta: String = text.chars().skip(self.reply_shown).collect();
+        self.reply_shown = count;
+        Some(delta)
     }
 
     /// Feed the next piece of the answer; returns panels completed by it.
@@ -168,6 +209,19 @@ mod tests {
         s.push(r#"", "panels": [{"kind": "text", "#);
         assert_eq!(s.take_reply().as_deref(), Some("Here \"you\" go"));
         assert_eq!(s.take_reply(), None, "given once");
+    }
+
+    #[test]
+    fn the_reply_streams_word_by_word() {
+        let mut s = PanelStream::default();
+        s.push(r#"{"reply": "Par"#);
+        assert_eq!(s.take_reply_delta().as_deref(), Some("Par"));
+        s.push(r#"is is \"#);
+        assert_eq!(s.take_reply_delta().as_deref(), Some("is is "), "the half escape waits");
+        s.push(r#""lovely\" \u00e9"#);
+        assert_eq!(s.take_reply_delta().as_deref(), Some("\"lovely\" é"));
+        s.push(r#"", "panels": []}"#);
+        assert_eq!(s.take_reply_delta(), None, "nothing new after the closing quote");
     }
 
     #[test]
