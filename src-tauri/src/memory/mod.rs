@@ -6,11 +6,15 @@
 
 pub mod catalog;
 pub mod outbox;
+pub mod panel_events;
 pub mod queries;
 pub mod rank;
 pub mod records;
+pub mod scene_cache;
 #[cfg(test)]
 mod live_test;
+#[cfg(test)]
+mod live_panels_test;
 
 use std::time::Instant;
 
@@ -94,6 +98,8 @@ impl Memory {
                 }
                 WriteReceipt { name, ual: w.ka_ual, status: w.status, queued: false }
             }
+            // Already kept (an identical record written before): done, never queued to retry.
+            Err(crate::kernel::DeskError::Exists(_)) => WriteReceipt { name, ual: String::new(), status: "already in memory".into(), queued: false },
             Err(_) => {
                 outbox::hold(&self.graph, &name, &quads);
                 WriteReceipt { name, ual: String::new(), status: "waiting for the node".into(), queued: true }
@@ -230,9 +236,17 @@ impl Memory {
 
     /// Everything a brain needs for one turn: the relevant facts and the last few exchanges.
     pub async fn recall(&self, said: &str) -> Result<Recall> {
-        let (facts, facts_trace) = self.facts().await?;
+        let (mut facts, facts_trace) = self.facts().await?;
+        // Pinned facts always come along, as if they were identity.
+        let pinned = self.pinned().await;
+        for f in facts.iter_mut().filter(|f| pinned.contains(&f.id)) {
+            f.category = "identity".into();
+        }
         let (recent, turns_trace) = self.recent_turns().await?;
-        Ok(Recall { facts: rank::relevant(&facts, said, 14), recent, traces: vec![facts_trace, turns_trace] })
+        let mut ranked = rank::relevant(&facts, said, 14);
+        // What the person practised lately shapes the next lesson.
+        ranked.extend(self.practice().await.into_iter().take(6));
+        Ok(Recall { facts: ranked, recent, traces: vec![facts_trace, turns_trace] })
     }
 
     /// Retract the remembered facts that best match `what`; returns what was forgotten.

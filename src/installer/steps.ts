@@ -2,7 +2,7 @@
  * The installer's steps and the pure decisions behind them (tested in steps.test.ts).
  * The screen (InstallerScreen.tsx) only draws what these say.
  */
-import type { EngineId, FolderAccess, Scan } from '../kernel/ipc';
+import type { EngineId, FolderAccess, PimAccess, Scan } from '../kernel/ipc';
 
 export const STEPS = [
   { id: 'welcome', title: 'Welcome' },
@@ -50,6 +50,12 @@ export const PERMISSION_WORDS: Record<PermissionStatus, string> = { waiting: 'Wa
 export function voicePermission(auth: { speech: string; mic: boolean } | null): PermissionStatus {
   if (!auth) return 'waiting';
   return auth.speech === 'authorized' && auth.mic ? 'allowed' : 'denied';
+}
+
+/** Calendar and contacts, from `core.pimAccess()` (null or either not asked yet: waiting). */
+export function pimPermission(access: PimAccess | null): PermissionStatus {
+  if (!access || access.calendar === 'notasked' || access.contacts === 'notasked') return 'waiting';
+  return access.calendar === 'allowed' && access.contacts === 'allowed' ? 'allowed' : 'denied';
 }
 
 /** The folders, from `core.folders()` (null: not asked yet). Any folder refused = not allowed. */

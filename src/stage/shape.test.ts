@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { barScale, formatValue, paragraphs, splitExpression } from './shape.ts';
+import { barScale, formatResult, formatValue, paragraphs, splitExpression, timelineOrientation } from './shape.ts';
 
 test('paragraphs split on blank lines', () => {
   assert.deepEqual(paragraphs('One.\nStill one.\n\n  Two.  \n \n\nThree.'), ['One.\nStill one.', 'Two.', 'Three.']);
@@ -38,4 +38,18 @@ test('values read like a person writes them', () => {
   assert.equal(formatValue(56), '56');
   assert.equal(formatValue(3.14159), '3.14');
   assert.equal(formatValue(Number.POSITIVE_INFINITY), '—');
+});
+
+test('a short timeline runs across, a long one runs down', () => {
+  assert.equal(timelineOrientation(1), 'horizontal');
+  assert.equal(timelineOrientation(5), 'horizontal');
+  assert.equal(timelineOrientation(6), 'vertical');
+  assert.equal(timelineOrientation(0), 'vertical');
+});
+
+test('results are grouped and rounded for reading', () => {
+  assert.equal(formatResult(2678), '2,678');
+  assert.equal(formatResult(1234.5678), '1,234.57');
+  assert.equal(formatResult(-12), '-12');
+  assert.equal(formatResult(Infinity), '—');
 });

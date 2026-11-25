@@ -11,6 +11,7 @@
 //          {"type":"final","text":"…"} {"type":"listening","on":true} {"type":"speech-start"}
 //          {"type":"word","length":5} {"type":"mouth","value":0.6} {"type":"speech-end"} {"type":"authorized","speech":"…","mic":true}
 //          {"type":"voices","voices":[…]} {"type":"error","message":"…"}
+// PIM (calendar and contacts, request/response by "id"): see pim.swift.
 
 import AVFoundation
 import Foundation
@@ -232,6 +233,7 @@ final class Helper {
     let listener = Listener()
     let speaker = Speaker()
     let player = Player()
+    let pim = Pim()
     /// The mode to go back to after speaking.
     var resumeMode = "off"
 
@@ -245,7 +247,9 @@ final class Helper {
     }
 
     func handle(_ command: [String: Any]) {
-        switch command["cmd"] as? String ?? "" {
+        let cmd = command["cmd"] as? String ?? ""
+        if Pim.commands.contains(cmd) { return pim.handle(command) }
+        switch cmd {
         case "listen":
             let mode = (command["mode"] as? String) == "always" ? "always" : "once"
             resumeMode = mode == "always" ? "always" : "off"
@@ -275,7 +279,10 @@ final class Helper {
             let english = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
             emit(["type": "voices", "voices": english.map { ["name": $0.name, "language": $0.language, "quality": $0.quality.rawValue] }])
         default:
-            emit(["type": "error", "message": "unknown command"])
+            // Carry the id back, so a caller waiting on a reply hears at once.
+            var event: [String: Any] = ["type": "error", "message": "unknown command"]
+            if let id = command["id"] as? String { event["id"] = id; event["ok"] = false; event["error"] = "unknown command" }
+            emit(event)
         }
     }
 

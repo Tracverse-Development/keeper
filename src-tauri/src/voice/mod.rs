@@ -7,11 +7,17 @@
 //! `final`, `speech-start`, `word`, `speech-end`, `authorized`, `error`). Every event goes to the
 //! window as `voice://event`; a `final` that is meant for the assistant (push-to-talk, or past
 //! the wake word) also goes as `voice://command`.
+//!
+//! Request/response (`ask`): a command sent with a fresh `id` (the PIM commands: `pim-access`,
+//! `pim-request`, `events`, `event-create`, `contacts`) is answered by ONE event with that `id`,
+//! which goes back to the caller (`replies`), not to the window.
 
 pub mod eleven;
+mod replies;
 pub mod wake;
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
@@ -22,6 +28,11 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::kernel::settings::{Settings, VoiceEngine};
 use crate::kernel::{events, DeskError, Result};
 use crate::platform;
+
+use replies::Replies;
+
+/// How long `ask` waits for the helper's answer.
+pub const ASK_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Mode {
@@ -44,11 +55,12 @@ struct Shared {
 pub struct Voice {
     stdin: Arc<AsyncMutex<Option<ChildStdin>>>,
     shared: Arc<Mutex<Shared>>,
+    replies: Arc<Replies>,
 }
 
 impl Voice {
     pub fn new() -> Voice {
-        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })) }
+        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })), replies: Arc::new(Replies::default()) }
     }
 
     pub fn set_keepers(&self, keepers: Vec<(String, String)>, active: String) {
@@ -83,10 +95,14 @@ impl Voice {
         let app = app.clone();
         let shared = self.shared.clone();
         let handle = self.stdin.clone();
+        let replies = self.replies.clone();
         tauri::async_runtime::spawn(async move {
             let mut lines = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 let Ok(event) = serde_json::from_str::<Value>(&line) else { continue };
+                if replies.deliver(&event) {
+                    continue;
+                }
                 let _ = app.emit(events::VOICE_EVENT, &event);
                 if event["type"] == "final" {
                     route_final(&app, &shared, event["text"].as_str().unwrap_or_default());
@@ -95,6 +111,7 @@ impl Voice {
             // The helper ended (crash or quit): the next call starts a fresh one.
             let _ = child.wait().await;
             *handle.lock().await = None;
+            replies.clear();
             let _ = app.emit(events::VOICE_EVENT, json!({ "type": "stopped" }));
         });
         Ok(())
@@ -109,6 +126,33 @@ impl Voice {
         stdin.write_all(line.as_bytes()).await?;
         stdin.flush().await?;
         Ok(())
+    }
+
+    /// Send `command` (a JSON object) with a fresh `id` and wait up to `ASK_TIMEOUT` for the
+    /// helper's one reply with that id. A reply with `"ok": false` becomes an error carrying the
+    /// helper's own words.
+    pub async fn ask(&self, app: &AppHandle, command: Value) -> Result<Value> {
+        self.ask_within(app, command, ASK_TIMEOUT).await
+    }
+
+    /// `ask` with its own time limit (asking for permission waits on the person, not the Mac).
+    pub async fn ask_within(&self, app: &AppHandle, mut command: Value, within: Duration) -> Result<Value> {
+        let Some(fields) = command.as_object_mut() else { return Err(DeskError::Invalid("A helper command must be an object.".into())) };
+        let (id, reply) = self.replies.open();
+        fields.insert("id".into(), Value::String(id.clone()));
+        if let Err(e) = self.send(app, command).await {
+            self.replies.forget(&id);
+            return Err(e);
+        }
+        match tokio::time::timeout(within, reply).await {
+            Ok(Ok(event)) if event["ok"] == false => Err(DeskError::Io(event["error"].as_str().unwrap_or("The helper could not do that.").to_string())),
+            Ok(Ok(event)) => Ok(event),
+            Ok(Err(_)) => Err(DeskError::Io("The helper stopped before it answered.".into())),
+            Err(_) => {
+                self.replies.forget(&id);
+                Err(DeskError::Io("The helper did not answer in time.".into()))
+            }
+        }
     }
 
     fn set_mode(&self, mode: Mode) {

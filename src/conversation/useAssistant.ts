@@ -50,15 +50,18 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     setChatId('');
   }, [keeper]);
 
-  /** Send to `toKeeper` (default: the keeper on screen) in the current chat. */
-  const send = async (text: string, toKeeper?: string) => {
-    const said = text.trim();
-    if (!said || busy) return;
+  /** Run one turn (`call`) shown as `said`; its result goes on screen and to `onReply`. */
+  const run = async (said: string, call: () => Promise<TurnResult | null>) => {
+    if (busy) return;
     const id = nextId.current++;
     setExchanges((list) => [...list, { id, said, result: null, error: null }].slice(-KEEP));
     setBusy(true);
     try {
-      const result = await core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined);
+      const result = await call();
+      if (!result) {
+        setExchanges((list) => list.filter((x) => x.id !== id));
+        return;
+      }
       setChatId(result.chat);
       setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
       replyRef.current(result, said);
@@ -69,6 +72,19 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
       setPhase(null);
     }
   };
+
+  /** Send to `toKeeper` (default: the keeper on screen) in the current chat. */
+  const send = async (text: string, toKeeper?: string) => {
+    const said = text.trim();
+    if (!said) return;
+    await run(said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined));
+  };
+
+  /** Approve or refuse the plan the keeper showed before acting. */
+  const decide = (token: string, approve: boolean) => run(approve ? 'Approved. Go ahead.' : "Don't do it.", () => core.planDecide(token, approve));
+
+  /** The morning brief, once a day (nothing happens when it was already shown today). */
+  const brief = () => run('', () => core.briefToday());
 
   /** Something the keeper said by itself (a reminder, a brain change, a reaction to a touch). */
   const announce = (text: string, label = 'Keeper') => {
@@ -94,5 +110,5 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     setExchanges([]);
   };
 
-  return { exchanges, chatId, phase, detail, busy, send, announce, record, showChat, newChat };
+  return { exchanges, chatId, phase, detail, busy, send, decide, brief, announce, record, showChat, newChat };
 }

@@ -21,3 +21,5 @@ pub const APP_UPDATE: &str = "app://update";
 pub const ASSISTANT_REPLY: &str = "assistant://reply";
 /// A Stage panel the engine just finished writing (streamed before the answer is complete).
 pub const STAGE_PANEL: &str = "stage://panel";
+/// The spoken reply, ready before the whole answer (the window starts speaking at once).
+pub const EARLY_REPLY: &str = "assistant://early-reply";

@@ -19,6 +19,8 @@ pub struct PanelStream {
     object_start: Option<usize>,
     done: bool,
     emitted: usize,
+    /// The spoken reply, handed over once when its closing quote arrives (`take_reply`).
+    reply_given: bool,
 }
 
 impl PanelStream {
@@ -40,6 +42,34 @@ impl PanelStream {
                 return None;
             }
             search = after;
+        }
+        None
+    }
+
+    /// The `"reply"` string, once it is complete (so the keeper can start speaking while the
+    /// panels are still being written). Returns it only the first time.
+    pub fn take_reply(&mut self) -> Option<String> {
+        if self.reply_given {
+            return None;
+        }
+        let key = self.buf.find("\"reply\"")?;
+        let after = self.buf[key + 7..].trim_start().strip_prefix(':')?.trim_start();
+        if !after.starts_with('"') {
+            return None;
+        }
+        let start = self.buf.len() - after.len();
+        let mut escaped = false;
+        for (offset, ch) in self.buf[start + 1..].char_indices() {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                let quoted = &self.buf[start..start + 1 + offset + 1];
+                let text: String = serde_json::from_str(quoted).ok()?;
+                self.reply_given = true;
+                return (!text.trim().is_empty()).then_some(text);
+            }
         }
         None
     }
@@ -128,6 +158,16 @@ mod tests {
             assert!(matches!(&got[0], Panel::Text { title, .. } if title == "A {brace}"));
             assert!(matches!(&got[1], Panel::Steps { id, .. } if id == "panel-1"));
         }
+    }
+
+    #[test]
+    fn the_reply_is_ready_before_the_panels() {
+        let mut s = PanelStream::default();
+        assert_eq!(s.push(r#"{"reply": "Here \"you\" go"#), vec![]);
+        assert_eq!(s.take_reply(), None, "not complete yet");
+        s.push(r#"", "panels": [{"kind": "text", "#);
+        assert_eq!(s.take_reply().as_deref(), Some("Here \"you\" go"));
+        assert_eq!(s.take_reply(), None, "given once");
     }
 
     #[test]

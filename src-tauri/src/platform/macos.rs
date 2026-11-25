@@ -1,9 +1,12 @@
-//! macOS: `open` for apps and pages, `osascript` for notifications, `scutil` for the name.
+//! macOS: `open` for apps and pages, `osascript` for notifications, `scutil` for the name,
+//! `mdfind` for files (`spotlight_macos.rs`).
 //! Arguments are always passed as separate argv entries, never through a shell.
 
 use std::process::Command;
 
 use crate::kernel::{DeskError, Result};
+
+pub use super::spotlight_macos::spotlight;
 
 pub const TARGET_TRIPLE: &str = if cfg!(target_arch = "aarch64") { "aarch64-apple-darwin" } else { "x86_64-apple-darwin" };
 

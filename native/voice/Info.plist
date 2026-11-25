@@ -10,5 +10,11 @@
   <string>Umoja listens on this Mac so you can talk to it. Your voice is recognised on the device and never leaves it.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>Umoja turns your speech into text on this Mac, without sending it anywhere.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Keeper reads your calendar on this Mac to tell you what is coming up and to add events you ask for. Your calendar is never sent anywhere.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Keeper reads your calendar on this Mac to tell you what is coming up and to add events you ask for. Your calendar is never sent anywhere.</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Keeper looks up people in your contacts on this Mac when you ask about them. Your contacts are never sent anywhere.</string>
 </dict>
 </plist>

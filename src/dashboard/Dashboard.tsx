@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { CharacterStage } from '../character';
+import { CharacterStage, DEFAULT_WEARABLES } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
 import { useAssistant } from '../conversation/useAssistant';
 import { sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
@@ -24,7 +24,9 @@ import { moodFor, phaseWords } from './mood';
 import { TopBar } from './TopBar';
 import { touchLine, type Touch } from './touch-lines';
 import { UpdateBanner } from './UpdateBanner';
+import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { usePanelActions } from './usePanelActions';
 import { useStageState } from './useStageState';
 import './dashboard.css';
 
@@ -50,7 +52,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult, said: string) => {
     stage.take(r, said);
     if (r.learned.length || r.actions.some((a) => a.succeeded)) celebrate();
-    speakRef.current(r.reply);
+    actions.speakFinal(r.reply);
     events.refreshHealth();
     chats.refresh();
   });
@@ -66,6 +68,21 @@ export function Dashboard({ initial }: { initial: Settings }) {
   speakRef.current = voice.speak;
 
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
+  const actions = usePanelActions({
+    keeper: keeper?.id ?? null,
+    speak: (t) => speakRef.current(t),
+    celebrate,
+    announce: (t) => assistant.announce(t, keeper?.name ?? 'Keeper'),
+    decide: assistant.decide,
+    brief: assistant.brief,
+    send: (t) => void assistant.send(t),
+    changed: events.refreshHealth,
+  });
+  // The halo starts with one node per fact this keeper holds, read once per keeper (a change of
+  // effects re-dresses the character; new memories after that add nodes live through the pulse).
+  const haloSeed = useRef<{ keeper: string; facts: number } | null>(null);
+  if (keeper && events.counts && haloSeed.current?.keeper !== keeper.id) haloSeed.current = { keeper: keeper.id, facts: events.counts.facts };
+  const worn = withFactHalo(keeper?.wearables ?? DEFAULT_WEARABLES, haloSeed.current?.keeper === keeper?.id ? (haloSeed.current?.facts ?? null) : null);
   const stage = useStageState(keeper?.id ?? null, assistant.phase, assistant.detail, assistant.busy);
   // Another keeper is a fresh stage; its scenes are its own.
   useEffect(() => stage.reset(), [keeper?.id]);
@@ -119,7 +136,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   return (
     <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={keeper?.wearables} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage
@@ -133,6 +150,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           phase={assistant.phase}
           mind={events.mindLabel(keeper?.brain)}
           onFocus={(f) => assistant.send(focusQuestion(f))}
+          onAction={(a) => void actions.act(a)}
           onClose={stage.close}
         />
       )}

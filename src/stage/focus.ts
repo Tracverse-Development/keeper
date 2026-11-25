@@ -37,3 +37,28 @@ export function barWhat(label: string, value: number, unit = ''): string {
 export function fileWhat(action: string, path: string): string {
   return `the ${action} of ${path}`;
 }
+
+export function nodeWhat(label: string): string {
+  return `the node ${label}`;
+}
+
+export function momentWhat(title: string, when: string): string {
+  return `the moment ${title} (${when})`;
+}
+
+/** A folder entry with its change: "the moved file a.pdf in ~/Downloads (to Documents)". */
+export function folderEntryWhat(entry: { name: string; kind: 'file' | 'folder'; change?: string; to?: string }, path: string): string {
+  const change = entry.change && entry.change !== 'kept' ? `${entry.change} ` : '';
+  const to = entry.change === 'moved' && entry.to ? ` (to ${entry.to})` : '';
+  return `the ${change}${entry.kind} ${entry.name} in ${path}${to}`;
+}
+
+/** A what-if at its current values: "why Total = 2,678 when weekly = 50, weeks = 52 (weekly * weeks)". */
+export function slidersWhat(resultLabel: string, result: string, expression: string, values: { label: string; value: number }[]): string {
+  const at = values.map((v) => `${v.label} = ${formatValue(v.value)}`).join(', ');
+  return `why ${resultLabel} is ${result} when ${at} (${expression})`;
+}
+
+export function agendaWhat(item: { time?: string; title: string; kind?: string }): string {
+  return `the ${item.kind ?? 'item'} ${item.title}${item.time ? ` at ${item.time}` : ''}`;
+}

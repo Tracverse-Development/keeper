@@ -11,7 +11,7 @@ use crate::kernel::{time, Result};
 use super::packs::Variant;
 use super::souls::{self, Soul};
 
-const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX schema: <http://schema.org/> ";
+const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX schema: <http://schema.org/> PREFIX prov: <http://www.w3.org/ns/prov#> ";
 
 /// The kit graph's id: names no person, one per computer account.
 pub fn graph_id() -> String {
@@ -51,31 +51,42 @@ mod live_tests {
     }
 }
 
+/// A finalized asset never changes (the node answers 409 to a second write under its name), so
+/// every save is a new version named by its time; readers keep the newest per id (FIX-0005).
+fn version_name(kind: &str, id: &str, at: &str) -> String {
+    format!("desk-{kind}-{id}-{}", short_hash(at, 10))
+}
+
 pub async fn save_soul(client: &DkgClient, graph: &str, soul: &Soul) -> Result<String> {
+    let at = time::now_iso();
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
         .a("desk:Soul")
         .text(pred::NAME, &soul.name)
         .text("desk:definition", &serde_json::to_string(soul)?)
         .link(pred::BY, ASSISTANT)
-        .time(pred::AT, &time::now_iso())
+        .time(pred::AT, &at)
         .build();
-    Ok(client.write_asset(graph, &format!("desk-soul-{}", soul.id), &quads).await?.ka_ual)
+    Ok(client.write_asset(graph, &version_name("soul", &soul.id, &at), &quads).await?.ka_ual)
 }
 
 pub async fn save_variant(client: &DkgClient, graph: &str, variant: &Variant) -> Result<String> {
+    let at = time::now_iso();
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:kit:{}", variant.id))
         .a("desk:KitItem")
         .text(pred::NAME, &variant.name)
         .text("desk:definition", &serde_json::to_string(variant)?)
         .link(pred::BY, ASSISTANT)
-        .time(pred::AT, &time::now_iso())
+        .time(pred::AT, &at)
         .build();
-    Ok(client.write_asset(graph, &format!("desk-kit-{}", variant.id), &quads).await?.ka_ual)
+    Ok(client.write_asset(graph, &version_name("kit", &variant.id, &at), &quads).await?.ka_ual)
 }
 
 async fn definitions(client: &DkgClient, graph: &str, class: &str) -> Result<Vec<String>> {
-    let sparql = format!("{PREFIXES}SELECT ?def WHERE {{ ?s a desk:{class} ; desk:definition ?def }} LIMIT 300");
-    Ok(client.query(graph, &sparql, Layer::Working).await?.into_iter().filter_map(|r| r.get("def").cloned()).collect())
+    // Newest first, so the limit drops old versions; returned oldest first so the newest wins.
+    let sparql = format!("{PREFIXES}SELECT ?def ?at WHERE {{ ?s a desk:{class} ; desk:definition ?def ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 300");
+    let mut defs: Vec<String> = client.query(graph, &sparql, Layer::Working).await?.into_iter().filter_map(|r| r.get("def").cloned()).collect();
+    defs.reverse();
+    Ok(defs)
 }
 
 /// The person's own souls (newest write per id wins; invalid ones are skipped).

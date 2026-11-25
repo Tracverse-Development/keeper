@@ -4,8 +4,10 @@
  * bottom); under 1000 px wide the panels stack full width above the dock. The live activity feed
  * sits on top while the agent works; panels arrive staggered on glass cards, each closable, and
  * pointing at any piece calls `onFocus` so the window can ask the keeper about exactly that.
+ * Panels the person works IN (a checklist, a form, an approval, flashcards, a quiz, the facts
+ * list) report what was done through `onAction`, which the window hands to the core.
  *
- * Mounted by the dashboard: `<Stage panels activity working onFocus onClose keeperName />`.
+ * Mounted by the dashboard: `<Stage panels activity working onFocus onAction onClose keeperName … />`.
  */
 import { useEffect, useRef, useState } from 'react';
 
@@ -13,7 +15,7 @@ import { ActivityPanel } from './ActivityPanel.tsx';
 import { Icon } from './icons.tsx';
 import { PanelCard } from './PanelCard.tsx';
 import { SceneNav, type SceneTab } from './SceneNav.tsx';
-import type { Panel, PanelFocus } from './panel-spec.ts';
+import type { Panel, PanelAction, PanelFocus } from './panel-spec.ts';
 import './stage.css';
 
 export interface StageProps {
@@ -21,6 +23,8 @@ export interface StageProps {
   activity: { tool: string; detail: string }[];
   working: boolean;
   onFocus: (f: PanelFocus) => void;
+  /** Something the person did in a panel (ticked, submitted, answered, approved, forgot, pinned). */
+  onAction: (a: PanelAction) => void;
   onClose: () => void;
   keeperName: string;
   /** The chat's scenes (one per answer that showed panels) and the one on screen. */
@@ -34,11 +38,18 @@ export interface StageProps {
 
 /** Whether a panel takes the full width of the stage grid (the rest pair up two by two). */
 function isWide(panel: Panel): boolean {
-  if (panel.kind === 'cards') return panel.cards.length > 2;
-  return panel.kind === 'table' || panel.kind === 'steps' || panel.kind === 'files' || panel.kind === 'text' || panel.kind === 'chart';
+  switch (panel.kind) {
+    case 'cards': return panel.cards.length > 2;
+    case 'facts': return panel.facts.length > 4;
+    case 'sliders': return panel.variables.length > 2;
+    case 'table': case 'steps': case 'files': case 'text': case 'chart':
+    case 'diagram': case 'timeline': case 'folder': case 'flashcards': case 'approval':
+      return true;
+    default: return false;
+  }
 }
 
-export function Stage({ panels, activity, working, onFocus, onClose, keeperName, scenes, current, onScene, phase, mind }: StageProps) {
+export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind }: StageProps) {
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -74,7 +85,7 @@ export function Stage({ panels, activity, working, onFocus, onClose, keeperName,
         {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} phase={phase} mind={mind} />}
         <div className="stage-grid">
           {visible.map((panel, i) => (
-            <PanelCard key={panel.id} panel={panel} index={i} wide={isWide(panel)} onFocus={onFocus} onClose={closePanel} />
+            <PanelCard key={panel.id} panel={panel} index={i} wide={isWide(panel)} onFocus={onFocus} onAction={onAction} onClose={closePanel} />
           ))}
         </div>
       </div>

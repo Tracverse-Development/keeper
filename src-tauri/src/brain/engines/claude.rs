@@ -81,6 +81,9 @@ pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sy
             for p in panels.push(&text) {
                 progress(Progress::Panel(p));
             }
+            if let Some(reply) = panels.take_reply() {
+                progress(Progress::Reply(reply));
+            }
             return;
         }
         if let Some(step) = read_line(line, &mut steps, &mut result) {

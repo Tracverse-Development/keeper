@@ -14,3 +14,8 @@
 - **Context:** The founder defined a keeper as soul (who), role (what it can do), body (species + wearables) and memory (what it experienced, on the DKG), each shareable on its own, never memories.
 - **Lesson:** Keep these four as separate data with separate stores and validators; compose them only at turn time (soul brief + role brief + recalled facts + stage rules). Packs carry data only (no code), validated against the catalog, so a stranger's pack is safe to load.
 - **Rule added:** `keepers::kit` owns souls, roles, species, parts, packs and inventory; packs are validated by `kit::packs::read`; roles gate skills and acting in `assistant`.
+
+### LES-004 — A written Knowledge Asset is final; anything that changes is a new version (2026-11-25)
+- **Context:** The 0.6 live tests found that a second write under an asset name answers 409 (`KA_ASSERTION_ALREADY_FINALIZED`), and that treating every error as "node down" filled the outbox with writes that could never succeed. The same 409 means "graph already exists".
+- **Lesson:** On the DKG an asset is immutable once written: a record that changes (a soul, a cached scene, a setting) is a series of versions read newest-first, never an overwrite. And an error class decides what happens next: "unreachable" may retry, "already there" is done, "refused" is reported. Never collapse them into one.
+- **Rule added:** `DeskError::Exists` for 409; `Memory::write` and the outbox never queue it; changing records use time-versioned asset names with newest-first reads (`inventory::version_name`, `scene_cache`).

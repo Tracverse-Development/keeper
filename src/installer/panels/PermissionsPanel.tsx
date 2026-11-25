@@ -2,7 +2,8 @@
  * Step 5: permissions, all asked up front so nothing interrupts the keeper mid-task later.
  * A checklist: the microphone and on-device speech recognition (the voice helper's own
  * prompt), the Desktop / Documents / Downloads folders the System Administration keeper works
- * in (`core.folders()` reads each one, which makes macOS ask), and the keeper button (the
+ * in (`core.folders()` reads each one, which makes macOS ask), calendar and contacts (`PimRow`,
+ * for the morning brief), and the keeper button (the
  * push-to-talk shortcut). Then the voice: pick one and hear it. Skippable: typing always works.
  */
 import { useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import type { InstallerChoices } from '../InstallerScreen';
 import { PanelActions } from '../InstallerScreen';
 import { foldersPermission, voicePermission } from '../steps';
 import { PermissionRow } from './PermissionRow';
+import { PimRow } from './PimRow';
 
 interface Props {
   choices: InstallerChoices;
@@ -111,6 +113,8 @@ export function PermissionsPanel({ choices, update, onNext, onBack }: Props) {
             <p className="permission-note warn-text">To allow a folder later: System Settings, Privacy & Security, Files and Folders, then turn it on under Keeper.</p>
           )}
         </PermissionRow>
+
+        <PimRow name={name} onError={setError} />
 
         <PermissionRow icon="key" title="The keeper button" status={!shortcut ? 'waiting' : shortcut.registered ? 'allowed' : 'denied'}
           why="Hold it anywhere on your Mac to talk to your keeper, and let go when you're done.">

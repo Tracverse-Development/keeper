@@ -28,6 +28,8 @@ pub struct Context {
 pub enum Progress<'a> {
     Step(&'a str),
     Panel(crate::stage::Panel),
+    /// The spoken reply, ready before the rest of the answer.
+    Reply(String),
 }
 
 /// Something learned about the person, written in the second person ("Your sister is Maya").
@@ -67,4 +69,11 @@ pub struct Thought {
     /// Filled by agent engines from their event stream, never by the model's JSON.
     #[serde(skip_deserializing)]
     pub steps: Vec<AgentStep>,
+    /// The steps the engine WOULD take on the computer (asked for before acting; see
+    /// `assistant::approval`). Raw from the engine; validated where it is used.
+    #[serde(default)]
+    pub plan: serde_json::Value,
+    /// Panels only the core may show (a plan to approve, your facts); never from the model.
+    #[serde(skip)]
+    pub core_panels: Vec<crate::stage::Panel>,
 }

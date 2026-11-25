@@ -89,6 +89,9 @@ impl DkgClient {
         if !status.is_success() {
             // The node's own message, shortened; never the request (it may carry personal words).
             let short: String = text.chars().take(200).collect();
+            if status == reqwest::StatusCode::CONFLICT {
+                return Err(DeskError::Exists(format!("{path}: {short}")));
+            }
             return Err(DeskError::Node(format!("{path} answered {status}: {short}")));
         }
         if text.trim().is_empty() {
@@ -107,6 +110,8 @@ impl DkgClient {
         let body = json!({ "id": id, "name": name, "accessPolicy": 1 });
         match self.call(reqwest::Method::POST, "/api/context-graph/create", Some(body), WRITE_TIMEOUT).await {
             Ok(v) => Ok(v["uri"].as_str().map(str::to_string).unwrap_or_else(|| format!("did:dkg:context-graph:{id}"))),
+            // The node answers 409 for an existing graph (older nodes said so in a plain error).
+            Err(DeskError::Exists(_)) => Ok(format!("did:dkg:context-graph:{id}")),
             Err(DeskError::Node(msg)) if msg.to_lowercase().contains("exist") => Ok(format!("did:dkg:context-graph:{id}")),
             Err(e) => Err(e),
         }

@@ -6,13 +6,15 @@
 import { useEffect, useState } from 'react';
 
 import { Icon } from './icons.tsx';
-import type { Panel, PanelFocus, PanelKind } from './panel-spec.ts';
+import type { Panel, PanelAction, PanelFocus, PanelKind } from './panel-spec.ts';
 import { PanelBody } from './panels/PanelBody.tsx';
 import { stagger } from './stagger.ts';
 
 const KIND_LABELS: Record<PanelKind, string> = {
   text: 'Notes', table: 'Table', steps: 'Step by step', formula: 'Formula',
   cards: 'Ideas', quiz: 'Quick check', chart: 'Chart', files: 'Files',
+  diagram: 'Diagram', timeline: 'Timeline', folder: 'Folder', sliders: 'What if', flashcards: 'Practice',
+  agenda: 'Agenda', checklist: 'Checklist', form: 'Fill this in', approval: 'Plan to approve', facts: 'What I know',
 };
 
 /** How long the "Asking about …" line stays after a click. */
@@ -23,10 +25,11 @@ interface Props {
   index: number;
   wide: boolean;
   onFocus: (f: PanelFocus) => void;
+  onAction: (a: PanelAction) => void;
   onClose: (id: string) => void;
 }
 
-export function PanelCard({ panel, index, wide, onFocus, onClose }: Props) {
+export function PanelCard({ panel, index, wide, onFocus, onAction, onClose }: Props) {
   const [leaving, setLeaving] = useState(false);
   const [asked, setAsked] = useState<string | null>(null);
 
@@ -58,7 +61,7 @@ export function PanelCard({ panel, index, wide, onFocus, onClose }: Props) {
           <Icon name="close" size={15} />
         </button>
       </header>
-      <PanelBody panel={panel} onPick={pick} />
+      <PanelBody panel={panel} onPick={pick} onAction={onAction} />
       <p className={asked ? 'panel-asked is-on' : 'panel-asked'} aria-live="polite">
         {asked && <><Icon name="ask" size={14} /> Asking about {asked}</>}
       </p>

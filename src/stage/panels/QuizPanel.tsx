@@ -1,21 +1,26 @@
 /**
  * A quiz panel: the person picks an answer, it is checked here (the panel carries `answer`), a
  * right answer bursts gold and a wrong one shakes; then the explanation, "Try again" and "Why?"
- * (which asks the keeper why the right answer is right).
+ * (which asks the keeper why the right answer is right). Each answer is also reported with
+ * `onAction` (type "quiz"), so the keeper knows what the person got right.
  */
 import { useState } from 'react';
 
 import { quizWhyWhat } from '../focus.ts';
 import { Icon } from '../icons.tsx';
 import { stagger } from '../stagger.ts';
-import type { PanelProps } from './panel-props.ts';
+import type { ActingPanelProps } from './panel-props.ts';
 
 const LETTERS = 'ABCDEFGHIJ';
 
-export function QuizPanel({ panel, onPick }: PanelProps<'quiz'>) {
+export function QuizPanel({ panel, onPick, onAction }: ActingPanelProps<'quiz'>) {
   const [chosen, setChosen] = useState<number | null>(null);
   const done = chosen !== null;
   const right = chosen === panel.answer;
+  const answer = (i: number) => {
+    setChosen(i);
+    onAction({ type: 'quiz', panelId: panel.id, question: panel.question, correct: i === panel.answer });
+  };
 
   const choiceClass = (i: number) => {
     if (!done) return 'quiz-choice';
@@ -29,7 +34,7 @@ export function QuizPanel({ panel, onPick }: PanelProps<'quiz'>) {
       <div className="quiz-choices">
         {panel.choices.map((choice, i) => (
           <button key={i} type="button" className={choiceClass(i)} style={stagger(i)} disabled={done}
-            onClick={() => setChosen(i)}>
+            onClick={() => answer(i)}>
             <span className="quiz-letter">{LETTERS[i] ?? i + 1}</span>
             <span className="quiz-text">{choice}</span>
             {done && i === panel.answer && <span className="quiz-mark"><Icon name="check" size={16} /></span>}

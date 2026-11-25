@@ -8,6 +8,10 @@ pub enum DeskError {
     /// The DKG node could not be reached or refused the request.
     #[error("The memory node did not answer: {0}")]
     Node(String),
+    /// The node already holds a finalized asset with this name (HTTP 409). For a record that
+    /// never changes this means it is already kept; records that change are written as versions.
+    #[error("That is already in memory: {0}")]
+    Exists(String),
     /// A brain (Ollama, Hermes) failed or answered something unusable.
     #[error("The assistant's mind did not answer: {0}")]
     Brain(String),

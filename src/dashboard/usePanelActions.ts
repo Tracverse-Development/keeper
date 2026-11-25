@@ -1,0 +1,82 @@
+/**
+ * The window's side of "panels you work in", "say the reply first" and the morning brief:
+ * - a panel action (tick, answer, flashcard, form, forget, pin) is written to the keeper's graph;
+ *   a submitted form is also sent as the next message, so the keeper carries on with it;
+ *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated
+ * - the reply arrives before the panels finish (`earlyReply`) and is spoken at once; the final
+ *   result then speaks only what was not already said (`unsaid`)
+ * - the brief is asked for once when the keeper's screen first opens (the core shows it at most
+ *   once a day)
+ */
+import { useEffect, useRef } from 'react';
+
+import { core, EVENTS, on, sentence } from '../kernel/ipc';
+import type { PanelAction } from '../kernel/panel-spec';
+import { formMessage, unsaid } from './unsaid';
+
+/** Right answers in a row worth a celebration. */
+const STREAK = 3;
+
+interface Deps {
+  keeper: string | null;
+  speak: (text: string) => void;
+  celebrate: () => void;
+  announce: (text: string) => void;
+  decide: (token: string, approve: boolean) => Promise<void>;
+  brief: () => Promise<void>;
+  /** Send a message to the keeper (a submitted form continues the conversation). */
+  send: (text: string) => void;
+  /** Called when the graph changed (forget/pin), so counts and drawers refresh. */
+  changed: () => void;
+}
+
+export function usePanelActions(deps: Deps) {
+  const ref = useRef(deps);
+  ref.current = deps;
+  const early = useRef('');
+
+  useEffect(
+    () =>
+      on<{ keeper: string; text: string }>(EVENTS.earlyReply, (e) => {
+        if (e.keeper !== ref.current.keeper) return;
+        early.current = e.text;
+        ref.current.speak(e.text);
+      }),
+    [],
+  );
+
+  // Once per keeper opened; the core decides whether today's brief was already shown.
+  useEffect(() => {
+    if (deps.keeper) void ref.current.brief();
+  }, [deps.keeper]);
+
+  /** The final reply: speak only what the early reply did not already say. */
+  const speakFinal = (reply: string) => {
+    const rest = unsaid(reply, early.current);
+    early.current = '';
+    if (rest) ref.current.speak(rest);
+  };
+
+  const act = async (a: PanelAction) => {
+    const d = ref.current;
+    if (a.type === 'approve' || a.type === 'deny') {
+      await d.decide(a.token, a.type === 'approve');
+      return;
+    }
+    try {
+      const done = await core.stageAction(a, d.keeper ?? undefined);
+      if (a.type === 'quiz' && a.correct && done.streak >= STREAK) {
+        d.celebrate();
+        const line = `${done.streak} right in a row!`;
+        d.announce(line);
+        d.speak(line);
+      }
+      if (a.type === 'forget' || a.type === 'pin') d.changed();
+      if (a.type === 'submit') d.send(formMessage(a.panelTitle, a.values));
+    } catch (e) {
+      d.announce(sentence(e));
+    }
+  };
+
+  return { act, speakFinal };
+}

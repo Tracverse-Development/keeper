@@ -90,9 +90,18 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClo
             </span>
           </span>
         </label>
+        {settings.agentActions && (
+          <label className="toggle">
+            <input type="checkbox" checked={settings.askBeforeActing} onChange={(e) => save({ askBeforeActing: e.target.checked })} />
+            <span>
+              <strong>Show me the plan first</strong>
+              <span className="muted small">Before touching anything, the keeper shows the exact steps it would take and waits for you to press Approve.</span>
+            </span>
+          </label>
+        )}
 
         <p className="eyebrow">Showing things</p>
-        <ShowingSection visual={settings.visual} save={save} />
+        <ShowingSection settings={settings} save={save} />
 
         <p className="eyebrow">Voice</p>
         {open && <VoiceSection settings={settings} name={keeper.name} save={save} />}

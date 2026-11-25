@@ -7,7 +7,8 @@ import type { ReactNode } from 'react';
 export type IconName =
   | 'run' | 'edit' | 'read' | 'search' | 'web' | 'work'
   | 'open' | 'create' | 'move' | 'delete' | 'find'
-  | 'close' | 'file' | 'next' | 'back' | 'check' | 'cross' | 'ask';
+  | 'close' | 'file' | 'next' | 'back' | 'check' | 'cross' | 'ask'
+  | 'folder' | 'event' | 'reminder' | 'task' | 'pin' | 'forget' | 'sparkle' | 'shield';
 
 const PATHS: Record<IconName, ReactNode> = {
   run: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="m7 9 3 3-3 3M12.5 15H17" /></>,
@@ -28,6 +29,14 @@ const PATHS: Record<IconName, ReactNode> = {
   check: <><path d="m5 12.5 4.5 4.5L19 7.5" /></>,
   cross: <><path d="M7 7l10 10M17 7 7 17" /></>,
   ask: <><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z" /><path d="M10 8.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4M12 13.6v.1" /></>,
+  folder: <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>,
+  event: <><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
+  reminder: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
+  task: <><rect x="4" y="4" width="16" height="16" rx="4" /><path d="m8.5 12 2.5 2.5 4.5-5" /></>,
+  pin: <><path d="M9 3.5h6l-1 5 3 3v2H7v-2l3-3z" /><path d="M12 13.5V21" /></>,
+  forget: <><path d="M4 7h16M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /><path d="m10 11 4 5M14 11l-4 5" /></>,
+  sparkle: <><path d="M12 3c.7 4.7 2.3 6.3 7 7-4.7.7-6.3 2.3-7 7-.7-4.7-2.3-6.3-7-7 4.7-.7 6.3-2.3 7-7Z" /><path d="M19 3.5v3M17.5 5h3" /></>,
+  shield: <><path d="M12 3 5 6v5c0 4.5 3 8.2 7 10 4-1.8 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
 };
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { barWhat, cardWhat, fileWhat, formulaPartWhat, quizWhyWhat, stepWhat, tableCellWhat } from './focus.ts';
+import { agendaWhat, barWhat, cardWhat, fileWhat, folderEntryWhat, formulaPartWhat, momentWhat, nodeWhat, quizWhyWhat, slidersWhat, stepWhat, tableCellWhat } from './focus.ts';
 import { focusQuestion } from './panel-spec.ts';
 
 test('a table cell is named by its row header and column header', () => {
@@ -40,4 +40,17 @@ test('a bar carries its value and unit', () => {
 test('focusQuestion asks about exactly the piece, in the panel', () => {
   const q = focusQuestion({ panelId: 'p1', panelTitle: 'Times table', what: 'row 7, column 8: 56' });
   assert.equal(q, 'About "Times table": explain row 7, column 8: 56. Show it step by step in a panel if that helps.');
+});
+
+test('the new kinds: node, moment, folder entry, what-if, agenda item', () => {
+  assert.equal(nodeWhat('Grandma Ann'), 'the node Grandma Ann');
+  assert.equal(momentWhat('The Magna Carta', '1215'), 'the moment The Magna Carta (1215)');
+  assert.equal(folderEntryWhat({ name: 'tax.pdf', kind: 'file', change: 'moved', to: '~/Documents/Taxes' }, '~/Downloads'),
+    'the moved file tax.pdf in ~/Downloads (to ~/Documents/Taxes)');
+  assert.equal(folderEntryWhat({ name: 'Old', kind: 'folder', change: 'kept' }, '~/Downloads'), 'the folder Old in ~/Downloads');
+  assert.equal(folderEntryWhat({ name: 'a.zip', kind: 'file', change: 'removed' }, '~'), 'the removed file a.zip in ~');
+  assert.equal(slidersWhat('Total saved', '2,678', 'weekly * weeks', [{ label: 'Each week', value: 50 }, { label: 'Rate', value: 2.5 }]),
+    'why Total saved is 2,678 when Each week = 50, Rate = 2.5 (weekly * weeks)');
+  assert.equal(agendaWhat({ time: '10:30', title: 'Dentist', kind: 'event' }), 'the event Dentist at 10:30');
+  assert.equal(agendaWhat({ title: 'Call Mum' }), 'the item Call Mum');
 });

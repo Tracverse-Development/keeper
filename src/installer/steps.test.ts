@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { foldersPermission, nodeFinding, shortId, STEPS, suggestedMind, validName, voicePermission } from './steps.ts';
+import { foldersPermission, nodeFinding, pimPermission, shortId, STEPS, suggestedMind, validName, voicePermission } from './steps.ts';
 
 const scan = { node: null, silentNodes: [], ollamaModels: [], hermesInstalled: false, voiceHelper: true, computerName: 'Mac' };
 
@@ -46,4 +46,11 @@ test('folders are allowed only when every one is', () => {
   assert.equal(foldersPermission([]), 'denied');
   assert.equal(foldersPermission([{ folder: 'Desktop', granted: true }, { folder: 'Documents', granted: true }]), 'allowed');
   assert.equal(foldersPermission([{ folder: 'Desktop', granted: true }, { folder: 'Downloads', granted: false }]), 'denied');
+});
+
+test('calendar and contacts are allowed only when both are', () => {
+  assert.equal(pimPermission(null), 'waiting');
+  assert.equal(pimPermission({ calendar: 'allowed', contacts: 'notasked' }), 'waiting');
+  assert.equal(pimPermission({ calendar: 'allowed', contacts: 'denied' }), 'denied');
+  assert.equal(pimPermission({ calendar: 'allowed', contacts: 'allowed' }), 'allowed');
 });

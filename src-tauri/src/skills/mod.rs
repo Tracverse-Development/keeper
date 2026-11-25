@@ -41,6 +41,8 @@ const CATALOGUE: &[(&str, &str)] = &[
     ("open-app", "{\"name\": \"Notes\"} opens a Mac app by name"),
     ("open-website", "{\"url\": \"https://umojaark.com\"} opens a website in the browser"),
     ("remind", "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later"),
+    ("add-event", "{\"title\": \"Dentist\", \"start\": \"2026-12-01T15:00:00-05:00\", \"end\": \"2026-12-01T16:00:00-05:00\"} puts an event on the person's calendar (RFC 3339 times with offset)"),
+    ("find-contact", "{\"name\": \"Hannah\"} looks someone up in the person's contacts (phone numbers, emails)"),
     ("recall-actions", "{} lists what you have done for the person recently (from the DKG)"),
     ("ask-memory", "{\"question\": \"actions-recent\", \"days\": \"1\"} asks your DKG memory one catalog question (facts-all, facts-by-category+category, facts-recent+days, turns-recent+days, actions-recent+days, agent-steps, actions-failed, skills-used, reminders-upcoming, minds-used, memory-size)"),
     ("switch-engine", "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex"),
@@ -51,6 +53,8 @@ pub fn catalogue() -> String {
 }
 
 pub struct SkillEnv<'a> {
+    /// Reaches the voice helper (calendar and contacts live behind it on macOS).
+    pub app: &'a tauri::AppHandle,
     pub memory: &'a Memory,
     pub reminders: &'a reminders::Scheduler,
 }
@@ -72,6 +76,8 @@ pub async fn run(req: &ActionRequest, env: &SkillEnv<'_>) -> Outcome {
         "open-website" => open_website(&req.input),
         "remind" => remind(&req.input, env).await,
         "recall-actions" => recall_actions(env).await,
+        "add-event" => add_event(&req.input, env).await,
+        "find-contact" => find_contact(&req.input, env).await,
         other => Err(DeskError::Invalid(format!("I don't have a skill called {other} yet."))),
     };
     match result {
@@ -158,6 +164,25 @@ async fn recall_actions(env: &SkillEnv<'_>) -> Result<String> {
     let (actions, _) = env.memory.actions().await?;
     let done: Vec<String> = actions.iter().filter(|a| a.skill != "recall-actions").take(5).map(|a| a.outcome.trim_end_matches('.').to_lowercase()).collect();
     Ok(if done.is_empty() { "I haven't done anything for you yet. Ask me to open an app or set a reminder.".into() } else { format!("Recently I {}.", done.join("; then ")) })
+}
+
+fn field<'v>(input: &'v serde_json::Value, key: &str) -> Result<&'v str> {
+    input.get(key).and_then(|v| v.as_str()).filter(|v| !v.trim().is_empty()).ok_or_else(|| DeskError::Invalid(format!("I need the event's {key}.")))
+}
+
+/// The calendar validates the span (RFC 3339, end after start, at most a year).
+async fn add_event(input: &serde_json::Value, env: &SkillEnv<'_>) -> Result<String> {
+    let event = crate::pim::create_event(env.app, field(input, "title")?, field(input, "start")?, field(input, "end")?).await?;
+    Ok(format!("Added \"{}\" to your {} calendar.", event.title, event.calendar))
+}
+
+async fn find_contact(input: &serde_json::Value, env: &SkillEnv<'_>) -> Result<String> {
+    let name = input.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+    let found = crate::pim::find_contacts(env.app, name, 3).await?;
+    if found.is_empty() {
+        return Ok(format!("I couldn't find {name} in your contacts."));
+    }
+    Ok(found.iter().map(|c| format!("{}: {}", c.name, c.phones.iter().chain(&c.emails).cloned().collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; "))
 }
 
 #[cfg(test)]

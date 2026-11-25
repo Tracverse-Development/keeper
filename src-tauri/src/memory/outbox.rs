@@ -46,7 +46,11 @@ pub async fn flush(client: &DkgClient) {
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
         let Ok(p) = serde_json::from_str::<Pending>(line) else { continue };
         let quads: Vec<Quad> = p.quads.iter().map(|q| Quad { subject: q.subject.clone(), predicate: q.predicate.clone(), object: q.object.clone() }).collect();
-        if client.write_asset(&p.graph, &p.name, &quads).await.is_err() {
+        // Kept already (a 409) counts as sent: retrying it forever would never succeed.
+        if let Err(e) = client.write_asset(&p.graph, &p.name, &quads).await {
+            if matches!(e, crate::kernel::DeskError::Exists(_)) {
+                continue;
+            }
             kept.push_str(line);
             kept.push('\n');
         }

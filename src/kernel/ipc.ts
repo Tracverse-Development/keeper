@@ -7,7 +7,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import type { Answer, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+import type { ActionDone, Answer, PimAccess, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+import type { PanelAction } from './panel-spec';
 
 export const EVENTS = {
   assistantPhase: 'assistant://phase',
@@ -20,6 +21,7 @@ export const EVENTS = {
   appUpdate: 'app://update',
   assistantReply: 'assistant://reply',
   stagePanel: 'stage://panel',
+  earlyReply: 'assistant://early-reply',
 } as const;
 
 export type * from './ipc-types';
@@ -58,6 +60,11 @@ export const core = {
   createGraph: (nodeHome: string, assistantName: string) => invoke<GraphReady>('setup_create_graph', { nodeHome, assistantName }),
   finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
   turn: (text: string, keeper?: string, chat?: string) => invoke<TurnResult>('assistant_turn', { text, keeper, chat }),
+  stageAction: (action: PanelAction, keeper?: string) => invoke<ActionDone>('stage_action', { keeper, action }),
+  planDecide: (token: string, approve: boolean) => invoke<TurnResult>('plan_decide', { token, approve }),
+  briefToday: () => invoke<TurnResult | null>('brief_today'),
+  pimAccess: () => invoke<PimAccess>('pim_access'),
+  pimRequestAccess: () => invoke<PimAccess>('pim_request_access'),
   overview: (keeper?: string) => invoke<Overview>('memory_overview', { keeper }),
   forgetFact: (id: string) => invoke<void>('memory_forget_fact', { id }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),

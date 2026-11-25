@@ -31,6 +31,9 @@ pub struct SettingsChange {
     pub talk_shortcut: Option<String>,
     pub visual: Option<bool>,
     pub auto_update: Option<bool>,
+    pub prefetch_scenes: Option<bool>,
+    pub fast_model: Option<String>,
+    pub ask_before_acting: Option<bool>,
 }
 
 #[tauri::command]
@@ -46,6 +49,16 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
     let saved = state.update_settings(|s| {
         if let Some(a) = change.agent_actions {
             s.agent_actions = a;
+        }
+        if let Some(p) = change.prefetch_scenes {
+            s.prefetch_scenes = p;
+        }
+        // The helper model is a name from the engine's own list, or "" for off.
+        if let Some(m) = change.fast_model.filter(|m| m.is_empty() || (m.len() <= 40 && m.chars().all(|c| c.is_ascii_alphanumeric() || "-._".contains(c)))) {
+            s.fast_model = m;
+        }
+        if let Some(a) = change.ask_before_acting {
+            s.ask_before_acting = a;
         }
         if let Some(v) = change.voice.filter(|v| !v.trim().is_empty()) {
             s.voice = v;

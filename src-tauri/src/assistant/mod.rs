@@ -10,24 +10,29 @@
 //! ("Querying your DKG…", "Thinking…", "Remembering…"). An agent engine's tool calls arrive
 //! as "acting" phases while it works, and each one is written to the DKG as a `desk:Action`.
 
+pub mod actions;
+pub mod approval;
 pub mod persona;
+mod prefetch;
+mod source;
+mod turn;
+#[cfg(test)]
+mod live_test;
 
 use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::brain::{self, Context, MindUsed};
-use crate::kernel::slug::short_hash;
+use crate::brain::MindUsed;
 use crate::kernel::{events, time, DeskError, Result};
-use crate::kernel::settings::KeeperProfile;
-use crate::memory::{ActionRecord, Chat, Fact, Memory, QueryTrace, Recall, Turn, WriteReceipt};
-use crate::skills::{self, Effect, Outcome, SkillEnv};
+use crate::memory::{ActionRecord, Fact, QueryTrace, WriteReceipt};
+use crate::skills::Outcome;
 use crate::state::AppState;
 
 /// Longest message the assistant takes (a paragraph; more is a paste, not a turn).
-const MAX_SAID: usize = 2000;
+pub(crate) const MAX_SAID: usize = 2000;
 /// At most this many agent tool calls are recorded per turn (the rest are counted in the turn).
-const MAX_STEPS: usize = 40;
+pub(super) const MAX_STEPS: usize = 40;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,11 +55,11 @@ pub struct TurnResult {
     pub memory_offline: bool,
 }
 
-fn phase(app: &AppHandle, name: &str, detail: &str) {
+pub(super) fn phase(app: &AppHandle, name: &str, detail: &str) {
     let _ = app.emit(events::ASSISTANT_PHASE, json!({ "phase": name, "detail": detail }));
 }
 
-fn wrote(app: &AppHandle, receipt: &WriteReceipt, kind: &str) {
+pub(super) fn wrote(app: &AppHandle, receipt: &WriteReceipt, kind: &str) {
     let _ = app.emit(events::MEMORY_WRITTEN, json!({ "kind": kind, "name": receipt.name, "ual": receipt.ual, "queued": receipt.queued }));
 }
 
@@ -79,7 +84,7 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
     }
     let keeper = state.keeper_or_active(keeper_id)?;
     let memory = state.memory_for(&keeper)?;
-    let result = turn(app, &memory, state, &keeper, chat, said).await?;
+    let result = turn::turn(app, &memory, state, &keeper, chat, said, false).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
 }
@@ -106,147 +111,13 @@ pub async fn change_engine(app: &AppHandle, state: &AppState, keeper_id: &str, e
     Ok(persona::brain_changed(spec.label))
 }
 
-async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str) -> Result<TurnResult> {
-    let at = time::now_iso();
-    let turn_id = short_hash(&format!("{at}\u{0}{said}"), 16);
-    let mut writes = Vec::new();
-
-    // A new chat is named after its first message and written first, so the turn can link to it.
-    let chat = if chat.is_empty() {
-        let new_chat = Chat::start(said, &at);
-        let receipt = memory.write(&new_chat).await;
-        writes.push(receipt);
-        new_chat.id
-    } else {
-        chat.to_string()
-    };
-
-    phase(app, "recalling", &format!("Querying your DKG graph {}", memory.graph()));
-    let (recall, memory_offline) = match memory.recall(said).await {
-        Ok(r) => (r, false),
-        Err(_) => (Recall { facts: vec![], recent: vec![], traces: vec![] }, true),
-    };
-
-    let role = crate::keepers::kit::roles::get(&keeper.role);
-    let ctx = Context {
-        said: said.to_string(),
-        assistant_name: keeper.name.clone(),
-        identity: format!("{} {}", crate::keepers::kit::souls::brief(&state.soul(&keeper.soul)), role.brief),
-        facts: recall.facts.clone(),
-        recent: recall.recent.clone(),
-        now_local: chrono::Local::now().format("%A %-d %B %Y, %-I:%M %p").to_string(),
-        // Acting needs both: the person allows it, and the keeper's role is one that acts.
-        may_act: state.settings().agent_actions && role.may_act,
-        visual: crate::stage::wants_visual(said, state.settings().visual),
-    };
-    phase(app, "thinking", crate::brain::engines::label(&keeper.brain));
-    let progress = |p: brain::Progress| match p {
-        brain::Progress::Step(step) => phase(app, "acting", step),
-        brain::Progress::Panel(panel) => {
-            let _ = app.emit(events::STAGE_PANEL, json!({ "keeper": keeper.id, "chat": chat, "panel": panel }));
-        }
-    };
-    let (thought, mind) = brain::think(keeper, &ctx, &progress).await;
-
-    let mut forgotten = Vec::new();
-    if !thought.forget.is_empty() {
-        phase(app, "remembering", "Retracting from your graph");
-        for what in &thought.forget {
-            forgotten.extend(memory.forget(what).await.unwrap_or_default());
-        }
+/// The morning brief, once a day (the window asks on opening; "brief me" works any time).
+#[tauri::command]
+pub async fn brief_today(app: AppHandle, state: State<'_, AppState>) -> Result<Option<TurnResult>> {
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    if state.settings().last_brief == today || !state.settings().setup_complete {
+        return Ok(None);
     }
-
-    let mut outcomes = Vec::new();
-    if !thought.actions.is_empty() {
-        phase(app, "acting", "");
-        let env = SkillEnv { memory, reminders: &state.reminders };
-        for request in thought.actions.iter().take(4) {
-            // A role only uses the skills it is allowed (a companion does not open apps).
-            if !role.allows(&request.skill) {
-                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None });
-                continue;
-            }
-            let mut outcome = skills::run(request, &env).await;
-            if let Some(Effect::SwitchEngine(id)) = outcome.effect.clone() {
-                outcome.summary = change_engine(app, state, &keeper.id, &id, None, &turn_id).await.unwrap_or_else(|e| e.to_string());
-                outcomes.push(outcome);
-                continue;
-            }
-            let record = ActionRecord::new(&outcome.skill, &outcome.input, &outcome.summary, outcome.succeeded, &time::now_iso(), &turn_id);
-            let receipt = memory.write(&record).await;
-            wrote(app, &receipt, "action");
-            writes.push(receipt);
-            outcomes.push(outcome);
-        }
-    }
-
-    // What an agent engine did on the computer: one desk:Action per tool call.
-    for step in thought.steps.iter().take(MAX_STEPS) {
-        let record = ActionRecord::new(&format!("agent:{}", step.tool), &step.detail, &format!("{} ran {}: {}", mind.label, step.tool, step.detail), true, &time::now_iso(), &turn_id);
-        let receipt = memory.write(&record).await;
-        wrote(app, &receipt, "action");
-        writes.push(receipt);
-    }
-
-    let reply = compose_reply(&thought.reply, &outcomes, &forgotten, !thought.forget.is_empty());
-
-    let mut learned = Vec::new();
-    if !thought.remember.is_empty() {
-        phase(app, "remembering", "Writing to your DKG graph");
-        for l in thought.remember.iter().take(6) {
-            let fact = Fact::new(&l.text, &l.category, &at);
-            let receipt = memory.write(&fact).await;
-            wrote(app, &receipt, "fact");
-            writes.push(receipt);
-            learned.push(fact);
-        }
-    }
-
-    let panels = crate::stage::read(&thought.panels);
-    // The scene is kept with the turn, so reopening the chat brings its panels back.
-    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels);
-    let receipt = memory.write(&turn).await;
-    wrote(app, &receipt, "turn");
-    writes.push(receipt);
-    phase(app, "done", "");
-
-    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline })
-}
-
-/// The mind's words, then what the skills did (a skill's own sentence is the truth about it).
-fn compose_reply(said: &str, outcomes: &[Outcome], forgotten: &[Fact], asked_to_forget: bool) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    if !said.trim().is_empty() {
-        parts.push(said.trim().to_string());
-    }
-    for o in outcomes {
-        if !parts.iter().any(|p| p.contains(&o.summary)) {
-            parts.push(o.summary.clone());
-        }
-    }
-    if asked_to_forget && said.trim().is_empty() {
-        parts.push(if forgotten.is_empty() {
-            "I couldn't find that in your memory graph.".into()
-        } else {
-            format!("Done. I've retracted {} from your memory graph.", forgotten.iter().map(|f| format!("\"{}\"", f.text)).collect::<Vec<_>>().join(", "))
-        });
-    }
-    if parts.is_empty() {
-        "Okay.".into()
-    } else {
-        parts.join(" ")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn skill_outcomes_are_always_told() {
-        let o = Outcome { skill: "open-app".into(), input: "{}".into(), summary: "Opened Notes.".into(), succeeded: true, effect: None };
-        assert_eq!(compose_reply("", &[o.clone()], &[], false), "Opened Notes.");
-        assert_eq!(compose_reply("Sure.", &[o], &[], false), "Sure. Opened Notes.");
-        assert_eq!(compose_reply("", &[], &[], true), "I couldn't find that in your memory graph.");
-    }
+    state.update_settings(|s| s.last_brief = today)?;
+    Ok(Some(run_turn(&app, &state, "", "", "Brief me").await?))
 }

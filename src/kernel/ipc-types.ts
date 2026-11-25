@@ -114,6 +114,12 @@ export interface Settings {
   talkShortcut: string;
   /** Answer visually on the Stage by default. */
   visual: boolean;
+  /** Prepare the next scenes (each card of a lesson) in the background. */
+  prefetchScenes: boolean;
+  /** The quick helper model for prepared scenes and panel follow-ups ("" = off). */
+  fastModel: string;
+  /** Show the plan and wait for Approve before acting on the computer. */
+  askBeforeActing: boolean;
   autoUpdate: boolean;
 }
 
@@ -313,7 +319,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 
@@ -332,3 +338,16 @@ export type VoiceEvent =
   | { type: 'voices'; voices: { name: string; language: string; quality: number }[] }
   | { type: 'stopped' }
   | { type: 'error'; message: string };
+
+/** What a panel action changed (`stage_action`). */
+export interface ActionDone {
+  /** Right quiz answers in a row, after a quiz answer. */
+  streak: number;
+}
+
+/** Calendar and contacts on this Mac (`pim_access`). */
+export type PimAccessState = 'allowed' | 'denied' | 'notasked' | 'unsupported';
+export interface PimAccess {
+  calendar: PimAccessState;
+  contacts: PimAccessState;
+}

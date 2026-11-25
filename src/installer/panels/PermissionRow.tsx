@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 
 import { PERMISSION_WORDS, type PermissionStatus } from '../steps';
 
-export type PermissionIcon = 'mic' | 'folder' | 'key';
+export type PermissionIcon = 'mic' | 'folder' | 'key' | 'calendar';
 
 const PATHS: Record<PermissionIcon, ReactNode> = {
   mic: (
@@ -17,6 +17,12 @@ const PATHS: Record<PermissionIcon, ReactNode> = {
     </>
   ),
   folder: <path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />,
+  calendar: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01" />
+    </>
+  ),
   key: (
     <>
       <rect x="2.5" y="6" width="19" height="12" rx="2.5" />

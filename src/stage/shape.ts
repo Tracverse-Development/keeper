@@ -1,7 +1,7 @@
 /**
  * Shaping panel content for drawing (pure; tested in shape.test.ts): paragraphs from a body,
  * an expression split around its symbols (so a formula part can light up its symbol), bar
- * heights for a chart, and numbers written the way a person reads them.
+ * heights for a chart, numbers written the way a person reads them, and which way a timeline runs.
  */
 
 /** Paragraphs split on blank lines; empty ones dropped. */
@@ -54,4 +54,18 @@ export function barScale(values: number[]): number[] {
 export function formatValue(value: number): string {
   if (!Number.isFinite(value)) return '—';
   return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
+}
+
+/** Up to this many events lie along a horizontal line; more read better down a vertical one. */
+export const TIMELINE_HORIZONTAL_MAX = 5;
+
+/** A timeline runs across when it is short enough to fit side by side, else down. */
+export function timelineOrientation(count: number): 'horizontal' | 'vertical' {
+  return count > 0 && count <= TIMELINE_HORIZONTAL_MAX ? 'horizontal' : 'vertical';
+}
+
+/** A result number for reading: thousands grouped, at most two decimals ("2,678.4", "-12"). */
+export function formatResult(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 }

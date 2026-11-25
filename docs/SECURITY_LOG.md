@@ -31,3 +31,8 @@ Append-only. `### YYYY-MM-DD — title` with **Where / Severity / Status** bulle
 - **Where:** `src-tauri/src/kernel/secrets.rs` (`~/Library/Application Support/Keeper/secrets.json`, 0600, atomic writes, cached in memory)
 - **Severity:** Low (design change, recorded)
 - **Status:** Done. Without a Developer ID, macOS ties Keychain access to each build's hash, so every update and every read prompted the owner. The private store has the trust boundary of per-user app config (FileVault at rest), works on every OS and never prompts. Revisit with a Developer ID (Keychain with a team-based designated requirement).
+
+### 2026-11-25 — Panels people work in, and approve-before-acting (0.6)
+- **Where:** `src-tauri/src/stage/cap.rs`, `assistant/approval.rs`, `assistant/actions.rs`, `src/stage/expression.ts`
+- **Severity:** Medium (design review, recorded)
+- **Status:** Done. Engines are untrusted writers: an `approval` or `facts` panel from an engine is dropped (only the core makes them, so a model cannot fake a plan the person "approved" or invent facts with working Forget buttons). Plans are kept in memory under a random 96-bit one-use token; `plan_decide` takes the plan by token, so the window cannot submit its own plan text. Panel actions are a closed, typed set; fact ids are checked as 16 hex characters before a retraction or pin is written. The what-if evaluator is a hand-written parser over numbers, the panel's own variable names and a fixed function list (never `eval`/`Function`; `constructor`, member access and brackets refused, tested). Remaining gap: DESK-APPROVAL-001.

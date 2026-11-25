@@ -6,11 +6,13 @@ mod assistant;
 mod brain;
 mod commands;
 mod dkg;
+mod fastlane;
 mod hotkey;
 mod keepers;
 mod kernel;
 mod memory;
 mod phone;
+mod pim;
 mod platform;
 mod setup;
 mod skills;
@@ -83,6 +85,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             assistant::assistant_turn,
+            assistant::brief_today,
+            pim::commands::pim_access,
+            pim::commands::pim_request_access,
+            assistant::actions::stage_action,
+            assistant::approval::plan_decide,
             setup::setup_scan,
             setup::setup_install_node,
             setup::setup_create_graph,

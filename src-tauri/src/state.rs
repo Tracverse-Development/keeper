@@ -17,6 +17,8 @@ pub struct AppState {
     pub voice: Voice,
     pub reminders: Scheduler,
     pub phone: PhoneLink,
+    /// Plans waiting for Approve (`assistant::approval`).
+    pub plans: crate::assistant::approval::Plans,
     /// The person's own souls (from their kit graph on the DKG), refreshed at launch and on change.
     souls: Mutex<Vec<Soul>>,
 }
@@ -25,7 +27,7 @@ impl AppState {
     pub fn new(settings: Settings, reminders: Scheduler) -> AppState {
         let voice = Voice::new();
         voice.set_wake_required(settings.wake_word);
-        let state = AppState { settings: Mutex::new(settings), voice, reminders, phone: PhoneLink::default(), souls: Mutex::new(Vec::new()) };
+        let state = AppState { settings: Mutex::new(settings), voice, reminders, phone: PhoneLink::default(), plans: Default::default(), souls: Mutex::new(Vec::new()) };
         state.refresh_voice_names();
         state
     }

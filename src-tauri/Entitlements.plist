@@ -7,5 +7,11 @@
        bundled voice helper. -->
   <key>com.apple.security.device.audio-input</key>
   <true/>
+  <!-- Calendar and contacts (EventKit, Contacts framework): the hardened runtime refuses them
+       without these, the same way it refuses the microphone. Read on this Mac only. -->
+  <key>com.apple.security.personal-information.calendars</key>
+  <true/>
+  <key>com.apple.security.personal-information.addressbook</key>
+  <true/>
 </dict>
 </plist>

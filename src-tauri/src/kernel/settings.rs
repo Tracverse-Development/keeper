@@ -87,6 +87,14 @@ pub struct Settings {
     pub wake_word: bool,
     /// Answer visually on the Stage (panels) by default; "just text" in a message overrides it.
     pub visual: bool,
+    /// Prepare the next scenes in the background (each card of a lesson) so clicking is instant.
+    pub prefetch_scenes: bool,
+    /// The quick helper model for prepared scenes and follow-ups on a panel ("" = off).
+    pub fast_model: String,
+    /// Before an agent acts on the computer, show its plan and wait for Approve.
+    pub ask_before_acting: bool,
+    /// The day the morning brief was last shown (YYYY-MM-DD).
+    pub last_brief: String,
     /// The global push-to-talk shortcut ("Alt+Space"); empty = off.
     pub talk_shortcut: String,
     /// Install updates by itself (checked at launch and every few hours).
@@ -119,6 +127,10 @@ impl Default for Settings {
             always_listening: false,
             wake_word: true,
             visual: true,
+            prefetch_scenes: true,
+            fast_model: "haiku".into(),
+            ask_before_acting: true,
+            last_brief: String::new(),
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,
             assistant_name: String::new(),

@@ -1,7 +1,9 @@
 /* The Stage: layout, glass panel cards, entrances, the activity feed. Per-kind looks live in
-   panels.css. Tokens only (no hex). Class names start with stage-/panel-/act- (".stage" is the
+   panels.css, panels-visual.css and panels-work.css. Tokens only (no hex). Class names start with stage-/panel-/act- (".stage" is the
    character canvas in dashboard.css). The dashboard can tune --stage-left / --stage-bottom. */
 @import './panels.css';
+@import './panels-visual.css';
+@import './panels-work.css';
 
 .stage-area {
   position: absolute; z-index: 3; top: 52px; right: 14px; bottom: var(--stage-bottom, 118px);

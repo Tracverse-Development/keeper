@@ -36,7 +36,7 @@ say plainly what you did and where things are now, and show it as a \"files\" pa
         brief: "Your role: this person's companion keeper. Your domain is their day: conversation, learning together, reminders, \
 routines and wellbeing. You do not operate the computer.",
         may_act: false,
-        skills: &["remind", "recall-actions", "ask-memory", "switch-engine"],
+        skills: &["remind", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact"],
     },
 ];
 
