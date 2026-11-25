@@ -5,24 +5,26 @@ Keeper updates itself from this repository's GitHub releases: every installed co
 (`plugins.updater.endpoints` in `src-tauri/tauri.conf.json`) and installs only bundles signed with the
 updater key whose public half is `plugins.updater.pubkey`.
 
-## Release a version
+## Release a version (in-house: nothing is built on GitHub's runners)
+
+Founder, 2026-11-25: every build and test runs in-house (this Mac, the tart VMs, DigitalOcean
+droplets); GitHub CI runs only the basic Linux checks on push (`.github/workflows/check.yml`).
 
 1. Raise the version in all three places, identically: `src-tauri/tauri.conf.json`, `package.json`,
-   `src-tauri/Cargo.toml` (then `cargo check` so `Cargo.lock` follows). Commit and get it onto `main`.
-2. From a clean checkout of that commit: `bash scripts/release.sh`.
-   It bumps nothing; it refuses a dirty tree, versions that disagree, a tag that already exists, or a
-   commit that is not on `origin/main`, then tags `vX.Y.Z` and pushes the tag.
-3. The tag starts `.github/workflows/release.yml`:
-   - **create-release** makes a draft release "Keeper vX.Y.Z" (the tag must equal the app version);
-   - **build** (one job each: macOS Apple silicon, macOS Intel cross-built on the arm64 runner, Windows,
-     Linux on Ubuntu 22.04) builds with `tauri-apps/tauri-action`, uploads the installers, their `.sig`
-     files, and merges its platform into the release's `latest.json`;
-   - **publish** checks `latest.json` has `darwin-aarch64`, `darwin-x86_64`, `windows-x86_64` and
-     `linux-x86_64`, then publishes the release. Until then it is a draft, and installed copies never see a
-     half release.
+   `src-tauri/Cargo.toml` (then `cargo check` so `Cargo.lock` follows). Commit and push to `main`.
+2. Tag it: `git tag -a vX.Y.Z -m "Keeper vX.Y.Z" && git push origin vX.Y.Z` (`scripts/release.sh`
+   checks the versions agree and the commit is on `origin/main` first).
+3. On the build Mac, with the tag checked out: `bash scripts/release-mac.sh`. It builds Apple silicon and
+   Intel (voice helper included), signs the updater archives with `~/.tauri/umoja-desk-updater.key`,
+   creates the draft release if needed, uploads the `.dmg`, `.app.tar.gz` and `.sig` files, merges both
+   Macs into the draft's `latest.json` (the `darwin-<arch>` and `darwin-<arch>-app` entries both name
+   the new build), checks the platforms in `REQUIRE` are signed, and publishes.
+4. Prove it: an installed older copy in a clean VM updates itself (round 10 did 0.6.2 → 0.7.0;
+   `~/ForemanProjects/vm` holds tart and the VM driver scripts).
 
-   A failed platform leaves the draft unpublished: fix, then re-run the failed jobs (Actions → the run →
-   Re-run failed jobs). To rebuild an existing tag by hand: Actions → release → Run workflow → `vX.Y.Z`.
+Linux and Windows: built in-house on a VM or droplet (Windows cross-built from Linux with
+cargo-xwin) once that build host exists; until then a release carries the Mac builds, and Linux and
+Windows copies stay on their last version (founder decision pending, docs/plans/ten-rounds.md).
 
 What each platform gets: macOS `Keeper_X.Y.Z_<arch>.dmg` (+ the `.app.tar.gz` updater archive), Windows
 `Keeper_X.Y.Z_x64-setup.exe` (NSIS, also the updater bundle) and `Keeper_X.Y.Z_x64_en-US.msi`, Linux

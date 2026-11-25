@@ -18,6 +18,8 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 | 6 | Useful for a new person: "Set up Claude Code for me" + "Sign in to Claude"; the phone link keeps one chat per session; the setup button reachable by VoiceOver | VM: Claude Code 2.1.322 installed by Keeper on a Mac with neither Node.js nor Claude Code; Terminal opens on its sign-in |
 | 7 | Fast interface: the command palette (⌘K): switch keeper, new chat, brief, stop, settings, memory, scenes, pinned scenes; anything else is asked of the keeper | WebKit: "pu" + Enter switched to Pup, free text was sent; ranking tested |
 | 8 | Wardrobe in the real app: dress one keeper, give the jacket to another; robot skin label "Robot" (was "Umoja"); Esc closes Settings and Memory | VM: Ark Jacket worn by Kofi (robot) → Move → worn by Pup (puppy), refitted with sleeves; saved state agrees |
+| 9 | Regression: release-build bench, every live test, leak check; a bad warm spare retries | 22/22 turns, model first words 0.65–1.3 s; 24/24 live tests; 0 leaked processes |
+| 10 | Release 0.7.0 in-house (both Macs built here), update proven on a clean VM from 0.6.2 | see the release |
 
 ## Decisions taken with the recommended option (founder to review after round 10)
 
