@@ -8,6 +8,7 @@ use crate::brain::Thought;
 use crate::kernel::settings::KeeperProfile;
 use crate::kernel::time;
 use crate::memory::Memory;
+use crate::pim::Access;
 
 /// Files listed by name in the brief (screenshots are counted, not listed).
 const BRIEF_FILES: usize = 8;
@@ -32,7 +33,20 @@ pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperPro
     let tomorrow = now + chrono::Duration::hours(30);
     let mut agenda: Vec<serde_json::Value> = Vec::new();
 
-    let events = crate::pim::events(app, &time::iso(now), &time::iso(tomorrow)).await.unwrap_or_default();
+    // The calendar is read only with permission; asking for the brief is a fine moment to ask
+    // for it, and a refused or failed read is said out loud, never shown as an empty day.
+    let (mut calendar, _) = crate::pim::access(app).await;
+    if calendar == Access::NotAsked {
+        calendar = crate::pim::request_access(app).await.0;
+    }
+    let (events, calendar_note) = match calendar {
+        Access::Allowed => match crate::pim::events(app, &time::iso(now), &time::iso(tomorrow)).await {
+            Ok(events) => (events, None),
+            Err(_) => (Vec::new(), Some("I couldn't read your calendar just now.")),
+        },
+        Access::Denied => (Vec::new(), Some("I can't see your calendar: allow Keeper in System Settings, Privacy & Security, Calendars.")),
+        Access::NotAsked | Access::Unsupported => (Vec::new(), None),
+    };
     for e in events.iter().take(10) {
         agenda.push(json!({ "time": if e.all_day { "All day".to_string() } else { clock(&e.start) }, "title": e.title, "detail": e.location, "kind": "event" }));
     }
@@ -70,6 +84,10 @@ pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperPro
         (0, 0) => format!("{greeting}. Nothing on your agenda yet, and it's quiet on your computer."),
         (0, f) => format!("{greeting}. Your agenda is clear. You changed {f} file{} lately.", if f == 1 { "" } else { "s" }),
         (a, _) => format!("{greeting}. You have {a} thing{} coming up. It's all on your screen.", if a == 1 { "" } else { "s" }),
+    };
+    let reply = match calendar_note {
+        Some(note) => format!("{reply} {note}"),
+        None => reply,
     };
     Thought { reply, panels: serde_json::Value::Array(panels), ..Thought::default() }
 }

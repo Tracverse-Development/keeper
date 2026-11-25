@@ -87,7 +87,7 @@ export function NodePanel({ choices, update, rescan, onNext, onBack }: Props) {
       ) : (
         <>
           <h2>Let's give your assistant a memory node.</h2>
-          <p className="lead">There's no DKG node on this computer yet. Keeper will install an edge node in its own folder, pinned to a tested version, with automatic updates off. It needs Node.js.</p>
+          <p className="lead">There's no DKG node on this computer yet. Keeper will install an edge node in its own folder, pinned to a tested version, with automatic updates off. If this computer has no Node.js, Keeper sets up its own private copy.</p>
           <button type="button" className="btn btn-primary" onClick={install} disabled={installing}>
             {installing && <span className="spinner" />} Install a DKG node
           </button>
