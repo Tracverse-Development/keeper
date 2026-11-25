@@ -33,6 +33,20 @@ pub fn own_node_home() -> PathBuf {
     app_home().join("dkg-node")
 }
 
+/// Where Keeper installs engines it sets up for the person (`<app home>/engines`, bins in `bin`).
+pub fn engines_home() -> PathBuf {
+    app_home().join("engines")
+}
+
+/// The program folders Keeper set up itself: its engines' bins and each Node.js it unpacked.
+pub fn own_tool_dirs() -> Vec<PathBuf> {
+    let mut dirs = vec![engines_home().join("bin")];
+    if let Ok(entries) = std::fs::read_dir(own_node_home().join("runtime")) {
+        dirs.extend(entries.flatten().map(|e| e.path().join("bin")).filter(|p| p.is_dir()));
+    }
+    dirs
+}
+
 /// Write a file atomically with owner-only permissions (a temp file renamed into place).
 pub fn write_private(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {

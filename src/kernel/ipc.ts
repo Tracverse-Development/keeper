@@ -74,6 +74,10 @@ export const core = {
   /** Start the next turn's engine now (opening, switching keeper, coming back); returns spares ready. */
   /** The Stop button: end the turn in progress. */
   cancel: () => invoke<void>('assistant_cancel'),
+  /** Keeper installs an engine itself (Claude Code); returns where it is. */
+  engineSetup: (engine: string) => invoke<string>('engine_setup', { engine }),
+  /** Open Terminal running the engine so the person signs in. */
+  engineSignIn: (engine: string) => invoke<void>('engine_sign_in', { engine }),
   /** Remove Keeper from this Mac (stops its own node; deletes its folder unless `keepMemory`). */
   removeApp: (keepMemory: boolean) => invoke<void>('setup_remove', { keepMemory }),
   warm: (keeper?: string) => invoke<number>('assistant_warm', { keeper }),

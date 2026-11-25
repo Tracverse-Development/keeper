@@ -15,6 +15,7 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 | 3 | Scenes + face: breadcrumbs, scene strip, arrow keys; emotes, screen faces, particles, idle life; wardrobe merged | navigation click-tested (0 page errors); 60 fps held (p95 21 → 18 ms) |
 | 4 | Scale: recall window 200 → 5,000 facts (FIX-0008) | 1,000 facts: all in reach; cold 94 ms, hot 7.5 ms |
 | 5 | Robustness: node dies mid-session (FIX-0010, FIX-0011): answers go on from hot memory, writes wait in the outbox, a watchdog restarts the node and flushes | VM: 3–13 ms answers with the node down; node back within a minute; 0 writes lost |
+| 6 | Useful for a new person: "Set up Claude Code for me" + "Sign in to Claude"; the phone link keeps one chat per session; the setup button reachable by VoiceOver | VM: Claude Code 2.1.322 installed by Keeper on a Mac with neither Node.js nor Claude Code; Terminal opens on its sign-in |
 
 ## Decisions taken with the recommended option (founder to review after round 10)
 
@@ -24,4 +25,5 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 4. Keeper installs its own private Node.js (official build, SHA-256 checked) when a Mac has none, rather than asking the person to install it.
 5. "Remove Keeper from this Mac" keeps keepers and memories by default (a reinstall brings them back); deleting everything is the second choice.
 6. Asking for the brief is when Keeper asks for calendar access (if it never asked before).
+8. Keeper installs Claude Code itself on request (pinned 2.1.322, a release at least two weeks old; it updates itself afterwards); sign-in happens in Claude Code's own Terminal flow.
 7. Items in the wardrobe are designs by default (any number of keepers can wear one); "one of a kind" items are worn by one keeper at a time.

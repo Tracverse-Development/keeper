@@ -108,6 +108,8 @@ pub fn run() {
             assistant::warm::assistant_warm,
             assistant::assistant_cancel,
             setup::remove::setup_remove,
+            brain::engines::setup::engine_setup,
+            brain::engines::setup::engine_sign_in,
             pim::commands::pim_access,
             memory::pinned_scenes::scenes_pinned,
             memory::pinned_scenes::scene_pin,

@@ -4,9 +4,10 @@
  * the chosen engine's MODEL (its own list, the engine's default, or a model name typed in).
  * Choosing calls `onPick(engine, model)`; the caller saves.
  */
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import { core, sentence, type EngineId, type EngineStatus } from '../kernel/ipc';
+import { EngineSetup } from './EngineSetup';
 import { ModelSelect } from './ModelSelect';
 
 interface Props {
@@ -19,9 +20,8 @@ export function EnginePicker({ value, model, onPick }: Props) {
   const [engines, setEngines] = useState<EngineStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    core.engines().then(setEngines).catch((e) => setError(sentence(e)));
-  }, []);
+  const load = () => void core.engines().then(setEngines).catch((e) => setError(sentence(e)));
+  useEffect(load, []);
 
   if (error) return <p className="error-line">{error}</p>;
   if (!engines) {
@@ -36,7 +36,8 @@ export function EnginePicker({ value, model, onPick }: Props) {
       {engines.map((e) => {
         const chosen = value === e.id;
         return (
-          <div key={e.id} role="radio" aria-checked={chosen} aria-disabled={!e.available} tabIndex={e.available ? 0 : -1}
+          <Fragment key={e.id}>
+          <div role="radio" aria-checked={chosen} aria-disabled={!e.available} tabIndex={e.available ? 0 : -1}
             className={`mind ${chosen ? 'is-on' : ''} ${e.available ? '' : 'is-disabled'}`}
             onClick={() => e.available && !chosen && onPick(e.id, e.id === 'ollama' ? e.models[0]?.id ?? '' : '')}
             onKeyDown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && e.available && !chosen && onPick(e.id, e.id === 'ollama' ? e.models[0]?.id ?? '' : '')}>
@@ -48,6 +49,9 @@ export function EnginePicker({ value, model, onPick }: Props) {
             <span className="mind-body">{e.available ? e.blurb : e.problem}</span>
             {chosen && e.id !== 'reflex' && e.id !== 'hermes' && <ModelSelect engine={e} model={model} onChange={(m) => onPick(e.id, m)} />}
           </div>
+          {/* Beside the radio, never inside it: a radio hides its children from VoiceOver. */}
+          {!e.available && e.id === 'claude' && <EngineSetup onReady={load} />}
+          </Fragment>
         );
       })}
     </div>

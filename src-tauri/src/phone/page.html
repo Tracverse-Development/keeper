@@ -63,12 +63,15 @@
   }
   api('/api/hello').then((h) => { document.getElementById('name').textContent = h.name; bubble('them', 'Hello, I’m ' + h.name + '. What can I do for you?'); })
     .catch((e) => bubble('err', e.message));
+  // One phone session is one chat on the keeper (its id comes back with each reply).
+  let chat = '';
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const words = text.value.trim(); if (!words) return;
     text.value = ''; bubble('you', words); send.disabled = true; orb.classList.add('busy');
     try {
-      const r = await api('/api/turn', { text: words });
+      const r = await api('/api/turn', { text: words, chat });
+      if (r.chat) chat = r.chat;
       bubble('them', r.reply, r.learned && r.learned.length ? 'Remembered: ' + r.learned.join('; ') : r.mind);
       say(r.reply);
     } catch (e) { bubble('err', e.message); }

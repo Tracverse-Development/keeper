@@ -58,3 +58,15 @@ mod tests {
         assert_eq!(super::applescript_text("a\"b\\c"), "\"a\\\"b\\\\c\"");
     }
 }
+
+/// A `.command` file in Keeper's folder that Terminal runs when opened.
+pub fn open_in_terminal(program: &std::path::Path, path: &std::ffi::OsStr) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let script = crate::kernel::paths::app_home().join("sign-in.command");
+    let quote = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
+    let body = format!("#!/bin/sh\nexport PATH={}\nexec {}\n", quote(&path.to_string_lossy()), quote(&program.display().to_string()));
+    std::fs::write(&script, body)?;
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700))?;
+    std::process::Command::new("/usr/bin/open").arg(&script).spawn()?;
+    Ok(())
+}

@@ -18,3 +18,7 @@ pub fn reveal(_: &std::path::Path) {}
 pub async fn spotlight(_: &str, _: &[std::path::PathBuf], _: usize, _: std::time::Duration) -> Result<Vec<std::path::PathBuf>> {
     Err(DeskError::Invalid("Searching files is not supported on this system yet.".into()))
 }
+
+pub fn open_in_terminal(_program: &std::path::Path, _path: &std::ffi::OsStr) -> Result<()> {
+    Err(crate::kernel::DeskError::Invalid("Open a terminal and run `claude` to sign in.".into()))
+}

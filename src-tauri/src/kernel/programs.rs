@@ -22,6 +22,9 @@ fn usual_dirs() -> Vec<PathBuf> {
     dirs.extend(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].map(PathBuf::from));
     #[cfg(target_os = "macos")]
     dirs.push(PathBuf::from("/Applications/Foreman.app/Contents/Resources/node/bin"));
+    // What Keeper set up itself: engines it installed (`brain::engines::setup`) and its own
+    // Node.js (`dkg::runtime`), which those engines run on.
+    dirs.extend(super::paths::own_tool_dirs());
     dirs
 }
 

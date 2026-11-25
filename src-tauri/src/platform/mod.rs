@@ -73,3 +73,9 @@ pub async fn unpack(archive: &std::path::Path, into: &std::path::Path) -> Result
         Err(crate::kernel::DeskError::Io(format!("could not unpack {}: {}", archive.display(), String::from_utf8_lossy(&out.stderr).lines().next().unwrap_or(""))))
     }
 }
+
+/// Open a terminal window running `program` (for sign-ins that need the person at a prompt).
+/// `path` is the PATH the program runs with (it may need Keeper's own Node.js).
+pub fn open_in_terminal(program: &std::path::Path, path: &std::ffi::OsStr) -> Result<()> {
+    os::open_in_terminal(program, path)
+}
