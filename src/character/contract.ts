@@ -73,3 +73,36 @@ export interface Character {
   /** Stop rendering and free GPU resources. */
   dispose(): void;
 }
+
+/**
+ * A one-off expression the character can be asked to play (`Character.emote`):
+ *   wave        - a hello: sways side to side with happy eyes (the puppy lifts a paw and waves);
+ *                 also plays by itself when the window opens
+ *   celebrate   - anticipation crouch, a stretched jump, a squashed landing; sparkle eyes and sparkles
+ *   streak      - a bigger celebration with a spin and confetti (a quiz streak)
+ *   love        - heart eyes on the robot's screen, a happy lean, little hearts floating up
+ *   surprised   - a jolt up, wide eyes, an "o" mouth and a puff
+ *   wink        - one eye closes for a beat with a tilt and a glint
+ *   sleepy      - a slow yawn with heavy lids and a few drifting "z"s
+ *   stretch     - stretches tall with content eyes, then settles
+ *   look-around - glances left and right (the pointer still wins the moment it moves)
+ *   nod         - a quick "yes" nod
+ */
+export type Emote = 'wave' | 'celebrate' | 'streak' | 'love' | 'surprised' | 'wink' | 'sleepy' | 'stretch' | 'look-around' | 'nod';
+
+// Appended to the interface above by declaration merging (the contract grows by appending).
+export interface Character {
+  /**
+   * Play an emote now (`Emote`; unknown names are ignored). It plays on top of the mood and
+   * blends back out by itself; a new emote replaces one that is playing. The character also
+   * emotes on its own: a hello wave when it starts, idle stretches and glances, and after a
+   * long quiet spell it grows drowsy (heavy lids, drifting "z"s) until the pointer moves or
+   * anything happens. Use it for events, e.g.
+   *   character.emote('celebrate')   // a task finished
+   *   character.emote('streak')      // a quiz streak
+   *   character.emote('love')        // thanked
+   *   character.emote('surprised')   // an error or an unexpected result
+   * With `prefers-reduced-motion` the emote still plays, smaller and with fewer particles.
+   */
+  emote(name: Emote): void;
+}

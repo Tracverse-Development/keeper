@@ -17,12 +17,14 @@
  *    clock for moods, it reads `frame.time` (and its own spring state if it wants one).
  *  - With both touch envelopes at 0 a skin must look exactly as it does without touch, with
  *    `work` at 0 exactly as it does without work, and with the thinking weight and `gotIt`
- *    at 0 exactly as it does without the thinking drama (`thinking.ts`).
+ *    at 0 exactly as it does without the thinking drama (`thinking.ts`), and with every
+ *    `emote` channel at 0 exactly as it does without emotes.
  *  - It declares its slots (`slots`, built from its catalogue row by `anchors.ts`) and keeps
  *    every reaction amplitude and timing in its data table (`reactions`).
  */
 import type { Object3D } from 'three';
 import type { HitRegion, Mood, TouchKind } from '../contract';
+import type { ExpressionFrame } from '../expression-frame';
 import type { MoodParams, MotionProfile } from '../moods';
 import type { SlotAnchors } from './anchors';
 import type { ReactionTable } from './reactions-table';
@@ -51,6 +53,13 @@ export interface SkinFrame {
   readonly work: number;
   /** The "got it" flash 0..1 as a reply arrives after thinking (`thinking.ts`); 0 otherwise. */
   readonly gotIt: number;
+  /**
+   * The playing emote and drowsiness (`expression-frame.ts`): body offsets (squash and
+   * stretch, lift, roll, pitch, a spin, a wave, a raised paw) and face amounts (hearts, stars,
+   * a wink, wide, sleepy, an "o" mouth). The shared face channels are already folded into
+   * `mood`; skins draw the rest their own way. All 0 when nothing plays.
+   */
+  readonly emote: Readonly<ExpressionFrame>;
 }
 
 export interface Skin {

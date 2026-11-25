@@ -10,10 +10,16 @@
  * While it thinks (`scan` 0..1) the eyes narrow and widen into two processing bars, go cyan,
  * pulse alternately and carry one scan bar that sweeps through both (`scanX` -1..1 across the
  * pair); `scan` 0 leaves every uniform exactly as before.
+ *
+ * The visor is a screen, so expressions are drawn on it: heart eyes that beat (`hearts`),
+ * spinning sparkle-star eyes (`stars`), loader rings while thinking (`loader`), one eye shut
+ * for a wink (`wink`, the screen-right eye), a round "o" mouth (`mouthO`) and, while it
+ * speaks or listens, an equaliser mouth (`bars`, heights in `barHeights`). All 0 = as before.
  */
 import { Color, Group, Mesh, Vector2 } from 'three';
 import { disposeTree } from '../../dispose-tree';
 import { PALETTE } from '../../palette';
+import { BAR_COUNT } from '../../speech-bars';
 import { createGlyphMaterial, type GlyphMaterial } from './glyph-material';
 import { curvedQuad } from './head-shape';
 
@@ -37,6 +43,15 @@ export interface FaceState {
   scan: number;
   scanX: number;
   scanTime: number;
+  /** Screen expressions 0..1: heart eyes, star eyes, loader eyes, a wink, an "o" mouth, bars. */
+  hearts: number;
+  stars: number;
+  loader: number;
+  wink: number;
+  mouthO: number;
+  bars: number;
+  /** Seconds, for the beating hearts and the spinning stars and loader. */
+  time: number;
 }
 
 /** The glyph colours at rest, working and hot (core, edge). */
@@ -57,11 +72,18 @@ const SCAN_PULSE_RATE = 7;
 const MOUTH_HALF = new Vector2(0.1, 0.016);
 const MOUTH_Y = -0.2;
 const MOUTH_OPEN_HEIGHT = 0.065;
+/** The round "o" mouth's half size. */
+const MOUTH_O = new Vector2(0.05, 0.058);
+/** Heart eyes beat this much bigger at each beat, this many beats a second (rad/s). */
+const HEART_BEAT = 0.1;
+const HEART_RATE = 7.5;
 
 const FACE_INFLATE = 0.022;
 
 export interface Face {
   readonly group: Group;
+  /** The equaliser bar heights 0..1 the mouth shows when `bars` > 0 (write them each frame). */
+  readonly barHeights: Float32Array;
   update(state: FaceState): void;
   dispose(): void;
 }
@@ -86,6 +108,8 @@ export function createFace(): Face {
   mouthMesh.renderOrder = 2;
   group.add(mouthMesh);
   const glyphs: readonly GlyphMaterial[] = [...eyes, mouth];
+  const barHeights = new Float32Array(BAR_COUNT);
+  mouth.uniforms.uBarH.value = barHeights;
 
   function update(state: FaceState): void {
     const shiftX = state.gazeX * GAZE_TRAVEL.x;
@@ -99,11 +123,18 @@ export function createFace(): Face {
       glyph.uniforms.uEdge.value.copy(REST.edge).lerp(COOL.edge, cool).lerp(HOT.edge, hot);
     }
     const barX = state.scanX * (EYE_SPACING + EYE_HALF.x);
+    const beat = 1 + state.hearts * HEART_BEAT * Math.max(0, Math.sin(state.time * HEART_RATE)) ** 4;
     for (let i = 0; i < eyes.length; i++) {
       const u = eyes[i].uniforms;
-      const open = Math.max(state.eyeOpen, 0);
+      const open = Math.max(state.eyeOpen, 0) * (sides[i] === 1 ? 1 - state.wink : 1);
       u.uOpen.value = scan > 0 ? open + (Math.min(open, SCAN_OPEN) - open) * scan : open;
-      u.uHalf.value.set(EYE_HALF.x * (1 + SCAN_WIDEN * scan), EYE_HALF.y);
+      u.uHalf.value.set(EYE_HALF.x * (1 + SCAN_WIDEN * scan) * beat, EYE_HALF.y * beat);
+      // A winking eye stays a closed line, never a heart or a star.
+      const shut = sides[i] === 1 ? 1 - state.wink : 1;
+      u.uHeart.value = state.hearts * shut;
+      u.uStar.value = state.stars * shut;
+      u.uLoader.value = state.loader;
+      u.uTime.value = state.time;
       u.uSquint.value = state.squint;
       u.uBend.value = state.eyeBend * (1 - scan);
       u.uGlow.value = state.glow;
@@ -115,11 +146,15 @@ export function createFace(): Face {
     }
 
     const m = mouth.uniforms;
-    m.uHalf.value.set(MOUTH_HALF.x * (1 - 0.18 * state.mouthOpen), MOUTH_HALF.y + state.mouthOpen * MOUTH_OPEN_HEIGHT);
-    m.uBend.value = state.smile * 0.55 * (1 - 0.5 * state.mouthOpen);
+    const o = state.mouthO;
+    const halfX = MOUTH_HALF.x * (1 - 0.18 * state.mouthOpen);
+    const halfY = MOUTH_HALF.y + state.mouthOpen * MOUTH_OPEN_HEIGHT;
+    m.uHalf.value.set(halfX + (MOUTH_O.x - halfX) * o, halfY + (MOUTH_O.y - halfY) * o);
+    m.uBend.value = state.smile * 0.55 * (1 - 0.5 * state.mouthOpen) * (1 - o);
+    m.uBars.value = state.bars * (1 - o);
     m.uGlow.value = state.glow * 0.9;
     m.uShift.value.set(shiftX * 0.4, shiftY * 0.3);
   }
 
-  return { group, update, dispose: () => disposeTree(group) };
+  return { group, barHeights, update, dispose: () => disposeTree(group) };
 }
