@@ -51,12 +51,15 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let recall_ms = started.elapsed().as_millis();
 
     let role = crate::keepers::kit::roles::get(&keeper.role);
+    let base = base_context(state, keeper, said);
     let ctx = Context {
+        // An approved plan is computer work whatever its words were.
+        may_act: base.may_act || (approved.is_some() && base.can_act),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         // An approved plan binds this turn: each tool call is checked against it.
         guard: approved.map(|steps| std::sync::Arc::new(crate::brain::guard::PlanGuard::new(steps, &dirs::home_dir().unwrap_or_default()))),
-        ..base_context(state, keeper, said)
+        ..base
     };
     let identity = ctx.identity.clone();
     phase(app, "thinking", crate::brain::engines::label(&keeper.brain));
@@ -160,6 +163,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 /// warm spare is started with exactly the instructions the next turn will use.
 pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str) -> Context {
     let role = crate::keepers::kit::roles::get(&keeper.role);
+    let can_act = state.settings().agent_actions && role.may_act;
     Context {
         said: said.to_string(),
         assistant_name: keeper.name.clone(),
@@ -167,8 +171,10 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         facts: vec![],
         recent: vec![],
         now_local: chrono::Local::now().format("%A %-d %B %Y, %-I:%M %p").to_string(),
-        // Acting needs both: the person allows it, and the keeper's role is one that acts.
-        may_act: state.settings().agent_actions && role.may_act,
+        // Acting needs both: the person allows it, and the keeper's role is one that acts. Even
+        // then a turn gets tools only when its words ask for computer work (`intent`).
+        may_act: can_act && super::intent::wants_computer(said),
+        can_act,
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
     }

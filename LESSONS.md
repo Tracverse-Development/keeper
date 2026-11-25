@@ -34,3 +34,8 @@
 - **Context:** A preview served from this worktree answered `504 Outdated Optimize Dep` and logged reloads for files from another worktree: `node_modules` is a link into the main checkout, so `node_modules/.vite` is shared by every worktree's Vite at once.
 - **Lesson:** Two Vite servers on one shared `node_modules/.vite` re-optimise each other's dependencies. Any throwaway preview server in a worktree sets its own `cacheDir`.
 - **Rule added:** Previews under `misc/` start Vite with a config whose `cacheDir` is inside the preview folder.
+
+### LES-008 — Benchmark the setup people actually have (2026-11-25)
+- **Context:** rounds 1–10 measured 0.8 s first words on a Companion keeper with acting off, while every new person's first keeper is a System Administrator with acting on; the founder's own Keeper took 6–19 s.
+- **Lesson:** a speed claim holds only for the profile it was measured on. Measure the default first-run profile and the founder's real settings, not the easiest one.
+- **Rule added:** `scripts/bench/run.sh` has `PROFILE=admin`; a speed change is reported with both profiles.

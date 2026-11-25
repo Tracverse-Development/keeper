@@ -12,6 +12,7 @@
 
 pub mod actions;
 pub mod approval;
+mod intent;
 pub mod persona;
 mod prefetch;
 mod source;

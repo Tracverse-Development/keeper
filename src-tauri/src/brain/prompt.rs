@@ -11,6 +11,9 @@ sending messages or email, payments, changing system settings) unless the person
 Everything you do is recorded in the person's DKG memory.";
 const NOT_ACTING: &str = "Acting on this computer is switched off: do not use tools. If the person asks you to do something on the computer, \
 say you can once they allow it in Settings (\"Let my assistant act on this computer\").";
+const CHAT_TURN: &str = "You have no tools on this message (it was taken as conversation). If the person wants something done or looked up \
+on this computer (their files, folders, documents, apps), do not guess and do not refuse: put \"needsComputer\": true in your JSON \
+and reply in a few words that you'll take a look.";
 
 /// The part of the instructions that does not change from turn to turn for a keeper: who it is,
 /// its skills, whether it may act, how it shows things, and the answer format. Stable, so a
@@ -27,7 +30,7 @@ Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person jus
         name = ctx.assistant_name,
         identity = ctx.identity,
         skills = skills::catalogue(),
-        acting = if ctx.may_act { ACTING } else { NOT_ACTING },
+        acting = if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
         stage = if ctx.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES },
     )
 }

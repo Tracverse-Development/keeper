@@ -3,6 +3,8 @@
 # `umoja-desk-bench` DKG graph, auto-update off) with its test link, run bench.py against it,
 # then stop the test instance (only the process this script started).
 #   bash scripts/bench/run.sh [rounds]   (BUILD=release for a release build; default debug)
+#   PROFILE=admin: a System Administrator keeper with acting on and ask-before-acting, the
+#   first keeper every new person gets (default: a companion that never acts).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 home="$root/misc/bench-home"
@@ -11,10 +13,11 @@ token="$(grep -v '^#' "$HOME/.dkg/auth.token" | head -1)"
 curl -s -m 10 -X POST http://127.0.0.1:9200/api/context-graph/create -H "authorization: Bearer $token" -H 'content-type: application/json' \
   -d '{"id":"umoja-desk-bench","name":"Keeper bench","accessPolicy":1}' > /dev/null || true
 today="$(date +%Y-%m-%d)"
+if [ "${PROFILE:-}" = admin ]; then role=system; act=true; else role=companion; act=false; fi
 cat > "$home/settings.json" <<JSON
 {"setupComplete": true, "nodeHome": "$HOME/.dkg", "activeKeeper": "keeper-bench",
- "keepers": [{"id": "keeper-bench", "name": "Bench", "skin": "robot", "role": "companion", "soul": "steady", "graphId": "umoja-desk-bench", "brain": "claude", "model": ""}],
- "agentActions": false, "visual": true, "fastModel": "haiku", "quickReplies": true, "prefetchScenes": true,
+ "keepers": [{"id": "keeper-bench", "name": "Bench", "skin": "robot", "role": "$role", "soul": "steady", "graphId": "umoja-desk-bench", "brain": "claude", "model": ""}],
+ "agentActions": $act, "askBeforeActing": true, "visual": true, "fastModel": "haiku", "quickReplies": true, "prefetchScenes": true,
  "alwaysListening": false, "talkShortcut": "", "autoUpdate": false, "lastBrief": "$today", "voice": "Samantha"}
 JSON
 rm -f "$home/test-link.txt"

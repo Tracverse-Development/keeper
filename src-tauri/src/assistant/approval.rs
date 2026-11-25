@@ -47,7 +47,15 @@ impl Plans {
     }
 }
 
-pub(super) const PLAN_ONLY: &str = "\n\n(PLAN ONLY, do not act and do not use tools. In your JSON put \"plan\": [{\"action\": \"a short verb\", \"target\": \"the file, folder or app\", \"detail\": \"why\"}] with the exact steps you would take on this computer, in order, and a one-sentence \"reply\" asking the person to approve. If nothing on the computer needs to change, leave \"plan\" empty and just answer.)";
+pub(super) const PLAN_ONLY: &str = "\n\n(PLAN ONLY, do not act and do not use tools. In your JSON put \"plan\": [{\"action\": \"a short verb\", \"target\": \"the file, folder or app\", \"detail\": \"why\"}] with the exact steps you would take on this computer, in order, and a one-sentence \"reply\" asking the person to approve. If you only need to look (list, read or search files) and change nothing, give those steps with the action \"look\" and a reply saying you're looking. If nothing on the computer is needed at all, leave \"plan\" empty and just answer.)";
+
+/// Plan actions that only look. A plan made only of these runs at once, no approval: a read-only
+/// guard (`PlanGuard::read_only`) stops the engine at its first change.
+const LOOK_ACTIONS: [&str; 6] = ["look", "list", "read", "search", "find", "check"];
+
+fn only_looks(steps: &[PlanStep]) -> bool {
+    steps.iter().all(|s| LOOK_ACTIONS.contains(&s.action.trim().to_lowercase().as_str()))
+}
 
 /// The plan text the acting turn is held to.
 pub fn mandate(steps: &[PlanStep]) -> String {
@@ -68,18 +76,26 @@ pub fn read_plan(raw: &serde_json::Value) -> Vec<PlanStep> {
         .collect()
 }
 
-/// Ask for the plan; None when the engine says nothing needs to change (answer normally then).
-pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context, chat: &str) -> Option<Answer> {
-    let planning = Context { said: format!("{}{PLAN_ONLY}", ctx.said), assistant_name: ctx.assistant_name.clone(), identity: ctx.identity.clone(), facts: ctx.facts.clone(), recent: ctx.recent.clone(), now_local: ctx.now_local.clone(), may_act: false, visual: ctx.visual, guard: None };
-    let (thought, mind) = brain::think(keeper, &planning, &|_: Progress| {}).await;
+/// Ask for the plan in ONE engine call that streams like any answer. When the engine says
+/// nothing on the computer needs to change, its answer IS the turn's answer (no second call).
+pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context, chat: &str, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
+    let planning = Context { said: format!("{}{PLAN_ONLY}", ctx.said), may_act: false, guard: None, ..ctx.clone() };
+    let (thought, mind) = brain::think(keeper, &planning, progress).await;
     let steps = read_plan(&thought.plan);
     if steps.is_empty() {
-        return None;
+        return Answer { thought, mind, cached: false };
+    }
+    if only_looks(&steps) {
+        progress(Progress::ReplyText(" ".into()));
+        let home = dirs::home_dir().unwrap_or_default();
+        let looking = Context { may_act: true, guard: Some(std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home))), ..ctx.clone() };
+        let (thought, mind) = brain::think(keeper, &looking, progress).await;
+        return Answer { thought, mind, cached: false };
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };
     let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
     let panel = Panel::Approval { id: format!("plan-{token}"), title: "My plan".into(), summary: summary.clone(), steps, token };
-    Some(Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false })
+    Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false }
 }
 
 /// Approve (run the acting turn under the plan) or deny (record it and say so).
@@ -111,5 +127,8 @@ mod tests {
         let t = plans.keep(PendingPlan { keeper: "k".into(), chat: "c".into(), said: "s".into(), steps });
         assert_eq!(t.len(), 24);
         assert!(plans.take(&t).is_some() && plans.take(&t).is_none(), "a plan is used once");
+        let look = |a: &str| PlanStep { action: a.into(), target: "~/Desktop".into(), detail: None };
+        assert!(only_looks(&[look("look"), look("List")]), "looking runs without approval");
+        assert!(!only_looks(&[look("look"), look("move")]), "any change needs approval");
     }
 }

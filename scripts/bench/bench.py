@@ -22,6 +22,9 @@ TURNS = [
     ("lesson-again", "Explain how a rainbow forms, visually."),
     ("follow-up", 'About "How a rainbow forms": explain the card Refraction. Show it step by step in a panel if that helps.'),
     ("brief", "Brief me"),
+    # Computer work (an admin keeper plans it; a companion says it does not operate the computer).
+    ("computer", "Tidy up my desktop"),
+    ("computer-miss", "Can you see what I was working on yesterday?"),
     ("facts", "What do you know about me?"),
 ]
 
@@ -54,7 +57,7 @@ def main():
             t = out.get("timings") or {}
             first = t.get("firstMs") if t.get("firstMs") is not None else t.get("totalMs")
             rows.append({"label": label, "first": first, "done": t.get("totalMs"), "wall": out["wall_ms"], "source": t.get("source"), "recall": t.get("recallMs"), "panels": out.get("panels"), "reply": out.get("reply", "")[:90]})
-            print(f"{label:>13}  first {first:>6} ms  done {t.get('totalMs'):>6} ms  recall {t.get('recallMs'):>4} ms  {t.get('source'):<10} panels {out.get('panels')}  | {out.get('reply','')[:70]}")
+            print(f"{label:>13}  first {first:>6} ms  done {t.get('totalMs'):>6} ms  recall {t.get('recallMs'):>4} ms  {t.get('source'):<10} panels {out.get('panels')}  | {out.get('reply','')[:150]}")
             time.sleep(3.2)  # stay under the link's 20 turns a minute
     ok = [r for r in rows if "error" not in r]
     if ok:

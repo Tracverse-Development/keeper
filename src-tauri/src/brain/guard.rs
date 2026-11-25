@@ -22,7 +22,18 @@ enum Harm {
 }
 
 const READ_TOOLS: [&str; 7] = ["read", "grep", "glob", "ls", "webfetch", "websearch", "todowrite"];
-const READ_COMMANDS: [&str; 12] = ["ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "mdfind", "pwd"];
+const READ_COMMANDS: [&str; 20] = ["ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "mdfind", "pwd", "cd", "echo", "sort", "uniq", "du", "df", "date", "mdls"];
+
+/// A shell command that only reads: every piece of a chain (`&&`, `;`, `|`) starts with a read
+/// command, nothing is redirected into a file, and no find runs an action on what it finds.
+fn reads_only(command: &str) -> bool {
+    // Throwing errors away is not writing a file.
+    let command = &["2>/dev/null", "2> /dev/null", ">/dev/null", "2>&1"].iter().fold(command.to_string(), |c, quiet| c.replace(quiet, " "));
+    if command.contains('>') || command.contains("$(") || command.contains('`') || ["-delete", "-exec", "-execdir", "-ok"].iter().any(|a| words(command).any(|w| w == *a)) {
+        return false;
+    }
+    command.split(['&', ';', '|', '\n']).map(str::trim).filter(|piece| !piece.is_empty()).all(|piece| words(piece).next().is_some_and(|w| READ_COMMANDS.contains(&w)))
+}
 const DELETE_WORDS: [&str; 7] = ["delete", "remove", "trash", "erase", "wipe", "clear", "clean"];
 const SEND_WORDS: [&str; 5] = ["send", "email", "mail", "post", "pay"];
 
@@ -30,6 +41,8 @@ pub struct PlanGuard {
     roots: Vec<PathBuf>,
     allows: Vec<Harm>,
     home: PathBuf,
+    /// Looking only: every call that is not a read is outside the plan (`read_only`).
+    looking: bool,
     verdict: Mutex<Option<String>>,
 }
 
@@ -39,7 +52,7 @@ fn words(s: &str) -> impl Iterator<Item = &str> {
 
 impl PlanGuard {
     pub fn new(steps: &[PlanStep], home: &Path) -> PlanGuard {
-        let mut g = PlanGuard { roots: vec![], allows: vec![], home: home.to_path_buf(), verdict: Mutex::new(None) };
+        let mut g = PlanGuard { roots: vec![], allows: vec![], home: home.to_path_buf(), looking: false, verdict: Mutex::new(None) };
         for s in steps {
             let text = format!("{} {} {}", s.action, s.target, s.detail.as_deref().unwrap_or(""));
             for p in g.paths(&text) {
@@ -59,6 +72,12 @@ impl PlanGuard {
             }
         }
         g
+    }
+
+    /// A guard for a turn that may only look (a plan made only of "look" steps): the first call
+    /// that is not a read stops the engine, whatever path it names (relative ones included).
+    pub fn read_only(home: &Path) -> PlanGuard {
+        PlanGuard { looking: true, ..PlanGuard::new(&[], home) }
     }
 
     /// Absolute and home paths named in `text` (glob characters cut off at the first one).
@@ -98,12 +117,13 @@ impl PlanGuard {
             return Some(v);
         }
         let tool = step.tool.to_lowercase();
-        let first = words(&step.detail).next().unwrap_or("");
         let is_shell = tool == "bash" || tool == "command" || tool == "shell";
-        if READ_TOOLS.contains(&tool.as_str()) || (is_shell && READ_COMMANDS.contains(&first) && !step.detail.contains('>')) {
+        if READ_TOOLS.contains(&tool.as_str()) || (is_shell && reads_only(&step.detail)) {
             return None;
         }
-        let verdict = if let Some(h) = Self::harm(step).filter(|h| !self.allows.contains(h)) {
+        let verdict = if self.looking {
+            Some(format!("I was only going to look, so I stopped before changing anything ({}).", step.detail))
+        } else if let Some(h) = Self::harm(step).filter(|h| !self.allows.contains(h)) {
             Some(format!("{} wasn't in the plan you approved ({}).", if h == Harm::Delete { "Deleting" } else { "Sending" }, step.detail))
         } else {
             self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("{} is outside the plan you approved.", p.display()))
@@ -167,5 +187,24 @@ mod tests {
         let g = PlanGuard::new(&[PlanStep { action: "delete".into(), target: "~/Desktop/installers".into(), detail: None }], Path::new("/Users/a"));
         assert_eq!(g.check(&step("Bash", "rm -rf /Users/a/Desktop/installers/zoom.pkg")), None);
         assert!(g.check(&step("Bash", "rm -rf /Users/a/Documents")).is_some());
+    }
+
+    #[test]
+    fn a_looking_turn_stops_at_any_change() {
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert_eq!(g.check(&step("Bash", "ls -lt ~/Desktop")), None);
+        assert_eq!(g.check(&step("Read", "/Users/a/Documents/notes.md")), None);
+        assert!(g.check(&step("Write", "notes.txt")).is_some(), "a relative write is still a change");
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert!(g.check(&step("Bash", "mv a b")).is_some());
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert_eq!(g.check(&step("Bash", "cd ~ && find . -type f -newermt 2026-11-24 | head -50")), None, "a chain of reads is a read");
+        assert!(g.check(&step("Bash", "cd ~ && rm -rf x")).is_some(), "one change in a chain is a change");
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert_eq!(g.check(&step("Bash", "find ~ -newermt 2026-11-24 2>/dev/null | sort | head")), None, "quietened errors are not a write");
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert!(g.check(&step("Bash", "find ~/Desktop -name '*.tmp' -delete")).is_some(), "find can delete");
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        assert!(g.check(&step("Bash", "echo $(rm -rf ~/x)")).is_some(), "a substituted command is not a read");
     }
 }

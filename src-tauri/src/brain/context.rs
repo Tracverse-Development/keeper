@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::memory::{Fact, Turn};
 use crate::skills::ActionRequest;
 
+#[derive(Clone)]
 pub struct Context {
     pub said: String,
     pub assistant_name: String,
@@ -17,8 +18,12 @@ pub struct Context {
     pub recent: Vec<Turn>,
     /// Local time, written out ("Tuesday 25 November 2026, 10:42").
     pub now_local: String,
-    /// May an agent engine act on this computer this turn?
+    /// May an agent engine act on this computer this turn (tools on)?
     pub may_act: bool,
+    /// Could this keeper act on another turn (its role acts and the person allows it)? A turn
+    /// taken as conversation (`assistant::intent`) has `may_act` off but this on, so the engine
+    /// is told to ask for the computer (`needs_computer`) rather than say acting is switched off.
+    pub can_act: bool,
     /// Show this answer visually on the Stage (panels), or in words?
     pub visual: bool,
     /// When the person approved a plan: the guard every tool call is checked against; the
@@ -81,4 +86,8 @@ pub struct Thought {
     /// Panels only the core may show (a plan to approve, your facts); never from the model.
     #[serde(skip)]
     pub core_panels: Vec<crate::stage::Panel>,
+    /// A conversation turn's engine says the person wants computer work after all; the core
+    /// runs the turn again with tools (`assistant::source`).
+    #[serde(default, rename = "needsComputer")]
+    pub needs_computer: bool,
 }

@@ -9,7 +9,7 @@ use crate::brain::engines::claude;
 use crate::brain::{Context, Progress};
 
 fn ctx(said: &str) -> Context {
-    Context { said: said.into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None }
+    Context { said: said.into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false }
 }
 
 #[tokio::test]
