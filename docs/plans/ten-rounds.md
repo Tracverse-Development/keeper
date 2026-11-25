@@ -31,3 +31,12 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 6. Asking for the brief is when Keeper asks for calendar access (if it never asked before).
 8. Keeper installs Claude Code itself on request (pinned 2.1.322, a release at least two weeks old; it updates itself afterwards); sign-in happens in Claude Code's own Terminal flow.
 7. Items in the wardrobe are designs by default (any number of keepers can wear one); "one of a kind" items are worn by one keeper at a time.
+
+## Second set (founder 2026-11-25: "you didn't do the rounds"; "asking anything takes a long time")
+
+Each round: use the installed app as the founder does (his settings: System Administrator keeper,
+acting on, ask before acting, ElevenLabs voice), measure with `PROFILE=admin`, fix, ship, update.
+
+| Round | Theme | Result |
+|---|---|---|
+| 1 | The founder's slowness (FIX-0012): acting keepers took the plan path on every message | admin bench first words median 7,968 → 480 ms, p90 13,192 → 849 ms; 0.7.1 |
