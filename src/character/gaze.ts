@@ -3,7 +3,8 @@
  * on screen, so the eyes look AT the cursor, not at a point offset by the framing), or,
  * with no pointer for a few seconds, an idle drift around the mood's own resting gaze.
  *
- * A mood's own gaze (thinking looks up and aside) wins over the pointer as it grows; a poke
+ * A mood's own gaze (thinking looks up and aside) wins over the pointer as it grows; an idle
+ * glance (`GazeOverride`, from the look-around emote) holds only while the pointer rests; a poke
  * turns the eyes to the viewer for a moment and a pat lowers them contentedly.
  *
  * Pure (no three.js, no DOM): the caller projects the head onto the screen and passes it in.
@@ -21,10 +22,19 @@ export interface ScreenPoint {
   y: number;
 }
 
+/** A look the character chooses itself (an idle glance): how much it holds, and where. */
+export interface GazeOverride {
+  readonly look: number;
+  readonly lookX: number;
+  readonly lookY: number;
+}
+
+const NO_OVERRIDE: GazeOverride = { look: 0, lookX: 0, lookY: 0 };
+
 export class GazeFollower {
   /** The eased gaze, -1..1 on both axes (positive x = screen right, positive y = up). */
   readonly gaze = { x: 0, y: 0 };
-  private pointer = { x: 0, y: 0 };
+  private readonly pointer = { x: 0, y: 0 };
   private pointerAge = Infinity;
   private pointerWeight = 0;
 
@@ -41,13 +51,22 @@ export class GazeFollower {
   /** The pointer moved to (x, y) in normalised screen space; out-of-range values are clamped. */
   point(x: number, y: number): boolean {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-    this.pointer = { x: clampSigned(x), y: clampSigned(y) };
+    this.pointer.x = clampSigned(x);
+    this.pointer.y = clampSigned(y);
     this.pointerAge = 0;
     return true;
   }
 
   /** Eases the gaze toward the pointer or the idle drift; `head` is the head on screen (-1..1). */
-  step(dt: number, time: number, p: MoodParams, motion: MotionProfile, head: ScreenPoint, touch: Readonly<Record<TouchKind, number>>): void {
+  step(
+    dt: number,
+    time: number,
+    p: MoodParams,
+    motion: MotionProfile,
+    head: ScreenPoint,
+    touch: Readonly<Record<TouchKind, number>>,
+    override: GazeOverride = NO_OVERRIDE,
+  ): void {
     this.pointerAge += dt;
     const pointerLive = this.pointerAge < POINTER_IDLE_SECONDS ? 1 : 0;
     this.pointerWeight = damp(this.pointerWeight, pointerLive, 2.5, dt);
@@ -65,6 +84,12 @@ export class GazeFollower {
 
     let targetX = idleX + (pointerX - idleX) * follow;
     let targetY = idleY + (pointerY - idleY) * follow;
+    // An idle glance holds only while the pointer is not steering: the mouse always wins.
+    const hold = override.look * (1 - this.pointerWeight);
+    if (hold > 0) {
+      targetX += (override.lookX - targetX) * hold;
+      targetY += (override.lookY - targetY) * hold;
+    }
     const { poke, pat } = touch;
     if (poke > 0) {
       targetX -= targetX * poke;

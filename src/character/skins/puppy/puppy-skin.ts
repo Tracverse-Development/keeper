@@ -13,8 +13,11 @@
  * high work and a sweat drop beads at the very top. Thinking (drama from `thinking.ts`) adds a
  * puzzled side-to-side head tilt, alternating ear twitches, slow tail sweeps, a sniffing nose
  * and a looping thought bubble (`puppy-thinking.ts`); a reply arriving makes the eyes sparkle
- * and the ears pop ("got it"). Every amplitude and timing is data (`reactions.ts`); at zero
- * touch, zero work and no thinking every number is what it shipped with.
+ * and the ears pop ("got it"). Emotes (`frame.emote`) squash and stretch the whole puppy,
+ * hop and spin it, lift and wave its paw hello, swell its eyes in surprise, wink, glint its
+ * catchlights, open a yawn, perk or droop the ears and set the tail going.
+ * Every amplitude and timing is data (`reactions.ts`); at zero touch, zero work, no thinking
+ * and no emote every number is what it shipped with.
  */
 import { Group, Object3D } from 'three';
 import type { TouchKind } from '../../contract';
@@ -78,13 +81,18 @@ export function createPuppySkin(): Skin {
     const drama = thinkDrama(frame.weights.thinking, frame.work);
 
     // Breathing lives in the chest; the whole puppy bobs less than the floating robot.
+    const e = frame.emote;
+    const cheer = Math.max(e.stars, e.hearts);
     const breath = Math.sin(t * Math.PI * 2 * p.bobSpeed);
     const hop = Math.abs(Math.sin(t * Math.PI * R.celebrate.hopSpeed)) * p.bounce;
-    root.position.y = (breath * p.bobAmp * 0.5 + hop) * a + R.poke.lift * poke * a - d.curl * R.sleep.sink;
+    root.position.y = (breath * p.bobAmp * 0.5 + hop) * a + R.poke.lift * poke * a - d.curl * R.sleep.sink + e.lift * a;
+    const squash = e.squash * a;
+    root.scale.set(1 - 0.5 * squash, 1 + squash, 1 - 0.5 * squash);
+    root.rotation.y = a >= 1 ? e.yaw : 0; // a spin is skipped under reduced motion
     const chest = 1 + breath * (0.016 + 0.012 * d.curl) * a;
     parts.torso.scale.set(chest, 1 + breath * 0.006 * a, 0.88 * chest);
     body.rotation.x = p.lean * 0.8 + d.curl * 0.1 - R.poke.bodyPitch * poke;
-    body.rotation.z = Math.sin(t * 0.29 + 0.7) * 0.015 * a + leanSide * R.pat.bodyRoll * pat;
+    body.rotation.z = Math.sin(t * 0.29 + 0.7) * 0.015 * a + leanSide * R.pat.bodyRoll * pat + (e.roll + 0.04 * e.swing) * a;
 
     const nod = Math.sin(t * 5.4) * p.nod * (0.4 + frame.mouth) * a;
     head.rotation.y = frame.gaze.x * 0.38;
@@ -97,6 +105,10 @@ export function createPuppySkin(): Skin {
       d.curl * 0.14 +
       leanSide * R.pat.headRoll * pat;
     if (drama > 0) head.rotation.z += drama * a * T.tilt * holdWave(cyclePhase(t, T.tiltSeconds));
+    head.rotation.z += (0.6 * e.roll + 0.12 * e.swing) * a;
+    head.rotation.x += e.pitch * a;
+    // The hello wave: the paw lifts forward and up, then waves from the shoulder.
+    parts.paw.rotation.set(-2.1 * e.paw * (0.6 + 0.4 * a), 0, 0.35 * e.swing * e.paw * a);
     head.position.y = HEAD_Y - d.curl * R.sleep.headDrop;
     head.position.z = d.curl * R.sleep.headForward;
 
@@ -106,22 +118,26 @@ export function createPuppySkin(): Skin {
       gazeX: frame.gaze.x,
       gazeY: frame.gaze.y,
       sparkle: p.presence * (1 + T.gotItSparkle * frame.gotIt),
+      wink: e.wink,
+      pop: e.wide,
+      stars: e.stars,
     });
     const panting = pant * (0.42 + 0.2 * Math.sin(t * Math.PI * 2 * R.work.pantSpeed) * a);
     face.setMouth(
-      Math.max(d.mouthOpen * (1 - d.curl), frame.mouth, R.pat.mouth * pat, panting),
-      Math.max(d.tongue, R.pat.tongue * pat, pant),
+      Math.max(d.mouthOpen * (1 - d.curl), frame.mouth, R.pat.mouth * pat, panting, 0.75 * e.mouthO, 0.5 * cheer),
+      Math.max(d.tongue, R.pat.tongue * pat, pant, cheer),
     );
-    const perk = d.earPerk + R.poke.earPop * poke + 0.25 * frame.voice + R.work.earPerk * w + T.gotItEars * frame.gotIt;
+    const perk =
+      d.earPerk + R.poke.earPop * poke + 0.25 * frame.voice + R.work.earPerk * w + T.gotItEars * frame.gotIt + 0.8 * e.wide + 0.5 * e.stars + 0.35 * e.paw - 0.45 * e.sleepy;
     const flickLeft = drama * T.earTwitch * twitch(cyclePhase(t, T.earTwitchSeconds));
     const flickRight = drama * T.earTwitch * twitch(cyclePhase(t + T.earTwitchSeconds / 2, T.earTwitchSeconds));
-    poseEars(frame, perk, d.earTwitch, R.work.earTwitch * w, pat, t, flickLeft, flickRight);
+    poseEars(frame, perk, d.earTwitch, R.work.earTwitch * w, Math.max(pat, 0.7 * e.hearts), t, flickLeft, flickRight);
     face.sniff(drama * sniff(cyclePhase(t, T.sniffSeconds)));
 
-    const tailSpeed = d.tailSpeed + R.pat.tailSpeed * pat + R.poke.tailSpeed * poke + R.work.tailSpeed * w;
+    const tailSpeed = d.tailSpeed + R.pat.tailSpeed * pat + R.poke.tailSpeed * poke + R.work.tailSpeed * w + 3 * cheer + 2 * e.paw;
     tailPhase += frame.dt * Math.PI * 2 * tailSpeed * frame.motion.speed;
     const sweep = drama > 0 ? drama * T.tailSweep * Math.sin(t * T.tailSweepSpeed) : 0;
-    const wag = (Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w) + sweep) * a;
+    const wag = (Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w + 0.5 * cheer + 0.3 * e.paw) + sweep) * a;
     parts.tail.rotation.set(0.15 + d.curl * 0.5, wag * 0.35, -0.38 - d.curl * 0.7 + wag);
 
     parts.tag.rotation.x = Math.sin(t * 1.1 + 0.4) * 0.05 * a - body.rotation.x * 0.6 + R.poke.tagSwing * poke;

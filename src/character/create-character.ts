@@ -11,7 +11,9 @@
  */
 import { Raycaster, Vector2, type Camera } from 'three';
 import { Animator } from './animator';
-import type { Character, HitRegion, Mood, TouchKind, WornPart } from './contract';
+import type { Character, Emote, HitRegion, Mood, TouchKind, WornPart } from './contract';
+import { createEffectLayer } from './effects/effect-layer';
+import { isEmote } from './emotes';
 import { isMood } from './moods';
 import { DEFAULT_WEARABLES } from './parts';
 import { SkinSwitcher } from './skin-switcher';
@@ -42,9 +44,10 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
   stage.scene.add(backdrop.mesh);
   const skins = new SkinSwitcher(stage.scene, firstSkin);
   const touchSparkles = createTouchSparkles();
-  stage.scene.add(wardrobe.group, sparks.group, touchSparkles.group);
+  const effects = createEffectLayer();
+  stage.scene.add(wardrobe.group, sparks.group, touchSparkles.group, effects.group);
 
-  const animator = new Animator({ stage, skins, wardrobe, touchSparkles, backdrop });
+  const animator = new Animator({ stage, skins, wardrobe, touchSparkles, backdrop, effects });
   const hitTest = createHitTester(stage.camera, skins);
 
   const reducedMotion = window.matchMedia?.(REDUCED_MOTION_QUERY);
@@ -66,6 +69,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     wardrobe.setPointScale(pixelsPerUnit);
     skins.setPointScale(pixelsPerUnit);
     touchSparkles.setPointScale(pixelsPerUnit);
+    effects.setPointScale(pixelsPerUnit);
   };
   const resizeObserver = new ResizeObserver(fitToCanvas);
   resizeObserver.observe(canvas);
@@ -112,6 +116,9 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     react(kind: TouchKind) {
       if (TOUCH_KINDS.includes(kind)) animator.react(kind);
     },
+    emote(name: Emote) {
+      if (!disposed && isEmote(name)) animator.emote(name);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -121,6 +128,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       resizeObserver.disconnect();
       skins.dispose();
       touchSparkles.dispose();
+      effects.dispose();
       wardrobe.dispose();
       backdrop.dispose();
       stage.dispose();

@@ -7,6 +7,9 @@
  * Lids are hemispherical caps a little larger than the eyeball, rotated about the eye's
  * x axis: the upper cap swings down over the front to close, the lower cap swings up to
  * squint. Rotating a cap is free per frame; no geometry is rebuilt.
+ *
+ * Emotes: `wink` shuts the screen-right eye alone, `pop` swells both eyes (surprise) and
+ * `stars` makes the catchlights swell and glint (celebration). All 0 = as before.
  */
 import { Group, Mesh, SphereGeometry, TorusGeometry, Vector3, type Object3D } from 'three';
 import type { PuppyKit } from './puppy-kit';
@@ -37,6 +40,10 @@ export interface EyePose {
   gazeY: number;
   /** Catchlight strength (asleep dims). */
   sparkle: number;
+  /** Emote extras 0..1: the screen-right eye shuts, both eyes swell, the catchlights glint. */
+  wink?: number;
+  pop?: number;
+  stars?: number;
 }
 
 export interface PuppyEyes {
@@ -79,7 +86,7 @@ export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
       dot.position.copy(dir.normalize().multiplyScalar(EYE_RADIUS * 1.01));
       dot.lookAt(dot.position.clone().multiplyScalar(2));
       dot.rotation.z += side * 0.3;
-      return dot;
+      return { dot, rest: dot.scale.clone() };
     });
 
     const upper = new Mesh(upperCap, m.caramel);
@@ -89,7 +96,7 @@ export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
     lowerTilt.add(lower);
     eye.add(upper, lowerTilt);
     const seam = addLashLine(eye, kit);
-    return { side, roll, upper, lower, lowerTilt, seam, sparkles };
+    return { side, group: eye, roll, upper, lower, lowerTilt, seam, sparkles };
   });
 
   return {
@@ -97,15 +104,23 @@ export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
       const open = Math.min(Math.max(pose.open, 0), 1);
       const squint = Math.min(Math.max(pose.squint, 0), 1);
       // A squint also lowers the upper lid a little, so the eye becomes a soft smile.
-      const closure = Math.max(1 - open, squint * 0.35);
+      const baseClosure = Math.max(1 - open, squint * 0.35);
+      const wink = Math.min(Math.max(pose.wink ?? 0, 0), 1);
+      const glint = 1 + 0.9 * (pose.stars ?? 0);
+      const swell = 1 + 0.14 * (pose.pop ?? 0);
       for (const eye of eyes) {
+        const closure = eye.side === 1 ? baseClosure + (1 - baseClosure) * wink : baseClosure;
+        eye.group.scale.setScalar(swell);
         eye.roll.rotation.y = pose.gazeX * GAZE_YAW - eye.side * 0.05;
         eye.roll.rotation.x = -pose.gazeY * GAZE_PITCH;
         eye.upper.rotation.x = UPPER_OPEN + (UPPER_SHUT - UPPER_OPEN) * closure;
-        eye.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open);
+        eye.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open, eye.side === 1 ? wink : 0);
         eye.lowerTilt.rotation.z = eye.side * 0.32 * squint;
         const visible = closure < 0.9 && pose.sparkle > 0.05;
-        for (const dot of eye.sparkles) dot.visible = visible;
+        for (const { dot, rest } of eye.sparkles) {
+          dot.visible = visible;
+          dot.scale.copy(rest).multiplyScalar(glint);
+        }
         eye.seam.visible = closure > 0.8;
       }
     },

@@ -12,14 +12,23 @@
  * A reply arriving after real thinking (`thinking` -> `speaking`/`happy`) starts the short
  * "got it" flash (`thinking.ts`), handed to the skin and the parts as `gotIt`.
  *
+ * Emotes (`emote`, the hello wave at start, idle stretches and glances, drowsiness after a
+ * long quiet spell) run in the `EmoteDirector`; its expression frame folds into the shared
+ * face and goes to the skin as `emote`, and an idle glance steers the gaze until the pointer
+ * moves again.
+ *
  * Gaze is aimed at the pointer relative to where the skin's gaze anchor (its head) is on
  * screen (projected every frame), so the eyes look AT the cursor, not at a point offset
  * by the framing. With no pointer for a few seconds the gaze drifts on its own.
  */
 import { Vector3 } from 'three';
-import type { Mood, TouchKind } from './contract';
+import type { Emote, Mood, TouchKind } from './contract';
 import { BlinkScheduler } from './blink';
-import { GazeFollower } from './gaze';
+import type { EffectLayer } from './effects/effect-layer';
+import { EmoteDirector } from './emote-director';
+import { PRIORITY } from './expression';
+import { foldExpression } from './expression-frame';
+import { GazeFollower, POINTER_IDLE_SECONDS } from './gaze';
 import { MOOD_NAMES, blendInto, clampUnit, damp, moodTarget, motionProfile, type MoodParams, type MotionProfile } from './moods';
 import type { PartFrame } from './parts';
 import { foldTouch, reactionEnvelope } from './reactions';
@@ -29,7 +38,7 @@ import type { Backdrop } from './stage/backdrop';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
 import type { Wardrobe } from './wardrobe';
-import { gotItEnvelope, isGotIt } from './thinking';
+import { gotItEnvelope, isGotIt, thinkDrama } from './thinking';
 import { clampWork, easeWork } from './work-level';
 
 /** Easing rates (1/s): moods glide, voice and mouth follow speech closely. */
@@ -41,6 +50,10 @@ const MAX_STEP = 1 / 20;
 /** Motes that rise from the head on a pat, and on a skin swap. */
 const PAT_SPARKLES = 7;
 const SWAP_SPARKLES = 10;
+/** The hello wave starts this long after the character first appears. */
+const HELLO_DELAY = 0.7;
+/** A microphone level above this counts as activity (wakes a drowsy character). */
+const VOICE_ACTIVITY = 0.05;
 
 export interface StageParts {
   stage: Stage;
@@ -48,6 +61,7 @@ export interface StageParts {
   wardrobe: Wardrobe;
   touchSparkles: TouchSparkles;
   backdrop: Backdrop;
+  effects: EffectLayer;
 }
 
 export class Animator {
@@ -76,6 +90,7 @@ export class Animator {
 
   private readonly gaze = new GazeFollower();
   private readonly blinks = new BlinkScheduler();
+  private readonly director: EmoteDirector;
 
   private readonly touchStartedAt: Record<TouchKind, number> = { poke: -Infinity, pat: -Infinity };
   private readonly touch: Record<TouchKind, number> = { poke: 0, pat: 0 };
@@ -85,17 +100,21 @@ export class Animator {
 
   constructor(parts: StageParts) {
     this.parts = parts;
+    this.director = new EmoteDirector(parts.effects);
+    this.director.emote('wave', 0, PRIORITY.idle, HELLO_DELAY);
     this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0, thinking: 0, gotIt: 0, head: this.headPoint };
   }
 
   setMood(mood: Mood): void {
     if (isGotIt(this.targetMood, mood, this.weights.thinking)) this.gotItAt = this.time;
+    if (mood !== this.targetMood) this.director.activity();
     this.target = moodTarget(mood);
     this.targetMood = mood;
   }
 
   setVoiceLevel(level: number): void {
     this.voiceInput = clampUnit(level);
+    if (this.voiceInput > VOICE_ACTIVITY) this.director.activity();
   }
 
   setMouth(openness: number): void {
@@ -107,7 +126,12 @@ export class Animator {
   }
 
   lookAt(x: number, y: number): void {
-    this.gaze.point(x, y);
+    if (this.gaze.point(x, y)) this.director.activity();
+  }
+
+  /** Plays an emote on top of the mood (the director runs its timeline and effects). */
+  emote(name: Emote): void {
+    this.director.emote(name, this.time);
   }
 
   /** A memory spark from the chest into the worn halo (nothing when no halo is worn). */
@@ -126,6 +150,7 @@ export class Animator {
       skin.touchOrigin.getWorldPosition(this.scratch);
       this.parts.touchSparkles.burst(this.scratch, this.time, PAT_SPARKLES);
     }
+    this.director.touch(kind, skin, this.time);
   }
 
   /** Swaps to an already built skin with the eased transition and a puff of light. */
@@ -155,8 +180,20 @@ export class Animator {
     const expression = foldTouch(Object.assign(this.expression, p), this.touch);
     const gotIt = gotItEnvelope(this.time - this.gotItAt) * (0.55 + 0.45 * this.motion.amplitude);
 
-    const blink = this.blinks.step(this.time, dt, p.eyeOpen);
-    this.gaze.step(dt, this.time, p, this.motion, this.headOnScreen(), this.touch);
+    const emote = this.director.step({
+      time: this.time,
+      dt,
+      mood: this.targetMood,
+      motion: this.motion,
+      pointerStill: this.gaze.pointerIdleSeconds > POINTER_IDLE_SECONDS,
+      drama: thinkDrama(this.weights.thinking, this.work),
+      work: this.work,
+      skin: this.parts.skins.active,
+    });
+    foldExpression(expression, emote);
+    if (this.director.takeWake()) this.blinks.blinkNow(this.time);
+    const blink = this.blinks.step(this.time, dt, expression.eyeOpen);
+    this.gaze.step(dt, this.time, p, this.motion, this.headOnScreen(), this.touch, emote);
 
     const { stage, skins, wardrobe, touchSparkles, backdrop } = this.parts;
     skins.apply({
@@ -172,6 +209,7 @@ export class Animator {
       touch: this.touch,
       work: this.work,
       gotIt,
+      emote,
     });
 
     const partFrame = this.partFrame;

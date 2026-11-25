@@ -43,3 +43,17 @@ test('a poke turns the eyes to the viewer', () => {
   run(gaze, 0.5, 1, moodTarget('idle'), { poke: 1, pat: 0 });
   assert.ok(Math.abs(gaze.gaze.x) < 0.1, `x ${gaze.gaze.x}`);
 });
+
+test('an idle glance steers a resting gaze, but the pointer wins', () => {
+  const resting = new GazeFollower();
+  const glance = { look: 1, lookX: -0.8, lookY: 0 };
+  for (let t = 0; t < 2; t += 1 / 60) resting.step(1 / 60, t, moodTarget('idle'), motionProfile(false), { x: 0, y: 0 }, NO_TOUCH, glance);
+  assert.ok(resting.gaze.x < -0.6, `x ${resting.gaze.x}`);
+
+  const following = new GazeFollower();
+  for (let t = 0; t < 2; t += 1 / 60) {
+    following.point(0.6, 0);
+    following.step(1 / 60, t, moodTarget('idle'), motionProfile(false), { x: 0, y: 0 }, NO_TOUCH, glance);
+  }
+  assert.ok(following.gaze.x > 0.6, `x ${following.gaze.x}`);
+});

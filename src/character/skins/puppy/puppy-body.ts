@@ -4,7 +4,9 @@
  * with cream paws, round haunches, a navy collar with a small gold ark tag, and a tail.
  *
  * Parts the skin animates are returned: the torso (breathing), the tag (it swings) with
- * its glowing heart (memory sparks leave from it), and the tail pivot (wagging).
+ * its glowing heart (memory sparks leave from it), the tail pivot (wagging) and the
+ * screen-right front leg's shoulder pivot (`paw`: it lifts and waves hello). At rest the
+ * pivot is the identity, so the leg sits exactly where it always did.
  */
 import {
   CapsuleGeometry,
@@ -26,6 +28,8 @@ import type { PuppyKit } from './puppy-kit';
 /** World height of the neck (top of the torso) and of the seat. */
 export const NECK_Y = -0.5;
 const SEAT_Y = -1.95;
+/** The waving leg's shoulder (body space): the top of the screen-right front leg. */
+const SHOULDER = [0.22, -1.24, 0.46] as const;
 
 /** Torso silhouette as (radius, height above the seat). */
 const TORSO_PROFILE: readonly [number, number][] = [
@@ -46,6 +50,8 @@ export interface PuppyBody {
   readonly tag: Group;
   readonly heart: Mesh;
   readonly tail: Group;
+  /** The screen-right front leg's shoulder pivot (rotate it to lift and wave the paw). */
+  readonly paw: Group;
 }
 
 export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
@@ -58,14 +64,20 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   parent.add(torso);
 
   kit.blob(parent, m.cream, [0.3, 0.42, 0.22], [0, -0.94, 0.27]); // bib
+  const paw = new Group();
+  paw.position.set(...SHOULDER);
+  parent.add(paw);
   for (const side of [-1, 1]) {
     kit.blob(parent, m.caramel, [0.32, 0.36, 0.44], [side * 0.46, -1.6, 0.02]); // haunch
     kit.blob(parent, m.cream, [0.15, 0.085, 0.2], [side * 0.6, -1.9, 0.16]); // hind paw
+    // The screen-right leg hangs from the shoulder pivot (positions made relative to it).
+    const holder = side === 1 ? paw : parent;
+    const [ox, oy, oz] = side === 1 ? SHOULDER : [0, 0, 0];
     const leg = new Mesh(new CapsuleGeometry(0.14, 0.46, 12, 32), m.caramel);
-    leg.position.set(side * 0.22, -1.55, 0.49);
+    leg.position.set(side * 0.22 - ox, -1.55 - oy, 0.49 - oz);
     leg.rotation.x = -0.15; // top rounds into the chest as a shoulder, paw forward
-    parent.add(leg);
-    kit.blob(parent, m.cream, [0.17, 0.11, 0.21], [side * 0.22, -1.88, 0.55]); // front paw
+    holder.add(leg);
+    kit.blob(holder, m.cream, [0.17, 0.11, 0.21], [side * 0.22 - ox, -1.88 - oy, 0.55 - oz]); // front paw
   }
 
   const collar = new Mesh(new TorusGeometry(0.37, 0.066, 24, 96), m.collar);
@@ -82,7 +94,7 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   tail.scale.setScalar(1.25);
   parent.add(tail);
 
-  return { torso, tag, heart, tail };
+  return { torso, tag, heart, tail, paw };
 }
 
 /** A gold disc on a ring with a small ark crescent and a glowing heart-light on it. */
