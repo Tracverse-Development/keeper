@@ -70,7 +70,9 @@ PY
 
 gh release upload "$tag" -R "$repo" --clobber "$out"/*.dmg "$out"/*.app.tar.gz "$out"/*.app.tar.gz.sig "$out/latest.json"
 
-for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
+# The platforms this release must carry signed (default both Macs; add windows-x86_64 and
+# linux-x86_64 once the in-house build host makes them): REQUIRE="..." to change.
+for p in ${REQUIRE:-darwin-aarch64 darwin-x86_64}; do
   python3 -c "import json,sys;f=json.load(open('$out/latest.json'));sys.exit(0 if f['platforms'].get('$p',{}).get('signature') else 1)" || { echo "latest.json lacks $p; left as a draft"; exit 1; }
 done
 if [ "${NO_PUBLISH:-}" = "1" ]; then echo "uploaded; $tag left as a draft"; exit 0; fi
