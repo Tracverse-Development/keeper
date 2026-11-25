@@ -8,15 +8,20 @@ import { SKINS } from '../skins/catalog.ts';
 import { DEFAULT_WEARABLES, PARTS, SLOT_IDS, findPart, fitsSpecies, resolveWearables } from './catalog.ts';
 import { resolveEffects } from './effects.ts';
 
-test('the built-in parts: Memory Halo, Ark Hull, Star Aura, one per slot', () => {
+test('the built-in parts: one per slot, floating (halo, hull, aura) and worn (jacket, scarf, cap, pack)', () => {
   assert.deepEqual(
     PARTS.map((part) => [part.id, part.slot]),
     [
       ['memory-halo', 'halo'],
       ['ark-hull', 'base'],
       ['star-aura', 'aura'],
+      ['ark-jacket', 'torso'],
+      ['knit-scarf', 'neck'],
+      ['crew-cap', 'head'],
+      ['trail-pack', 'back'],
     ],
   );
+  assert.deepEqual([...new Set(PARTS.map((p) => p.slot))].sort(), [...SLOT_IDS].sort(), 'every slot has a part');
 });
 
 test('every row is well formed: kebab id, name, known slot, species, effects schema', () => {
@@ -48,6 +53,17 @@ test('the effects named in the brief exist', () => {
   assert.deepEqual(Object.keys(findPart('memory-halo')!.effects), ['color', 'spinIdle', 'spinWork', 'nodes']);
   assert.deepEqual(Object.keys(findPart('ark-hull')!.effects), ['color', 'rock']);
   assert.deepEqual(Object.keys(findPart('star-aura')!.effects), ['color', 'count', 'speed']);
+  assert.deepEqual(Object.keys(findPart('ark-jacket')!.effects), ['color', 'trim', 'sway']);
+  assert.deepEqual(Object.keys(findPart('knit-scarf')!.effects), ['color', 'stripe', 'sway']);
+  assert.deepEqual(Object.keys(findPart('crew-cap')!.effects), ['color', 'trim']);
+  assert.deepEqual(Object.keys(findPart('trail-pack')!.effects), ['color', 'trim', 'sway']);
+});
+
+test('the new wearables default to brand colours (tokens.css)', () => {
+  const brand = new Set(['#151c33', '#1e2848', '#2a3760', '#d39744', '#e3b06a', '#f0c98a', '#b57b2c', '#f4eee2', '#fbf8f2']);
+  for (const id of ['ark-jacket', 'knit-scarf', 'crew-cap', 'trail-pack']) {
+    for (const [key, spec] of Object.entries(findPart(id)!.effects)) if (spec.kind === 'colour') assert.ok(brand.has(spec.default), `${id}.${key}`);
+  }
 });
 
 test('DEFAULT_WEARABLES is the shipped look: Memory Halo and Ark Hull, no effects', () => {

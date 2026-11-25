@@ -1,15 +1,15 @@
 /**
- * Settings: THIS keeper (its name, look, brain and model) and everything shared (acting on the
+ * Settings: THIS keeper (its name, soul, role, body, wardrobe, brain and model) and everything shared (acting on the
  * computer, voice, the keeper button, the phone link, updates). Each section saves on change; a
  * keeper answers a brain change in its own voice (the dashboard speaks it).
  */
 import { useState } from 'react';
 
 import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, type KitCatalog, type Settings, type SettingsChange } from '../kernel/ipc';
-import { OutfitSection } from '../keepers/OutfitSection';
 import { ShareSection } from '../keepers/ShareSection';
 import { ShowingSection } from './ShowingSection';
 import { SoulSection } from '../keepers/SoulSection';
+import { WardrobeSection } from '../keepers/WardrobeSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
@@ -75,9 +75,11 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClo
           </div>
         )}
 
-        <p className="eyebrow">Body and outfit</p>
+        <p className="eyebrow">Body</p>
         <LookSection value={keeper.skin} onPick={(skin) => onKeeperChange({ skin })} />
-        {kit && <OutfitSection kit={kit} species={keeper.skin} wearables={keeper.wearables} onChange={(wearables) => onKeeperChange({ wearables })} />}
+
+        <p className="eyebrow">Wardrobe: what {keeper.name} wears</p>
+        <WardrobeSection open={open} keeper={keeper} onChanged={() => onKitChanged()} />
 
         <p className="eyebrow">{keeper.name}'s brain</p>
         {open && <EnginePicker value={keeper.brain} model={keeper.model} onPick={(brain, model) => onKeeperChange(brain === keeper.brain ? { model } : { brain, model })} />}

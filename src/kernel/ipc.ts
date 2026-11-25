@@ -8,6 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
 export const EVENTS = {
@@ -26,6 +27,7 @@ export const EVENTS = {
 } as const;
 
 export type * from './ipc-types';
+export type * from './ipc-wardrobe';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -37,6 +39,11 @@ export const core = {
   saveSoul: (soul: Soul) => invoke<Soul>('souls_save', { soul }),
   exportPack: (kind: 'keeper' | 'soul', id: string) => invoke<string>('pack_export', { kind, id }),
   importPack: (text: string) => invoke<Imported>('pack_import', { text }),
+  wardrobe: () => invoke<Wardrobe>('wardrobe_list'),
+  wardrobeWear: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_wear', { keeper, item }),
+  wardrobeTakeOff: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_take_off', { keeper, item }),
+  wardrobeGive: (item: string, from: string, to: string, mode: GiveMode) => invoke<Wardrobe>('wardrobe_give', { item, from, to, mode }),
+  wardrobeAdd: (item: NewWardrobeItem) => invoke<Wardrobe>('wardrobe_add', { ...item }),
   systemLoad: () => invoke<SystemLoad>('system_load'),
   activateKeeper: (id: string) => invoke<KeeperList>('keepers_activate', { id }),
   updateKeeper: (id: string, change: KeeperChange) => invoke<KeeperSaved>('keepers_update', { id, change }),

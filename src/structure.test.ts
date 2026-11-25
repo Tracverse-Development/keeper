@@ -91,3 +91,13 @@ test('parts: the core and the character list the same parts, slots, effects and 
     assert.deepEqual(fromRust[p.id].effects, ts, `${p.id} effects`);
   }
 });
+
+test('slots: the core and the character list the same slots (in order, with their kind) and each species offers the same ones', async () => {
+  const { SLOTS } = await import('./character/parts/slots.ts');
+  const { SKINS } = await import('./character/skins/catalog.ts');
+  const rustSlots = [...readFileSync(join(core, 'keepers/kit/slots.rs'), 'utf8').matchAll(/Slot \{ id: "([^"]+)", name: "[^"]+", kind: "([^"]+)" \}/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(rustSlots, SLOTS.map((s: { id: string; kind: string }) => [s.id, s.kind]), 'slots differ');
+  const rustSpecies = Object.fromEntries([...readFileSync(join(core, 'keepers/kit/species.rs'), 'utf8').matchAll(/Species \{ id: "([^"]+)", name: "[^"]+", slots: &\[([^\]]*)\] \}/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1]).sort()]));
+  assert.deepEqual(Object.keys(rustSpecies).sort(), SKINS.map((s: { id: string }) => s.id).sort(), 'species differ');
+  for (const skin of SKINS as unknown as readonly { id: string; slots: Record<string, unknown> }[]) assert.deepEqual(rustSpecies[skin.id], Object.keys(skin.slots).sort(), `${skin.id} slots`);
+});

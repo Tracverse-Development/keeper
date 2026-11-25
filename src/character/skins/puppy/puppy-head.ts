@@ -15,9 +15,10 @@
 import { Group, Mesh, SphereGeometry, type Object3D } from 'three';
 import { addPuppyEyes, type PuppyEyes } from './puppy-eyes';
 import type { PuppyKit } from './puppy-kit';
+import { PUPPY_SKULL } from './puppy-shape';
 
 /** Skull half-extents (x wide, y tall, z deep). */
-export const SKULL = [0.86, 0.76, 0.78] as const;
+export const SKULL = PUPPY_SKULL;
 const EAR = { thickness: 0.09, length: 0.58, width: 0.33, pivotX: 0.62, pivotY: 0.42, pivotZ: 0.06 };
 const JAW_HINGE = [0, -0.33, 0.52] as const;
 /** Largest jaw opening (radians) and how far the tongue slides out at full `tongue`. */

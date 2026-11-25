@@ -1,0 +1,42 @@
+/* The Wardrobe section (keeper settings): preview, slot tabs, item grid. Tokens only. */
+.wardrobe { display: flex; flex-direction: column; gap: 12px; }
+.wardrobe-top { display: grid; grid-template-columns: 196px 1fr; gap: 14px; align-items: start; }
+.wardrobe-preview { position: relative; height: 248px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--bg-deep); }
+.wardrobe-stage { position: absolute; inset: 0; }
+.wardrobe-caption { position: absolute; left: 10px; right: 10px; bottom: 8px; font-size: 11.5px; color: var(--gold-300); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.wardrobe-side { display: flex; flex-direction: column; gap: 10px; }
+.wardrobe-side p { margin: 0; line-height: 1.5; }
+.wardrobe-slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.wardrobe-slot { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); font-size: 13px; transition: border-color 200ms var(--ease), background 200ms var(--ease); }
+.wardrobe-slot:hover { border-color: var(--border-strong); }
+.wardrobe-slot.is-on { border-color: var(--gold-500); background: var(--accent-soft); color: var(--cream-50); }
+.wardrobe-slot.is-missing { color: var(--text-muted); border-style: dashed; }
+.wardrobe-slot .dot { width: 6px; height: 6px; }
+.wardrobe-missing { margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px dashed var(--border-strong); color: var(--gold-300); font-size: 13px; }
+.wardrobe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wardrobe-item { display: flex; flex-direction: column; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+  transition: border-color 220ms var(--ease), background 220ms var(--ease); }
+.wardrobe-item:hover { border-color: var(--border-strong); }
+.wardrobe-item.is-worn { border-color: var(--border-strong); }
+.wardrobe-item.is-picked { grid-column: span 3; border-color: var(--gold-500); box-shadow: 0 0 0 4px var(--accent-soft); }
+.wardrobe-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; border: 0; background: transparent; cursor: pointer; text-align: left; }
+.wardrobe-pick:focus-visible { outline: 2px solid var(--gold-400); outline-offset: -2px; border-radius: var(--radius); }
+.wardrobe-pick strong { color: var(--cream-50); font-size: 13.5px; }
+.wardrobe-swatches { display: flex; gap: 4px; }
+.wardrobe-swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.wardrobe-tags { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+.wardrobe-tag { font-size: 10px; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 650; padding: 4px 7px;
+  border-radius: 999px; color: var(--gold-300); background: var(--accent-soft); }
+.wardrobe-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 14px 12px; }
+.wardrobe-give { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 240px; }
+.wardrobe .field { height: 36px; padding: 0 12px; font-size: 13px; }
+.wardrobe-give .field { flex: 1; }
+.wardrobe .btn-small { height: 34px; padding: 0 14px; font-size: 13px; }
+.wardrobe-make-open { align-self: flex-start; font-size: 13px; }
+.wardrobe-make { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
+.wardrobe-make .wardrobe-actions { padding: 0; }
+.wardrobe-colours { display: flex; gap: 14px; flex-wrap: wrap; }
+.wardrobe-colour { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.wardrobe-colour input { width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: none; cursor: pointer; }

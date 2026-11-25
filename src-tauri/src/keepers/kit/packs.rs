@@ -1,7 +1,8 @@
 //! Packs: shareable `.keeper.json` files. Data only, never code: a pack carries a soul, a part
 //! variant, or a whole keeper (name, species, role, soul, outfit), never memories. Everything is
 //! validated on the way in (`read`): known format, known species/role/parts, effects in range,
-//! text cleaned and capped, file size bounded.
+//! text cleaned and capped, file size bounded. Wardrobe items travel as data only: a keeper's
+//! outfit carries each part and its effect values, never references into the sender's wardrobe.
 
 use serde::{Deserialize, Serialize};
 
@@ -13,13 +14,36 @@ pub const FORMAT: &str = "keeper-pack/1";
 /// A pack is small text; anything bigger is not a pack.
 pub const MAX_BYTES: usize = 64 * 1024;
 
-/// A part with its own effect values and name ("Ruby Halo").
+/// A part with its own effect values and name ("Ruby Halo"): an item in the person's wardrobe.
+/// One of a kind = a single physical item (one keeper wears it at a time); otherwise a design
+/// any number of keepers can wear (`wardrobe.rs`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variant {
     pub id: String,
     pub name: String,
     #[serde(flatten)]
     pub worn: WornPart,
+    #[serde(default, rename = "oneOfAKind", skip_serializing_if = "std::ops::Not::not")]
+    pub one_of_a_kind: bool,
+}
+
+/// The id a wardrobe item or variant takes from its name ("Trini's Jacket" → "trini-s-jacket").
+pub fn slug(s: &str) -> String {
+    s.to_lowercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect::<String>().split('-').filter(|p| !p.is_empty()).collect::<Vec<_>>().join("-").chars().take(40).collect()
+}
+
+/// A name cleaned for display: single spaces, at most 40 characters; empty is refused.
+pub fn clean_name(name: &str) -> Result<String, String> {
+    let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(40).collect();
+    if name.is_empty() || slug(&name).is_empty() {
+        return Err("A wardrobe item needs a name.".into());
+    }
+    Ok(name)
+}
+
+/// An outfit as data only: wardrobe references stripped (they name items in someone's wardrobe).
+pub fn data_only(worn: &[WornPart]) -> Vec<WornPart> {
+    worn.iter().map(|w| WornPart { item: None, ..w.clone() }).collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -41,10 +65,6 @@ pub enum Pack {
     Keeper { format: String, keeper: KeeperBlueprint },
 }
 
-fn slug(s: &str) -> String {
-    s.to_lowercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect::<String>().split('-').filter(|p| !p.is_empty()).collect::<Vec<_>>().join("-").chars().take(40).collect()
-}
-
 /// Read and validate a pack file's text.
 pub fn read(text: &str) -> Result<Pack, String> {
     if text.len() > MAX_BYTES {
@@ -59,13 +79,9 @@ pub fn read(text: &str) -> Result<Pack, String> {
         }
         Pack::Variant { format, variant } => {
             format_ok(&format)?;
-            let worn = parts::check(&variant.worn, "any-species")
-                .or_else(|_| species::SPECIES.iter().find_map(|s| parts::check(&variant.worn, s.id).ok()).ok_or_else(|| format!("There is no part called {}.", variant.worn.part)))?;
-            let name: String = variant.name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(40).collect();
-            if name.is_empty() {
-                return Err("A part variant needs a name.".into());
-            }
-            Ok(Pack::Variant { format, variant: Variant { id: slug(&name), name, worn } })
+            let worn = WornPart { item: None, ..parts::check_effects(&variant.worn)? };
+            let name = clean_name(&variant.name).map_err(|_| "A part variant needs a name.".to_string())?;
+            Ok(Pack::Variant { format, variant: Variant { id: slug(&name), name, worn, one_of_a_kind: variant.one_of_a_kind } })
         }
         Pack::Keeper { format, keeper } => {
             format_ok(&format)?;
@@ -80,7 +96,7 @@ pub fn read(text: &str) -> Result<Pack, String> {
                 return Err("The keeper in this pack has an unusable name.".into());
             }
             let soul = if keeper.soul.builtin && souls::builtin().iter().any(|b| b.id == keeper.soul.id) { keeper.soul } else { souls::sanitize(&keeper.soul)? };
-            Ok(Pack::Keeper { format, keeper: KeeperBlueprint { name, wearables: parts::check_outfit(&keeper.wearables, &keeper.species)?, species: keeper.species, role: keeper.role, soul } })
+            Ok(Pack::Keeper { format, keeper: KeeperBlueprint { name, wearables: data_only(&parts::check_outfit(&keeper.wearables, &keeper.species)?), species: keeper.species, role: keeper.role, soul } })
         }
     }
 }
@@ -113,5 +129,22 @@ mod tests {
         let v = read(&json!({"kind": "variant", "format": FORMAT, "variant": {"id": "x", "name": "Ruby Halo", "part": "memory-halo", "effects": {"spinWork": 50}}}).to_string()).unwrap();
         let Pack::Variant { variant, .. } = v else { panic!() };
         assert_eq!((variant.id.as_str(), variant.worn.effects.get("spinWork")), ("ruby-halo", Some(&json!(8.0))));
+    }
+
+    #[test]
+    fn wardrobe_items_travel_as_data_only() {
+        let text = json!({"kind": "keeper", "format": FORMAT, "keeper": {"name": "Pup", "species": "puppy", "role": "companion",
+            "soul": {"id": "sunny-pup", "name": "Sunny Pup", "builtin": true},
+            "wearables": [{"part": "ark-jacket", "item": "kit:trini-jacket", "effects": {"color": "#151c33"}}, {"part": "trail-pack", "item": "part:trail-pack"}]}}).to_string();
+        let Pack::Keeper { keeper, .. } = read(&text).unwrap() else { panic!() };
+        assert_eq!(keeper.wearables.len(), 2);
+        assert!(keeper.wearables.iter().all(|w| w.item.is_none()), "{:?}", keeper.wearables);
+        assert_eq!(keeper.wearables.iter().find(|w| w.part == "ark-jacket").unwrap().effects.get("color"), Some(&json!("#151c33")));
+        let two_in_one_slot = json!({"kind": "keeper", "format": FORMAT, "keeper": {"name": "Pup", "species": "puppy", "role": "companion",
+            "soul": {"id": "sunny-pup", "name": "Sunny Pup", "builtin": true}, "wearables": [{"part": "crew-cap"}, {"part": "crew-cap"}]}}).to_string();
+        assert!(read(&two_in_one_slot).is_err());
+        let one = json!({"kind": "variant", "format": FORMAT, "variant": {"id": "x", "name": "Trini's Jacket", "part": "ark-jacket", "oneOfAKind": true, "item": "kit:zzz"}}).to_string();
+        let Pack::Variant { variant, .. } = read(&one).unwrap() else { panic!() };
+        assert!(variant.one_of_a_kind && variant.worn.item.is_none() && variant.id == "trini-s-jacket");
     }
 }

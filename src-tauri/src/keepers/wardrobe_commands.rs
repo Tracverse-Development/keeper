@@ -1,0 +1,120 @@
+//! The wardrobe's commands: list the person's wardrobe (every item, which keepers wear it, which
+//! bodies offer which slots), put an item on a keeper or take it off, give it to another keeper
+//! (move or share), and make a new item of your own (saved to the kit graph on the DKG). The rules
+//! live in `kit::wardrobe` (pure); here the items are read from the node and the keepers' outfits
+//! saved to settings (only `wearables` changes, so nothing else a keeper holds is touched).
+
+use std::collections::BTreeMap;
+
+use serde::Serialize;
+use tauri::State;
+
+use super::kit::packs::{self, Variant};
+use super::kit::wardrobe::{self, Give, Item};
+use super::kit::{inventory, parts, slots, species};
+use crate::kernel::settings::KeeperProfile;
+use crate::kernel::{DeskError, Result};
+use crate::state::AppState;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Listed {
+    #[serde(flatten)]
+    pub item: Item,
+    /// Keeper ids wearing it.
+    pub worn_by: Vec<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeeperBody {
+    pub id: String,
+    pub name: String,
+    pub species: String,
+    /// The slots its body offers.
+    pub slots: Vec<&'static str>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Wardrobe {
+    pub slots: &'static [slots::Slot],
+    pub items: Vec<Listed>,
+    pub keepers: Vec<KeeperBody>,
+    /// False when the memory node could not be read: only the built-in items are listed.
+    pub complete: bool,
+}
+
+/// The person's own items from the kit graph, and whether the node answered.
+async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
+    let Ok(client) = state.client() else { return (vec![], false) };
+    match inventory::kit(&client).await {
+        Ok(graph) => match inventory::variants(&client, &graph).await {
+            Ok(v) => (v, true),
+            Err(_) => (vec![], false),
+        },
+        Err(_) => (vec![], false),
+    }
+}
+
+fn listing(items: Vec<Item>, keepers: &[KeeperProfile], complete: bool) -> Wardrobe {
+    let listed = items.iter().map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items) }).collect();
+    let bodies = keepers
+        .iter()
+        .map(|k| KeeperBody { id: k.id.clone(), name: k.name.clone(), species: k.skin.clone(), slots: species::get(&k.skin).map(|s| s.slots.to_vec()).unwrap_or_default() })
+        .collect();
+    Wardrobe { slots: slots::SLOTS, items: listed, keepers: bodies, complete }
+}
+
+/// Runs a wardrobe rule over the keepers and saves each keeper's new outfit.
+async fn change(state: &AppState, item: &str, rule: impl FnOnce(&mut Vec<KeeperProfile>, &Item, &[Item]) -> std::result::Result<(), String>) -> Result<Wardrobe> {
+    let (own, complete) = own_items(state).await;
+    let items = wardrobe::items(&own);
+    let chosen = items.iter().find(|i| i.id == item).cloned().ok_or_else(|| DeskError::Invalid("That isn't in your wardrobe.".into()))?;
+    let mut keepers = state.settings().keepers;
+    rule(&mut keepers, &chosen, &items).map_err(DeskError::Invalid)?;
+    let saved = state.update_settings(|s| {
+        for k in s.keepers.iter_mut() {
+            if let Some(changed) = keepers.iter().find(|c| c.id == k.id) {
+                k.wearables = changed.wearables.clone();
+            }
+        }
+    })?;
+    Ok(listing(items, &saved.keepers, complete))
+}
+
+#[tauri::command]
+pub async fn wardrobe_list(state: State<'_, AppState>) -> Result<Wardrobe> {
+    let (own, complete) = own_items(&state).await;
+    Ok(listing(wardrobe::items(&own), &state.settings().keepers, complete))
+}
+
+#[tauri::command]
+pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: String) -> Result<Wardrobe> {
+    change(&state, &item, |keepers, chosen, items| wardrobe::wear(keepers, &keeper, chosen, items)).await
+}
+
+#[tauri::command]
+pub async fn wardrobe_take_off(state: State<'_, AppState>, keeper: String, item: String) -> Result<Wardrobe> {
+    change(&state, &item, |keepers, chosen, items| wardrobe::take_off(keepers, &keeper, chosen, items)).await
+}
+
+/// `mode`: "move" (the giver takes it off) or "share" (both wear it; designs only).
+#[tauri::command]
+pub async fn wardrobe_give(state: State<'_, AppState>, item: String, from: String, to: String, mode: String) -> Result<Wardrobe> {
+    let how = Give::parse(&mode).ok_or_else(|| DeskError::Invalid("Choose to move it or share it.".into()))?;
+    change(&state, &item, |keepers, chosen, items| wardrobe::give(keepers, chosen, &from, &to, how, items)).await
+}
+
+/// Make a new item of your own from a part and effect values (validated: known part, effects in
+/// range, a short name). Saving an existing name again is that item's next version.
+#[tauri::command]
+pub async fn wardrobe_add(state: State<'_, AppState>, name: String, part: String, effects: BTreeMap<String, serde_json::Value>, one_of_a_kind: bool) -> Result<Wardrobe> {
+    let name = packs::clean_name(&name).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None }).map_err(DeskError::Invalid)?;
+    let variant = Variant { id: packs::slug(&name), name, worn, one_of_a_kind };
+    let client = state.client()?;
+    inventory::save_variant(&client, &inventory::kit(&client).await?, &variant).await?;
+    let (own, complete) = own_items(&state).await;
+    Ok(listing(wardrobe::items(&own), &state.settings().keepers, complete))
+}

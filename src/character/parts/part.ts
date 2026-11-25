@@ -5,11 +5,13 @@
  * Pattern: Strategy (like skins). The wardrobe attaches a part's `group` in its slot (it owns
  * the placement and the grow/shrink swap, never the part's own transforms) and hands it one
  * `PartFrame` per frame; what those dials MEAN (spin faster, ripple faster, glow) is the
- * part's business. Effects arrive already resolved and clamped (`effects.ts`).
+ * part's business. Effects arrive already resolved and clamped (`effects.ts`); worn parts also
+ * get the body's shape at their slot (`fit.ts`) and build themselves to it (Adapter).
  */
 import type { Group, Vector3 } from 'three';
 import type { MoodParams, MotionProfile } from '../moods';
 import type { EffectValues } from './effects';
+import type { PartFit } from './fit';
 
 /** Everything the wardrobe hands a part in one frame (eased values only). */
 export interface PartFrame {
@@ -54,5 +56,8 @@ export interface PartInstance {
   dispose(): void;
 }
 
-/** Builds a part with resolved effects; `random` is injectable for deterministic tests. */
-export type PartFactory = (effects: EffectValues, random?: () => number) => PartInstance;
+/**
+ * Builds a part with resolved effects, fitted to the body it is worn on (`fit.shape` is present
+ * for worn slots; floating parts ignore it). A factory reads the shape, never the species id.
+ */
+export type PartFactory = (effects: EffectValues, fit: PartFit) => PartInstance;

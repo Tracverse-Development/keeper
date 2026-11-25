@@ -45,7 +45,7 @@ export function createRobotSkin(): Skin {
   const embers = createRobotEmbers();
   body.root.add(embers.group);
   const thinking = addRobotThinking(body.head);
-  const slots = addSlotAnchors(body.root, slotsOf('robot'));
+  const slots = addSlotAnchors(body.root, slotsOf('robot'), { body: body.body, head: body.head });
 
   const headProxy = addHitProxy(body.head, {
     radii: [HEAD_RADII.x * 1.18, HEAD_RADII.y * 1.04, HEAD_RADII.z * 1.04],

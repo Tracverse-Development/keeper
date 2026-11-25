@@ -24,3 +24,13 @@
 - **Context:** A shell test said Claude Code took 4.7 s cold and 0.93 s warm, which suggested a 5x win from warm processes. Through Keeper's own code the gain was about 0.3 s: the shell runs included 3 s the CLI spends waiting for stdin when it is started with a prompt argument and an open stdin. The real costs were the model's first token (2.0 s main model, 1.0 s Haiku), recall (85 ms) and DKG writes before the reply (55 ms each).
 - **Lesson:** Speed claims come from the app's own path with its own timings (`TurnResult.timings`), repeated over several rounds, never from a lookalike shell command.
 - **Rule added:** `scripts/bench/run.sh` drives an isolated real Keeper through its test link and reports first words and done per turn; every speed change is judged by it.
+
+### LES-006 — A wearable reads the body's shape, never the species (2026-11-25)
+- **Context:** The founder wants anything one keeper can wear (a jacket) to work on another. Slots held three floating parts placed by anchor position only; anything worn ON a body would have needed per-species code (a robot jacket, a dog jacket).
+- **Lesson:** Make the body publish what a garment needs (the surface rings at the slot, depth, squareness, reach, lean, limbs) and make every wearable an Adapter over that shape. Take the measurements from the SAME constants the rig is built from (one `<species>-shape.ts` per species), or the published shape drifts from the body it describes.
+- **Rule added:** Worn slots carry `follow` + `shape` (`skins/catalog.ts`); parts get `PartFit` and never branch on the species id; `wearables-fit.test.ts` builds every worn part on every body offering its slot (and a made-up boxy one) and fails if anything sinks in or floats off.
+
+### LES-007 — A worktree's dev server needs its own dependency cache (2026-11-25)
+- **Context:** A preview served from this worktree answered `504 Outdated Optimize Dep` and logged reloads for files from another worktree: `node_modules` is a link into the main checkout, so `node_modules/.vite` is shared by every worktree's Vite at once.
+- **Lesson:** Two Vite servers on one shared `node_modules/.vite` re-optimise each other's dependencies. Any throwaway preview server in a worktree sets its own `cacheDir`.
+- **Rule added:** Previews under `misc/` start Vite with a config whose `cacheDir` is inside the preview folder.

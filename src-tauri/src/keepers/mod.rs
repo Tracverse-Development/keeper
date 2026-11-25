@@ -9,6 +9,7 @@
 
 pub mod kit;
 pub mod kit_commands;
+pub mod wardrobe_commands;
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};

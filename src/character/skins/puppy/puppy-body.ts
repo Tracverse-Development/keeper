@@ -24,26 +24,14 @@ import {
   type Object3D,
 } from 'three';
 import type { PuppyKit } from './puppy-kit';
+import { PUPPY_COLLAR, PUPPY_FRONT_LEG, PUPPY_NECK_Y, PUPPY_SEAT_Y, PUPPY_TORSO_DEPTH, PUPPY_TORSO_PROFILE } from './puppy-shape';
 
-/** World height of the neck (top of the torso) and of the seat. */
-export const NECK_Y = -0.5;
-const SEAT_Y = -1.95;
+/** The rig's measurements live in `puppy-shape.ts` (shared with the anchors wearables fit). */
+const NECK_Y = PUPPY_NECK_Y;
+const SEAT_Y = PUPPY_SEAT_Y;
+const LEG = PUPPY_FRONT_LEG;
 /** The waving leg's shoulder (body space): the top of the screen-right front leg. */
-const SHOULDER = [0.22, -1.24, 0.46] as const;
-
-/** Torso silhouette as (radius, height above the seat). */
-const TORSO_PROFILE: readonly [number, number][] = [
-  [0.001, 0],
-  [0.4, 0.02],
-  [0.62, 0.12],
-  [0.7, 0.34],
-  [0.66, 0.6],
-  [0.56, 0.88],
-  [0.47, 1.12],
-  [0.42, 1.3],
-  [0.33, 1.44],
-  [0.001, 1.5],
-];
+const SHOULDER = [LEG.x, -1.24, 0.46] as const;
 
 export interface PuppyBody {
   readonly torso: Mesh;
@@ -56,11 +44,11 @@ export interface PuppyBody {
 
 export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   const m = kit.materials;
-  const curve = new SplineCurve(TORSO_PROFILE.map(([r, y]) => new Vector2(r, y)));
+  const curve = new SplineCurve(PUPPY_TORSO_PROFILE.map(([r, y]) => new Vector2(r, y)));
   const outline = curve.getSpacedPoints(96).map((p) => new Vector2(Math.max(p.x, 0.001), p.y));
   const torso = new Mesh(new LatheGeometry(outline, 96), m.caramel);
   torso.position.y = SEAT_Y;
-  torso.scale.z = 0.88;
+  torso.scale.z = PUPPY_TORSO_DEPTH;
   parent.add(torso);
 
   kit.blob(parent, m.cream, [0.3, 0.42, 0.22], [0, -0.94, 0.27]); // bib
@@ -73,16 +61,16 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
     // The screen-right leg hangs from the shoulder pivot (positions made relative to it).
     const holder = side === 1 ? paw : parent;
     const [ox, oy, oz] = side === 1 ? SHOULDER : [0, 0, 0];
-    const leg = new Mesh(new CapsuleGeometry(0.14, 0.46, 12, 32), m.caramel);
-    leg.position.set(side * 0.22 - ox, -1.55 - oy, 0.49 - oz);
-    leg.rotation.x = -0.15; // top rounds into the chest as a shoulder, paw forward
+    const leg = new Mesh(new CapsuleGeometry(LEG.radius, LEG.length, 12, 32), m.caramel);
+    leg.position.set(side * LEG.x - ox, LEG.y - oy, LEG.z - oz);
+    leg.rotation.x = LEG.tilt; // top rounds into the chest as a shoulder, paw forward
     holder.add(leg);
     kit.blob(holder, m.cream, [0.17, 0.11, 0.21], [side * 0.22 - ox, -1.88 - oy, 0.55 - oz]); // front paw
   }
 
-  const collar = new Mesh(new TorusGeometry(0.37, 0.066, 24, 96), m.collar);
-  collar.position.set(0, NECK_Y - 0.02, 0.03);
-  collar.rotation.x = Math.PI / 2 + 0.3;
+  const collar = new Mesh(new TorusGeometry(PUPPY_COLLAR.radius, PUPPY_COLLAR.tube, 24, 96), m.collar);
+  collar.position.set(0, PUPPY_COLLAR.y, PUPPY_COLLAR.z);
+  collar.rotation.x = Math.PI / 2 + PUPPY_COLLAR.lean;
   parent.add(collar);
 
   const { tag, heart } = buildTag(kit);

@@ -20,17 +20,21 @@ pub enum VoiceEngine {
     Elevenlabs,
 }
 
-/// One worn part with its effect values (validated by `keepers::kit::parts::check`).
+/// One worn part with its effect values (validated by `keepers::kit::parts::check`), and the
+/// wardrobe item it was put on from (`part:<id>`, `stock:<id>` or `kit:<id>`; absent on outfits
+/// from before the wardrobe and on imported packs, which carry data only).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WornPart {
     pub part: String,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub effects: std::collections::BTreeMap<String, serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub item: Option<String>,
 }
 
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
-    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default() }).collect()
+    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")) }).collect()
 }
 
 /// One keeper: soul (who), role (what it can do), body (species + wearables) and its own graph (memory).
@@ -48,7 +52,8 @@ pub struct KeeperProfile {
     pub role: String,
     /// Its personality: a soul id (built in, or from the person's kit on the DKG).
     pub soul: String,
-    /// What it wears, slot by slot (halo, base, aura).
+    /// What it wears, slot by slot (halo, head, neck, torso, back, base, aura): references into
+    /// the person's wardrobe (`keepers::kit::wardrobe`) with the effect values worn.
     pub wearables: Vec<WornPart>,
     /// Its Context Graph: the exact id (DKG reference §2).
     pub graph_id: String,
