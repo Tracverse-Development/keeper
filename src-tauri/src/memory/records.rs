@@ -62,11 +62,13 @@ pub struct Turn {
     pub replied: String,
     pub mind: String,
     pub at: String,
+    /// The chat this turn belongs to ("" for turns from before chats existed).
+    pub chat: String,
 }
 
 impl Turn {
-    pub fn new(said: &str, replied: &str, mind: &str, at: &str) -> Turn {
-        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into() }
+    pub fn new(said: &str, replied: &str, mind: &str, at: &str, chat: &str) -> Turn {
+        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into(), chat: chat.into() }
     }
     pub fn iri(&self) -> String {
         entity("turn", &self.id)
@@ -78,12 +80,45 @@ impl Record for Turn {
         format!("desk-turn-{}", self.id)
     }
     fn quads(&self) -> Vec<Quad> {
-        AssetBuilder::new(&self.iri())
+        let b = AssetBuilder::new(&self.iri())
             .a(class::TURN)
             .a("schema:Conversation")
             .text(pred::SAID, &self.said)
             .text(pred::REPLIED, &self.replied)
             .text(pred::MIND, &self.mind)
+            .link(pred::BY, ASSISTANT)
+            .time(pred::AT, &self.at);
+        let b = if self.chat.is_empty() { b } else { b.link(pred::IN_CHAT, &entity("chat", &self.chat)) };
+        b.build()
+    }
+}
+
+/// A conversation thread: its turns link to it (`desk:inChat`), so a chat is one query away.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Chat {
+    pub id: String,
+    pub title: String,
+    pub at: String,
+}
+
+impl Chat {
+    /// A new chat named after its first message.
+    pub fn start(first_message: &str, at: &str) -> Chat {
+        let title: String = first_message.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect();
+        Chat { id: short_hash(&format!("{at}\u{0}chat\u{0}{first_message}"), 16), title, at: at.into() }
+    }
+}
+
+impl Record for Chat {
+    fn asset_name(&self) -> String {
+        format!("desk-chat-{}", self.id)
+    }
+    fn quads(&self) -> Vec<Quad> {
+        AssetBuilder::new(&entity("chat", &self.id))
+            .a(class::CHAT)
+            .a("schema:Conversation")
+            .text(pred::NAME, &self.title)
             .link(pred::BY, ASSISTANT)
             .time(pred::AT, &self.at)
             .build()

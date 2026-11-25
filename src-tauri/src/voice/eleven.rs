@@ -1,6 +1,6 @@
 //! ElevenLabs text to speech. The reply text goes to ElevenLabs (the window says so before the
 //! person turns it on); the audio comes back as MP3 and the voice helper plays it on this Mac.
-//! Only api.elevenlabs.io is ever called, and the key is read from the Keychain per call.
+//! Only api.elevenlabs.io is ever called; the key comes from Keeper's private store (`kernel::secrets`).
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -8,11 +8,10 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::kernel::{paths, DeskError, Result};
-use crate::platform;
+use crate::kernel::{paths, secrets, DeskError, Result};
 
 const API: &str = "https://api.elevenlabs.io/v1";
-/// The Keychain item name for the key.
+/// The name the key is saved under in the private store.
 pub const KEY_NAME: &str = "elevenlabs-api-key";
 /// Fast, natural, multilingual; low latency suits a conversation.
 const MODEL: &str = "eleven_flash_v2_5";
@@ -24,7 +23,7 @@ pub struct ElevenVoice {
 }
 
 fn key() -> Result<String> {
-    platform::secret_get(KEY_NAME).ok_or_else(|| DeskError::Invalid("Add your ElevenLabs key in Settings first.".into()))
+    secrets::get(KEY_NAME).ok_or_else(|| DeskError::Invalid("Add your ElevenLabs key in Settings first.".into()))
 }
 
 fn http() -> reqwest::Client {

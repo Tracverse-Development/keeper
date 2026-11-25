@@ -1,0 +1,51 @@
+# The checks on every push and pull request: typecheck, the TypeScript tests (structure guards
+# included) and the Rust tests. Release builds live in release.yml.
+name: check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -p . --noEmit
+
+      - name: TypeScript tests
+        run: find src -name '*.test.ts' -print0 | xargs -0 node --test --experimental-strip-types
+
+      # tauri-build requires the externalBin sidecar to exist, and generate_context! the built window.
+      - name: Voice helper
+        run: bash scripts/build-voice-helper.sh
+
+      - name: Window build
+        run: npx vite build
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test

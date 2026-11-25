@@ -4,7 +4,7 @@
 use std::sync::Mutex;
 
 use crate::dkg::{node, DkgClient};
-use crate::kernel::settings::Settings;
+use crate::kernel::settings::{KeeperProfile, Settings};
 use crate::kernel::{DeskError, Result};
 use crate::memory::Memory;
 use crate::phone::PhoneLink;
@@ -13,7 +13,6 @@ use crate::voice::Voice;
 
 pub struct AppState {
     pub settings: Mutex<Settings>,
-    memory: Mutex<Option<Memory>>,
     pub voice: Voice,
     pub reminders: Scheduler,
     pub phone: PhoneLink,
@@ -22,10 +21,9 @@ pub struct AppState {
 impl AppState {
     pub fn new(settings: Settings, reminders: Scheduler) -> AppState {
         let voice = Voice::new();
-        voice.set_name(&settings.assistant_name);
         voice.set_wake_required(settings.wake_word);
-        let state = AppState { settings: Mutex::new(settings), memory: Mutex::new(None), voice, reminders, phone: PhoneLink::default() };
-        state.reconnect();
+        let state = AppState { settings: Mutex::new(settings), voice, reminders, phone: PhoneLink::default() };
+        state.refresh_voice_names();
         state
     }
 
@@ -40,22 +38,38 @@ impl AppState {
         Ok(s.clone())
     }
 
-    /// Rebuild the memory connection from the saved node folder and graph id.
-    pub fn reconnect(&self) {
+    /// The wake words: every keeper's name, so "Hey <name>" reaches that keeper.
+    pub fn refresh_voice_names(&self) {
         let s = self.settings();
-        let memory = node::locate(std::path::Path::new(&s.node_home))
-            .filter(|_| !s.graph_id.is_empty())
-            .map(|loc| Memory::new(DkgClient::new(&loc), &s.graph_id));
-        if let Ok(mut m) = self.memory.lock() {
-            *m = memory;
-        }
+        self.voice.set_keepers(s.keepers.iter().map(|k| (k.id.clone(), k.name.clone())).collect(), s.active().map(|k| k.id.clone()).unwrap_or_default());
     }
 
-    pub fn memory(&self) -> Result<Memory> {
-        self.memory
-            .lock()
-            .ok()
-            .and_then(|m| m.clone())
+    /// The DKG client for the node chosen at setup.
+    pub fn client(&self) -> Result<DkgClient> {
+        node::locate(std::path::Path::new(&self.settings().node_home))
+            .map(|loc| DkgClient::new(&loc))
             .ok_or_else(|| DeskError::Node("Keeper is not connected to a memory node yet. Finish setup first.".into()))
+    }
+
+    /// A keeper's memory: its own Context Graph.
+    pub fn memory_for(&self, keeper: &KeeperProfile) -> Result<Memory> {
+        Ok(Memory::new(self.client()?, &keeper.graph_id))
+    }
+
+    pub fn active_keeper(&self) -> Result<KeeperProfile> {
+        self.settings().active().cloned().ok_or_else(|| DeskError::Invalid("There is no keeper yet. Finish setup first.".into()))
+    }
+
+    /// The keeper with this id, or the active one when the id is empty.
+    pub fn keeper_or_active(&self, id: &str) -> Result<KeeperProfile> {
+        if id.is_empty() {
+            return self.active_keeper();
+        }
+        self.settings().keeper(id).cloned().ok_or_else(|| DeskError::Invalid("There is no such keeper.".into()))
+    }
+
+    /// The active keeper's memory.
+    pub fn memory(&self) -> Result<Memory> {
+        self.memory_for(&self.active_keeper()?)
     }
 }

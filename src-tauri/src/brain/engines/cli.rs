@@ -9,22 +9,15 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 
-use crate::kernel::{paths, DeskError, Result};
+use crate::kernel::{paths, programs, DeskError, Result};
 
 /// A chat answer should come quickly; an agent doing real work on the computer may take minutes.
 pub const CHAT_TIMEOUT: Duration = Duration::from_secs(180);
 pub const ACT_TIMEOUT: Duration = Duration::from_secs(900);
 
-/// The program on PATH or in the places CLIs usually install to.
+/// The program on PATH or in the places CLIs usually install to (any OS).
 pub fn program(name: &str) -> Option<PathBuf> {
-    let mut dirs: Vec<PathBuf> = std::env::var("PATH").unwrap_or_default().split(':').map(PathBuf::from).collect();
-    if let Some(home) = dirs::home_dir() {
-        dirs.push(home.join(".local/bin"));
-        dirs.push(home.join(".npm-global/bin"));
-        dirs.push(home.join(".bun/bin"));
-    }
-    dirs.extend(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from));
-    dirs.into_iter().map(|d| d.join(name)).find(|p| p.is_file())
+    programs::find(name)
 }
 
 /// Where an engine works: the person's home when it may act, else a quiet folder of the app's own.
@@ -39,16 +32,6 @@ pub fn workdir(may_act: bool) -> PathBuf {
     dir
 }
 
-/// PATH for the child: a GUI app starts with a bare PATH, but CLIs need node, git and friends.
-fn child_path() -> String {
-    let mut parts = vec![std::env::var("PATH").unwrap_or_default()];
-    if let Some(home) = dirs::home_dir() {
-        parts.push(home.join(".local/bin").display().to_string());
-    }
-    parts.extend(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].map(String::from));
-    parts.join(":")
-}
-
 pub struct Run {
     pub success: bool,
     pub stdout: String,
@@ -60,7 +43,7 @@ pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration,
     let mut child = Command::new(program)
         .args(args)
         .current_dir(cwd)
-        .env("PATH", child_path())
+        .env("PATH", programs::child_path(None))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

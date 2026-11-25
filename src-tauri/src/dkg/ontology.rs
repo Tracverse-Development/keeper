@@ -33,6 +33,8 @@ pub mod class {
     pub const REMINDER: &str = "desk:Reminder";
     /// A fact the person asked the assistant to forget (writes are additive; see memory::forget).
     pub const RETRACTION: &str = "desk:Retraction";
+    /// A conversation thread; turns link to it.
+    pub const CHAT: &str = "desk:Chat";
     /// The person this memory graph belongs to.
     pub const PERSON: &str = "schema:Person";
     /// The assistant itself.
@@ -53,6 +55,7 @@ pub mod pred {
     pub const SUCCEEDED: &str = "desk:succeeded";
     pub const DUE_AT: &str = "desk:dueAt";
     pub const RETRACTS: &str = "desk:retracts";
+    pub const IN_CHAT: &str = "desk:inChat";
     pub const ABOUT: &str = "schema:about";
     pub const AT: &str = "prov:generatedAtTime";
     pub const BY: &str = "prov:wasAttributedTo";

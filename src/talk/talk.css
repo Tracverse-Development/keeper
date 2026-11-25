@@ -1,0 +1,44 @@
+/* The talk window (480×150, borderless, always on top, square): one dark card filling it edge to
+   edge, the glowing mark on the left, the words on the right. Navy all the way down so there is
+   never a white flash, and nothing scrolls. Tokens only. */
+html:has(.talk), html:has(.talk) body, html:has(.talk) #root { background: var(--navy-900); overflow: hidden; }
+
+.talk { position: fixed; inset: 0; display: flex; align-items: center; gap: 18px; padding: 14px 22px 14px 18px; overflow: hidden;
+  background: radial-gradient(140% 160% at 0% 50%, var(--navy-600) 0%, var(--navy-800) 45%, var(--navy-900) 100%);
+  -webkit-app-region: drag; cursor: default; }
+.talk::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--border), inset 0 1px 0 color-mix(in srgb, var(--cream-50) 8%, transparent); }
+
+/* ---------- the orb ---------- */
+.talk-orb { --glow: 0.3; position: relative; flex: none; width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gold-500) calc(var(--glow) * 40%), transparent) 0%, transparent 70%);
+  transition: background 120ms linear; }
+.talk-mark { position: relative; z-index: 1; transform: scale(calc(0.94 + var(--glow) * 0.12)); transition: transform 120ms linear;
+  filter: drop-shadow(0 0 calc(var(--glow) * 18px) var(--gold-400)); }
+.talk-ring { position: absolute; inset: 10px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--gold-300) 45%, transparent); opacity: 0; }
+.talk.is-listening .talk-ring { animation: talk-ripple 2.4s var(--ease) infinite; }
+.talk.is-listening .talk-ring.r2 { animation-delay: 1.2s; }
+.talk.is-thinking .talk-orb { animation: talk-breathe 1.8s ease-in-out infinite; }
+.talk.is-speaking .talk-mark { animation: talk-speak 0.9s ease-in-out infinite; }
+
+/* ---------- the words ---------- */
+.talk-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.talk-label { margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.16em;
+  font-size: 10.5px; font-weight: 650; color: var(--gold-400); }
+.talk-line, .talk-heard { margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.talk-line { font-size: 15px; line-height: 1.4; color: var(--cream-50); -webkit-line-clamp: 3; line-clamp: 3; animation: fade-up 320ms var(--ease) both; }
+.talk-reply { font-family: var(--font-serif); font-size: 15.5px; -webkit-line-clamp: 4; line-clamp: 4; }
+.talk-heard { font-size: 12.5px; color: var(--text-muted); -webkit-line-clamp: 1; line-clamp: 1; }
+.talk-detail { color: var(--gold-300); font-size: 14px; }
+.talk-muted { color: var(--text-muted); }
+.talk-error { color: var(--danger); font-size: 13.5px; }
+
+.talk-dots { display: inline-flex; gap: 3px; }
+.talk-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--gold-400); animation: talk-dot 1.2s ease-in-out infinite; }
+.talk-dots i:nth-child(2) { animation-delay: 0.15s; }
+.talk-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes talk-ripple { 0% { transform: scale(0.8); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes talk-breathe { 50% { transform: scale(1.06); } }
+@keyframes talk-speak { 50% { transform: scale(1.06); } }
+@keyframes talk-dot { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }

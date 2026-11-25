@@ -23,6 +23,8 @@ shows you. There is no other database.
 ## Install
 
 Download the latest `.dmg` from [Releases](../../releases), open it and drag Keeper into Applications.
+On Windows run the `-setup.exe` (or the `.msi`); on Linux use the `.AppImage` (make it executable) or install the `.deb`.
+Voice is macOS-only for now, and the Windows and Linux builds are not code-signed, so the system warns on first open.
 On first run it finds your DKG node (or installs one), creates your memory graph and introduces your assistant.
 
 ## Build from source
@@ -34,7 +36,7 @@ npm run app:build    # → src-tauri/target/release/bundle/{macos,dmg}
 npm run check        # typecheck + tests (Rust and TypeScript, including structure guards)
 ```
 
-Releases (maintainers): `bash scripts/release.sh "notes"` builds, signs and publishes the update feed.
+Releases (maintainers): `bash scripts/release.sh` tags the version and CI builds, signs and publishes every platform ([docs/RELEASING.md](docs/RELEASING.md)).
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the module map and [docs/SECURITY_LOG.md](docs/SECURITY_LOG.md) for the security design.
 

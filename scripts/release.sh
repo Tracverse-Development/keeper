@@ -1,20 +1,51 @@
 #!/usr/bin/env bash
-# Builds a signed release and publishes it on GitHub, where installed copies find it
-# (tauri.conf.json plugins.updater.endpoints → releases/latest/download/latest.json).
+# Releases Keeper. Installed copies find new versions through the GitHub release feed
+# (tauri.conf.json plugins.updater.endpoints → releases/latest/download/latest.json). See docs/RELEASING.md.
 #
-#   bash scripts/release.sh "What changed, in one line"
+#   bash scripts/release.sh
+#     The default: checks the working tree is clean and committed, that tauri.conf.json, package.json
+#     and Cargo.toml carry the same version, then tags vX.Y.Z and pushes the tag. CI
+#     (.github/workflows/release.yml) builds macOS, Windows and Linux and publishes the release.
+#     Bumps nothing: raise the version in all three files and commit first.
 #
-# Needs: the updater key at ~/.tauri/umoja-desk-updater.key (backup: umoja-ark /secure),
-# and the Tracverse-Development GitHub sign-in in `gh` (used for this command only).
+#   LOCAL=1 bash scripts/release.sh "What changed, in one line"
+#     The old path: builds and publishes from this Mac only (darwin-<arch> in latest.json).
+#     Needs the updater key at ~/.tauri/umoja-desk-updater.key (backup: umoja-ark /secure).
+#     SKIP_BUILD=1 publishes the build already in src-tauri/target.
+#
+# Both use the Tracverse-Development GitHub sign-in in `gh` (for this command only).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-notes="${1:?usage: release.sh \"release notes\"}"
 repo="tracverse-development/keeper"
+
+version="$(python3 -c 'import json;print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
+
+if [ "${LOCAL:-}" != "1" ]; then
+  pkg_version="$(python3 -c 'import json;print(json.load(open("package.json"))["version"])')"
+  cargo_version="$(python3 -c 'import re;t=open("src-tauri/Cargo.toml").read();print(re.search(r"^\[package\][^\[]*?^version\s*=\s*\"([^\"]+)\"",t,re.M|re.S).group(1))')"
+  [ "$version" = "$pkg_version" ] && [ "$version" = "$cargo_version" ] || {
+    echo "versions disagree: tauri.conf.json $version, package.json $pkg_version, Cargo.toml $cargo_version"; exit 1; }
+  [ -z "$(git status --porcelain)" ] || { echo "the working tree is not clean; commit or set aside first:"; git status --short; exit 1; }
+  tag="v$version"
+  if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then echo "tag $tag already exists here"; exit 1; fi
+  export GH_TOKEN="$(gh auth token -u Tracverse-Development)"
+  if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null 2>&1; then echo "tag $tag already exists on origin"; exit 1; fi
+  # A release is made from code already on main, so the tag never carries an unreviewed commit.
+  git fetch -q origin main
+  git merge-base --is-ancestor HEAD origin/main || { echo "HEAD $(git rev-parse --short HEAD) is not on origin/main; push it to main first"; exit 1; }
+  echo "Tagging Keeper $version at $(git rev-parse --short HEAD) and pushing $tag (CI builds and publishes it)"
+  git tag -a "$tag" -m "Keeper $tag"
+  git push origin "$tag"
+  echo "Building: https://github.com/$repo/actions/workflows/release.yml"
+  exit 0
+fi
+
+# LOCAL=1: build and publish from this Mac.
+notes="${1:?usage: LOCAL=1 release.sh \"release notes\"}"
 key="$HOME/.tauri/umoja-desk-updater.key"
 [ -f "$key" ] || { echo "missing $key (restore it from /secure)"; exit 1; }
 
-version="$(python3 -c 'import json;print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
 arch="$(uname -m | sed 's/arm64/aarch64/')"
 echo "Releasing Keeper $version ($arch)"
 

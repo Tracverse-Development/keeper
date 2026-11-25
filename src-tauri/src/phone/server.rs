@@ -60,8 +60,8 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                 (Method::Get, "/") => send(req, 200, "text/html; charset=utf-8", PAGE.to_string()),
                 (_, p) if p.starts_with("/api/") && !authorised(&req, &token) => json_reply(req, 401, json!({ "error": "This link has expired. Scan the code on your Mac again." })),
                 (Method::Get, "/api/hello") => {
-                    let s = app.state::<AppState>().settings();
-                    json_reply(req, 200, json!({ "name": s.assistant_name, "graph": s.graph_id }));
+                    let keeper = app.state::<AppState>().active_keeper().ok();
+                    json_reply(req, 200, json!({ "name": keeper.as_ref().map(|k| k.name.as_str()).unwrap_or("Keeper"), "graph": keeper.as_ref().map(|k| k.graph_id.as_str()).unwrap_or("") }));
                 }
                 (Method::Post, "/api/turn") => {
                     recent.retain(|t| t.elapsed() < Duration::from_secs(60));
@@ -77,7 +77,7 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                     }
                     let text = serde_json::from_str::<serde_json::Value>(&body).ok().and_then(|v| v["text"].as_str().map(str::to_string)).unwrap_or_default();
                     let state = app.state::<AppState>();
-                    match tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, &text)) {
+                    match tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", "", &text)) {
                         Ok(result) => {
                             let _ = app.emit(events::PHONE_TURN, json!({ "said": text, "result": &result }));
                             json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));

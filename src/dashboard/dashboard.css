@@ -112,3 +112,6 @@
 .history .replied { color: var(--text); }
 .drawer { width: min(460px, calc(100% - 32px)); }
 .tabs button { font-size: 11.5px; }
+
+.remove-keeper { color: var(--danger); align-self: flex-start; }
+.dashboard.has-panel .dock { left: calc(50% + 140px); width: min(720px, calc(100% - 330px)); }

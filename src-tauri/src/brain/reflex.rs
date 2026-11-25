@@ -14,7 +14,7 @@ use crate::skills::ActionRequest;
 
 type Rule = fn(&str, &Context) -> Option<Thought>;
 
-const RULES: &[Rule] = &[switch_engine, forget, remind, open, my_name_is, remember_that, statement, recall_all, recall_actions, ask_name, time_now, greeting, help, question_about_me];
+const RULES: &[Rule] = &[switch_engine, memory_question, forget, remind, open, my_name_is, remember_that, statement, recall_all, recall_actions, ask_name, time_now, greeting, help, question_about_me];
 
 pub fn think(ctx: &Context) -> Thought {
     let said = ctx.said.trim();
@@ -105,6 +105,35 @@ fn statement(said: &str, _: &Context) -> Option<Thought> {
     };
     let category = if said.to_lowercase().contains("allergic") { "health" } else { category };
     Some(learned(to_second_person(&clean(said)), category))
+}
+
+/// "What did you do today?", "what did we talk about this week?", "what didn't work?": catalog questions.
+fn memory_question(said: &str, _: &Context) -> Option<Thought> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let caps = re(&R, r"(?i)^what (?:did|have) (?:you|we) (do|done|talk(?:ed)? about|run|ran)(?: for me)?\s*(today|yesterday|this week|this month|lately|recently)?\??$").captures(said);
+    if let Some(c) = caps {
+        let days = match c.get(2).map(|m| m.as_str().to_lowercase()).as_deref() {
+            Some("today") => 1,
+            Some("yesterday") => 2,
+            Some("this month") => 31,
+            _ => 7,
+        };
+        let question = if c[1].to_lowercase().starts_with("talk") { "turns-recent" } else { "actions-recent" };
+        return Some(action("ask-memory", json!({ "question": question, "days": days.to_string() })));
+    }
+    let lower = said.to_lowercase();
+    let question = if lower.contains("didn't work") || lower.contains("what failed") {
+        "actions-failed"
+    } else if lower.contains("what did you run") || lower.contains("commands you ran") {
+        "agent-steps"
+    } else if lower.contains("how much do you know") || lower.contains("how big is your memory") {
+        "memory-size"
+    } else if lower.contains("upcoming reminders") || lower.contains("what reminders") {
+        "reminders-upcoming"
+    } else {
+        return None;
+    };
+    Some(action("ask-memory", json!({ "question": question })))
 }
 
 /// "Switch your brain to Claude", "use Codex", "change your engine to the local model".
@@ -249,7 +278,7 @@ mod tests {
     use super::*;
 
     fn ctx(said: &str, facts: Vec<Fact>) -> Context {
-        Context { said: said.into(), assistant_name: "Umoja".into(), facts, recent: vec![], now_local: "Tuesday 25 November 2026, 10:42".into(), may_act: false }
+        Context { said: said.into(), assistant_name: "Keeper".into(), domain_brief: "", facts, recent: vec![], now_local: "Tuesday 25 November 2026, 10:42".into(), may_act: false }
     }
 
     #[test]
@@ -280,6 +309,9 @@ mod tests {
         let e = think(&ctx("switch your brain to Claude Code", vec![]));
         assert_eq!((e.actions[0].skill.as_str(), e.actions[0].input["engine"].as_str()), ("switch-engine", Some("claude")));
         assert_eq!(think(&ctx("use codex", vec![])).actions[0].input["engine"], "codex");
+        let q = think(&ctx("what did you do today?", vec![]));
+        assert_eq!((q.actions[0].skill.as_str(), q.actions[0].input["question"].as_str(), q.actions[0].input["days"].as_str()), ("ask-memory", Some("actions-recent"), Some("1")));
+        assert_eq!(think(&ctx("what did we talk about this week", vec![])).actions[0].input["question"], "turns-recent");
         let f = think(&ctx("forget that I live in Port of Spain", vec![]));
         assert_eq!(f.forget, vec!["You live in Port of Spain".to_string()]);
     }

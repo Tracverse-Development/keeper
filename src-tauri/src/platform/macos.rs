@@ -34,22 +34,6 @@ pub fn notify(title: &str, body: &str) {
     let _ = Command::new("/usr/bin/osascript").arg("-e").arg(script).output();
 }
 
-/// Keychain items are filed under the app's identifier.
-const KEYCHAIN_SERVICE: &str = "com.umojaark.desk";
-
-pub fn secret_get(name: &str) -> Option<String> {
-    let bytes = security_framework::passwords::get_generic_password(KEYCHAIN_SERVICE, name).ok()?;
-    String::from_utf8(bytes).ok().filter(|s| !s.is_empty())
-}
-
-pub fn secret_set(name: &str, value: &str) -> Result<()> {
-    if value.is_empty() {
-        let _ = security_framework::passwords::delete_generic_password(KEYCHAIN_SERVICE, name);
-        return Ok(());
-    }
-    security_framework::passwords::set_generic_password(KEYCHAIN_SERVICE, name, value.as_bytes()).map_err(|_| DeskError::Io("The key could not be saved in the Keychain.".into()))
-}
-
 pub fn computer_name() -> String {
     Command::new("/usr/sbin/scutil")
         .args(["--get", "ComputerName"])

@@ -7,10 +7,9 @@ use tauri::{AppHandle, State};
 use crate::brain::engines::{self, EngineStatus};
 use crate::dkg::client::NodeStatus;
 use crate::kernel::settings::{Settings, VoiceEngine};
-use crate::kernel::{time, DeskError, Result};
-use crate::platform;
+use crate::kernel::{secrets, time, DeskError, Result};
 use crate::voice::eleven::{self, ElevenVoice};
-use crate::memory::{ActionRecord, Counts, Fact, QueryTrace, Reminder, Retraction, Turn};
+use crate::memory::{catalog, ActionRecord, Chat, Counts, Fact, QueryTrace, Reminder, Retraction, Turn};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -18,54 +17,32 @@ pub fn app_settings(state: State<'_, AppState>) -> Settings {
     state.settings()
 }
 
-/// The fields the settings sheet may change. Left out = unchanged (LES-039).
+/// The fields the settings sheet may change. Left out = unchanged (LES-039). A keeper's own
+/// name, look, engine and model change through `keepers::keepers_update`.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsChange {
-    pub brain: Option<String>,
-    pub ollama_model: Option<String>,
     pub agent_actions: Option<bool>,
     pub voice: Option<String>,
     pub voice_engine: Option<VoiceEngine>,
     pub eleven_voice_id: Option<String>,
     pub always_listening: Option<bool>,
     pub wake_word: Option<bool>,
-    pub skin: Option<String>,
+    pub talk_shortcut: Option<String>,
     pub auto_update: Option<bool>,
 }
 
-/// The saved settings, and what the assistant says about the change (when it has something to say).
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Saved {
-    pub settings: Settings,
-    pub announcement: Option<String>,
-}
-
-/// Skins the window offers (its registry is `src/character/skins`); anything else is refused.
-const SKINS: &[&str] = &["robot", "puppy"];
-
 #[tauri::command]
-pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: SettingsChange) -> Result<Saved> {
-    if let Some(skin) = &change.skin {
-        if !SKINS.contains(&skin.as_str()) {
-            return Err(DeskError::Invalid("That look does not exist.".into()));
-        }
-    }
+pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: SettingsChange) -> Result<Settings> {
     if let Some(id) = &change.eleven_voice_id {
         if !id.is_empty() && !eleven::valid_voice_id(id) {
             return Err(DeskError::Invalid("That is not an ElevenLabs voice.".into()));
         }
     }
-    // The engine goes through the assistant, which records the change on the DKG and finds its words.
-    let announcement = match &change.brain {
-        Some(id) if *id != state.settings().brain => Some(crate::assistant::change_engine(&app, &state, id, "").await?),
-        _ => None,
-    };
+    if let Some(shortcut) = &change.talk_shortcut {
+        crate::hotkey::apply(&app, shortcut)?;
+    }
     let saved = state.update_settings(|s| {
-        if let Some(m) = change.ollama_model {
-            s.ollama_model = m;
-        }
         if let Some(a) = change.agent_actions {
             s.agent_actions = a;
         }
@@ -84,8 +61,8 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         if let Some(w) = change.wake_word {
             s.wake_word = w;
         }
-        if let Some(skin) = change.skin {
-            s.skin = skin;
+        if let Some(t) = change.talk_shortcut {
+            s.talk_shortcut = t;
         }
         if let Some(u) = change.auto_update {
             s.auto_update = u;
@@ -99,7 +76,7 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
             state.voice.stop_listening(&app).await?;
         }
     }
-    Ok(Saved { settings: saved, announcement })
+    Ok(saved)
 }
 
 /// Every engine and whether it works on this computer right now.
@@ -108,14 +85,14 @@ pub async fn engines_list() -> Vec<EngineStatus> {
     engines::detect_all().await
 }
 
-/// Save (or, with an empty key, remove) the ElevenLabs key in the Keychain, then prove it works.
+/// Save (or, with an empty key, remove) the ElevenLabs key in Keeper's private store, then prove it works.
 #[tauri::command]
 pub async fn eleven_set_key(key: String) -> Result<Vec<ElevenVoice>> {
     let key = key.trim();
     if key.len() > 200 || key.chars().any(char::is_whitespace) {
         return Err(DeskError::Invalid("That doesn't look like an ElevenLabs key.".into()));
     }
-    platform::secret_set(eleven::KEY_NAME, key)?;
+    secrets::set(eleven::KEY_NAME, key)?;
     if key.is_empty() {
         return Ok(vec![]);
     }
@@ -125,7 +102,7 @@ pub async fn eleven_set_key(key: String) -> Result<Vec<ElevenVoice>> {
 /// The ElevenLabs voices for the saved key (empty when there is no key).
 #[tauri::command]
 pub async fn eleven_voices() -> Result<Vec<ElevenVoice>> {
-    if platform::secret_get(eleven::KEY_NAME).is_none() {
+    if secrets::get(eleven::KEY_NAME).is_none() {
         return Ok(vec![]);
     }
     eleven::voices().await
@@ -146,8 +123,8 @@ pub struct Overview {
 }
 
 #[tauri::command]
-pub async fn memory_overview(state: State<'_, AppState>) -> Result<Overview> {
-    let memory = state.memory()?;
+pub async fn memory_overview(state: State<'_, AppState>, keeper: Option<String>) -> Result<Overview> {
+    let memory = state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?;
     let node = memory.client().status().await.ok();
     let (facts, facts_trace) = memory.facts().await?;
     let (actions, actions_trace) = memory.actions().await?;
@@ -162,6 +139,38 @@ pub async fn memory_overview(state: State<'_, AppState>) -> Result<Overview> {
         reminders: memory.upcoming_reminders().await.unwrap_or_default(),
         traces: vec![facts_trace, turns_trace, actions_trace],
     })
+}
+
+/// A keeper's chats, newest first (from its graph).
+#[tauri::command]
+pub async fn chats_list(state: State<'_, AppState>, keeper: Option<String>) -> Result<Vec<Chat>> {
+    state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?.chats().await
+}
+
+/// One chat's turns, oldest first (from its keeper's graph).
+#[tauri::command]
+pub async fn chat_turns(state: State<'_, AppState>, keeper: Option<String>, chat: String) -> Result<Vec<Turn>> {
+    state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?.chat_turns(&chat).await
+}
+
+/// The question catalog (every question a keeper can ask its graph).
+#[tauri::command]
+pub fn catalog_list() -> Vec<catalog::QuestionInfo> {
+    catalog::list()
+}
+
+#[derive(Debug, Serialize)]
+pub struct Answer {
+    pub trace: QueryTrace,
+    pub rows: Vec<crate::dkg::Row>,
+}
+
+/// Ask one catalog question of a keeper's graph; the answer carries the SPARQL it ran.
+#[tauri::command]
+pub async fn catalog_run(state: State<'_, AppState>, keeper: Option<String>, question: String, args: std::collections::HashMap<String, String>) -> Result<Answer> {
+    let memory = state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?;
+    let (rows, trace) = memory.ask(&question, &args).await?;
+    Ok(Answer { trace, rows })
 }
 
 #[tauri::command]

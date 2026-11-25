@@ -4,6 +4,8 @@
 pub mod error;
 pub mod events;
 pub mod paths;
+pub mod programs;
+pub mod secrets;
 pub mod settings;
 pub mod time;
 pub mod slug;

@@ -73,3 +73,8 @@ test('updates are signed: the updater has a public key and a release endpoint', 
   assert.match(conf.plugins.updater.endpoints[0], /^https:\/\/github\.com\/.+\/latest\.json$/);
   assert.equal(conf.bundle.createUpdaterArtifacts, true);
 });
+
+test('no Keychain calls: keys live in the private store (FIX-0003)', () => {
+  assert.ok(!readFileSync(join(root, 'src-tauri/Cargo.toml'), 'utf8').includes('security-framework'));
+  for (const f of files(core, /\.rs$/)) assert.ok(!readFileSync(f, 'utf8').includes('passwords::get_generic_password'), relative(root, f));
+});

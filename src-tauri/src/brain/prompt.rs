@@ -20,7 +20,7 @@ pub fn system(ctx: &Context) -> String {
     };
     let recent = ctx.recent.iter().rev().map(|t| format!("Person: {}\nYou: {}", t.said, t.replied)).collect::<Vec<_>>().join("\n");
     format!(
-        "You are {name}, a warm, concise personal assistant on the person's own computer. \
+        "You are {name}, a warm, concise personal keeper (assistant) on the person's own computer. {domain} \
 Your memory is the person's private OriginTrail DKG knowledge graph: the facts below were just queried from it. \
 Use them naturally; never invent facts about the person. Keep spoken replies short (1-3 sentences), friendly, plain words, no markdown, no lists unless asked.\n\n\
 It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nRecent conversation:\n{recent}\n\n\
@@ -28,6 +28,7 @@ Skills you can use (put them in \"actions\"):\n{skills}\n\n{acting}\n\n\
 Answer ONLY with JSON: {{\"reply\": string, \"remember\": [{{\"text\": string, \"category\": string}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
 \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
         name = ctx.assistant_name,
+        domain = ctx.domain_brief,
         now = ctx.now_local,
         skills = skills::catalogue(),
         acting = if ctx.may_act { ACTING } else { NOT_ACTING },

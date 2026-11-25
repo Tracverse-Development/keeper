@@ -1,6 +1,10 @@
 //! The person's choices, kept in one small JSON file (0600). Nothing personal is stored here:
-//! what the assistant learns about the person lives on the DKG node. Secrets (the ElevenLabs
-//! key) live in the system keychain (`platform::secret_*`), never in this file.
+//! what each keeper learns lives on the DKG node, in that keeper's own Context Graph. API keys
+//! live in `kernel::secrets`, never in this file.
+//!
+//! Keepers: each keeper is a profile (name, look, domain, brain, model) bound to ONE Context
+//! Graph, its domain of memory. The first keeper is the System Administration keeper. A settings
+//! file from before keepers existed (v0.1/v0.2) is migrated into keeper #1 on load (LES-039).
 
 use serde::{Deserialize, Serialize};
 
@@ -16,21 +20,42 @@ pub enum VoiceEngine {
     Elevenlabs,
 }
 
+/// One keeper: an agent with its own look, mind and domain, remembering in its own graph.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct KeeperProfile {
+    /// Stable id ("keeper-1", "keeper-3f9a…").
+    pub id: String,
+    /// What the person calls it (also its wake word: "Hey <name>").
+    pub name: String,
+    /// The character's look: an id from the window's skin registry ("robot", "puppy").
+    pub skin: String,
+    /// What it keeps: an id from `keepers::DOMAINS` ("system", "companion").
+    pub domain: String,
+    /// Its Context Graph: the exact id (DKG reference §2).
+    pub graph_id: String,
+    /// The engine that thinks: an id from `brain::engines::CATALOGUE`.
+    pub brain: String,
+    /// The engine's model ("" = the engine's own default; an Ollama tag for Ollama).
+    pub model: String,
+}
+
+impl Default for KeeperProfile {
+    fn default() -> Self {
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), domain: "system".into(), graph_id: String::new(), brain: "reflex".into(), model: String::new() }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub setup_complete: bool,
-    /// The assistant's name as the person calls it (also its wake word).
-    pub assistant_name: String,
-    /// The Context Graph that holds this person's memory (exact id, DKG reference §2).
-    pub graph_id: String,
     /// The DKG node's home folder (holds `api.port` and `auth.token`).
     pub node_home: String,
-    /// The engine that thinks: an id from `brain::engines::CATALOGUE` ("claude", "codex", "reflex", …).
-    pub brain: String,
-    /// Ollama model tag when `brain` is "ollama".
-    pub ollama_model: String,
-    /// May an agent engine act on this computer (run commands, edit files)? Off until the person says so.
+    pub keepers: Vec<KeeperProfile>,
+    /// The keeper on screen (and the one the phone link and voice talk to by default).
+    pub active_keeper: String,
+    /// May agent engines act on this computer (run commands, edit files)? Off until the person says so.
     pub agent_actions: bool,
     /// macOS voice name for the system voice.
     pub voice: String,
@@ -39,32 +64,47 @@ pub struct Settings {
     pub eleven_voice_id: String,
     /// Listen all the time (off until the person turns it on).
     pub always_listening: bool,
-    /// While always listening: wait for the wake word (true), or treat every sentence as meant
-    /// for the assistant (false, "open mic").
+    /// While always listening: wait for "Hey <keeper>" (true), or treat every sentence as meant
+    /// for the active keeper (false, "open mic").
     pub wake_word: bool,
-    /// The character's look: an id from the window's skin registry ("robot", "puppy").
-    pub skin: String,
+    /// The global push-to-talk shortcut ("Alt+Space"); empty = off.
+    pub talk_shortcut: String,
     /// Install updates by itself (checked at launch and every few hours).
     pub auto_update: bool,
+
+    // Fields of the single-assistant settings (v0.1–v0.2): read once to migrate, never written.
+    #[serde(skip_serializing)]
+    assistant_name: String,
+    #[serde(skip_serializing)]
+    graph_id: String,
+    #[serde(skip_serializing)]
+    brain: String,
+    #[serde(skip_serializing)]
+    ollama_model: String,
+    #[serde(skip_serializing)]
+    skin: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Settings {
             setup_complete: false,
-            assistant_name: "Keeper".into(),
-            graph_id: String::new(),
             node_home: String::new(),
-            brain: "reflex".into(),
-            ollama_model: String::new(),
+            keepers: Vec::new(),
+            active_keeper: String::new(),
             agent_actions: false,
             voice: "Samantha".into(),
             voice_engine: VoiceEngine::System,
             eleven_voice_id: String::new(),
             always_listening: false,
             wake_word: true,
-            skin: "robot".into(),
+            talk_shortcut: "Alt+Space".into(),
             auto_update: true,
+            assistant_name: String::new(),
+            graph_id: String::new(),
+            brain: String::new(),
+            ollama_model: String::new(),
+            skin: String::new(),
         }
     }
 }
@@ -72,16 +112,46 @@ impl Default for Settings {
 impl Settings {
     /// Read the settings; a missing or unreadable file means first run (defaults).
     pub fn load() -> Settings {
-        std::fs::read(paths::settings_file())
-            .ok()
-            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-            .unwrap_or_default()
+        let mut s: Settings = std::fs::read(paths::settings_file()).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok()).unwrap_or_default();
+        s.migrate();
+        s
     }
 
     pub fn save(&self) -> super::Result<()> {
         let bytes = serde_json::to_vec_pretty(self)?;
         paths::write_private(&paths::settings_file(), &bytes)?;
         Ok(())
+    }
+
+    /// A pre-keepers file becomes keeper #1, the System Administration keeper, on its own graph.
+    fn migrate(&mut self) {
+        if !self.keepers.is_empty() || self.graph_id.is_empty() {
+            return;
+        }
+        let model = if self.brain == "ollama" { self.ollama_model.clone() } else { String::new() };
+        self.keepers.push(KeeperProfile {
+            id: "keeper-1".into(),
+            name: if self.assistant_name.is_empty() { "Keeper".into() } else { self.assistant_name.clone() },
+            skin: if self.skin.is_empty() { "robot".into() } else { self.skin.clone() },
+            domain: "system".into(),
+            graph_id: self.graph_id.clone(),
+            brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
+            model,
+        });
+        self.active_keeper = "keeper-1".into();
+    }
+
+    /// The keeper on screen (the first one when the saved id is gone).
+    pub fn active(&self) -> Option<&KeeperProfile> {
+        self.keepers.iter().find(|k| k.id == self.active_keeper).or(self.keepers.first())
+    }
+
+    pub fn keeper(&self, id: &str) -> Option<&KeeperProfile> {
+        self.keepers.iter().find(|k| k.id == id)
+    }
+
+    pub fn keeper_mut(&mut self, id: &str) -> Option<&mut KeeperProfile> {
+        self.keepers.iter_mut().find(|k| k.id == id)
     }
 }
 
@@ -90,18 +160,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_settings_file_older_than_a_field_keeps_working() {
-        // LES-039: a field the file does not have takes its default; nothing is wiped.
-        // This is the exact v0.1 file shape (brain was a three-value enum then).
-        let s: Settings = serde_json::from_str(r#"{"setupComplete":true,"assistantName":"Kofi","graphId":"umoja-desk-x","brain":"reflex","voice":"Bahh","alwaysListening":false}"#).unwrap();
-        assert!(s.setup_complete);
-        assert_eq!(s.assistant_name, "Kofi");
-        assert_eq!(s.brain, "reflex");
+    fn a_single_assistant_file_becomes_keeper_one() {
+        // LES-039: the exact v0.2 file shape; nothing is lost, and it is never written back in the old shape.
+        let s: Settings = serde_json::from_str(r#"{"setupComplete":true,"assistantName":"Kofi","graphId":"umoja-desk-x","nodeHome":"/n","brain":"claude","voice":"Bahh","skin":"puppy","alwaysListening":false}"#).unwrap();
+        let mut s = s;
+        s.migrate();
+        let k = s.active().unwrap();
+        assert_eq!((k.name.as_str(), k.graph_id.as_str(), k.brain.as_str(), k.skin.as_str(), k.domain.as_str()), ("Kofi", "umoja-desk-x", "claude", "puppy", "system"));
         assert_eq!(s.voice, "Bahh");
-        assert_eq!(s.skin, "robot");
-        assert!(!s.agent_actions);
-        assert!(s.auto_update);
-        assert!(s.wake_word, "an older file keeps the wake word on");
-        assert_eq!(s.voice_engine, VoiceEngine::System);
+        assert!(s.wake_word && s.auto_update && !s.agent_actions);
+        assert_eq!(s.talk_shortcut, "Alt+Space");
+        let saved = serde_json::to_string(&s).unwrap();
+        assert!(!saved.contains("assistantName") && saved.contains("\"keepers\""));
+    }
+
+    #[test]
+    fn a_fresh_install_has_no_keeper_until_setup() {
+        let mut s = Settings::default();
+        s.migrate();
+        assert!(s.keepers.is_empty() && s.active().is_none());
     }
 }

@@ -11,7 +11,7 @@ import { GraphPanel } from './panels/GraphPanel';
 import { MeetPanel } from './panels/MeetPanel';
 import { MindPanel } from './panels/MindPanel';
 import { NodePanel } from './panels/NodePanel';
-import { VoicePanel } from './panels/VoicePanel';
+import { PermissionsPanel } from './panels/PermissionsPanel';
 import { WelcomePanel } from './panels/WelcomePanel';
 import { STEPS, suggestedMind } from './steps';
 import './installer.css';
@@ -22,21 +22,22 @@ export interface InstallerChoices {
   graph: GraphReady | null;
   assistantName: string;
   brain: EngineId;
-  ollamaModel: string;
+  /** The selected engine's model ('' = the engine's own default). */
+  model: string;
   voice: string;
 }
 
 export function InstallerScreen({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const [choices, setChoices] = useState<InstallerChoices>({ scan: null, node: null, graph: null, assistantName: 'Keeper', brain: 'reflex', ollamaModel: '', voice: 'Samantha' });
+  const [choices, setChoices] = useState<InstallerChoices>({ scan: null, node: null, graph: null, assistantName: 'Keeper', brain: 'reflex', model: '', voice: 'Samantha' });
   const update = (patch: Partial<InstallerChoices>) => setChoices((c) => ({ ...c, ...patch }));
 
   // Look around once, in the background, while the person reads the welcome.
   const rescan = () =>
     core.scan().then((scan) => {
       setChoices((c) => {
-        const mind = c.scan ? { brain: c.brain, model: c.ollamaModel } : suggestedMind(scan);
-        return { ...c, scan, node: scan.node ?? c.node, brain: mind.brain, ollamaModel: mind.model };
+        const mind = c.scan ? { brain: c.brain, model: c.model } : suggestedMind(scan);
+        return { ...c, scan, node: scan.node ?? c.node, brain: mind.brain, model: mind.model };
       });
       return scan;
     });
@@ -47,7 +48,7 @@ export function InstallerScreen({ onDone }: { onDone: () => void }) {
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
   const finish = async () => {
-    await core.finishSetup(choices.brain, choices.ollamaModel, choices.voice);
+    await core.finishSetup(choices.brain, choices.model, choices.voice);
     onDone();
   };
 
@@ -93,7 +94,7 @@ export function InstallerScreen({ onDone }: { onDone: () => void }) {
           {id === 'node' && <NodePanel choices={choices} update={update} rescan={rescan} onNext={next} onBack={back} />}
           {id === 'graph' && <GraphPanel choices={choices} update={update} onNext={next} onBack={back} />}
           {id === 'mind' && <MindPanel choices={choices} update={update} onNext={next} onBack={back} />}
-          {id === 'voice' && <VoicePanel choices={choices} update={update} onNext={next} onBack={back} />}
+          {id === 'permissions' && <PermissionsPanel choices={choices} update={update} onNext={next} onBack={back} />}
           {id === 'meet' && <MeetPanel choices={choices} onFinish={finish} onBack={back} />}
         </div>
       </section>

@@ -1,0 +1,142 @@
+# Builds Keeper for macOS (Apple silicon + Intel), Windows and Linux on a pushed version tag and
+# publishes one GitHub release with every installer, its updater signature and a merged latest.json
+# (the feed in tauri.conf.json plugins.updater.endpoints). See docs/RELEASING.md.
+#
+# Three steps so installed copies never see half a release: the release is created as a DRAFT
+# (GitHub serves releases/latest/download/* only for published releases), every platform uploads
+# into it, and only when all of them succeeded is it published (draft: false).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v0.3.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-22.04
+    outputs:
+      release_id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+      - name: The tag matches the app version
+        run: |
+          version="$(jq -r .version src-tauri/tauri.conf.json)"
+          [ "v$version" = "$TAG" ] || { echo "tag $TAG does not match tauri.conf.json version $version"; exit 1; }
+      - name: Create the draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1)"
+          if [ -z "$id" ]; then
+            id="$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f name="Keeper $TAG" -F draft=true -F generate_release_notes=true --jq .id)"
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            # Cross-built on the arm64 runner: GitHub retired the Intel macos-13 image.
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            build-essential curl wget file libxdo-dev libssl-dev
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - run: npm ci
+
+      - name: Voice helper (macOS sidecar)
+        if: runner.os == 'macOS'
+        run: bash scripts/build-voice-helper.sh ${{ matrix.target }}
+
+      - uses: tauri-apps/tauri-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          # The tag makes latest.json point at THIS release's files, not releases/latest/download.
+          tagName: ${{ env.TAG }}
+          releaseDraft: true
+          args: --target ${{ matrix.target }}
+          uploadUpdaterJson: true
+          # Windows updates install from the NSIS setup.exe (one installer per platform in latest.json).
+          updaterJsonPreferNsis: true
+          retryAttempts: 1
+
+  publish:
+    needs: [create-release, build]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Every platform is in latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: |
+          asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --jq '.[] | select(.name == "latest.json") | .url')"
+          [ -n "$asset" ] || { echo "no latest.json on the release"; exit 1; }
+          gh api -H "Accept: application/octet-stream" "$asset" > latest.json
+          for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$p" '.platforms[$p].signature | length > 0' latest.json > /dev/null || { echo "latest.json lacks $p"; cat latest.json; exit 1; }
+          done
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false -f name="Keeper $TAG" --jq .html_url

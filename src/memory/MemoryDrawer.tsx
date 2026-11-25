@@ -1,13 +1,16 @@
 /**
- * The memory drawer: what the person's DKG graph holds, read live with the same bounded
+ * The memory drawer: what one keeper's DKG graph holds, read live with the same bounded
  * queries the assistant uses. Facts can be forgotten here (a retraction is written; DKG writes
- * are additive, so nothing is silently deleted).
+ * are additive, so nothing is silently deleted). The Questions tab asks the graph any question
+ * from the core's catalog. `keeper` is the active keeper's id; changing it reloads everything.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { core, sentence, type Overview } from '../kernel/ipc';
+import { withoutPrefixes } from './questions';
+import { QuestionsTab } from './QuestionsTab';
 
-const TABS = ['Conversations', 'Knowledge', 'Actions', 'Reminders', 'Queries'] as const;
+const TABS = ['Conversations', 'Knowledge', 'Actions', 'Reminders', 'Questions', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
 
 function when(iso: string): string {
@@ -15,22 +18,35 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onClose: () => void; refreshKey: number }) {
+export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: boolean; onClose: () => void; refreshKey: number; keeper: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('Conversations');
 
-  const load = () =>
-    core
-      .overview()
+  // The keeper this drawer shows now: an answer for a keeper switched away from is dropped.
+  const current = useRef(keeper);
+  current.current = keeper;
+  const load = () => {
+    const asked = keeper;
+    return core
+      .overview(asked)
       .then((o) => {
+        if (current.current !== asked) return;
         setData(o);
         setError(null);
       })
-      .catch((e) => setError(sentence(e)));
+      .catch((e) => {
+        if (current.current === asked) setError(sentence(e));
+      });
+  };
+  // Another keeper is another graph: drop the last one's records before reading the new one.
+  useEffect(() => {
+    setData(null);
+    setError(null);
+  }, [keeper]);
   useEffect(() => {
     if (open) load();
-  }, [open, refreshKey]);
+  }, [open, refreshKey, keeper]);
 
   const forget = async (id: string) => {
     try {
@@ -69,8 +85,8 @@ export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onC
         ))}
       </div>
       <div className="drawer-body">
-        {error && <p className="error-line">{error}</p>}
-        {!data && !error && <span className="spinner" />}
+        {tab !== 'Questions' && error && <p className="error-line">{error}</p>}
+        {tab !== 'Questions' && !data && !error && <span className="spinner" />}
         {data && tab === 'Conversations' && (data.turns.length === 0 ? <p className="muted">No conversations yet. Say hello.</p> : (
           <ul className="records history">
             {data.turns.map((t) => (
@@ -121,13 +137,14 @@ export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onC
             ))}
           </ul>
         ))}
+        {tab === 'Questions' && <QuestionsTab keeper={keeper} open={open} />}
         {data && tab === 'Queries' && (
           <ul className="records">
             {data.traces.map((t) => (
               <li key={t.label} className="query">
                 <div>
                   <p><strong>{t.label}</strong> <span className="muted small">{t.rows} rows · {t.ms} ms · {t.layer}</span></p>
-                  <code className="mono selectable">{t.sparql.replace(/PREFIX \S+: <[^>]+> /g, '')}</code>
+                  <code className="mono selectable">{withoutPrefixes(t.sparql)}</code>
                 </div>
               </li>
             ))}

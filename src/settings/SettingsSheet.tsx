@@ -1,32 +1,38 @@
 /**
- * Settings: the engine (and whether it may act on this computer), the character's look, the
- * voice, the phone link and updates. Each section saves on change; the assistant answers an
- * engine change in its own voice (the parent speaks `announcement`).
+ * Settings: THIS keeper (its name, look, brain and model) and everything shared (acting on the
+ * computer, voice, the keeper button, the phone link, updates). Each section saves on change; a
+ * keeper answers a brain change in its own voice (the dashboard speaks it).
  */
 import { useState } from 'react';
 
-import { core, sentence, type Saved, type Settings, type SettingsChange } from '../kernel/ipc';
+import { core, sentence, type KeeperChange, type KeeperProfile, type Settings, type SettingsChange } from '../kernel/ipc';
 import { EnginePicker } from './EnginePicker';
+import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
 import { PhoneSection } from './PhoneSection';
+import { ShortcutSection } from './ShortcutSection';
 import { UpdatesSection } from './UpdatesSection';
 import { VoiceSection } from './VoiceSection';
 
 interface Props {
   open: boolean;
   settings: Settings;
+  keeper: KeeperProfile;
   onClose: () => void;
-  onSaved: (saved: Saved) => void;
+  onSaved: (settings: Settings) => void;
+  onKeeperChange: (change: KeeperChange) => void;
+  /** Present when there is more than one keeper. */
+  onRemoveKeeper?: () => void;
 }
 
-export function SettingsSheet({ open, settings, onClose, onSaved }: Props) {
+export function SettingsSheet({ open, settings, keeper, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) =>
     core
       .saveSettings(change)
-      .then((saved) => {
+      .then((s) => {
         setError(null);
-        onSaved(saved);
+        onSaved(s);
       })
       .catch((e) => setError(sentence(e)));
 
@@ -41,33 +47,43 @@ export function SettingsSheet({ open, settings, onClose, onSaved }: Props) {
         </div>
         {error && <p className="error-line">{error}</p>}
 
-        <p className="eyebrow">Brain</p>
-        {open && <EnginePicker value={settings.brain} model={settings.ollamaModel} onPick={(brain, ollamaModel) => save({ brain, ollamaModel })} />}
+        <p className="eyebrow">This keeper</p>
+        <KeeperNameField key={keeper.id} name={keeper.name} onSave={(name) => onKeeperChange({ name })} />
+        <LookSection value={keeper.skin} onPick={(skin) => onKeeperChange({ skin })} />
+        <p className="muted small">
+          Memory graph <span className="mono selectable">{keeper.graphId}</span>
+        </p>
+
+        <p className="eyebrow">{keeper.name}'s brain</p>
+        {open && <EnginePicker value={keeper.brain} model={keeper.model} onPick={(brain, model) => onKeeperChange(brain === keeper.brain ? { model } : { brain, model })} />}
         <label className="toggle">
           <input type="checkbox" checked={settings.agentActions} onChange={(e) => save({ agentActions: e.target.checked })} />
           <span>
-            <strong>Let my assistant act on this computer</strong>
+            <strong>Let my keepers act on this computer</strong>
             <span className="muted small">
-              Agent engines (Claude Code, Codex, Gemini, Hermes) may then run commands, open and edit files, and work in your apps when you ask. It won't do anything destructive unless you ask for exactly that, and every action is recorded in your DKG memory. Off: it only talks.
+              Agent engines (Claude Code, Codex, Gemini, Hermes) may then run commands, open and edit files, and work in your apps when you ask. They won't do anything destructive unless you ask for exactly that, and every action is recorded in the keeper's DKG memory. Off: they only talk.
             </span>
           </span>
         </label>
 
-        <p className="eyebrow">Look</p>
-        <LookSection value={settings.skin} onPick={(skin) => save({ skin })} />
-
         <p className="eyebrow">Voice</p>
-        {open && <VoiceSection settings={settings} save={save} />}
+        {open && <VoiceSection settings={settings} name={keeper.name} save={save} />}
+
+        <p className="eyebrow">Keeper button</p>
+        {open && <ShortcutSection value={settings.talkShortcut} save={save} />}
 
         <p className="eyebrow">Your phone</p>
-        {open && <PhoneSection name={settings.assistantName} />}
+        {open && <PhoneSection name={keeper.name} />}
 
         <p className="eyebrow">Updates</p>
         {open && <UpdatesSection autoUpdate={settings.autoUpdate} onToggle={(autoUpdate) => save({ autoUpdate })} />}
 
-        <p className="muted small">
-          Memory graph <span className="mono selectable">{settings.graphId}</span> on the node in <span className="mono selectable">{settings.nodeHome}</span>.
-        </p>
+        {onRemoveKeeper && (
+          <button type="button" className="btn btn-ghost remove-keeper" onClick={onRemoveKeeper}>
+            Remove {keeper.name} from this computer
+          </button>
+        )}
+        <p className="muted small">Node folder <span className="mono selectable">{settings.nodeHome}</span>. Removing a keeper keeps its graph on the node.</p>
       </section>
     </div>
   );

@@ -1,7 +1,7 @@
 /**
- * Step 3: the person's memory graph. Creates a curated Context Graph on the node, writes the
- * assistant's profile as the first Knowledge Asset, then reads it back with SPARQL: the round
- * trip is shown, not assumed.
+ * Step 3: your keeper. Names keeper #1, the System Administration keeper, and gives it its own
+ * memory: creates a curated Context Graph on the node, writes the keeper's profile as the first
+ * Knowledge Asset, then reads it back with SPARQL: the round trip is shown, not assumed.
  */
 import { useState } from 'react';
 
@@ -46,10 +46,11 @@ export function GraphPanel({ choices, update, onNext, onBack }: Props) {
 
   return (
     <>
-      <p className="eyebrow">Your graph</p>
-      <h2>Name your assistant, and give it a memory.</h2>
+      <p className="eyebrow">Your keeper</p>
+      <h2>Name your keeper, and give it a memory.</h2>
+      <p className="lead">This is your first keeper, the System Administration keeper: it looks after this computer and its files. It remembers in its own Context Graph on your node. You can add more keepers later.</p>
       <label className="label" htmlFor="assistant-name">
-        What should your assistant be called? It answers to this name.
+        What should your keeper be called? It answers to this name.
       </label>
       <input
         id="assistant-name"

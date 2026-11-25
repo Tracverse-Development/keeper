@@ -26,3 +26,8 @@ Append-only. `### YYYY-MM-DD — title` with **Where / Severity / Status** bulle
 - **Where:** the owner's ElevenLabs key was pasted into the build session so it could be installed; it therefore exists in that session's transcript (and the Foreman prompt ledger). It was written only to the macOS Keychain, never to a file or the repo.
 - **Severity:** Low
 - **Status:** Noted; rotate the key at ElevenLabs at the owner's convenience and paste the new one in Settings → Voice.
+
+### 2026-11-25 — Keys moved from the Keychain to Keeper's private store (supersedes the Keychain entry above)
+- **Where:** `src-tauri/src/kernel/secrets.rs` (`~/Library/Application Support/Keeper/secrets.json`, 0600, atomic writes, cached in memory)
+- **Severity:** Low (design change, recorded)
+- **Status:** Done. Without a Developer ID, macOS ties Keychain access to each build's hash, so every update and every read prompted the owner. The private store has the trust boundary of per-user app config (FileVault at rest), works on every OS and never prompts. Revisit with a Developer ID (Keychain with a team-based designated requirement).

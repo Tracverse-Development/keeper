@@ -4,6 +4,7 @@
 //! private to this node). Recalling = bounded SPARQL over that graph. There is no other store:
 //! the assistant knows what the graph says, and every answer can show the queries behind it.
 
+pub mod catalog;
 pub mod outbox;
 pub mod queries;
 pub mod rank;
@@ -17,7 +18,7 @@ use serde::Serialize;
 
 use crate::dkg::{DkgClient, Layer, Row};
 use crate::kernel::{time, Result};
-pub use records::{ActionRecord, Fact, Record, Reminder, Retraction, Turn};
+pub use records::{ActionRecord, Chat, Fact, Record, Reminder, Retraction, Turn};
 
 /// What one query asked and found, for the window's "what I looked up" trail.
 #[derive(Debug, Clone, Serialize)]
@@ -139,9 +140,35 @@ impl Memory {
         let (rows, trace) = self.run(q).await?;
         let turns = rows
             .iter()
-            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at") })
+            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: String::new() })
             .collect();
         Ok((turns, trace))
+    }
+
+    /// Ask one catalog question (validated parameters; see `catalog`).
+    pub async fn ask(&self, id: &str, args: &std::collections::HashMap<String, String>) -> Result<(Vec<Row>, QueryTrace)> {
+        let q = catalog::find(id).ok_or_else(|| crate::kernel::DeskError::Invalid(format!("There is no question called {id}.")))?;
+        let sparql = catalog::build(q, args)?;
+        let started = Instant::now();
+        let rows = self.client.query(&self.graph, &sparql, LAYER).await?;
+        let trace = QueryTrace { label: q.title.into(), sparql, rows: rows.len(), ms: started.elapsed().as_millis(), layer: LAYER_NAME };
+        Ok((rows, trace))
+    }
+
+    /// The keeper's chats, newest first.
+    pub async fn chats(&self) -> Result<Vec<Chat>> {
+        let (rows, _) = self.ask("chats", &Default::default()).await?;
+        Ok(rows.iter().map(|r| Chat { id: get(r, "c").rsplit(':').next().unwrap_or_default().into(), title: get(r, "title"), at: get(r, "at") }).collect())
+    }
+
+    /// One chat's turns, oldest first.
+    pub async fn chat_turns(&self, chat: &str) -> Result<Vec<Turn>> {
+        let args = [("chat".to_string(), chat.to_string())].into_iter().collect();
+        let (rows, _) = self.ask("chat-turns", &args).await?;
+        Ok(rows
+            .iter()
+            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: chat.to_string() })
+            .collect())
     }
 
     pub async fn actions(&self) -> Result<(Vec<ActionRecord>, QueryTrace)> {

@@ -90,3 +90,30 @@
 .summary li:nth-child(2) { animation-delay: 90ms; } .summary li:nth-child(3) { animation-delay: 180ms; } .summary li:nth-child(4) { animation-delay: 270ms; }
 
 .boot-error { padding: 80px; color: var(--danger); }
+
+/* ---------- the permissions checklist ---------- */
+.permissions { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.permission { display: flex; gap: 14px; padding: 14px 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border);
+  animation: fade-up 520ms var(--ease) both; transition: border-color 300ms var(--ease), background 300ms var(--ease); }
+.permission:nth-child(2) { animation-delay: 90ms; } .permission:nth-child(3) { animation-delay: 180ms; }
+.permission.is-allowed { border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.permission.is-denied { border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.permission-icon { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; color: var(--gold-300);
+  background: var(--accent-soft); border: 1px solid var(--border-strong); }
+.permission.is-allowed .permission-icon { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.permission-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.permission-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.permission-head strong { color: var(--cream-50); font-size: 14.5px; }
+.permission-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-muted); white-space: nowrap; }
+.permission-status.is-allowed { color: var(--ok); }
+.permission-status.is-denied { color: var(--warn); }
+.permission-status .spinner { width: 12px; height: 12px; }
+.permission-why { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.permission-note { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.permission-action { margin-top: 2px; }
+.permission-btn { height: 34px; padding: 0 16px; font-size: 13px; }
+.folder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.folder-list li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px;
+  background: color-mix(in srgb, var(--navy-950) 55%, transparent); border: 1px solid var(--border); }
+.keycap { display: inline-block; min-width: 28px; padding: 1px 8px; margin: 0 2px; border-radius: 6px; text-align: center; font-family: var(--font); font-size: 12.5px;
+  color: var(--cream-50); background: var(--navy-600); border: 1px solid var(--border-strong); box-shadow: 0 2px 0 var(--navy-950); }

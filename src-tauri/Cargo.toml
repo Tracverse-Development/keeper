@@ -1,6 +1,6 @@
 [package]
 name = "keeper"
-version = "0.2.0"
+version = "0.3.0"
 description = "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node"
 edition = "2021"
 rust-version = "1.80"
@@ -37,10 +37,8 @@ tiny_http = "0.12"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 getrandom = "0.2"
 base64 = "0.22"
-
-[target.'cfg(target_os = "macos")'.dependencies]
-# The ElevenLabs key lives in the login Keychain (platform::secret_*), never in a file or argv.
-security-framework = "3"
+# The push-to-talk keeper button (a global shortcut, held to talk).
+tauri-plugin-global-shortcut = "2"
 
 [profile.release]
 codegen-units = 1

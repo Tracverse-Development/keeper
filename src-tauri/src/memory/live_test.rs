@@ -22,7 +22,7 @@ async fn live_remember_recall_forget() {
     let memory = live_memory().await;
     let stamp = time::now_iso();
     let said = format!("I love sorrel with ginger {stamp}");
-    let ctx = Context { said: said.clone(), assistant_name: "Umoja".into(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false };
+    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), domain_brief: "", facts: vec![], recent: vec![], now_local: "now".into(), may_act: false };
     let thought = reflex::think(&ctx);
     assert_eq!(thought.remember.len(), 1, "the reflex mind learns the statement");
 
@@ -35,7 +35,7 @@ async fn live_remember_recall_forget() {
     assert!(recall.facts.iter().any(|f| f.id == fact.id), "the new fact is recalled");
     assert_eq!(recall.traces.len(), 2);
 
-    let turn = Turn::new(&said, "Got it.", "reflex", &stamp);
+    let turn = Turn::new(&said, "Got it.", "reflex", &stamp, "");
     assert!(!memory.write(&turn).await.queued);
     let (turns, _) = memory.recent_turns().await.expect("turns");
     assert!(turns.iter().any(|t| t.id == turn.id), "the turn is on the graph");
@@ -58,4 +58,27 @@ async fn live_reminders_reload() {
     assert!(!memory.write(&reminder).await.queued);
     let upcoming = memory.upcoming_reminders().await.expect("reminders");
     assert!(upcoming.iter().any(|r| r.id == reminder.id), "a future reminder reloads from the DKG");
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_every_catalog_question_runs_and_chats_link() {
+    let memory = live_memory().await;
+    let stamp = time::now_iso();
+    let chat = Chat::start(&format!("Plan the week {stamp}"), &stamp);
+    assert!(!memory.write(&chat).await.queued);
+    let turn = Turn::new("Plan the week", "Sure.", "reflex", &stamp, &chat.id);
+    assert!(!memory.write(&turn).await.queued);
+    assert!(memory.chats().await.unwrap().iter().any(|c| c.id == chat.id), "the chat is listed");
+    let turns = memory.chat_turns(&chat.id).await.unwrap();
+    assert!(turns.iter().any(|t| t.id == turn.id), "the turn is found through its chat");
+
+    let args: std::collections::HashMap<String, String> =
+        [("days", "30"), ("category", "preference"), ("chat", chat.id.as_str()), ("skill", "switch-engine")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+    for q in catalog::QUESTIONS {
+        let result = memory.ask(q.id, &args).await;
+        assert!(result.is_ok(), "{} failed on the real node: {:?}", q.id, result.err());
+        let (rows, trace) = result.unwrap();
+        println!("{:<20} {:>3} rows {:>4} ms", q.id, rows.len(), trace.ms);
+    }
 }

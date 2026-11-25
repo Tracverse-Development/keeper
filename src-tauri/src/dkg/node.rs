@@ -12,7 +12,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tokio::process::Command;
 
-use crate::kernel::{paths, DeskError, Result};
+use crate::kernel::{paths, programs, DeskError, Result};
 
 /// The node version Keeper installs (the version proven on the founder's Mac, 2026-11-25).
 pub const NODE_PACKAGE: &str = "@origintrail-official/dkg@10.0.26";
@@ -58,15 +58,6 @@ pub fn candidate_homes(saved: &str) -> Vec<PathBuf> {
     homes
 }
 
-/// The Node.js program to run the node with: PATH first, then the usual install places.
-fn find_program(name: &str) -> Option<PathBuf> {
-    let mut dirs: Vec<PathBuf> = std::env::var("PATH").unwrap_or_default().split(':').map(PathBuf::from).collect();
-    for extra in ["/opt/homebrew/bin", "/usr/local/bin", "/Applications/Foreman.app/Contents/Resources/node/bin"] {
-        dirs.push(PathBuf::from(extra));
-    }
-    dirs.into_iter().map(|d| d.join(name)).find(|p| p.is_file())
-}
-
 fn free_port() -> Option<u16> {
     PORT_RANGE.into_iter().find(|p| std::net::TcpListener::bind(("127.0.0.1", *p)).is_ok())
 }
@@ -87,15 +78,15 @@ pub fn node_config(name: &str, port: u16) -> serde_json::Value {
 
 /// Install and start Keeper's own node. `say` receives one plain line per step.
 pub async fn install(computer_name: &str, say: impl Fn(&str)) -> Result<NodeLocation> {
-    let node_bin = find_program("node").ok_or_else(|| DeskError::Invalid("Node.js is needed to run a DKG node. Install it from nodejs.org, then press Try again.".into()))?;
+    let node_bin = programs::find("node").ok_or_else(|| DeskError::Invalid("Node.js is needed to run a DKG node. Install it from nodejs.org, then press Try again.".into()))?;
     let bin_dir = node_bin.parent().map(Path::to_path_buf).unwrap_or_default();
-    let npm = bin_dir.join("npm");
+    let npm = programs::find("npm").unwrap_or_else(|| bin_dir.join("npm"));
     let root = paths::own_node_home();
     let program_dir = root.join("program");
     let home = root.join("home");
     std::fs::create_dir_all(&program_dir)?;
     std::fs::create_dir_all(&home)?;
-    let path_env = format!("{}:{}", bin_dir.display(), std::env::var("PATH").unwrap_or_default());
+    let path_env = programs::child_path(Some(&bin_dir));
 
     say(&format!("Downloading the DKG node ({NODE_PACKAGE})…"));
     let out = Command::new(&npm)
@@ -116,7 +107,7 @@ pub async fn install(computer_name: &str, say: impl Fn(&str)) -> Result<NodeLoca
     std::fs::write(home.join("config.json"), config)?;
 
     say("Starting the node…");
-    let dkg = program_dir.join("node_modules/.bin/dkg");
+    let dkg = program_dir.join("node_modules").join(".bin").join(if cfg!(windows) { "dkg.cmd" } else { "dkg" });
     let start = Command::new(&dkg).arg("start").env("DKG_HOME", &home).env("PATH", &path_env).output().await?;
     if !start.status.success() {
         return Err(DeskError::Io(format!("The node did not start: {}", String::from_utf8_lossy(&start.stdout).lines().last().unwrap_or(""))));

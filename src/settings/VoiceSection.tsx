@@ -1,13 +1,13 @@
 /**
  * The voice: the Mac's own voices (on the device) or ElevenLabs (reply text goes to ElevenLabs).
- * The ElevenLabs key is handed straight to the core, which keeps it in the Keychain; the window
+ * The ElevenLabs key is handed straight to the core, which keeps it in Keeper's private store; the window
  * never stores it and never shows it again.
  */
 import { useEffect, useState } from 'react';
 
 import { core, EVENTS, on, sentence, type ElevenVoice, type Settings, type SettingsChange, type VoiceEvent } from '../kernel/ipc';
 
-export function VoiceSection({ settings, save }: { settings: Settings; save: (c: SettingsChange) => void }) {
+export function VoiceSection({ settings, name, save }: { settings: Settings; name: string; save: (c: SettingsChange) => void }) {
   const [systemVoices, setSystemVoices] = useState<string[]>([]);
   const [eleven, setEleven] = useState<ElevenVoice[]>([]);
   const [key, setKey] = useState('');
@@ -63,26 +63,26 @@ export function VoiceSection({ settings, save }: { settings: Settings; save: (c:
         </select>
       )}
       <div className="voice-row">
-        <input className="field" type="password" placeholder={eleven.length ? 'ElevenLabs key saved in your Keychain' : 'Paste your ElevenLabs API key'} value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" spellCheck={false} />
+        <input className="field" type="password" placeholder={eleven.length ? 'ElevenLabs key saved' : 'Paste your ElevenLabs API key'} value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" spellCheck={false} />
         <button type="button" className="btn" onClick={saveKey} disabled={busy || (!key && eleven.length === 0)}>
           {busy ? <span className="spinner" /> : key || eleven.length === 0 ? 'Save key' : 'Remove'}
         </button>
       </div>
       <p className="muted small">With ElevenLabs, the words your assistant says are sent to ElevenLabs to be spoken. Your memory and what you say stay here.</p>
-      <button type="button" className="btn btn-ghost" onClick={() => core.speak(`Hello, I'm ${settings.assistantName}. This is how I sound.`).catch((e) => setError(sentence(e)))}>
+      <button type="button" className="btn btn-ghost" onClick={() => core.speak(`Hello, I'm ${name}. This is how I sound.`).catch((e) => setError(sentence(e)))}>
         Hear it
       </button>
       <label className="toggle">
         <input type="checkbox" checked={settings.alwaysListening} onChange={(e) => save({ alwaysListening: e.target.checked })} />
         <span>
           <strong>Always listening</strong>
-          <span className="muted small">Listens on this Mac for “{settings.assistantName}”, then acts on what you say next. Speech is recognised on the device; nothing is stored unless it was meant for {settings.assistantName}.</span>
+          <span className="muted small">Listens on this Mac for “{name}”, then acts on what you say next. Speech is recognised on the device; nothing is stored unless it was meant for {name}.</span>
         </span>
       </label>
       {settings.alwaysListening && (
         <div className="segmented" role="radiogroup" aria-label="When to answer">
           <button type="button" role="radio" aria-checked={settings.wakeWord} className={settings.wakeWord ? 'is-on' : ''} onClick={() => save({ wakeWord: true })}>
-            After “Hey {settings.assistantName}”
+            After “Hey {name}”
           </button>
           <button type="button" role="radio" aria-checked={!settings.wakeWord} className={!settings.wakeWord ? 'is-on' : ''} onClick={() => save({ wakeWord: false })}>
             Everything I say
@@ -90,7 +90,7 @@ export function VoiceSection({ settings, save }: { settings: Settings; save: (c:
         </div>
       )}
       {settings.alwaysListening && !settings.wakeWord && (
-        <p className="muted small">Open mic: every sentence {settings.assistantName} hears is answered and saved to your DKG memory, including anything said nearby. It stops listening while it speaks.</p>
+        <p className="muted small">Open mic: every sentence {name} hears is answered and saved to your DKG memory, including anything said nearby. It stops listening while it speaks.</p>
       )}
       {error && <p className="error-line">{error}</p>}
     </div>

@@ -11,10 +11,10 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::brain::engines::{cli, ollama};
 use crate::dkg::client::NodeStatus;
-use crate::dkg::ontology::{class, pred, ASSISTANT, OWNER};
-use crate::dkg::{node, AssetBuilder, DkgClient, Layer};
-use crate::kernel::slug::short_hash;
-use crate::kernel::{events, time, DeskError, Result};
+use crate::dkg::{node, DkgClient};
+use crate::keepers;
+use crate::kernel::settings::KeeperProfile;
+use crate::kernel::{events, DeskError, Result};
 use crate::platform;
 use crate::state::AppState;
 
@@ -87,58 +87,72 @@ pub struct GraphReady {
     pub query_ms: u128,
 }
 
-/// The graph id names no person: a hash of this computer's account, so it is stable per user.
-fn graph_id_for_this_computer() -> String {
-    let home = dirs::home_dir().map(|h| h.display().to_string()).unwrap_or_default();
-    // The prefix keeps its pre-rename spelling: existing graphs keep their exact id (DKG reference §2).
-    format!("umoja-desk-{}", short_hash(&format!("{home}\u{0}{}", platform::computer_name()), 10))
-}
-
+/// Step 3: the first keeper, the System Administration keeper, with its own Context Graph.
 #[tauri::command]
 pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, assistant_name: String) -> Result<GraphReady> {
-    let name = assistant_name.trim();
-    if name.is_empty() || name.chars().count() > 24 || !name.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == '-') {
-        return Err(DeskError::Invalid("Give your assistant a short name (letters and numbers).".into()));
+    let name = assistant_name.trim().to_string();
+    if !keepers::valid_name(&name) {
+        return Err(DeskError::Invalid("Give your keeper a short name (letters and numbers).".into()));
     }
     let loc = node::locate(std::path::Path::new(&node_home)).ok_or_else(|| DeskError::Node("that node folder has no port or sign-in token".into()))?;
     let client = DkgClient::new(&loc);
-    let graph_id = graph_id_for_this_computer();
-    let uri = client.ensure_graph(&graph_id, &format!("{name}'s memory (Keeper)")).await?;
-
-    let mut profile = AssetBuilder::new(ASSISTANT).a(class::AGENT).a("schema:SoftwareApplication").text(pred::NAME, name).link(pred::ABOUT, OWNER).time(pred::AT, &time::now_iso()).build();
-    profile.extend(AssetBuilder::new(OWNER).a(class::PERSON).time(pred::AT, &time::now_iso()).build());
-    let written = client.write_asset(&graph_id, "desk-profile", &profile).await?;
-
+    let existing = state.settings().keepers.first().cloned();
+    let keeper = KeeperProfile {
+        id: "keeper-1".into(),
+        name: name.clone(),
+        skin: existing.as_ref().map(|k| k.skin.clone()).unwrap_or_else(|| "robot".into()),
+        domain: "system".into(),
+        graph_id: keepers::graph_id_for(&name, true),
+        brain: existing.as_ref().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
+        model: existing.map(|k| k.model).unwrap_or_default(),
+    };
     let started = std::time::Instant::now();
-    let sparql = "PREFIX schema: <http://schema.org/> PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?name WHERE { <urn:umoja:desk:agent:assistant> a prov:SoftwareAgent ; schema:name ?name } LIMIT 1";
-    let rows = client.query(&graph_id, sparql, Layer::Working).await?;
-    let verified = rows.first().and_then(|r| r.get("name")).is_some_and(|n| n == name);
-
+    let (profile_ual, verified) = keepers::write_profile(&client, &keeper).await?;
+    let query_ms = started.elapsed().as_millis();
+    let graph_id = keeper.graph_id.clone();
     let home = node_home.clone();
-    let gid = graph_id.clone();
-    let assistant = name.to_string();
     state.update_settings(|s| {
         s.node_home = home;
-        s.graph_id = gid;
-        s.assistant_name = assistant;
+        s.keepers.retain(|k| k.id != "keeper-1");
+        s.keepers.insert(0, keeper);
+        s.active_keeper = "keeper-1".into();
     })?;
-    state.voice.set_name(name);
-    state.reconnect();
-    Ok(GraphReady { graph_id, uri, profile_ual: written.ka_ual, merkle_root: written.merkle_root, verified, query_ms: started.elapsed().as_millis() })
+    state.refresh_voice_names();
+    Ok(GraphReady { uri: format!("did:dkg:context-graph:{graph_id}"), graph_id, profile_ual, merkle_root: String::new(), verified, query_ms })
 }
 
 #[tauri::command]
-pub async fn setup_finish(state: State<'_, AppState>, brain: String, ollama_model: String, voice: String) -> Result<()> {
+pub async fn setup_finish(state: State<'_, AppState>, brain: String, model: String, voice: String) -> Result<()> {
     if crate::brain::engines::spec(&brain).is_none() {
         return Err(DeskError::Invalid("Choose one of the listed engines.".into()));
     }
     state.update_settings(|s| {
-        s.brain = brain;
-        s.ollama_model = ollama_model;
+        if let Some(k) = s.keeper_mut("keeper-1") {
+            k.brain = brain;
+            k.model = model;
+        }
         if !voice.trim().is_empty() {
             s.voice = voice;
         }
         s.setup_complete = true;
     })?;
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct FolderAccess {
+    pub folder: &'static str,
+    pub granted: bool,
+}
+
+/// Ask for the folders a System Administration keeper works in, up front: reading each one
+/// makes macOS ask "Keeper would like to access files in your Desktop folder" now, during setup,
+/// instead of in the middle of a task later.
+#[tauri::command]
+pub fn setup_folders() -> Vec<FolderAccess> {
+    let home = dirs::home_dir().unwrap_or_default();
+    ["Desktop", "Documents", "Downloads"]
+        .into_iter()
+        .map(|folder| FolderAccess { folder, granted: std::fs::read_dir(home.join(folder)).is_ok() })
+        .collect()
 }

@@ -17,3 +17,5 @@ pub const MEMORY_WRITTEN: &str = "memory://written";
 pub const PHONE_TURN: &str = "phone://turn";
 /// A newer version was installed; restart to use it.
 pub const APP_UPDATE: &str = "app://update";
+/// A turn finished (the talk window shows the reply).
+pub const ASSISTANT_REPLY: &str = "assistant://reply";

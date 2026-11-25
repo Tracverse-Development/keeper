@@ -17,7 +17,7 @@ export interface VoiceState {
   error: string | null;
 }
 
-export function useVoice(onCommand: (text: string) => void) {
+export function useVoice(onCommand: (text: string, keeper: string) => void) {
   const [state, setState] = useState<VoiceState>({ level: 0, partial: '', listening: false, speaking: false, mouth: 0, error: null });
   const mouthTarget = useRef(0);
   const commandRef = useRef(onCommand);
@@ -60,7 +60,7 @@ export function useVoice(onCommand: (text: string) => void) {
           break;
       }
     });
-    const offCommands = on<{ text: string }>(EVENTS.voiceCommand, (c) => commandRef.current(c.text));
+    const offCommands = on<{ text: string; keeper: string }>(EVENTS.voiceCommand, (c) => commandRef.current(c.text, c.keeper ?? ''));
     return () => {
       offEvents();
       offCommands();

@@ -4,7 +4,7 @@
 // so audio never leaves the computer; speaks with AVSpeechSynthesizer (system voices).
 //
 // Protocol (one JSON object per line):
-//   stdin  {"cmd":"listen","mode":"once"|"always"} {"cmd":"stop"} {"cmd":"speak","text":"…","voice":"Samantha"}
+//   stdin  {"cmd":"listen","mode":"once"|"always"} {"cmd":"finish"} {"cmd":"stop"} {"cmd":"speak","text":"…","voice":"Samantha"}
 //          {"cmd":"play","path":"/…/speech.mp3"} (ElevenLabs audio; mouth follows the loudness)
 //          {"cmd":"hush"} {"cmd":"authorize"} {"cmd":"voices"}
 //   stdout {"type":"ready","onDevice":true} {"type":"level","value":0.4} {"type":"partial","text":"…"}
@@ -101,6 +101,11 @@ final class Listener {
             // A task ends with an error after long silence; start a fresh one.
             beginTask()
         }
+    }
+
+    /// End the sentence now (push-to-talk released).
+    func finish() {
+        if mode != "off" { finishSentence() }
     }
 
     private func finishSentence() {
@@ -245,6 +250,8 @@ final class Helper {
             let mode = (command["mode"] as? String) == "always" ? "always" : "once"
             resumeMode = mode == "always" ? "always" : "off"
             listener.start(mode: mode)
+        case "finish":
+            listener.finish()
         case "stop":
             resumeMode = "off"
             listener.stop(emitState: true)

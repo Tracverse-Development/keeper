@@ -11,7 +11,7 @@ pub mod reflex;
 use serde::Serialize;
 
 pub use context::{AgentStep, Context, Thought};
-use crate::kernel::settings::Settings;
+use crate::kernel::settings::KeeperProfile;
 use engines::Place;
 
 #[derive(Debug, Clone, Serialize)]
@@ -25,21 +25,26 @@ pub struct MindUsed {
     pub fell_back: Option<String>,
 }
 
-/// Think with the chosen engine. `progress` hears what an agent is doing as it does it.
-pub async fn think(settings: &Settings, ctx: &Context, progress: &(dyn Fn(&str) + Sync)) -> (Thought, MindUsed) {
-    let id = settings.brain.as_str();
+/// Think with the keeper's engine and model. `progress` hears what an agent is doing as it does it.
+pub async fn think(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(&str) + Sync)) -> (Thought, MindUsed) {
+    let id = keeper.brain.as_str();
+    let model = keeper.model.as_str();
     let attempt = match id {
-        "claude" => Some(engines::claude::think(ctx, progress).await),
-        "codex" => Some(engines::codex::think(ctx, progress).await),
-        "gemini" => Some(engines::gemini::think(ctx).await),
+        "claude" => Some(engines::claude::think(ctx, model, progress).await),
+        "codex" => Some(engines::codex::think(ctx, model, progress).await),
+        "gemini" => Some(engines::gemini::think(ctx, model).await),
         "hermes" => Some(engines::hermes::think(ctx).await),
-        "ollama" if !settings.ollama_model.is_empty() => Some(engines::ollama::think(&settings.ollama_model, ctx).await),
+        "ollama" if !model.is_empty() => Some(engines::ollama::think(model, ctx).await),
         _ => None,
     };
     let builtin = |fell_back: Option<String>| MindUsed { id: "reflex".into(), label: "Built-in mind".into(), local: true, fell_back };
     match (attempt, engines::spec(id)) {
         (Some(Ok(thought)), Some(spec)) => {
-            let label = if spec.id == "ollama" { format!("{} on this Mac", settings.ollama_model) } else { spec.label.to_string() };
+            let label = match (spec.id, model) {
+                ("ollama", m) => format!("{m} on this Mac"),
+                (_, "") => spec.label.to_string(),
+                (_, m) => format!("{} · {m}", spec.label),
+            };
             (thought, MindUsed { id: spec.id.into(), label, local: spec.place == Place::Device, fell_back: None })
         }
         (Some(Err(e)), _) => (reflex::think(ctx), builtin(Some(format!("{}: {e}", engines::label(id))))),

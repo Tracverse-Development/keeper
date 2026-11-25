@@ -18,10 +18,10 @@ export function MindPanel({ choices, update, onNext, onBack }: Props) {
   return (
     <>
       <p className="eyebrow">Mind</p>
-      <h2>Choose how your assistant thinks.</h2>
+      <h2>Choose how your keeper thinks.</h2>
       <p className="lead">Whatever you choose, its memory stays in your DKG graph. You can switch engines any time, in Settings or just by saying "switch your brain to Claude".</p>
-      <EnginePicker value={choices.brain} model={choices.ollamaModel} onPick={(brain, ollamaModel) => update({ brain, ollamaModel })} />
-      <PanelActions onBack={onBack} onNext={onNext} canNext={choices.brain !== 'ollama' || Boolean(choices.ollamaModel)} />
+      <EnginePicker value={choices.brain} model={choices.model} onPick={(brain, model) => update({ brain, model })} />
+      <PanelActions onBack={onBack} onNext={onNext} canNext={choices.brain !== 'ollama' || Boolean(choices.model)} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { nodeFinding, shortId, suggestedMind, validName } from './steps.ts';
+import { foldersPermission, nodeFinding, shortId, STEPS, suggestedMind, validName, voicePermission } from './steps.ts';
 
 const scan = { node: null, silentNodes: [], ollamaModels: [], hermesInstalled: false, voiceHelper: true, computerName: 'Mac' };
 
@@ -27,4 +27,23 @@ test('names match the core rule', () => {
 test('long ids shorten in the middle', () => {
   assert.equal(shortId('abc'), 'abc');
   assert.equal(shortId('did:dkg:base:84532/0x26b43030c0cc4f7a041e7377a44e31551b89c3fc/456', 6), 'did:dk…fc/456');
+});
+
+test('the steps, in order, with permissions asked up front', () => {
+  assert.deepEqual(STEPS.map((s) => s.title), ['Welcome', 'Memory node', 'Your keeper', 'Mind', 'Permissions', 'Meet']);
+  assert.deepEqual(STEPS.map((s) => s.id), ['welcome', 'node', 'graph', 'mind', 'permissions', 'meet']);
+});
+
+test('the microphone is allowed only when speech and the mic both are', () => {
+  assert.equal(voicePermission(null), 'waiting');
+  assert.equal(voicePermission({ speech: 'authorized', mic: true }), 'allowed');
+  assert.equal(voicePermission({ speech: 'authorized', mic: false }), 'denied');
+  assert.equal(voicePermission({ speech: 'denied', mic: true }), 'denied');
+});
+
+test('folders are allowed only when every one is', () => {
+  assert.equal(foldersPermission(null), 'waiting');
+  assert.equal(foldersPermission([]), 'denied');
+  assert.equal(foldersPermission([{ folder: 'Desktop', granted: true }, { folder: 'Documents', granted: true }]), 'allowed');
+  assert.equal(foldersPermission([{ folder: 'Desktop', granted: true }, { folder: 'Downloads', granted: false }]), 'denied');
 });

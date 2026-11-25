@@ -9,6 +9,8 @@ use crate::skills::ActionRequest;
 pub struct Context {
     pub said: String,
     pub assistant_name: String,
+    /// What this keeper keeps (its domain's instructions).
+    pub domain_brief: &'static str,
     /// Facts recalled from the DKG for this turn (already ranked).
     pub facts: Vec<Fact>,
     /// The last exchanges, newest first (from the DKG).

@@ -59,8 +59,47 @@ pub struct EngineStatus {
     pub available: bool,
     /// Why it is not available, as a next step for the person.
     pub problem: Option<String>,
-    /// Models (Ollama only).
-    pub models: Vec<String>,
+    /// The models it offers (empty = only the engine's own default; a custom name is also allowed).
+    pub models: Vec<ModelOption>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelOption {
+    pub id: String,
+    pub name: String,
+}
+
+fn option(id: &str, name: &str) -> ModelOption {
+    ModelOption { id: id.into(), name: name.into() }
+}
+
+/// Claude Code accepts its aliases and full model ids (`--model`); Foreman's list, newest first.
+fn claude_models() -> Vec<ModelOption> {
+    vec![
+        option("opus", "Opus (latest)"),
+        option("sonnet", "Sonnet (latest)"),
+        option("haiku", "Haiku (latest, fastest)"),
+        option("claude-opus-5-5", "Opus 5.5"),
+        option("claude-fable-5-2", "Fable 5.2"),
+        option("claude-sonnet-5-5", "Sonnet 5.5"),
+        option("claude-haiku-5-5", "Haiku 5.5"),
+    ]
+}
+
+/// The models this Codex install offers, from the list the Codex CLI keeps itself
+/// (`~/.codex/models_cache.json`, entries marked for its picker), as Foreman reads it.
+fn codex_models() -> Vec<ModelOption> {
+    let home = std::env::var("CODEX_HOME").map(std::path::PathBuf::from).ok().or_else(|| dirs::home_dir().map(|h| h.join(".codex")));
+    let Some(cache) = home.and_then(|h| std::fs::read(h.join("models_cache.json")).ok()).and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok()) else {
+        return vec![];
+    };
+    cache["models"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|m| m["visibility"] == "list")
+        .filter_map(|m| Some(option(m["slug"].as_str()?, m["display_name"].as_str().or(m["slug"].as_str())?)))
+        .collect()
 }
 
 /// Is the engine usable here? Cheap checks only (program present, signed in where the CLI says).
@@ -68,13 +107,13 @@ pub async fn detect_all() -> Vec<EngineStatus> {
     let mut out = Vec::new();
     for e in CATALOGUE {
         let (problem, models) = match e.id {
-            "claude" => (missing("claude", "Install Claude Code (claude.com/claude-code) and sign in."), vec![]),
-            "codex" => (codex_problem().await, vec![]),
+            "claude" => (missing("claude", "Install Claude Code (claude.com/claude-code) and sign in."), claude_models()),
+            "codex" => (codex_problem().await, codex_models()),
             "gemini" => (missing("gemini", "Install the Gemini CLI and sign in."), vec![]),
             "hermes" => (missing("hermes", "Install Hermes (Agent Blackbox) first."), vec![]),
             "ollama" => {
                 let models = ollama::models().await;
-                (models.is_empty().then(|| "Install Ollama (ollama.com) and pull a model, such as llama3.2.".to_string()), models)
+                (models.is_empty().then(|| "Install Ollama (ollama.com) and pull a model, such as llama3.2.".to_string()), models.iter().map(|m| option(m, m)).collect())
             }
             _ => (None, vec![]),
         };

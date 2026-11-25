@@ -42,6 +42,7 @@ const CATALOGUE: &[(&str, &str)] = &[
     ("open-website", "{\"url\": \"https://umojaark.com\"} opens a website in the browser"),
     ("remind", "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later"),
     ("recall-actions", "{} lists what you have done for the person recently (from the DKG)"),
+    ("ask-memory", "{\"question\": \"actions-recent\", \"days\": \"1\"} asks your DKG memory one catalog question (facts-all, facts-by-category+category, facts-recent+days, turns-recent+days, actions-recent+days, agent-steps, actions-failed, skills-used, reminders-upcoming, minds-used, memory-size)"),
     ("switch-engine", "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex"),
 ];
 
@@ -56,6 +57,13 @@ pub struct SkillEnv<'a> {
 
 pub async fn run(req: &ActionRequest, env: &SkillEnv<'_>) -> Outcome {
     let input = req.input.to_string();
+    if req.skill == "ask-memory" {
+        let summary = ask_memory(&req.input, env).await;
+        return match summary {
+            Ok(s) => Outcome { skill: req.skill.clone(), input, summary: s, succeeded: true, effect: None },
+            Err(e) => Outcome { skill: req.skill.clone(), input, summary: e.to_string(), succeeded: false, effect: None },
+        };
+    }
     if req.skill == "switch-engine" {
         return switch_engine(req, input);
     }
@@ -70,6 +78,25 @@ pub async fn run(req: &ActionRequest, env: &SkillEnv<'_>) -> Outcome {
         Ok(summary) => Outcome { skill: req.skill.clone(), input, summary, succeeded: true, effect: None },
         Err(e) => Outcome { skill: req.skill.clone(), input, summary: e.to_string(), succeeded: false, effect: None },
     }
+}
+
+/// One catalog question, answered in a sentence from its rows (at most eight shown).
+async fn ask_memory(input: &serde_json::Value, env: &SkillEnv<'_>) -> Result<String> {
+    let id = str_field(input, "question")?;
+    let args: std::collections::HashMap<String, String> = ["days", "category", "chat", "skill"]
+        .iter()
+        .filter_map(|k| input[*k].as_str().map(|v| (k.to_string(), v.to_string())).or_else(|| input[*k].as_i64().map(|v| (k.to_string(), v.to_string()))))
+        .collect();
+    let (rows, trace) = env.memory.ask(id, &args).await?;
+    if rows.is_empty() {
+        return Ok(format!("{}: nothing in your memory graph yet.", trace.label));
+    }
+    let lines: Vec<String> = rows
+        .iter()
+        .take(8)
+        .map(|r| ["text", "outcome", "said", "title", "skill", "category", "mind", "type", "day", "name"].iter().filter_map(|k| r.get(*k)).cloned().chain(["n", "facts", "turns", "times"].iter().filter_map(|k| r.get(*k).map(|v| format!("({v})")))).collect::<Vec<_>>().join(" "))
+        .collect();
+    Ok(format!("{} ({} found): {}.", trace.label, rows.len(), lines.join("; ")))
 }
 
 /// Only engines in the catalogue; the words are said by the assistant once the switch is applied.

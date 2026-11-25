@@ -28,16 +28,6 @@ pub fn notify(title: &str, body: &str) {
     os::notify(title, body)
 }
 
-/// A secret from the system keychain (None when there is none).
-pub fn secret_get(name: &str) -> Option<String> {
-    os::secret_get(name)
-}
-
-/// Store (or replace) a secret in the system keychain; an empty value deletes it.
-pub fn secret_set(name: &str, value: &str) -> Result<()> {
-    os::secret_set(name, value)
-}
-
 /// The computer's name ("Ada's MacBook Pro"), for naming a new node.
 pub fn computer_name() -> String {
     os::computer_name()

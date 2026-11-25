@@ -6,6 +6,8 @@ mod assistant;
 mod brain;
 mod commands;
 mod dkg;
+mod hotkey;
+mod keepers;
 mod kernel;
 mod memory;
 mod phone;
@@ -17,7 +19,7 @@ mod updater;
 mod voice;
 
 use serde_json::json;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 
 use kernel::{events, settings::Settings};
 use skills::reminders::Scheduler;
@@ -26,6 +28,7 @@ use state::AppState;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(hotkey::plugin())
         .setup(|app| {
             let handle = app.handle().clone();
             let reminders = Scheduler::new(move |reminder| {
@@ -43,13 +46,18 @@ pub fn run() {
 
             updater::spawn_auto(app.handle().clone());
 
-            // Reminders live on the DKG: reload the ones still ahead and schedule them again.
+            // The keeper button (push to talk); a taken shortcut is reported in Settings, not fatal.
+            let _ = hotkey::apply(app.handle(), &app.state::<AppState>().settings().talk_shortcut);
+
+            // Reminders live on the DKG: reload every keeper's reminders still ahead.
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
-                if let Ok(memory) = state.memory() {
-                    for r in memory.upcoming_reminders().await.unwrap_or_default() {
-                        state.reminders.schedule(r);
+                for keeper in state.settings().keepers {
+                    if let Ok(memory) = state.memory_for(&keeper) {
+                        for r in memory.upcoming_reminders().await.unwrap_or_default() {
+                            state.reminders.schedule(r);
+                        }
                     }
                 }
                 if state.settings().setup_complete && state.settings().always_listening {
@@ -57,6 +65,16 @@ pub fn run() {
                 }
             });
             Ok(())
+        })
+        // Closing the main window hides it: Keeper keeps listening, reminding and answering the
+        // keeper button and the phone; the Dock icon brings it back.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             assistant::assistant_turn,
@@ -75,6 +93,18 @@ pub fn run() {
             commands::voice_hush,
             commands::voice_list,
             commands::engines_list,
+            commands::chats_list,
+            commands::chat_turns,
+            commands::catalog_list,
+            commands::catalog_run,
+            keepers::keepers_list,
+            keepers::keepers_create,
+            keepers::keepers_activate,
+            keepers::keepers_update,
+            keepers::keepers_remove,
+            hotkey::talk_hide,
+            hotkey::talk_shortcut_status,
+            setup::setup_folders,
             commands::eleven_set_key,
             commands::eleven_voices,
             phone::phone_status,
@@ -83,6 +113,14 @@ pub fn run() {
             updater::update_check,
             updater::app_restart,
         ])
-        .run(tauri::generate_context!())
-        .expect("Keeper failed to start");
+        .build(tauri::generate_context!())
+        .expect("Keeper failed to start")
+        .run(|app, event| {
+            if let RunEvent::Reopen { .. } = event {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+        });
 }

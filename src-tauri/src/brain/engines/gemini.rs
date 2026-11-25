@@ -7,9 +7,12 @@ use crate::brain::context::{Context, Thought};
 use crate::brain::prompt;
 use crate::kernel::{DeskError, Result};
 
-pub async fn think(ctx: &Context) -> Result<Thought> {
+pub async fn think(ctx: &Context, model: &str) -> Result<Thought> {
     let program = cli::program("gemini").ok_or_else(|| DeskError::Brain("The Gemini CLI is not installed".into()))?;
     let mut args = vec!["-p".to_string(), format!("{}\n\nThe person says: {}", prompt::system(ctx), ctx.said)];
+    if !model.is_empty() {
+        args.extend(["-m".to_string(), model.to_string()]);
+    }
     if ctx.may_act {
         args.push("--yolo".into());
     }

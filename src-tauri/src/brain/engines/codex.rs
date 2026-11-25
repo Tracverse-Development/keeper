@@ -9,10 +9,15 @@ use crate::brain::context::{AgentStep, Context, Thought};
 use crate::brain::prompt;
 use crate::kernel::{DeskError, Result};
 
-pub fn args(ctx: &Context) -> Vec<String> {
+pub fn args(ctx: &Context, model: &str) -> Vec<String> {
     let sandbox = if ctx.may_act { "danger-full-access" } else { "read-only" };
     let prompt_text = format!("{}\n\nThe person says: {}", prompt::system(ctx), ctx.said);
-    ["exec", "--json", "--skip-git-repo-check", "-s", sandbox].iter().map(|s| s.to_string()).chain([prompt_text]).collect()
+    let mut a: Vec<String> = ["exec", "--json", "--skip-git-repo-check", "-s", sandbox].iter().map(|s| s.to_string()).collect();
+    if !model.is_empty() {
+        a.extend(["-m".to_string(), model.to_string()]);
+    }
+    a.push(prompt_text);
+    a
 }
 
 /// What one `--json` event adds: a command (a step), the agent's message, or an error.
@@ -41,11 +46,11 @@ pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, message: &mut Option<St
     }
 }
 
-pub async fn think(ctx: &Context, progress: &(dyn Fn(&str) + Sync)) -> Result<Thought> {
+pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(&str) + Sync)) -> Result<Thought> {
     let program = cli::program("codex").ok_or_else(|| DeskError::Brain("Codex is not installed".into()))?;
     let (mut steps, mut message, mut error) = (Vec::new(), None, None);
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
-    cli::run(&program, &args(ctx), &cli::workdir(ctx.may_act), timeout, |line| {
+    cli::run(&program, &args(ctx, model), &cli::workdir(ctx.may_act), timeout, |line| {
         if let Some(step) = read_line(line, &mut steps, &mut message, &mut error) {
             progress(&step);
         }

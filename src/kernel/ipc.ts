@@ -5,6 +5,7 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export const EVENTS = {
   assistantPhase: 'assistant://phase',
@@ -15,27 +16,91 @@ export const EVENTS = {
   memoryWritten: 'memory://written',
   phoneTurn: 'phone://turn',
   appUpdate: 'app://update',
+  assistantReply: 'assistant://reply',
 } as const;
 
 /** An engine id from the core's catalogue (`brain/engines/mod.rs`): claude, codex, gemini, hermes, ollama, reflex. */
 export type EngineId = string;
 export type VoiceEngine = 'system' | 'elevenlabs';
 
+/** One keeper: its own look, mind and domain, remembering in its own Context Graph. */
+export interface KeeperProfile {
+  id: string;
+  name: string;
+  skin: string;
+  domain: string;
+  graphId: string;
+  brain: EngineId;
+  model: string;
+}
+
+export interface DomainInfo {
+  id: string;
+  title: string;
+  blurb: string;
+}
+
+export interface KeeperList {
+  keepers: KeeperProfile[];
+  active: string;
+  domains: DomainInfo[];
+}
+
+export interface KeeperSaved {
+  list: KeeperList;
+  announcement: string | null;
+}
+
+export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model'>>;
+
 export interface Settings {
   setupComplete: boolean;
-  assistantName: string;
-  graphId: string;
   nodeHome: string;
-  brain: EngineId;
-  ollamaModel: string;
+  keepers: KeeperProfile[];
+  activeKeeper: string;
   agentActions: boolean;
   voice: string;
   voiceEngine: VoiceEngine;
   elevenVoiceId: string;
   alwaysListening: boolean;
   wakeWord: boolean;
-  skin: string;
+  talkShortcut: string;
   autoUpdate: boolean;
+}
+
+export interface ModelOption {
+  id: string;
+  name: string;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  at: string;
+}
+
+export type QuestionParam = 'days' | 'category' | 'chat' | 'skill';
+
+export interface QuestionInfo {
+  id: string;
+  title: string;
+  group: string;
+  params: QuestionParam[];
+}
+
+export interface Answer {
+  trace: QueryTrace;
+  rows: Record<string, string>[];
+}
+
+export interface FolderAccess {
+  folder: string;
+  granted: boolean;
+}
+
+export interface ShortcutStatus {
+  shortcut: string;
+  registered: boolean;
 }
 
 export interface EngineStatus {
@@ -46,12 +111,7 @@ export interface EngineStatus {
   canAct: boolean;
   available: boolean;
   problem: string | null;
-  models: string[];
-}
-
-export interface Saved {
-  settings: Settings;
-  announcement: string | null;
+  models: ModelOption[];
 }
 
 export interface ElevenVoice {
@@ -119,6 +179,7 @@ export interface Turn {
   replied: string;
   mind: string;
   at: string;
+  chat: string;
 }
 
 export interface ActionRecord {
@@ -167,6 +228,8 @@ export interface Outcome {
 }
 
 export interface TurnResult {
+  keeper: string;
+  chat: string;
   reply: string;
   mind: MindUsed;
   learned: Fact[];
@@ -197,7 +260,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'brain' | 'ollamaModel' | 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'skin' | 'autoUpdate'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 
@@ -220,7 +283,19 @@ export type VoiceEvent =
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
   settings: () => invoke<Settings>('app_settings'),
-  saveSettings: (change: SettingsChange) => invoke<Saved>('save_settings', { change }),
+  saveSettings: (change: SettingsChange) => invoke<Settings>('save_settings', { change }),
+  keepers: () => invoke<KeeperList>('keepers_list'),
+  createKeeper: (keeper: { name: string; skin: string; domain: string }) => invoke<KeeperList>('keepers_create', { keeper }),
+  activateKeeper: (id: string) => invoke<KeeperList>('keepers_activate', { id }),
+  updateKeeper: (id: string, change: KeeperChange) => invoke<KeeperSaved>('keepers_update', { id, change }),
+  removeKeeper: (id: string) => invoke<KeeperList>('keepers_remove', { id }),
+  chats: (keeper?: string) => invoke<Chat[]>('chats_list', { keeper }),
+  chatTurns: (chat: string, keeper?: string) => invoke<Turn[]>('chat_turns', { keeper, chat }),
+  catalog: () => invoke<QuestionInfo[]>('catalog_list'),
+  ask: (question: string, args: Record<string, string>, keeper?: string) => invoke<Answer>('catalog_run', { keeper, question, args }),
+  folders: () => invoke<FolderAccess[]>('setup_folders'),
+  talkHide: () => invoke<void>('talk_hide'),
+  shortcutStatus: () => invoke<ShortcutStatus>('talk_shortcut_status'),
   engines: () => invoke<EngineStatus[]>('engines_list'),
   elevenSetKey: (key: string) => invoke<ElevenVoice[]>('eleven_set_key', { key }),
   elevenVoices: () => invoke<ElevenVoice[]>('eleven_voices'),
@@ -232,9 +307,9 @@ export const core = {
   scan: () => invoke<Scan>('setup_scan'),
   installNode: () => invoke<FoundNode>('setup_install_node'),
   createGraph: (nodeHome: string, assistantName: string) => invoke<GraphReady>('setup_create_graph', { nodeHome, assistantName }),
-  finishSetup: (brain: EngineId, ollamaModel: string, voice: string) => invoke<void>('setup_finish', { brain, ollamaModel, voice }),
-  turn: (text: string) => invoke<TurnResult>('assistant_turn', { text }),
-  overview: () => invoke<Overview>('memory_overview'),
+  finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
+  turn: (text: string, keeper?: string, chat?: string) => invoke<TurnResult>('assistant_turn', { text, keeper, chat }),
+  overview: (keeper?: string) => invoke<Overview>('memory_overview', { keeper }),
   forgetFact: (id: string) => invoke<void>('memory_forget_fact', { id }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),
   listenOnce: () => invoke<void>('voice_listen_once'),
@@ -243,6 +318,15 @@ export const core = {
   hush: () => invoke<void>('voice_hush'),
   listVoices: () => invoke<void>('voice_list'),
 };
+
+/** Which window this is: "main" or "talk" (the push-to-talk window). */
+export function windowLabel(): string {
+  try {
+    return getCurrentWindow().label;
+  } catch {
+    return 'main';
+  }
+}
 
 /** Subscribe to a core event; returns the unsubscribe function (safe to call in effect cleanup). */
 export function on<T>(event: (typeof EVENTS)[keyof typeof EVENTS], handler: (payload: T) => void): () => void {

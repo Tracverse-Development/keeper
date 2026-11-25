@@ -33,7 +33,9 @@ enum Mode {
 struct Shared {
     mode: Mode,
     wake: wake::Wake,
-    name: String,
+    /// Every keeper as (id, name), and the active keeper's id.
+    keepers: Vec<(String, String)>,
+    active: String,
     /// Always-listening needs the wake word (false = open mic: every sentence is a command).
     wake_required: bool,
 }
@@ -46,12 +48,13 @@ pub struct Voice {
 
 impl Voice {
     pub fn new() -> Voice {
-        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), name: "Keeper".into(), wake_required: true })) }
+        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })) }
     }
 
-    pub fn set_name(&self, name: &str) {
+    pub fn set_keepers(&self, keepers: Vec<(String, String)>, active: String) {
         if let Ok(mut s) = self.shared.lock() {
-            s.name = name.to_string();
+            s.keepers = keepers;
+            s.active = active;
         }
     }
 
@@ -130,6 +133,11 @@ impl Voice {
         self.send(app, json!({ "cmd": "listen", "mode": "always" })).await
     }
 
+    /// End the sentence now (the push-to-talk key was released): what was heard so far is final.
+    pub async fn finish(&self, app: &AppHandle) -> Result<()> {
+        self.send(app, json!({ "cmd": "finish" })).await
+    }
+
     pub async fn stop_listening(&self, app: &AppHandle) -> Result<()> {
         self.set_mode(Mode::Off);
         self.send(app, json!({ "cmd": "stop" })).await
@@ -161,19 +169,23 @@ impl Voice {
 
 fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
     let Ok(mut s) = shared.lock() else { return };
-    let command = match s.mode {
+    let active = s.active.clone();
+    // (keeper id, command); an empty id means the active keeper.
+    let command: Option<(String, String)> = match s.mode {
         Mode::Once => {
             s.mode = Mode::Off;
-            Some(text.to_string())
+            Some((String::new(), text.to_string()))
         }
-        // Open mic: every sentence is for the assistant (words of one or two letters are noise).
-        Mode::Always if !s.wake_required => Some(text.to_string()).filter(|t| t.trim().len() > 2),
+        // Open mic: every sentence is for the active keeper (words of one or two letters are noise).
+        Mode::Always if !s.wake_required => Some((String::new(), text.to_string())).filter(|(_, t)| t.trim().len() > 2),
         Mode::Always => {
-            let name = s.name.clone();
-            match s.wake.hear(text, &name) {
-                wake::Heard::Command(c) => Some(c),
-                wake::Heard::Woken => {
-                    let _ = app.emit(events::VOICE_EVENT, json!({ "type": "woken" }));
+            let names: Vec<String> = s.keepers.iter().map(|(_, n)| n.clone()).collect();
+            let active_index = s.keepers.iter().position(|(id, _)| *id == active).unwrap_or(0);
+            let ids: Vec<String> = s.keepers.iter().map(|(id, _)| id.clone()).collect();
+            match s.wake.hear(text, &names, active_index) {
+                wake::Heard::Command(i, c) => Some((ids.get(i).cloned().unwrap_or_default(), c)),
+                wake::Heard::Woken(i) => {
+                    let _ = app.emit(events::VOICE_EVENT, json!({ "type": "woken", "keeper": ids.get(i) }));
                     None
                 }
                 wake::Heard::Ignore => None,
@@ -181,7 +193,7 @@ fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
         }
         Mode::Off => None,
     };
-    if let Some(c) = command.filter(|c| !c.trim().is_empty()) {
-        let _ = app.emit(events::VOICE_COMMAND, json!({ "text": c }));
+    if let Some((keeper, c)) = command.filter(|(_, c)| !c.trim().is_empty()) {
+        let _ = app.emit(events::VOICE_COMMAND, json!({ "text": c, "keeper": keeper }));
     }
 }
