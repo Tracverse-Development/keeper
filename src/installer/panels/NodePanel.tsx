@@ -1,5 +1,5 @@
 /**
- * Step 2: the DKG node. Umoja Desk uses a node already on this computer when there is one;
+ * Step 2: the DKG node. Keeper uses a node already on this computer when there is one;
  * otherwise it installs its own (pinned version, its own folder, automatic updates off).
  */
 import { useEffect, useState } from 'react';
@@ -79,7 +79,7 @@ export function NodePanel({ choices, update, rescan, onNext, onBack }: Props) {
       ) : finding === 'stopped' ? (
         <>
           <h2>Your DKG node is installed but not running.</h2>
-          <p className="lead">Start it (for example with <span className="mono">dkg start</span>), then check again. Umoja Desk never starts or changes a node it did not install.</p>
+          <p className="lead">Start it (for example with <span className="mono">dkg start</span>), then check again. Keeper never starts or changes a node it did not install.</p>
           <button type="button" className="btn" onClick={() => rescan()}>
             Check again
           </button>
@@ -87,7 +87,7 @@ export function NodePanel({ choices, update, rescan, onNext, onBack }: Props) {
       ) : (
         <>
           <h2>Let's give your assistant a memory node.</h2>
-          <p className="lead">There's no DKG node on this computer yet. Umoja Desk will install an edge node in its own folder, pinned to a tested version, with automatic updates off. It needs Node.js.</p>
+          <p className="lead">There's no DKG node on this computer yet. Keeper will install an edge node in its own folder, pinned to a tested version, with automatic updates off. It needs Node.js.</p>
           <button type="button" className="btn btn-primary" onClick={install} disabled={installing}>
             {installing && <span className="spinner" />} Install a DKG node
           </button>

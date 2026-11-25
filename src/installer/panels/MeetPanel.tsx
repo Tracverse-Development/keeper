@@ -10,7 +10,7 @@ const MIND_WORDS: Record<string, string> = { claude: 'Claude Code', codex: 'Code
 export function MeetPanel({ choices, onFinish, onBack }: { choices: InstallerChoices; onFinish: () => Promise<void>; onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const name = choices.assistantName.trim() || 'Umoja';
+  const name = choices.assistantName.trim() || 'Keeper';
   const go = async () => {
     setBusy(true);
     try {

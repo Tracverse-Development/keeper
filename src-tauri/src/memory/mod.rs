@@ -125,8 +125,18 @@ impl Memory {
         Ok((facts, trace))
     }
 
+    /// The last few exchanges (context for a turn).
     pub async fn recent_turns(&self) -> Result<(Vec<Turn>, QueryTrace)> {
-        let (rows, trace) = self.run(&queries::RECENT_TURNS).await?;
+        self.turns(&queries::RECENT_TURNS).await
+    }
+
+    /// The conversation history (the window's Conversations tab).
+    pub async fn history(&self) -> Result<(Vec<Turn>, QueryTrace)> {
+        self.turns(&queries::HISTORY).await
+    }
+
+    async fn turns(&self, q: &queries::Query) -> Result<(Vec<Turn>, QueryTrace)> {
+        let (rows, trace) = self.run(q).await?;
         let turns = rows
             .iter()
             .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at") })

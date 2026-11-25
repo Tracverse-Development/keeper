@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 
 import { core, sentence, type Overview } from '../kernel/ipc';
 
-const TABS = ['Facts', 'Actions', 'Reminders', 'Queries'] as const;
+const TABS = ['Conversations', 'Knowledge', 'Actions', 'Reminders', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
 
 function when(iso: string): string {
@@ -18,7 +18,7 @@ function when(iso: string): string {
 export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onClose: () => void; refreshKey: number }) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('Facts');
+  const [tab, setTab] = useState<Tab>('Conversations');
 
   const load = () =>
     core
@@ -54,7 +54,7 @@ export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onC
       </div>
       {data && (
         <div className="counts">
-          <div><strong>{data.counts.facts}</strong><span>facts</span></div>
+          <div><strong>{data.counts.facts}</strong><span>knowledge</span></div>
           <div><strong>{data.counts.turns}</strong><span>conversations</span></div>
           <div><strong>{data.counts.actions}</strong><span>actions</span></div>
           <div><strong>{data.counts.reminders}</strong><span>reminders</span></div>
@@ -71,7 +71,20 @@ export function MemoryDrawer({ open, onClose, refreshKey }: { open: boolean; onC
       <div className="drawer-body">
         {error && <p className="error-line">{error}</p>}
         {!data && !error && <span className="spinner" />}
-        {data && tab === 'Facts' && (data.facts.length === 0 ? <p className="muted">Nothing yet. Tell your assistant about yourself.</p> : (
+        {data && tab === 'Conversations' && (data.turns.length === 0 ? <p className="muted">No conversations yet. Say hello.</p> : (
+          <ul className="records history">
+            {data.turns.map((t) => (
+              <li key={t.id}>
+                <div>
+                  <p className="selectable said">{t.said}</p>
+                  <p className="selectable replied">{t.replied}</p>
+                  <span className="muted small">{when(t.at)} · {t.mind || 'reflex'} · <span className="mono">desk-turn-{t.id}</span></span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ))}
+        {data && tab === 'Knowledge' && (data.facts.length === 0 ? <p className="muted">Nothing yet. Tell your assistant about yourself.</p> : (
           <ul className="records">
             {data.facts.map((f) => (
               <li key={f.id}>

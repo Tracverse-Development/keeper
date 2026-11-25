@@ -1,10 +1,11 @@
 <div align="center">
   <img src="assets/art/app-icon.png" width="120" alt="">
-  <h1>Umoja Desk</h1>
+  <h1>Keeper</h1>
+  <p><em>by Umoja Ark</em></p>
   <p><strong>A personal assistant you talk to, whose memory lives on your own OriginTrail DKG node.</strong></p>
 </div>
 
-Umoja Desk is a desktop app with a 3D character you can speak to. Everything it learns about you,
+Keeper is a desktop app with a 3D character you can speak to. Everything it learns about you,
 everything you talk about and everything it does is a **Knowledge Asset in a private Context Graph on
 your own DKG node**, and every answer is made from **SPARQL queries over that graph**, which the app
 shows you. There is no other database.
@@ -21,7 +22,7 @@ shows you. There is no other database.
 
 ## Install
 
-Download the latest `.dmg` from [Releases](../../releases), open it and drag Umoja Desk into Applications.
+Download the latest `.dmg` from [Releases](../../releases), open it and drag Keeper into Applications.
 On first run it finds your DKG node (or installs one), creates your memory graph and introduces your assistant.
 
 ## Build from source

@@ -37,8 +37,11 @@ pub struct Settings {
     pub voice_engine: VoiceEngine,
     /// The ElevenLabs voice id when `voice_engine` is ElevenLabs.
     pub eleven_voice_id: String,
-    /// Listen all the time for the wake word (off until the person turns it on).
+    /// Listen all the time (off until the person turns it on).
     pub always_listening: bool,
+    /// While always listening: wait for the wake word (true), or treat every sentence as meant
+    /// for the assistant (false, "open mic").
+    pub wake_word: bool,
     /// The character's look: an id from the window's skin registry ("robot", "puppy").
     pub skin: String,
     /// Install updates by itself (checked at launch and every few hours).
@@ -49,7 +52,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             setup_complete: false,
-            assistant_name: "Umoja".into(),
+            assistant_name: "Keeper".into(),
             graph_id: String::new(),
             node_home: String::new(),
             brain: "reflex".into(),
@@ -59,6 +62,7 @@ impl Default for Settings {
             voice_engine: VoiceEngine::System,
             eleven_voice_id: String::new(),
             always_listening: false,
+            wake_word: true,
             skin: "robot".into(),
             auto_update: true,
         }
@@ -97,6 +101,7 @@ mod tests {
         assert_eq!(s.skin, "robot");
         assert!(!s.agent_actions);
         assert!(s.auto_update);
+        assert!(s.wake_word, "an older file keeps the wake word on");
         assert_eq!(s.voice_engine, VoiceEngine::System);
     }
 }

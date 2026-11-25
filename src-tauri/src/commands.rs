@@ -10,7 +10,7 @@ use crate::kernel::settings::{Settings, VoiceEngine};
 use crate::kernel::{time, DeskError, Result};
 use crate::platform;
 use crate::voice::eleven::{self, ElevenVoice};
-use crate::memory::{ActionRecord, Counts, Fact, QueryTrace, Reminder, Retraction};
+use crate::memory::{ActionRecord, Counts, Fact, QueryTrace, Reminder, Retraction, Turn};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -29,6 +29,7 @@ pub struct SettingsChange {
     pub voice_engine: Option<VoiceEngine>,
     pub eleven_voice_id: Option<String>,
     pub always_listening: Option<bool>,
+    pub wake_word: Option<bool>,
     pub skin: Option<String>,
     pub auto_update: Option<bool>,
 }
@@ -80,6 +81,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         if let Some(a) = change.always_listening {
             s.always_listening = a;
         }
+        if let Some(w) = change.wake_word {
+            s.wake_word = w;
+        }
         if let Some(skin) = change.skin {
             s.skin = skin;
         }
@@ -87,6 +91,7 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
             s.auto_update = u;
         }
     })?;
+    state.voice.set_wake_required(saved.wake_word);
     if let Some(on) = change.always_listening {
         if on {
             state.voice.listen_always(&app).await?;
@@ -133,6 +138,8 @@ pub struct Overview {
     pub node: Option<NodeStatus>,
     pub counts: Counts,
     pub facts: Vec<Fact>,
+    /// The conversation history, newest first (from the DKG).
+    pub turns: Vec<Turn>,
     pub actions: Vec<ActionRecord>,
     pub reminders: Vec<Reminder>,
     pub traces: Vec<QueryTrace>,
@@ -144,14 +151,16 @@ pub async fn memory_overview(state: State<'_, AppState>) -> Result<Overview> {
     let node = memory.client().status().await.ok();
     let (facts, facts_trace) = memory.facts().await?;
     let (actions, actions_trace) = memory.actions().await?;
+    let (turns, turns_trace) = memory.history().await?;
     Ok(Overview {
         graph_id: memory.graph().to_string(),
         node,
         counts: memory.counts().await.unwrap_or_default(),
         facts,
+        turns,
         actions,
         reminders: memory.upcoming_reminders().await.unwrap_or_default(),
-        traces: vec![facts_trace, actions_trace],
+        traces: vec![facts_trace, turns_trace, actions_trace],
     })
 }
 

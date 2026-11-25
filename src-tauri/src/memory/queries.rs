@@ -1,4 +1,4 @@
-//! Every SPARQL query Umoja Desk runs. Bounded by construction (DKG reference §6, LES-013):
+//! Every SPARQL query Keeper runs. Bounded by construction (DKG reference §6, LES-013):
 //! each names the class it reads, carries a LIMIT or is a GROUP BY, and NEVER interpolates
 //! a person's words. Ranking against what was said happens in Rust (`rank.rs`), not in SPARQL.
 //!
@@ -37,6 +37,11 @@ pub const RECENT_TURNS: Query = Query {
     body: "SELECT ?t ?said ?replied ?mind ?at WHERE { ?t a desk:Turn ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } } ORDER BY DESC(?at) LIMIT 6",
 };
 
+pub const HISTORY: Query = Query {
+    label: "What have we talked about?",
+    body: "SELECT ?t ?said ?replied ?mind ?at WHERE { ?t a desk:Turn ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } } ORDER BY DESC(?at) LIMIT 200",
+};
+
 pub const RECENT_ACTIONS: Query = Query {
     label: "What have I done for you?",
     body: "SELECT ?a ?skill ?input ?outcome ?succeeded ?at WHERE { ?a a desk:Action ; desk:skill ?skill ; desk:outcome ?outcome ; prov:generatedAtTime ?at . OPTIONAL { ?a desk:input ?input } OPTIONAL { ?a desk:succeeded ?succeeded } } ORDER BY DESC(?at) LIMIT 25",
@@ -58,7 +63,7 @@ mod tests {
 
     #[test]
     fn every_query_is_bounded_and_typed() {
-        for q in [&FACTS, &RETRACTIONS, &RECENT_TURNS, &RECENT_ACTIONS, &REMINDERS, &COUNTS] {
+        for q in [&FACTS, &RETRACTIONS, &RECENT_TURNS, &HISTORY, &RECENT_ACTIONS, &REMINDERS, &COUNTS] {
             let s = q.sparql();
             assert!(s.contains("LIMIT") || s.contains("GROUP BY"), "{} is unbounded", q.label);
             assert!(s.contains(" a desk:") || s.contains("VALUES ?type"), "{} does not name a class", q.label);

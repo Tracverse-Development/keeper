@@ -28,7 +28,7 @@ export interface InstallerChoices {
 
 export function InstallerScreen({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const [choices, setChoices] = useState<InstallerChoices>({ scan: null, node: null, graph: null, assistantName: 'Umoja', brain: 'reflex', ollamaModel: '', voice: 'Samantha' });
+  const [choices, setChoices] = useState<InstallerChoices>({ scan: null, node: null, graph: null, assistantName: 'Keeper', brain: 'reflex', ollamaModel: '', voice: 'Samantha' });
   const update = (patch: Partial<InstallerChoices>) => setChoices((c) => ({ ...c, ...patch }));
 
   // Look around once, in the background, while the person reads the welcome.
@@ -70,7 +70,7 @@ export function InstallerScreen({ onDone }: { onDone: () => void }) {
           <Mark size={step > 0 ? 120 : 190} />
         </div>
         <div className="stage-words">
-          <h1>Umoja Desk</h1>
+          <h1>Keeper</h1>
           <p>Your assistant. Your memory. Your own DKG node.</p>
         </div>
         <svg className="stage-waves" viewBox="0 0 1200 160" preserveAspectRatio="none">

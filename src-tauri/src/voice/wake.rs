@@ -1,5 +1,5 @@
 //! The wake word, as a small State machine over final transcripts (always-listening mode):
-//! "Hey Umoja, what's on today?" → command "what's on today?"; "Umoja" alone → wait for the
+//! "Hey Keeper, what's on today?" → command "what's on today?"; "Keeper" alone → wait for the
 //! next sentence; anything else → ignored (never sent anywhere, never stored).
 
 #[derive(Debug, Default)]
@@ -27,7 +27,7 @@ impl Wake {
         let lower = text.to_lowercase();
         let name = name.to_lowercase();
         // Speech recognisers spell an unfamiliar name a few ways.
-        let spellings = [name.clone(), "umoja".into(), "omoja".into(), "a moja".into(), "you moja".into()];
+        let spellings = [name.clone(), "keeper".into(), "keep her".into(), "kiper".into()];
         let Some((pos, len)) = spellings.iter().filter(|s| !s.is_empty()).find_map(|s| lower.find(s.as_str()).map(|p| (p, s.len()))) else {
             return Heard::Ignore;
         };

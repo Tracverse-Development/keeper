@@ -1925,6 +1925,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "keeper"
+version = "0.2.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "dirs 5.0.1",
+ "getrandom 0.2.17",
+ "hex",
+ "qrcode",
+ "regex",
+ "reqwest 0.12.28",
+ "security-framework",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-updater",
+ "thiserror 1.0.69",
+ "tiny_http",
+ "tokio",
+]
+
+[[package]]
 name = "keyboard-types"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4499,30 +4523,6 @@ name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
-
-[[package]]
-name = "umoja-desk"
-version = "0.2.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "dirs 5.0.1",
- "getrandom 0.2.17",
- "hex",
- "qrcode",
- "regex",
- "reqwest 0.12.28",
- "security-framework",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tauri",
- "tauri-build",
- "tauri-plugin-updater",
- "thiserror 1.0.69",
- "tiny_http",
- "tokio",
-]
 
 [[package]]
 name = "unicode-ident"

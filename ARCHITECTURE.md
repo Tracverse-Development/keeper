@@ -1,12 +1,12 @@
 # Architecture
 
-Umoja Desk is a Tauri 2 app: a Rust core (`src-tauri/src/`), a React window (`src/`) and a small
+Keeper is a Tauri 2 app: a Rust core (`src-tauri/src/`), a React window (`src/`) and a small
 Swift helper for the voice (`native/voice/`). Its memory is the person's own OriginTrail DKG V10
 node: every fact, conversation, action and reminder is a Knowledge Asset in a private Context Graph,
 and every recall is a bounded SPARQL query. There is no other database.
 
 ```
- person ──speech──▶ umoja-voice (on-device recogniser) ──▶ voice ──▶ window ──▶ assistant::turn
+ person ──speech──▶ keeper-voice (on-device recogniser) ──▶ voice ──▶ window ──▶ assistant::turn
                                                                           │
                      ┌──────────── recall (SPARQL, working memory) ◀──────┤
  DKG node ◀──────────┤                                                    ├──▶ brain (Ollama │ Hermes │ Reflex)
@@ -23,7 +23,7 @@ and every recall is a bounded SPARQL query. There is no other database.
 | `memory/` | Facade over `dkg` for what the assistant remembers: `records` (Fact, Turn, ActionRecord, Reminder, Retraction; each knows its KA name and quads), `queries` (every SPARQL query, bounded, one class each), `rank` (which facts matter for what was said, in Rust), `outbox` (writes the node could not take wait here and retry). | `memory::Memory` |
 | `brain/` | Strategy: who thinks. `engines/` = the catalogue of every engine and its detection (`mod.rs`), the shared CLI runner (`cli.rs`: find, run headless with a time limit, stream lines) and one adapter per engine: `claude` (Claude Code `-p`, stream-json), `codex` (`codex exec --json`), `gemini` (`gemini -p`), `hermes` (`hermes -z`, Blackbox-guarded), `ollama` (local model). Agent engines use the person's own subscriptions, driven as Foreman drives them; their tool calls come back as `AgentStep`s. `reflex` (built-in rules, Chain of Responsibility), `prompt` (the contract, acting rules), `context` (Context in, Thought out). A failed engine falls back to Reflex and the turn says so. | `brain::think` |
 | `skills/` | Command pattern: what the assistant can do (`open-app`, `open-website`, `remind`, `recall-actions`, `switch-engine`), each validated at the boundary; a skill that changes the app returns an `Effect` the assistant applies; `reminders` (the clock; reminders reload from the DKG at launch). | `skills::run` |
-| `voice/` | Bridge to the `umoja-voice` helper (JSON lines over stdin/stdout); `wake` (wake-word State machine); `eleven` (ElevenLabs text to speech, key from the Keychain; falls back to the Mac voice). | `voice::Voice` |
+| `voice/` | Bridge to the `keeper-voice` helper (JSON lines over stdin/stdout); `wake` (wake-word State machine); `eleven` (ElevenLabs text to speech, key from the Keychain; falls back to the Mac voice). | `voice::Voice` |
 | `phone/` | The phone link: a LAN server (`server.rs`, token-guarded, rate-limited) and the QR pairing (`mod.rs`); `page.html` is the phone's chat page. Turns run through `assistant::run_turn`. | `phone::PhoneLink` |
 | `updater/` | Auto-update from the signed GitHub releases (at launch, every 6 h, or on demand); restart into the new version. Releases: `scripts/release.sh`. | `updater::spawn_auto` |
 | `platform/` | The OS seam: open apps and pages, notifications, Keychain secrets, the computer's name, the helper's path. Nothing outside it names an OS tool. `macos.rs`; `unsupported.rs` until other ports. | `platform::*` |
@@ -52,7 +52,7 @@ Dependency rule: modules use `kernel` freely. `memory → dkg`; `brain → memor
 
 `main.swift`: on-device speech recognition (`requiresOnDeviceRecognition`) and system voices; its
 `Info.plist` is linked into the binary. Built by `scripts/build-voice-helper.sh` into the Tauri sidecar
-`src-tauri/binaries/umoja-voice-<triple>`.
+`src-tauri/binaries/keeper-voice-<triple>`.
 
 ## Guards
 

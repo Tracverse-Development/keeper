@@ -1,4 +1,4 @@
-// umoja-voice: Umoja Desk's ears and mouth, on this Mac only.
+// keeper-voice: Keeper's ears and mouth, on this Mac only.
 //
 // Hears with SFSpeechRecognizer using ON-DEVICE recognition (requiresOnDeviceRecognition),
 // so audio never leaves the computer; speaks with AVSpeechSynthesizer (system voices).
@@ -46,7 +46,7 @@ final class Listener {
             return
         }
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
-            emit(["type": "error", "message": "Speech recognition is not allowed yet. Allow Umoja Desk in System Settings, Privacy & Security, Speech Recognition."])
+            emit(["type": "error", "message": "Speech recognition is not allowed yet. Allow Keeper in System Settings, Privacy & Security, Speech Recognition."])
             return
         }
         self.mode = mode
@@ -290,7 +290,7 @@ final class Helper {
 
 let arguments = CommandLine.arguments
 guard arguments.count > 1, arguments[1] == "serve" else {
-    FileHandle.standardError.write("usage: umoja-voice serve\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: keeper-voice serve\n".data(using: .utf8)!)
     exit(2)
 }
 

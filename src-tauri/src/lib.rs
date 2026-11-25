@@ -1,4 +1,4 @@
-//! Umoja Desk's core: the composition root. It builds each module's live object once
+//! Keeper's core: the composition root. It builds each module's live object once
 //! (`state::AppState`), wires the reminder clock to the voice and the window, and lists the
 //! commands the window may call. Module map: ARCHITECTURE.md.
 
@@ -33,7 +33,7 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     let state = app.state::<AppState>();
                     let line = format!("A reminder: {}.", reminder.text.trim_end_matches('.'));
-                    platform::notify("Umoja Desk", &line);
+                    platform::notify("Keeper", &line);
                     let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
                     let _ = state.voice.speak(&app, &line, &state.settings()).await;
                 });
@@ -84,5 +84,5 @@ pub fn run() {
             updater::app_restart,
         ])
         .run(tauri::generate_context!())
-        .expect("Umoja Desk failed to start");
+        .expect("Keeper failed to start");
 }

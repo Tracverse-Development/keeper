@@ -33,6 +33,7 @@ export interface Settings {
   voiceEngine: VoiceEngine;
   elevenVoiceId: string;
   alwaysListening: boolean;
+  wakeWord: boolean;
   skin: string;
   autoUpdate: boolean;
 }
@@ -112,6 +113,14 @@ export interface Fact {
   at: string;
 }
 
+export interface Turn {
+  id: string;
+  said: string;
+  replied: string;
+  mind: string;
+  at: string;
+}
+
 export interface ActionRecord {
   id: string;
   skill: string;
@@ -182,12 +191,13 @@ export interface Overview {
   node: NodeStatus | null;
   counts: Counts;
   facts: Fact[];
+  turns: Turn[];
   actions: ActionRecord[];
   reminders: Reminder[];
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'brain' | 'ollamaModel' | 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'skin' | 'autoUpdate'>>;
+export type SettingsChange = Partial<Pick<Settings, 'brain' | 'ollamaModel' | 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'skin' | 'autoUpdate'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Umoja Desk",
+  "productName": "Keeper",
   "version": "0.2.0",
   "identifier": "com.umojaark.desk",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Umoja Desk",
+        "title": "Keeper",
         "width": 1280,
         "height": 820,
         "minWidth": 900,
@@ -32,7 +32,7 @@
     "active": true,
     "category": "Productivity",
     "shortDescription": "Your personal assistant, remembered on your own DKG node",
-    "longDescription": "Umoja Desk is a personal assistant whose memory lives on your own OriginTrail DKG node. What it learns about you stays on your computer.",
+    "longDescription": "Keeper is a personal assistant whose memory lives on your own OriginTrail DKG node. What it learns about you stays on your computer.",
     "publisher": "Tracverse L.L.C.",
     "copyright": "\u00a9 2026 Tracverse L.L.C. Umoja Ark.",
     "targets": [
@@ -40,7 +40,7 @@
       "dmg"
     ],
     "externalBin": [
-      "binaries/umoja-voice"
+      "binaries/keeper-voice"
     ],
     "icon": [
       "icons/32x32.png",
@@ -75,7 +75,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBNDg4RTA5QjBBOEQyQTIKUldTaTBxaXdDWTVJR3Nza0dwcEdEL0FDRWg2RzFRWTBDRitlRGVaQmN6SEhvTHhRTzFNYVUrUGoK",
       "endpoints": [
-        "https://github.com/tracverse-development/umoja-desk/releases/latest/download/latest.json"
+        "https://github.com/tracverse-development/keeper/releases/latest/download/latest.json"
       ]
     }
   }

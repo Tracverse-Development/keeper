@@ -1,4 +1,4 @@
-/** Step 1: what Umoja Desk is, in three promises. */
+/** Step 1: what Keeper is, in three promises. */
 import { PanelActions } from '../InstallerScreen';
 
 const PROMISES = [

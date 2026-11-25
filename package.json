@@ -1,8 +1,8 @@
 {
-  "name": "umoja-desk",
+  "name": "keeper",
   "private": true,
   "version": "0.2.0",
-  "description": "Umoja Desk: a personal assistant whose memory lives on your own OriginTrail DKG node.",
+  "description": "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5191 --strictPort",

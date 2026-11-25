@@ -47,10 +47,10 @@ pub fn computer_name() -> String {
 pub fn voice_helper() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    let bundled = dir.join("umoja-voice");
+    let bundled = dir.join("keeper-voice");
     if bundled.is_file() {
         return Some(bundled);
     }
-    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries").join(format!("umoja-voice-{}", os::TARGET_TRIPLE));
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries").join(format!("keeper-voice-{}", os::TARGET_TRIPLE));
     dev.is_file().then_some(dev)
 }

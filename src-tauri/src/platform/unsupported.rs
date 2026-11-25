@@ -12,7 +12,7 @@ pub fn open_url(_: &str) -> Result<()> {
 }
 pub fn notify(_: &str, _: &str) {}
 pub fn computer_name() -> String {
-    "Umoja Desk".into()
+    "Keeper".into()
 }
 pub fn secret_get(_: &str) -> Option<String> {
     None

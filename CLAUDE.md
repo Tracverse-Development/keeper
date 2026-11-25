@@ -1,4 +1,4 @@
-# Umoja Desk
+# Keeper
 
 A Tauri 2 personal assistant whose memory lives on the person's own OriginTrail DKG V10 node.
 Part of the Umoja Ark family (brand: navy #151C33, gold #D39744, cream #F4EEE2).

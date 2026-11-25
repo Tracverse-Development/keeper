@@ -1,4 +1,4 @@
-"""Regenerates Umoja Desk's art from the brand mark (assets/brand/umoja-ark-mark.svg):
+"""Regenerates Keeper's art from the brand mark (assets/brand/umoja-ark-mark.svg):
 the app icon (assets/art/app-icon.svg/.png → src-tauri/icons via `tauri icon`), the gold mark
 the window uses (assets/brand/umoja-ark-mark-gold.svg) and the DMG background
 (src-tauri/dmg/background.png). Run: python3 scripts/make-art.py"""
@@ -31,11 +31,11 @@ BACKGROUND = f"""<svg xmlns="http://www.w3.org/2000/svg" width="660" height="420
 <rect width="660" height="420" fill="url(#bg)"/>
 <g fill="#f4eee2" opacity="0.5"><circle cx="60" cy="40" r="1"/><circle cx="140" cy="90" r="0.8"/><circle cx="250" cy="30" r="1.1"/><circle cx="420" cy="60" r="0.9"/><circle cx="560" cy="35" r="1.2"/><circle cx="610" cy="110" r="0.8"/><circle cx="35" cy="150" r="0.9"/><circle cx="330" cy="120" r="0.7"/></g>
 {mark("330 58", 0.022)}
-<text x="330" y="118" text-anchor="middle" font-family="Georgia, 'New York', serif" font-size="30" fill="#f4eee2" letter-spacing="1">Umoja Desk</text>
+<text x="330" y="118" text-anchor="middle" font-family="Georgia, 'New York', serif" font-size="30" fill="#f4eee2" letter-spacing="1">Keeper</text>
 <text x="330" y="142" text-anchor="middle" font-family="-apple-system, Helvetica, sans-serif" font-size="12.5" fill="#9aa3bf" letter-spacing="0.5">Your assistant. Your memory. Your own DKG node.</text>
 <path d="M262 230 C 300 214, 360 214, 398 230" fill="none" stroke="url(#arrow)" stroke-width="2.5" stroke-linecap="round"/>
 <path d="M388 222 L 400 231 L 387 238" fill="none" stroke="#e3b06a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="330" y="350" text-anchor="middle" font-family="-apple-system, Helvetica, sans-serif" font-size="12" fill="#d9cfbd">Drag Umoja Desk into Applications</text>
+<text x="330" y="350" text-anchor="middle" font-family="-apple-system, Helvetica, sans-serif" font-size="12" fill="#d9cfbd">Drag Keeper into Applications</text>
 <path d="M0 392 C 110 372, 220 412, 330 392 S 550 372, 660 392 L 660 420 L 0 420 Z" fill="#d39744" opacity="0.10"/>
 <path d="M0 402 C 110 386, 220 418, 330 402 S 550 386, 660 402 L 660 420 L 0 420 Z" fill="#d39744" opacity="0.14"/></svg>"""
 

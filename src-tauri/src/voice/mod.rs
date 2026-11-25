@@ -1,4 +1,4 @@
-//! Voice: the bridge to `umoja-voice`, the small Swift helper bundled with the app
+//! Voice: the bridge to `keeper-voice`, the small Swift helper bundled with the app
 //! (`native/voice/`). It hears with Apple's on-device speech recogniser and speaks with the
 //! system voices, so neither the person's voice nor the assistant's words leave the computer.
 //!
@@ -34,6 +34,8 @@ struct Shared {
     mode: Mode,
     wake: wake::Wake,
     name: String,
+    /// Always-listening needs the wake word (false = open mic: every sentence is a command).
+    wake_required: bool,
 }
 
 #[derive(Clone)]
@@ -44,12 +46,18 @@ pub struct Voice {
 
 impl Voice {
     pub fn new() -> Voice {
-        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), name: "Umoja".into() })) }
+        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), name: "Keeper".into(), wake_required: true })) }
     }
 
     pub fn set_name(&self, name: &str) {
         if let Ok(mut s) = self.shared.lock() {
             s.name = name.to_string();
+        }
+    }
+
+    pub fn set_wake_required(&self, required: bool) {
+        if let Ok(mut s) = self.shared.lock() {
+            s.wake_required = required;
         }
     }
 
@@ -158,6 +166,8 @@ fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
             s.mode = Mode::Off;
             Some(text.to_string())
         }
+        // Open mic: every sentence is for the assistant (words of one or two letters are noise).
+        Mode::Always if !s.wake_required => Some(text.to_string()).filter(|t| t.trim().len() > 2),
         Mode::Always => {
             let name = s.name.clone();
             match s.wake.hear(text, &name) {

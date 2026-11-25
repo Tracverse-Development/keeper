@@ -106,3 +106,9 @@
 .update-banner { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 14px;
   padding: 8px 8px 8px 18px; border-radius: 999px; animation: fade-up 500ms var(--ease) both; }
 .scanning { display: flex; align-items: center; gap: 12px; color: var(--text-muted); }
+
+.history .said { color: var(--gold-300); }
+.history .said::before { content: 'You: '; color: var(--text-muted); }
+.history .replied { color: var(--text); }
+.drawer { width: min(460px, calc(100% - 32px)); }
+.tabs button { font-size: 11.5px; }

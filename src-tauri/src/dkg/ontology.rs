@@ -1,4 +1,4 @@
-//! The vocabulary Umoja Desk writes on the DKG. Classes live under the Umoja Ark namespace
+//! The vocabulary Keeper writes on the DKG. Classes live under the Umoja Ark namespace
 //! (`https://umojaark.com/ns/desk#`) and are also typed with schema.org and PROV-O so any
 //! DKG reader understands them without knowing Umoja.
 

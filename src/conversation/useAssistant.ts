@@ -53,7 +53,7 @@ export function useAssistant(onReply: (result: TurnResult) => void) {
   };
 
   /** Something the assistant said by itself (a reminder, a brain change, a reaction to a touch). */
-  const announce = (text: string, label = 'Umoja') => {
+  const announce = (text: string, label = 'Keeper') => {
     const id = nextId.current++;
     const result: TurnResult = { reply: text, mind: { id: 'reflex', label, local: true, fellBack: null }, learned: [], forgotten: [], actions: [], steps: [], traces: [], writes: [], memoryOffline: false };
     setExchanges((list) => [...list, { id, said: '', result, error: null }].slice(-KEEP));

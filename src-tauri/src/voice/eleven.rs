@@ -36,11 +36,34 @@ pub fn valid_voice_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
-/// The voices this key can use.
+/// ElevenLabs' stock voices, offered when a key may speak but not list voices (a key created
+/// with text-to-speech permission only answers `missing_permissions` on /voices).
+const STOCK: &[(&str, &str)] = &[
+    ("21m00Tcm4TlvDq8ikWAM", "Rachel (calm, American)"),
+    ("JBFqnCBsd6RMkjVDRZzb", "George (warm, British)"),
+    ("nPczCjzI2devNBz1zQrb", "Brian (deep, American)"),
+    ("onwK4e9ZLuTAKqWW03F9", "Daniel (British, news)"),
+    ("XB0fDUnXU5powFXDhCwa", "Charlotte (Swedish-English)"),
+    ("pFZP5JQG7iQjIQuC4Bku", "Lily (British, warm)"),
+    ("EXAVITQu4vr4xnSDxMaL", "Sarah (soft, American)"),
+    ("pNInz6obpgDQGcFmaJgB", "Adam (deep, American)"),
+    ("TxGEqnHWrfWFTfGW9XjX", "Josh (young, American)"),
+    ("ErXwobaYiN019PkySvjV", "Antoni (well-rounded)"),
+];
+
+fn stock() -> Vec<ElevenVoice> {
+    STOCK.iter().map(|(id, name)| ElevenVoice { id: id.to_string(), name: name.to_string() }).collect()
+}
+
+/// The voices this key can use (the stock voices when the key may not list its own).
 pub async fn voices() -> Result<Vec<ElevenVoice>> {
     let res = http().get(format!("{API}/voices")).header("xi-api-key", key()?).send().await.map_err(|e| DeskError::Io(format!("ElevenLabs: {e}")))?;
     if !res.status().is_success() {
-        return Err(DeskError::Invalid(format!("ElevenLabs refused the key ({}).", res.status())));
+        let body = res.text().await.unwrap_or_default();
+        if body.contains("missing_permissions") {
+            return Ok(stock());
+        }
+        return Err(DeskError::Invalid("ElevenLabs refused the key.".into()));
     }
     let v: serde_json::Value = res.json().await.map_err(|e| DeskError::Io(e.to_string()))?;
     Ok(v["voices"]
@@ -74,6 +97,11 @@ pub async fn render(text: &str, voice_id: &str) -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn stock_voices_are_valid_ids() {
+        assert!(super::stock().iter().all(|v| super::valid_voice_id(&v.id)));
+    }
+
     #[test]
     fn voice_ids_cannot_reach_into_the_url() {
         assert!(super::valid_voice_id("21m00Tcm4TlvDq8ikWAM"));

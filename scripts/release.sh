@@ -10,13 +10,13 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 notes="${1:?usage: release.sh \"release notes\"}"
-repo="tracverse-development/umoja-desk"
+repo="tracverse-development/keeper"
 key="$HOME/.tauri/umoja-desk-updater.key"
 [ -f "$key" ] || { echo "missing $key (restore it from /secure)"; exit 1; }
 
 version="$(python3 -c 'import json;print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
 arch="$(uname -m | sed 's/arm64/aarch64/')"
-echo "Releasing Umoja Desk $version ($arch)"
+echo "Releasing Keeper $version ($arch)"
 
 # SKIP_BUILD=1 publishes the build already in src-tauri/target (made by this same command, then checked).
 if [ "${SKIP_BUILD:-}" != "1" ]; then
@@ -25,14 +25,14 @@ if [ "${SKIP_BUILD:-}" != "1" ]; then
 fi
 # The build must have produced the signed updater archive; never publish a half build (FIX-0008 in umoja-ark).
 bundle="src-tauri/target/release/bundle"
-app_tgz="$bundle/macos/Umoja Desk.app.tar.gz"
+app_tgz="$bundle/macos/Keeper.app.tar.gz"
 [ -f "$app_tgz" ] && [ -f "$app_tgz.sig" ] || { echo "build did not produce a signed updater archive"; exit 1; }
 
 out="$(mktemp -d)"
-tgz_name="Umoja-Desk_${version}_${arch}.app.tar.gz"
-dmg_name="Umoja-Desk_${version}_${arch}.dmg"
+tgz_name="Nia_${version}_${arch}.app.tar.gz"
+dmg_name="Nia_${version}_${arch}.dmg"
 cp "$app_tgz" "$out/$tgz_name"
-cp "$bundle/dmg/Umoja Desk_${version}_${arch}.dmg" "$out/$dmg_name"
+cp "$bundle/dmg/Nia_${version}_${arch}.dmg" "$out/$dmg_name"
 python3 - "$out" "$version" "$notes" "$repo" "$tgz_name" "$arch" "$(cat "$app_tgz.sig")" <<'PY'
 import json, sys, datetime
 out, version, notes, repo, tgz, arch, sig = sys.argv[1:]
@@ -44,6 +44,6 @@ manifest = {
 }
 json.dump(manifest, open(f"{out}/latest.json", "w"), indent=2)
 PY
-GH_TOKEN="$(gh auth token -u Tracverse-Development)" gh release create "v$version" --repo "$repo" --title "Umoja Desk $version" --notes "$notes" \
+GH_TOKEN="$(gh auth token -u Tracverse-Development)" gh release create "v$version" --repo "$repo" --title "Keeper $version" --notes "$notes" \
   "$out/$dmg_name" "$out/$tgz_name" "$out/latest.json"
 echo "Published v$version: https://github.com/$repo/releases/tag/v$version"

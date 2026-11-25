@@ -21,3 +21,8 @@ Append-only. `### YYYY-MM-DD — title` with **Where / Severity / Status** bulle
 - **Where:** `~/.tauri/umoja-desk-updater.key`, backup in umoja-ark `/secure`
 - **Severity:** High if lost or leaked
 - **Status:** Done. Updates are verified against the public key in tauri.conf.json; the private key never enters the repo.
+
+### 2026-11-25 — ElevenLabs key pasted in chat (accepted-risk class)
+- **Where:** the owner's ElevenLabs key was pasted into the build session so it could be installed; it therefore exists in that session's transcript (and the Foreman prompt ledger). It was written only to the macOS Keychain, never to a file or the repo.
+- **Severity:** Low
+- **Status:** Noted; rotate the key at ElevenLabs at the owner's convenience and paste the new one in Settings → Voice.

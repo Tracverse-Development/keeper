@@ -1,17 +1,17 @@
 [package]
-name = "umoja-desk"
+name = "keeper"
 version = "0.2.0"
-description = "Umoja Desk: a personal assistant whose memory lives on your own OriginTrail DKG node"
+description = "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node"
 edition = "2021"
 rust-version = "1.80"
-default-run = "umoja-desk"
+default-run = "keeper"
 
 [[bin]]
-name = "umoja-desk"
+name = "keeper"
 path = "src/main.rs"
 
 [lib]
-name = "umoja_desk_lib"
+name = "keeper_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

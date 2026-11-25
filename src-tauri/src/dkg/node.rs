@@ -1,9 +1,9 @@
 //! Finding, installing and starting the DKG node this assistant remembers on.
 //!
 //! A node keeps its files in a home folder (`DKG_HOME`, else `~/.dkg`): `api.port` and
-//! `auth.token` (comment lines start with `#`). Umoja Desk first looks for a node the person
+//! `auth.token` (comment lines start with `#`). Keeper first looks for a node the person
 //! already has; only when there is none does it install its OWN node in its own folder
-//! (`~/Library/Application Support/Umoja Desk/dkg-node`) on a free port, pinned to a known
+//! (`~/Library/Application Support/Keeper/dkg-node`) on a free port, pinned to a known
 //! version with automatic updates off. It never starts, stops or changes a node it did not install.
 
 use std::path::{Path, PathBuf};
@@ -14,9 +14,9 @@ use tokio::process::Command;
 
 use crate::kernel::{paths, DeskError, Result};
 
-/// The node version Umoja Desk installs (the version proven on the founder's Mac, 2026-11-25).
+/// The node version Keeper installs (the version proven on the founder's Mac, 2026-11-25).
 pub const NODE_PACKAGE: &str = "@origintrail-official/dkg@10.0.26";
-/// The network a new node joins (an edge node; no tokens are spent by anything Umoja Desk does).
+/// The network a new node joins (an edge node; no tokens are spent by anything Keeper does).
 const NEW_NODE_NETWORK: &str = "testnet";
 const PORT_RANGE: std::ops::RangeInclusive<u16> = 9210..=9239;
 
@@ -85,7 +85,7 @@ pub fn node_config(name: &str, port: u16) -> serde_json::Value {
     })
 }
 
-/// Install and start Umoja Desk's own node. `say` receives one plain line per step.
+/// Install and start Keeper's own node. `say` receives one plain line per step.
 pub async fn install(computer_name: &str, say: impl Fn(&str)) -> Result<NodeLocation> {
     let node_bin = find_program("node").ok_or_else(|| DeskError::Invalid("Node.js is needed to run a DKG node. Install it from nodejs.org, then press Try again.".into()))?;
     let bin_dir = node_bin.parent().map(Path::to_path_buf).unwrap_or_default();

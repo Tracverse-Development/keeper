@@ -51,7 +51,7 @@ export function VoicePanel({ choices, update, onNext, onBack }: Props) {
   return (
     <>
       <p className="eyebrow">Voice</p>
-      <h2>Talk to {choices.assistantName.trim() || 'Umoja'} out loud.</h2>
+      <h2>Talk to {choices.assistantName.trim() || 'Keeper'} out loud.</h2>
       <p className="lead">Speech is recognised on this Mac by Apple's on-device recogniser. Your voice is never sent anywhere.</p>
       {!helper ? (
         <p className="error-line">This build has no voice helper. You can still type.</p>
@@ -63,7 +63,7 @@ export function VoicePanel({ choices, update, onNext, onBack }: Props) {
           {auth && (
             <div className={`status-line ${ok ? 'ok' : 'warn'}`}>
               <span className={`dot ${ok ? 'ok' : 'warn'}`} />
-              {ok ? `Ready${auth.onDevice ? ', recognised on this device' : ''}.` : 'Not allowed yet. Open System Settings, Privacy & Security, and allow Umoja Desk for Microphone and Speech Recognition.'}
+              {ok ? `Ready${auth.onDevice ? ', recognised on this device' : ''}.` : 'Not allowed yet. Open System Settings, Privacy & Security, and allow Keeper for Microphone and Speech Recognition.'}
             </div>
           )}
           <label className="label" htmlFor="voice">
@@ -75,7 +75,7 @@ export function VoicePanel({ choices, update, onNext, onBack }: Props) {
                 <option key={v}>{v}</option>
               ))}
             </select>
-            <button type="button" className="btn" onClick={() => core.speak(`Hello. I'm ${choices.assistantName.trim() || 'Umoja'}, and I'll remember what matters to you.`).catch((e) => setError(sentence(e)))}>
+            <button type="button" className="btn" onClick={() => core.speak(`Hello. I'm ${choices.assistantName.trim() || 'Keeper'}, and I'll remember what matters to you.`).catch((e) => setError(sentence(e)))}>
               Hear it
             </button>
           </div>

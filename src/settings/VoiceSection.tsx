@@ -79,6 +79,19 @@ export function VoiceSection({ settings, save }: { settings: Settings; save: (c:
           <span className="muted small">Listens on this Mac for “{settings.assistantName}”, then acts on what you say next. Speech is recognised on the device; nothing is stored unless it was meant for {settings.assistantName}.</span>
         </span>
       </label>
+      {settings.alwaysListening && (
+        <div className="segmented" role="radiogroup" aria-label="When to answer">
+          <button type="button" role="radio" aria-checked={settings.wakeWord} className={settings.wakeWord ? 'is-on' : ''} onClick={() => save({ wakeWord: true })}>
+            After “Hey {settings.assistantName}”
+          </button>
+          <button type="button" role="radio" aria-checked={!settings.wakeWord} className={!settings.wakeWord ? 'is-on' : ''} onClick={() => save({ wakeWord: false })}>
+            Everything I say
+          </button>
+        </div>
+      )}
+      {settings.alwaysListening && !settings.wakeWord && (
+        <p className="muted small">Open mic: every sentence {settings.assistantName} hears is answered and saved to your DKG memory, including anything said nearby. It stops listening while it speaks.</p>
+      )}
       {error && <p className="error-line">{error}</p>}
     </div>
   );

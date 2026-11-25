@@ -126,6 +126,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         nodeChecked={nodeChecked}
         counts={counts}
         alwaysListening={settings.alwaysListening}
+        openMic={!settings.wakeWord}
         onMemory={() => setMemoryOpen((o) => !o)}
         onSettings={() => setSettingsOpen(true)}
       />

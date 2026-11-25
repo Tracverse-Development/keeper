@@ -12,7 +12,7 @@ async fn live_memory() -> Memory {
     let home = dirs::home_dir().unwrap().join(".dkg");
     let loc = node::locate(&home).expect("a DKG node in ~/.dkg");
     let client = DkgClient::new(&loc);
-    client.ensure_graph(GRAPH, "Umoja Desk live test").await.expect("graph");
+    client.ensure_graph(GRAPH, "Keeper live test").await.expect("graph");
     Memory::new(client, GRAPH)
 }
 

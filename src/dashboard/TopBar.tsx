@@ -8,6 +8,7 @@ interface Props {
   nodeChecked: boolean;
   counts: Counts | null;
   alwaysListening: boolean;
+  openMic: boolean;
   onMemory: () => void;
   onSettings: () => void;
 }
@@ -18,13 +19,14 @@ export function TopBar(p: Props) {
       <div className="brand">
         <Mark size={26} />
         <span>
-          {p.assistantName} <em>Desk</em>
+          {p.assistantName}
+          {p.assistantName.trim().toLowerCase() !== 'keeper' && <em> · Keeper</em>}
         </span>
       </div>
       <div className="topbar-right">
         {p.alwaysListening && (
           <span className="pill">
-            <span className="dot ok" /> Listening for “{p.assistantName}”
+            <span className="dot ok" /> {p.openMic ? 'Open mic: listening' : `Listening for “${p.assistantName}”`}
           </span>
         )}
         <span className="pill" title={p.node ? `${p.node.name} · ${p.node.networkName}` : undefined}>

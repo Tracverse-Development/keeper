@@ -57,7 +57,7 @@ pub fn computer_name() -> String {
         .ok()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "Umoja Desk".into())
+        .unwrap_or_else(|| "Keeper".into())
 }
 
 #[cfg(test)]

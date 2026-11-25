@@ -19,7 +19,7 @@ use serde_json::json;
 use super::{literal, node::NodeLocation, Quad};
 use crate::kernel::{DeskError, Result};
 
-/// Which memory layer a query reads (DKG reference §1). Umoja Desk writes WM only.
+/// Which memory layer a query reads (DKG reference §1). Keeper writes WM only.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum Layer {
     #[serde(rename = "working-memory")]

@@ -1,4 +1,4 @@
-//! The records Umoja Desk keeps on the DKG, one Knowledge Asset each.
+//! The records Keeper keeps on the DKG, one Knowledge Asset each.
 //! Every record knows its stable KA name and its quads (the `Record` trait), and every quad set
 //! carries provenance: who wrote it (`prov:wasAttributedTo`), when, and what it came from.
 

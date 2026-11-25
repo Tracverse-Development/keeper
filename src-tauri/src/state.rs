@@ -23,6 +23,7 @@ impl AppState {
     pub fn new(settings: Settings, reminders: Scheduler) -> AppState {
         let voice = Voice::new();
         voice.set_name(&settings.assistant_name);
+        voice.set_wake_required(settings.wake_word);
         let state = AppState { settings: Mutex::new(settings), memory: Mutex::new(None), voice, reminders, phone: PhoneLink::default() };
         state.reconnect();
         state
@@ -55,6 +56,6 @@ impl AppState {
             .lock()
             .ok()
             .and_then(|m| m.clone())
-            .ok_or_else(|| DeskError::Node("Umoja Desk is not connected to a memory node yet. Finish setup first.".into()))
+            .ok_or_else(|| DeskError::Node("Keeper is not connected to a memory node yet. Finish setup first.".into()))
     }
 }

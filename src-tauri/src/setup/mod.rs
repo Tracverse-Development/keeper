@@ -1,7 +1,7 @@
 //! The first-run installer's steps, as commands the installer screen calls in order:
 //!
 //! 1. `setup_scan`          what is already here: a DKG node, Ollama models, Hermes, the voice helper
-//! 2. `setup_install_node`  only when there is no node: install Umoja Desk's own (progress events)
+//! 2. `setup_install_node`  only when there is no node: install Keeper's own (progress events)
 //! 3. `setup_create_graph`  the person's private memory graph, proven by writing and reading it back
 //! 4. `setup_finish`        save the choices; the dashboard opens
 
@@ -90,6 +90,7 @@ pub struct GraphReady {
 /// The graph id names no person: a hash of this computer's account, so it is stable per user.
 fn graph_id_for_this_computer() -> String {
     let home = dirs::home_dir().map(|h| h.display().to_string()).unwrap_or_default();
+    // The prefix keeps its pre-rename spelling: existing graphs keep their exact id (DKG reference §2).
     format!("umoja-desk-{}", short_hash(&format!("{home}\u{0}{}", platform::computer_name()), 10))
 }
 
@@ -102,7 +103,7 @@ pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, a
     let loc = node::locate(std::path::Path::new(&node_home)).ok_or_else(|| DeskError::Node("that node folder has no port or sign-in token".into()))?;
     let client = DkgClient::new(&loc);
     let graph_id = graph_id_for_this_computer();
-    let uri = client.ensure_graph(&graph_id, &format!("{name}'s memory (Umoja Desk)")).await?;
+    let uri = client.ensure_graph(&graph_id, &format!("{name}'s memory (Keeper)")).await?;
 
     let mut profile = AssetBuilder::new(ASSISTANT).a(class::AGENT).a("schema:SoftwareApplication").text(pred::NAME, name).link(pred::ABOUT, OWNER).time(pred::AT, &time::now_iso()).build();
     profile.extend(AssetBuilder::new(OWNER).a(class::PERSON).time(pred::AT, &time::now_iso()).build());
