@@ -38,8 +38,9 @@ pub struct Run {
     pub stderr: String,
 }
 
-/// Run `program args` in `cwd`; `on_line` sees every stdout line as it comes.
-pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration, mut on_line: impl FnMut(&str)) -> Result<Run> {
+/// Run `program args` in `cwd`; `on_line` sees every stdout line as it comes and returns
+/// whether to keep going: `false` kills the program at once (the caller knows why).
+pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration, mut on_line: impl FnMut(&str) -> bool) -> Result<Run> {
     let mut child = Command::new(program)
         .args(args)
         .current_dir(cwd)
@@ -56,9 +57,13 @@ pub async fn run(program: &Path, args: &[String], cwd: &Path, timeout: Duration,
         let mut all = String::new();
         let mut lines = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            on_line(&line);
+            let keep_going = on_line(&line);
             all.push_str(&line);
             all.push('\n');
+            if !keep_going {
+                let _ = child.kill().await;
+                return (all, String::new(), false);
+            }
         }
         let mut err = String::new();
         let _ = stderr.read_to_string(&mut err).await;

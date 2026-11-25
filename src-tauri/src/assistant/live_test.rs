@@ -9,7 +9,7 @@ use crate::brain::engines::claude;
 use crate::brain::{Context, Progress};
 
 fn ctx(said: &str) -> Context {
-    Context { said: said.into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true }
+    Context { said: said.into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None }
 }
 
 #[tokio::test]
@@ -50,4 +50,31 @@ async fn live_claude_v06_plans_before_acting() {
     println!("plan: {steps:?}\nreply: {}", t.reply);
     assert!(!steps.is_empty(), "a plan came back");
     assert!(t.steps.is_empty(), "nothing was done while planning");
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_claude_v06_guard_stops_outside_the_plan() {
+    use crate::brain::guard::PlanGuard;
+    use crate::stage::panel::PlanStep;
+    let base = std::env::temp_dir().join(format!("keeper-guard-{}", std::process::id()));
+    let (inside, outside) = (base.join("allowed"), base.join("outside"));
+    std::fs::create_dir_all(&inside).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    let steps = vec![PlanStep { action: "create".into(), target: inside.join("a.txt").display().to_string(), detail: Some("write hello".into()) }];
+    let guard = std::sync::Arc::new(PlanGuard::new(&steps, &dirs::home_dir().unwrap()));
+    let said = format!(
+        "Do these two things in order, one tool call each: first write the word hello to {}, then write the word bye to {}.",
+        inside.join("a.txt").display(),
+        outside.join("b.txt").display()
+    );
+    let mut c = ctx(&said);
+    c.may_act = true;
+    c.visual = false;
+    c.guard = Some(guard.clone());
+    let t = claude::think(&c, "", &|_: Progress| {}).await.expect("claude answered");
+    println!("steps: {:?}\nreply: {}\nverdict: {:?}", t.steps, t.reply, guard.stopped());
+    assert!(guard.stopped().is_some(), "the outside write was caught");
+    assert!(!outside.join("b.txt").exists(), "and never happened");
+    let _ = std::fs::remove_dir_all(&base);
 }

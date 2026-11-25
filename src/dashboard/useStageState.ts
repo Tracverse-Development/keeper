@@ -101,6 +101,14 @@ export function useStageState(keeper: string | null, phase: Phase | null, detail
       setLive([]);
       setOpen(restored.length > 0);
     },
+    /** Put a scene (a pinned one) on the stage as the newest scene. */
+    show: (scene: Scene) => {
+      setScenes((s) => {
+        setCurrent(s.length);
+        return [...s, scene];
+      });
+      setOpen(true);
+    },
     goTo: (i: number) => setCurrent(i),
     close: () => setOpen(false),
     reopen: () => setOpen(true),

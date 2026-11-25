@@ -27,6 +27,7 @@ import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
 import { usePanelActions } from './usePanelActions';
+import { usePinnedScenes } from './usePinnedScenes';
 import { useStageState } from './useStageState';
 import './dashboard.css';
 
@@ -86,6 +87,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const stage = useStageState(keeper?.id ?? null, assistant.phase, assistant.detail, assistant.busy);
   // Another keeper is a fresh stage; its scenes are its own.
   useEffect(() => stage.reset(), [keeper?.id]);
+  const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const sidebarOpen = panelOpen && !stage.showing;
 
@@ -151,12 +153,18 @@ export function Dashboard({ initial }: { initial: Settings }) {
           mind={events.mindLabel(keeper?.brain)}
           onFocus={(f) => assistant.send(focusQuestion(f))}
           onAction={(a) => void actions.act(a)}
+          pins={pins}
           onClose={stage.close}
         />
       )}
       {!stage.showing && stage.scenes.length > 0 && (
         <button type="button" className="pill pill-button scenes-pill" onClick={stage.reopen}>
           Scenes · {stage.scenes.length}
+        </button>
+      )}
+      {!stage.showing && stage.scenes.length === 0 && pins.count > 0 && (
+        <button type="button" className="pill pill-button scenes-pill" onClick={pins.openLatest}>
+          Pinned · {pins.count}
         </button>
       )}
       {events.updated && <UpdateBanner version={events.updated} idle={!assistant.busy && !voice.speaking && !voice.listening} />}

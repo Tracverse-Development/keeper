@@ -2,6 +2,8 @@
  * The scene navigator in the Stage header: each answer that showed panels is a scene (the four
  * building blocks, then Addition, then Subtraction…). Back and forward step through them, and the
  * title opens the list to jump straight to one. Quiet by design: one line, no clutter.
+ * Pins (`ScenePins`): the pin button keeps the scene on hand in every chat, and the list's
+ * "Pinned" section reopens any pinned scene.
  */
 import { useState } from 'react';
 
@@ -12,13 +14,24 @@ export interface SceneTab {
   title: string;
 }
 
+/** Pinned scenes, supplied by the dashboard (they live on the keeper's graph). */
+export interface ScenePins {
+  list: SceneTab[];
+  /** The scene on screen is pinned. */
+  currentPinned: boolean;
+  /** Pin the scene on screen, or unpin it. */
+  toggle: () => void;
+  open: (id: string) => void;
+}
+
 interface Props {
   scenes: SceneTab[];
   current: number;
   onScene: (index: number) => void;
+  pins?: ScenePins;
 }
 
-export function SceneNav({ scenes, current, onScene }: Props) {
+export function SceneNav({ scenes, current, onScene, pins }: Props) {
   const [listOpen, setListOpen] = useState(false);
   if (scenes.length === 0) return null;
   const go = (i: number) => {
@@ -39,6 +52,11 @@ export function SceneNav({ scenes, current, onScene }: Props) {
       <button type="button" className="scene-step" onClick={() => go(current + 1)} disabled={current >= scenes.length - 1} aria-label="Next scene">
         <Icon name="next" size={14} />
       </button>
+      {pins && (
+        <button type="button" className={`scene-step scene-pin ${pins.currentPinned ? 'is-on' : ''}`} onClick={pins.toggle} aria-pressed={pins.currentPinned} title={pins.currentPinned ? 'Unpin this scene' : 'Pin this scene to every chat'}>
+          <Icon name="pin" size={14} />
+        </button>
+      )}
       {listOpen && (
         <ol className="scene-list glass">
           {scenes.map((s, i) => (
@@ -48,6 +66,18 @@ export function SceneNav({ scenes, current, onScene }: Props) {
               </button>
             </li>
           ))}
+          {pins && pins.list.length > 0 && (
+            <>
+              <li className="scene-list-head">Pinned</li>
+              {pins.list.map((p) => (
+                <li key={`pin-${p.id}`}>
+                  <button type="button" onClick={() => { setListOpen(false); pins.open(p.id); }}>
+                    <span className="scene-index"><Icon name="pin" size={11} /></span> {p.title}
+                  </button>
+                </li>
+              ))}
+            </>
+          )}
         </ol>
       )}
     </nav>

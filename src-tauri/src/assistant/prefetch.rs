@@ -42,7 +42,7 @@ pub fn spawn(app: &AppHandle, keeper: &KeeperProfile, identity: String, facts: V
             if matches!(memory.cached_scene(&question).await, Ok(Some(_))) {
                 continue;
             }
-            let ctx = Context { said: question.clone(), assistant_name: keeper.name.clone(), identity: identity.clone(), facts: facts.clone(), recent: vec![], now_local: chrono::Local::now().format("%A %-d %B %Y").to_string(), may_act: false, visual: true };
+            let ctx = Context { said: question.clone(), assistant_name: keeper.name.clone(), identity: identity.clone(), facts: facts.clone(), recent: vec![], now_local: chrono::Local::now().format("%A %-d %B %Y").to_string(), may_act: false, visual: true, guard: None };
             if let Ok(thought) = claude::think(&ctx, &model, &|_: Progress| {}).await {
                 memory.cache_scene(&question, &thought.reply, &crate::stage::read(&thought.panels)).await;
             }

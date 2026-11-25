@@ -148,6 +148,8 @@
 .scene-list button { width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
 .scene-list button:hover { background: var(--surface); }
 .scene-list button.is-on { background: var(--accent-soft); color: var(--gold-300); }
+.scene-pin.is-on { color: var(--gold-300); background: var(--accent-soft); }
+.scene-list-head { padding: 8px 10px 4px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
 .scene-index { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; margin-right: 6px; font-size: 11px; background: var(--surface); }
 
 /* ---------- the working pipeline (no tool steps yet) ---------- */

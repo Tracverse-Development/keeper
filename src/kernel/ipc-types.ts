@@ -351,3 +351,11 @@ export interface PimAccess {
   calendar: PimAccessState;
   contacts: PimAccessState;
 }
+
+/** A scene the person pinned (on the keeper's graph; `scenes_pinned`). */
+export interface PinnedScene {
+  id: string;
+  title: string;
+  panels: import('./panel-spec').Panel[];
+  at: string;
+}

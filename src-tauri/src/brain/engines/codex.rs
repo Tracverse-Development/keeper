@@ -53,9 +53,17 @@ pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sy
     cli::run(&program, &args(ctx, model), &cli::workdir(ctx.may_act), timeout, |line| {
         if let Some(step) = read_line(line, &mut steps, &mut message, &mut error) {
             progress(Progress::Step(&step));
+            // Codex reports a command once it has run, so the guard stops the NEXT step.
+            if let (Some(guard), Some(last)) = (&ctx.guard, steps.last()) {
+                return guard.check(last).is_none();
+            }
         }
+        true
     })
     .await?;
+    if let Some(verdict) = ctx.guard.as_ref().and_then(|g| g.stopped()) {
+        return Ok(super::stopped_by_plan(&verdict, steps));
+    }
     let text = message.ok_or_else(|| DeskError::Brain(error.unwrap_or_else(|| "Codex gave no answer".into())))?;
     let mut thought = prompt::read(&text);
     thought.steps = steps;

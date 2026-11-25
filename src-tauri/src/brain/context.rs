@@ -21,6 +21,9 @@ pub struct Context {
     pub may_act: bool,
     /// Show this answer visually on the Stage (panels), or in words?
     pub visual: bool,
+    /// When the person approved a plan: the guard every tool call is checked against; the
+    /// engine stops at the first call outside it (`brain::guard`).
+    pub guard: Option<std::sync::Arc<super::guard::PlanGuard>>,
 }
 
 /// What an engine reports while it works: a tool step it took, or a Stage panel it finished

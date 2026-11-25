@@ -132,3 +132,14 @@ async fn codex_problem() -> Option<String> {
     let text = String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr);
     text.contains("Not logged in").then(|| "Codex is installed but not signed in: run `codex login`.".to_string())
 }
+
+/// What an engine answers when the plan guard stopped it: what happened, in the keeper's words,
+/// with the steps it took before stopping (they are still recorded on the DKG).
+pub fn stopped_by_plan(verdict: &str, steps: Vec<crate::brain::context::AgentStep>) -> crate::brain::Thought {
+    let done = steps.len().saturating_sub(1);
+    crate::brain::Thought {
+        reply: format!("I stopped. {verdict} I'd done {done} step{} before that. Tell me if you want me to include it, and I'll show you a new plan.", if done == 1 { "" } else { "s" }),
+        steps,
+        ..crate::brain::Thought::default()
+    }
+}

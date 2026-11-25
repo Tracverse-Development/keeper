@@ -17,7 +17,7 @@ pub async fn think(ctx: &Context, model: &str) -> Result<Thought> {
         args.push("--yolo".into());
     }
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
-    let run = cli::run(&program, &args, &cli::workdir(ctx.may_act), timeout, |_| {}).await?;
+    let run = cli::run(&program, &args, &cli::workdir(ctx.may_act), timeout, |_| true).await?;
     if !run.success || run.stdout.trim().is_empty() {
         return Err(DeskError::Brain(cli::short(&run.stderr, 200)));
     }

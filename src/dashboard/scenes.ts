@@ -33,3 +33,11 @@ export function makeScene(id: string, panels: Panel[], said: string): Scene {
 export function scenesFromTurns(turns: Turn[]): Scene[] {
   return turns.filter((t) => (t.panels?.length ?? 0) > 0).map((t) => makeScene(t.id, t.panels ?? [], t.said));
 }
+
+/**
+ * What makes two scenes the same for pinning: the title and each panel's kind and title (panel
+ * ids differ between a live scene, a restored one and a pinned copy).
+ */
+export function sceneSignature(title: string, panels: Panel[]): string {
+  return [title, ...panels.map((p) => `${p.kind}:${p.title}`)].join('\u0000');
+}

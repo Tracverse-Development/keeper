@@ -24,6 +24,8 @@ const SPOTLIGHT_MAX: usize = 300;
 /// The fallback walk: how deep and how many entries at most.
 const WALK_DEPTH: usize = 4;
 const WALK_ENTRIES: usize = 5000;
+/// Up to this many days, recent files are walked first (fast) instead of asked of Spotlight.
+const WALK_FIRST_DAYS: u32 = 2;
 
 /// The query as Spotlight may see it: control characters become spaces, the characters that
 /// could end or widen the quoted string (`"`, `\`, `*`, `?`) are dropped, leading dashes are
@@ -148,12 +150,22 @@ pub async fn recent(days: u32, limit: usize) -> Result<Vec<FileHit>> {
     let limit = limit.clamp(1, MAX_LIMIT);
     let home = home()?;
     let folders: Vec<PathBuf> = ["Desktop", "Documents", "Downloads"].iter().map(|f| home.join(f)).filter(|p| p.is_dir()).collect();
-    let mut hits = match spotlight_hits(&recent_query(days), &folders).await {
-        Ok(h) if !h.is_empty() => h,
-        // No index (or Spotlight off for these folders): walk them, bounded.
-        _ => {
-            let cutoff = SystemTime::now() - Duration::from_secs(u64::from(days) * 86_400);
-            tokio::task::spawn_blocking(move || walk(&folders, cutoff)).await.unwrap_or_default()
+    let cutoff = SystemTime::now() - Duration::from_secs(u64::from(days) * 86_400);
+    // A short window (the brief asks for a day) is found faster by a bounded walk than by
+    // Spotlight's date query, which can take seconds; a longer one, or a walk that finds
+    // nothing, goes to Spotlight, and an unindexed Mac walks anyway (DESK-PIM-RECENT-001).
+    let walked = if days <= WALK_FIRST_DAYS {
+        let scope = folders.clone();
+        tokio::task::spawn_blocking(move || walk(&scope, cutoff)).await.unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let mut hits = if !walked.is_empty() {
+        walked
+    } else {
+        match spotlight_hits(&recent_query(days), &folders).await {
+            Ok(h) if !h.is_empty() => h,
+            _ => tokio::task::spawn_blocking(move || walk(&folders, cutoff)).await.unwrap_or_default(),
         }
     };
     hits.retain(|h| h.kind != "folder");
@@ -162,7 +174,8 @@ pub async fn recent(days: u32, limit: usize) -> Result<Vec<FileHit>> {
     Ok(hits)
 }
 
-/// Files under `folders` changed since `cutoff`, at most `WALK_DEPTH` deep and `WALK_ENTRIES` seen.
+/// Files under `folders` changed since `cutoff`, at most `WALK_DEPTH` deep and `WALK_ENTRIES` seen,
+/// never inside a git working tree.
 fn walk(folders: &[PathBuf], cutoff: SystemTime) -> Vec<FileHit> {
     let mut out = Vec::new();
     let mut seen = 0usize;
@@ -181,7 +194,9 @@ fn walk(folders: &[PathBuf], cutoff: SystemTime) -> Vec<FileHit> {
             }
             let bundle = kind_of(&path, true) != "folder";
             if meta.is_dir() && !bundle {
-                if depth + 1 < WALK_DEPTH {
+                // A code project (a git working tree) keeps its own history; the person's
+                // recent files are their documents, not build output.
+                if depth + 1 < WALK_DEPTH && !path.join(".git").exists() {
                     stack.push((path, depth + 1));
                 }
                 continue;

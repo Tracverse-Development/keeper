@@ -58,3 +58,18 @@ async fn live_same_record_twice_is_not_queued() {
     println!("first: {} / again: {}", first.status, again.status);
     assert!(!first.queued && !again.queued, "nothing waits in the outbox");
 }
+
+#[tokio::test]
+#[ignore]
+async fn live_pin_and_unpin_a_scene() {
+    use super::pinned_scenes::{pin_id, PinnedScene};
+    let memory = live_memory().await;
+    let title = format!("Pinned {}", crate::kernel::time::now_iso());
+    let panels = crate::stage::read(&serde_json::json!([{"kind": "text", "title": "Times table", "body": "7 x 8 = 56"}]));
+    let pin = PinnedScene { id: pin_id(&title, &panels), title: title.clone(), panels, at: crate::kernel::time::now_iso() };
+    memory.write(&pin).await;
+    assert!(memory.pinned_scenes().await.unwrap().iter().any(|p| p.id == pin.id && p.title == title));
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    memory.unpin_scene(&pin.id).await;
+    assert!(!memory.pinned_scenes().await.unwrap().iter().any(|p| p.id == pin.id), "unpinned");
+}

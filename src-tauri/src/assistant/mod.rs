@@ -84,7 +84,7 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
     }
     let keeper = state.keeper_or_active(keeper_id)?;
     let memory = state.memory_for(&keeper)?;
-    let result = turn::turn(app, &memory, state, &keeper, chat, said, false).await?;
+    let result = turn::turn(app, &memory, state, &keeper, chat, said, None).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
 }

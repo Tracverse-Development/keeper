@@ -36,3 +36,8 @@ Append-only. `### YYYY-MM-DD — title` with **Where / Severity / Status** bulle
 - **Where:** `src-tauri/src/stage/cap.rs`, `assistant/approval.rs`, `assistant/actions.rs`, `src/stage/expression.ts`
 - **Severity:** Medium (design review, recorded)
 - **Status:** Done. Engines are untrusted writers: an `approval` or `facts` panel from an engine is dropped (only the core makes them, so a model cannot fake a plan the person "approved" or invent facts with working Forget buttons). Plans are kept in memory under a random 96-bit one-use token; `plan_decide` takes the plan by token, so the window cannot submit its own plan text. Panel actions are a closed, typed set; fact ids are checked as 16 hex characters before a retraction or pin is written. The what-if evaluator is a hand-written parser over numbers, the panel's own variable names and a fixed function list (never `eval`/`Function`; `constructor`, member access and brackets refused, tested). Remaining gap: DESK-APPROVAL-001.
+
+### 2026-11-25 — The approved plan is enforced, not only instructed (0.6.1)
+- **Where:** `src-tauri/src/brain/guard.rs`, `brain/engines/{cli,claude,codex}.rs`, `assistant/turn.rs`
+- **Severity:** Medium (closes most of DESK-APPROVAL-001)
+- **Status:** Done. An approved plan builds a `PlanGuard` (its paths, and whether it deletes or sends). Every streamed tool call is checked; a change to a path outside the plan, or a delete/send the plan does not include, stops the engine process at once (`cli::run` kills it) and the keeper says what it refused. Read-only tools and commands stay allowed. Proven live on Claude Code. Limits recorded in DESK-APPROVAL-001 (Codex after-the-fact, Gemini/Hermes unguarded, relative paths).

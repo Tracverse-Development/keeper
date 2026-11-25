@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { makeScene, sceneTitle, scenesFromTurns } from './scenes.ts';
+import { makeScene, sceneTitle, scenesFromTurns, sceneSignature } from './scenes.ts';
 
 const text = (title: string) => ({ kind: 'text' as const, id: 'panel-0', title, body: 'b' });
 
@@ -20,4 +20,11 @@ test('titles fall back to what was said and are kept short', () => {
   assert.equal(sceneTitle([], 'teach me'), 'teach me');
   assert.ok(sceneTitle([text('x'.repeat(200))], '').length <= 48);
   assert.equal(makeScene('s', [text('A')], '').panels[0].id, 's:panel-0');
+});
+
+test('a pinned copy of a scene is recognised as the same scene', () => {
+  const panels = [{ id: 'panel-0', kind: 'text', title: 'Times table', body: '7 x 8' }] as never[];
+  const live = makeScene('chat-1', panels, 'show me');
+  assert.equal(sceneSignature(live.title, live.panels), sceneSignature('Times table', panels));
+  assert.notEqual(sceneSignature('Times table', panels), sceneSignature('Other', panels));
 });

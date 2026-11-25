@@ -67,3 +67,13 @@ async fn live_pim_files() {
     }
     assert!(found.is_ok() && recent.is_ok());
 }
+
+#[tokio::test]
+#[ignore]
+async fn live_pim_recent_day_is_fast() {
+    let started = std::time::Instant::now();
+    let found = recent(1, 8).await.unwrap_or_default();
+    let took = started.elapsed();
+    println!("recent(1, 8) in {took:?}: {:?}", found.iter().map(|f| &f.name).collect::<Vec<_>>());
+    assert!(took < Duration::from_millis(1000), "the brief's file list is quick");
+}

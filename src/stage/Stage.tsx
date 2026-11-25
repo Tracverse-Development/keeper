@@ -14,12 +14,14 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityPanel } from './ActivityPanel.tsx';
 import { Icon } from './icons.tsx';
 import { PanelCard } from './PanelCard.tsx';
-import { SceneNav, type SceneTab } from './SceneNav.tsx';
+import { SceneNav, type ScenePins, type SceneTab } from './SceneNav.tsx';
 import type { Panel, PanelAction, PanelFocus } from './panel-spec.ts';
 import './stage.css';
 
 export interface StageProps {
   panels: Panel[];
+  /** Pinned scenes and the pin button (optional: without it the navigator has no pins). */
+  pins?: ScenePins;
   activity: { tool: string; detail: string }[];
   working: boolean;
   onFocus: (f: PanelFocus) => void;
@@ -49,7 +51,7 @@ function isWide(panel: Panel): boolean {
   }
 }
 
-export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind }: StageProps) {
+export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind, pins }: StageProps) {
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -76,7 +78,7 @@ export function Stage({ panels, activity, working, onFocus, onAction, onClose, k
     <aside className="stage-area" aria-label={`${keeperName}'s stage`}>
       <header className="stage-head">
         <p className="eyebrow">{keeperName} is showing you</p>
-        <SceneNav scenes={scenes} current={current} onScene={onScene} />
+        <SceneNav scenes={scenes} current={current} onScene={onScene} pins={pins} />
         <button type="button" className="pill pill-button stage-dismiss" onClick={onClose}>
           <Icon name="close" size={13} /> Close
         </button>

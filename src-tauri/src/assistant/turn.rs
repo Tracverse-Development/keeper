@@ -13,7 +13,7 @@ use crate::memory::{ActionRecord, Chat, Fact, Memory, Recall, Turn};
 use crate::skills::{self, Effect, Outcome, SkillEnv};
 use crate::state::AppState;
 
-pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: bool) -> Result<TurnResult> {
+pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>) -> Result<TurnResult> {
     let at = time::now_iso();
     let turn_id = short_hash(&format!("{at}\u{0}{said}"), 16);
     let mut writes = Vec::new();
@@ -45,6 +45,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         // Acting needs both: the person allows it, and the keeper's role is one that acts.
         may_act: state.settings().agent_actions && role.may_act,
         visual: crate::stage::wants_visual(said, state.settings().visual),
+        // An approved plan binds this turn: each tool call is checked against it.
+        guard: approved.map(|steps| std::sync::Arc::new(crate::brain::guard::PlanGuard::new(steps, &dirs::home_dir().unwrap_or_default()))),
     };
     let identity = ctx.identity.clone();
     phase(app, "thinking", crate::brain::engines::label(&keeper.brain));
@@ -57,7 +59,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
             let _ = app.emit(events::EARLY_REPLY, json!({ "keeper": keeper.id, "text": text }));
         }
     };
-    let answer = source::find(app, state, memory, keeper, &ctx, &chat, approved, &progress).await;
+    let answer = source::find(app, state, memory, keeper, &ctx, &chat, approved.is_some(), &progress).await;
     let (thought, mind) = (answer.thought, answer.mind);
 
     let mut forgotten = Vec::new();

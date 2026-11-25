@@ -70,7 +70,7 @@ pub fn read_plan(raw: &serde_json::Value) -> Vec<PlanStep> {
 
 /// Ask for the plan; None when the engine says nothing needs to change (answer normally then).
 pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context, chat: &str) -> Option<Answer> {
-    let planning = Context { said: format!("{}{PLAN_ONLY}", ctx.said), assistant_name: ctx.assistant_name.clone(), identity: ctx.identity.clone(), facts: ctx.facts.clone(), recent: ctx.recent.clone(), now_local: ctx.now_local.clone(), may_act: false, visual: ctx.visual };
+    let planning = Context { said: format!("{}{PLAN_ONLY}", ctx.said), assistant_name: ctx.assistant_name.clone(), identity: ctx.identity.clone(), facts: ctx.facts.clone(), recent: ctx.recent.clone(), now_local: ctx.now_local.clone(), may_act: false, visual: ctx.visual, guard: None };
     let (thought, mind) = brain::think(keeper, &planning, &|_: Progress| {}).await;
     let steps = read_plan(&thought.plan);
     if steps.is_empty() {
@@ -90,11 +90,11 @@ pub async fn plan_decide(app: AppHandle, state: State<'_, AppState>, token: Stri
     let memory = state.memory_for(&keeper)?;
     if approve {
         let said = format!("{}{}", plan.said, mandate(&plan.steps));
-        return turn::turn(&app, &memory, &state, &keeper, &plan.chat, &said, true).await;
+        return turn::turn(&app, &memory, &state, &keeper, &plan.chat, &said, Some(&plan.steps)).await;
     }
     let record = ActionRecord::new("plan-denied", &plan.said, "You said no to my plan, so I didn't act.", true, &time::now_iso(), "");
     memory.write(&record).await;
-    turn::turn(&app, &memory, &state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", false).await
+    turn::turn(&app, &memory, &state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", None).await
 }
 
 #[cfg(test)]

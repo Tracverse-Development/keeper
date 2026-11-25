@@ -7,6 +7,7 @@
 pub mod catalog;
 pub mod outbox;
 pub mod panel_events;
+pub mod pinned_scenes;
 pub mod queries;
 pub mod rank;
 pub mod records;

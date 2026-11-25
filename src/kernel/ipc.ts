@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import type { ActionDone, Answer, PimAccess, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
 import type { PanelAction } from './panel-spec';
 
 export const EVENTS = {
@@ -64,6 +64,9 @@ export const core = {
   planDecide: (token: string, approve: boolean) => invoke<TurnResult>('plan_decide', { token, approve }),
   briefToday: () => invoke<TurnResult | null>('brief_today'),
   pimAccess: () => invoke<PimAccess>('pim_access'),
+  pinnedScenes: (keeper?: string) => invoke<PinnedScene[]>('scenes_pinned', { keeper }),
+  pinScene: (title: string, panels: unknown[], keeper?: string) => invoke<PinnedScene>('scene_pin', { keeper, title, panels }),
+  unpinScene: (id: string, keeper?: string) => invoke<void>('scene_unpin', { keeper, id }),
   pimRequestAccess: () => invoke<PimAccess>('pim_request_access'),
   overview: (keeper?: string) => invoke<Overview>('memory_overview', { keeper }),
   forgetFact: (id: string) => invoke<void>('memory_forget_fact', { id }),

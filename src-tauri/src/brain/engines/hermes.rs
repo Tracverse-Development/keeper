@@ -10,7 +10,7 @@ pub async fn think(ctx: &Context) -> Result<Thought> {
     let hermes = cli::program("hermes").ok_or_else(|| DeskError::Brain("Hermes is not installed".into()))?;
     let text = format!("{}\n\nThe person says: {}", prompt::system(ctx), ctx.said);
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
-    let run = cli::run(&hermes, &["-z".to_string(), text], &cli::workdir(ctx.may_act), timeout, |_| {}).await?;
+    let run = cli::run(&hermes, &["-z".to_string(), text], &cli::workdir(ctx.may_act), timeout, |_| true).await?;
     let all = format!("{}{}", run.stdout, run.stderr);
     if all.contains("not connected to any AI provider") {
         return Err(DeskError::Brain("Hermes is installed but not connected to a model yet (run `hermes model`)".into()));

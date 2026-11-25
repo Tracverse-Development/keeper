@@ -4,6 +4,7 @@
 //! the built-in mind, and the turn says so (no silent failures).
 
 pub mod context;
+pub mod guard;
 pub mod engines;
 pub mod prompt;
 pub mod reflex;
