@@ -89,7 +89,8 @@
 .sheet { width: min(620px, calc(100% - 32px)); }
 .section { display: flex; flex-direction: column; gap: 10px; }
 .engines .mind { flex-direction: column; padding: 12px 14px; }
-.engine-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.engine-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; row-gap: 6px; }
+.engine-head .mind-tag { align-self: center; }
 .mind-tag.act { color: var(--gold-300); background: var(--accent-soft); }
 .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .look { flex-direction: column; padding: 12px 14px; }

@@ -87,7 +87,7 @@ input, textarea, select, button { font: inherit; color: inherit; }
 .mind:disabled { opacity: 0.5; cursor: default; }
 .mind strong { color: var(--cream-50); font-size: 15px; }
 .mind-body { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-.mind-tag { align-self: flex-start; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 650; padding: 3px 8px; border-radius: 999px; }
+.mind-tag { align-self: flex-start; display: inline-flex; align-items: center; white-space: nowrap; flex: none; font-size: 10px; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 650; padding: 5px 9px; border-radius: 999px; }
 .mind-tag.local { color: var(--ok); background: rgba(127, 200, 160, 0.12); }
 .mind-tag.cloud { color: var(--warn); background: rgba(230, 180, 80, 0.12); }
 .link { background: none; border: 0; padding: 0; color: var(--gold-300); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
