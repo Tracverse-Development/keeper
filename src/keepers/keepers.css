@@ -4,8 +4,15 @@
 .keepers.is-open { width: 268px; }
 .keepers.is-rail { width: 64px; bottom: auto; }
 .keepers-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
-.rail-toggle { width: 32px; height: 32px; font-size: 18px; }
+.keepers .rail-toggle { width: 32px; height: 32px; min-height: 0; font-size: 18px; }
 .keepers.is-rail .keepers-head { justify-content: center; }
+/* The rail is a column of badges: the badge carries the active look (gold edge and glow), so the
+   button around it adds no padding, frame or fill that could sit off-centre from it. */
+.keepers.is-rail .keeper-list { align-items: center; }
+.keepers.is-rail .keeper { width: auto; padding: 0; border: 0; justify-content: center; }
+.keepers.is-rail .keeper:hover, .keepers.is-rail .keeper.is-on { background: transparent; }
+.keepers.is-rail .keeper:hover .keeper-badge { border-color: var(--border-strong); }
+.keepers.is-rail .keeper.is-on .keeper-badge { border-color: var(--gold-500); }
 .keeper-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .keeper { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: var(--radius); border: 1px solid transparent;
   background: transparent; cursor: pointer; text-align: left; transition: background 200ms var(--ease), border-color 200ms var(--ease); }

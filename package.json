@@ -1,7 +1,7 @@
 {
   "name": "keeper",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node.",
   "type": "module",
   "scripts": {
