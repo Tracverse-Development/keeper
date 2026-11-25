@@ -97,3 +97,36 @@ async fn live_bench_memory() {
     let write5 = t.elapsed();
     println!("BENCH recall {:?} ({} facts, {} turns); 5 writes {:?} ({:?} each)", recall, r.facts.len(), r.recent.len(), write5, write5 / 5);
 }
+
+/// Scale: a graph with 1,000 facts (own graph `umoja-desk-scale`, filled once): cold load, hot
+/// recall, and whether the oldest fact is still recalled.
+#[tokio::test]
+#[ignore]
+async fn live_scale_thousand_facts() {
+    let home = dirs::home_dir().unwrap().join(".dkg");
+    let client = DkgClient::new(&node::locate(&home).unwrap());
+    client.ensure_graph("umoja-desk-scale", "Keeper scale test").await.unwrap();
+    let memory = Memory::new(client, "umoja-desk-scale");
+    let (have, _) = memory.facts().await.unwrap();
+    if have.len() < 1000 {
+        let t = std::time::Instant::now();
+        let base = chrono::Utc::now() - chrono::Duration::days(30);
+        let facts: Vec<Fact> = (have.len()..1000).map(|i| Fact::new(&format!("Scale fact number {i}: the {} item is called thing-{i}", ["red", "blue", "green", "gold"][i % 4]), "general", &crate::kernel::time::iso(base + chrono::Duration::seconds(i as i64)))).collect();
+        for f in &facts {
+            memory.write(f).await;
+        }
+        println!("SCALE filled to 1000 facts in {:?}", t.elapsed());
+    }
+    super::hot::clear();
+    let t = std::time::Instant::now();
+    let r = memory.recall("what is thing-3 called").await.unwrap();
+    let cold = t.elapsed();
+    let t = std::time::Instant::now();
+    let r2 = memory.recall("what is thing-3 called").await.unwrap();
+    let hot = t.elapsed();
+    let loaded = super::hot::get("umoja-desk-scale").unwrap();
+    let oldest_loaded = loaded.facts.iter().any(|f| f.text.starts_with("Scale fact number 0:"));
+    println!("SCALE cold {cold:?}; hot {hot:?}; facts in hot memory {}; oldest loaded: {oldest_loaded}; recalled {}", loaded.facts.len(), r2.facts.len());
+    assert!(oldest_loaded, "every fact is within recall's reach");
+    let _ = r;
+}

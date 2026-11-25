@@ -58,3 +58,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** The scheduler remembers whether the playing blink is the second of a double (`secondOfDouble`) and never draws a double from it.
 - **Guard:** `src/character/blink.test.ts` "a drawn double blink follows quickly, and never three in a row" (random fixed at 0, which always draws).
 - **Evidence:** the test failed on the extracted original logic ("a triple blink") and passes with the fix.
+
+### FIX-0008 — Recall silently ignored everything older than a keeper's newest 200 facts (2026-11-25)
+- **Area:** `src-tauri/src/memory/queries.rs` (FACTS, RETRACTIONS)
+- **Symptom:** found by the round-4 scale test: with 1,000 facts in a graph, the oldest 800 were never loaded, so a keeper that had learned a lot forgot its early facts with no sign of it.
+- **Root cause:** the facts query carried `LIMIT 200` (and retractions `LIMIT 1000`), sized for per-turn querying; ranking only ever saw the newest 200.
+- **Fix:** both limits raised to 5,000 (still bounded); hot memory loads them once per graph, so the cost is paid at the first recall only (94 ms cold for 1,000 facts; hot recall 7.5 ms).
+- **Guard:** live test `live_scale_thousand_facts` asserts the oldest of 1,000 facts is in hot memory; `queries::tests::every_query_is_bounded_and_typed` keeps the queries bounded.
+- **Evidence:** before: 200 facts loaded, oldest missing; after: 1000 loaded, oldest present.

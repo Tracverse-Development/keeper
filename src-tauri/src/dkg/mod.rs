@@ -9,6 +9,7 @@
 pub mod client;
 pub mod literal;
 pub mod node;
+pub mod runtime;
 pub mod ontology;
 pub mod quads;
 

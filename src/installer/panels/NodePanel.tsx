@@ -59,7 +59,7 @@ export function NodePanel({ choices, update, rescan, onNext, onBack }: Props) {
       {finding === 'found' && node ? (
         <>
           <h2>Found your DKG node.</h2>
-          <p className="lead">Umoja will keep its memory here, in a private graph only this node can read.</p>
+          <p className="lead">Keeper will keep its memory here, in a private graph only this node can read.</p>
           <dl className="facts-grid">
             <dt>Node</dt>
             <dd>{node.status.name}</dd>

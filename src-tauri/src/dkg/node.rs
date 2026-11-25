@@ -78,9 +78,9 @@ pub fn node_config(name: &str, port: u16) -> serde_json::Value {
 
 /// Install and start Keeper's own node. `say` receives one plain line per step.
 pub async fn install(computer_name: &str, say: impl Fn(&str)) -> Result<NodeLocation> {
-    let node_bin = programs::find("node").ok_or_else(|| DeskError::Invalid("Node.js is needed to run a DKG node. Install it from nodejs.org, then press Try again.".into()))?;
-    let bin_dir = node_bin.parent().map(Path::to_path_buf).unwrap_or_default();
-    let npm = programs::find("npm").unwrap_or_else(|| bin_dir.join("npm"));
+    // Node.js: the computer's own (20+), or Keeper's private, checksum-verified copy.
+    let bin_dir = super::runtime::ensure_node(&say).await?;
+    let npm = bin_dir.join(if cfg!(windows) { "npm.cmd" } else { "npm" });
     let root = paths::own_node_home();
     let program_dir = root.join("program");
     let home = root.join("home");

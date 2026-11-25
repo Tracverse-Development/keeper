@@ -23,13 +23,13 @@ impl Query {
 
 pub const FACTS: Query = Query {
     label: "What do I know about you?",
-    body: "SELECT ?f ?text ?category ?at WHERE { ?f a desk:Fact ; schema:text ?text ; prov:generatedAtTime ?at . OPTIONAL { ?f desk:category ?category } } ORDER BY DESC(?at) LIMIT 200",
+    body: "SELECT ?f ?text ?category ?at WHERE { ?f a desk:Fact ; schema:text ?text ; prov:generatedAtTime ?at . OPTIONAL { ?f desk:category ?category } } ORDER BY DESC(?at) LIMIT 5000",
 };
 
 /// The facts the person asked to forget (filtered out of `FACTS` in Rust, see the module note).
 pub const RETRACTIONS: Query = Query {
     label: "What did you ask me to forget?",
-    body: "SELECT ?fact WHERE { ?r a desk:Retraction ; desk:retracts ?fact } LIMIT 1000",
+    body: "SELECT ?fact WHERE { ?r a desk:Retraction ; desk:retracts ?fact } LIMIT 5000",
 };
 
 pub const RECENT_TURNS: Query = Query {

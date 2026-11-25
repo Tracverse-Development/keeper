@@ -61,3 +61,15 @@ pub fn voice_helper() -> Option<PathBuf> {
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries").join(format!("keeper-voice-{}", os::TARGET_TRIPLE));
     dev.is_file().then_some(dev)
 }
+
+/// Unpack a `.tar.gz` / `.tar.xz` archive into `into` (the system `tar`, present on macOS, Linux
+/// and Windows 10+). argv only, never a shell.
+pub async fn unpack(archive: &std::path::Path, into: &std::path::Path) -> Result<()> {
+    std::fs::create_dir_all(into)?;
+    let out = tokio::process::Command::new("tar").arg("-xf").arg(archive).arg("-C").arg(into).output().await?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(crate::kernel::DeskError::Io(format!("could not unpack {}: {}", archive.display(), String::from_utf8_lossy(&out.stderr).lines().next().unwrap_or(""))))
+    }
+}
