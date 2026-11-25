@@ -17,6 +17,8 @@ TURNS = [
     ("system", "How's my computer?"),
     ("find", "Where is my Downloads folder?"),
     ("lesson", "Explain how a rainbow forms, visually."),
+    # A new topic every run, so the main model's streamed lesson is measured (never the cache).
+    ("lesson-fresh", f"Explain how a lighthouse lens works, visually. (Bench run {int(time.time())})"),
     ("lesson-again", "Explain how a rainbow forms, visually."),
     ("follow-up", 'About "How a rainbow forms": explain the card Refraction. Show it step by step in a panel if that helps.'),
     ("brief", "Brief me"),

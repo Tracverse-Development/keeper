@@ -33,7 +33,8 @@ async fn live_remember_recall_forget() {
 
     let recall = memory.recall("what drink with ginger do I love?").await.expect("recall");
     assert!(recall.facts.iter().any(|f| f.id == fact.id), "the new fact is recalled");
-    assert_eq!(recall.traces.len(), 2);
+    // Recall reads hot memory (loaded from the DKG once, kept in step with every write).
+    assert!(recall.traces.iter().any(|t| t.label.starts_with("hot memory")), "{:?}", recall.traces);
 
     let turn = Turn::new(&said, "Got it.", "reflex", &stamp, "");
     assert!(!memory.write(&turn).await.queued);

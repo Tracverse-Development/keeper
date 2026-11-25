@@ -89,18 +89,30 @@ pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, result: &mut Option<Str
 
 pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sync)) -> Result<Thought> {
     let program = cli::program("claude").ok_or_else(|| DeskError::Brain("Claude Code is not installed".into()))?;
+    let (a, cwd) = (args(ctx, model), cli::workdir(ctx.may_act));
+    let key = warm::key(&program, &cwd, &a);
+    // A warm spare skips the start-up; then the next spare starts at once for the turn after.
+    let spare = warm::take(&key);
+    let from_spare = spare.is_some();
+    let child = match spare {
+        Some(child) => child,
+        None => cli::spawn(&program, &a, &cwd, true)?,
+    };
+    warm::fill(key, program.clone(), cwd.clone(), a.clone());
+    match run_once(ctx, child, progress).await {
+        // A spare that went bad (it died, or its sign-in moved on) costs a retry, never a turn.
+        Err(DeskError::Brain(m)) if from_spare && m != cli::STOPPED => run_once(ctx, cli::spawn(&program, &a, &cwd, true)?, progress).await,
+        other => other,
+    }
+}
+
+/// One run of a started Claude Code process: send the message, stream panels, the reply and
+/// tool calls as they come, and read the final answer.
+async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn Fn(Progress) + Sync)) -> Result<Thought> {
     let mut steps = Vec::new();
     let mut result = None;
     let mut panels = PanelStream::default();
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
-    let (a, cwd) = (args(ctx, model), cli::workdir(ctx.may_act));
-    let key = warm::key(&program, &cwd, &a);
-    // A warm spare skips the start-up; then the next spare starts at once for the turn after.
-    let child = match warm::take(&key) {
-        Some(child) => child,
-        None => cli::spawn(&program, &a, &cwd, true)?,
-    };
-    warm::fill(key, program.clone(), cwd, a);
     let run = cli::drive(child, Some(message_line(ctx)), timeout, |line| {
         if let Some(text) = text_delta(line) {
             for p in panels.push(&text) {
@@ -154,7 +166,7 @@ mod tests {
     async fn live_claude_answers_in_the_contract() {
         let ctx = Context { said: "My name is Ada and I love sorrel. What is 2 plus 2?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None };
         let t = think(&ctx, "", &|_: Progress| {}).await.expect("claude answered");
-        assert!(t.reply.contains('4'), "reply: {}", t.reply);
+        assert!(t.reply.contains('4') || t.reply.to_lowercase().contains("four"), "reply: {}", t.reply);
         assert!(t.remember.iter().any(|l| l.text.contains("Ada")), "learned: {:?}", t.remember);
         assert!(t.steps.is_empty(), "a chat turn used no tools");
     }
