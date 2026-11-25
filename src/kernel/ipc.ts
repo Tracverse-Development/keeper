@@ -74,6 +74,8 @@ export const core = {
   /** Start the next turn's engine now (opening, switching keeper, coming back); returns spares ready. */
   /** The Stop button: end the turn in progress. */
   cancel: () => invoke<void>('assistant_cancel'),
+  /** Remove Keeper from this Mac (stops its own node; deletes its folder unless `keepMemory`). */
+  removeApp: (keepMemory: boolean) => invoke<void>('setup_remove', { keepMemory }),
   warm: (keeper?: string) => invoke<number>('assistant_warm', { keeper }),
   pimAccess: () => invoke<PimAccess>('pim_access'),
   pinnedScenes: (keeper?: string) => invoke<PinnedScene[]>('scenes_pinned', { keeper }),

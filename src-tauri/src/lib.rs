@@ -60,6 +60,10 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 state.refresh_souls().await;
+                // Keeper's own memory node does not survive a reboot by itself: start it (FIX-0009).
+                if let Err(e) = crate::dkg::own_node::ensure_running(&state.settings().node_home).await {
+                    let _ = app_handle.emit(events::ASSISTANT_SAYS, json!({ "text": format!("I couldn't start my memory node: {e}"), "reason": "node" }));
+                }
                 // Testing only: KEEPER_TEST_LINK=1 opens the phone link at launch and writes its
                 // address to a private file, so a test harness can send real turns. Never set in
                 // normal use; the link still needs its random token.
@@ -100,6 +104,7 @@ pub fn run() {
             assistant::brief_today,
             assistant::warm::assistant_warm,
             assistant::assistant_cancel,
+            setup::remove::setup_remove,
             pim::commands::pim_access,
             memory::pinned_scenes::scenes_pinned,
             memory::pinned_scenes::scene_pin,

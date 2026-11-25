@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, type KitCatalog, type Settings, type SettingsChange } from '../kernel/ipc';
 import { ShareSection } from '../keepers/ShareSection';
+import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
 import { SoulSection } from '../keepers/SoulSection';
 import { WardrobeSection } from '../keepers/WardrobeSection';
@@ -126,6 +127,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClo
           </button>
         )}
         <p className="muted small">Node folder <span className="mono selectable">{settings.nodeHome}</span>. Removing a keeper keeps its graph on the node.</p>
+
+        <p className="eyebrow">This Mac</p>
+        <RemoveAppSection />
       </section>
     </div>
   );

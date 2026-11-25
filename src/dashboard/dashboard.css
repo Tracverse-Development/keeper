@@ -147,3 +147,6 @@
 
 .bubble.you.is-queued { opacity: 0.7; }
 .queued-note { display: block; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+.remove-app { padding: 14px; border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px; }
+.remove-app .row { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-danger { background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); color: var(--cream-50); }

@@ -5,6 +5,8 @@
 //! 3. `setup_create_graph`  the person's private memory graph, proven by writing and reading it back
 //! 4. `setup_finish`        save the choices; the dashboard opens
 
+pub mod remove;
+
 use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, State};
