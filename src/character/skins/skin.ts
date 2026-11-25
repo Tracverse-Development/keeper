@@ -15,11 +15,16 @@
  *    and scale `root` freely every frame.
  *  - `apply` is called once per frame with eased values only; a skin never keeps its own
  *    clock for moods, it reads `frame.time` (and its own spring state if it wants one).
- *  - With both touch envelopes at 0 a skin must look exactly as it does without touch.
+ *  - With both touch envelopes at 0 a skin must look exactly as it does without touch, and
+ *    with `work` at 0 exactly as it does without work.
+ *  - It declares its slots (`slots`, built from its catalogue row by `anchors.ts`) and keeps
+ *    every reaction amplitude and timing in its data table (`reactions`).
  */
 import type { Object3D } from 'three';
 import type { HitRegion, Mood, TouchKind } from '../contract';
 import type { MoodParams, MotionProfile } from '../moods';
+import type { SlotAnchors } from './anchors';
+import type { ReactionTable } from './reactions-table';
 
 /** Everything the shared animator hands a skin in one frame. */
 export interface SkinFrame {
@@ -41,6 +46,8 @@ export interface SkinFrame {
   readonly voice: number;
   /** Touch envelopes 0..1: each rises when a reaction plays and falls back to 0. */
   readonly touch: Readonly<Record<TouchKind, number>>;
+  /** The eased work level 0..1 (`work-level.ts`), applied on top of the mood. */
+  readonly work: number;
 }
 
 export interface Skin {
@@ -59,6 +66,12 @@ export interface Skin {
    * material with `visible: false` still raycasts); they must follow the rig.
    */
   readonly hitRegions: Readonly<Record<HitRegion, readonly Object3D[]>>;
+  /** Where wearables sit on this body, per slot it offers. */
+  readonly slots: SlotAnchors;
+  /** The species' reaction tuning (touch timings feed the shared envelopes). */
+  readonly reactions: ReactionTable;
+  /** Device pixels per world unit, for skins that draw glowing point sprites. */
+  setPointScale?(scale: number): void;
   /** Turns one frame of shared dials into this skin's pose, materials and lights. */
   apply(frame: SkinFrame): void;
   /**

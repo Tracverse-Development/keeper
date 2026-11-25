@@ -14,3 +14,4 @@ pub fn notify(_: &str, _: &str) {}
 pub fn computer_name() -> String {
     "Keeper".into()
 }
+pub fn reveal(_: &std::path::Path) {}

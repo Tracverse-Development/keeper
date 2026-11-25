@@ -12,16 +12,20 @@ import { ConversationDock } from '../conversation/ConversationDock';
 import { useAssistant } from '../conversation/useAssistant';
 import { sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
+import { useKit } from '../keepers/useKit';
+import { focusQuestion } from '../kernel/panel-spec';
 import { useChats } from '../keepers/useChats';
 import { useKeepers } from '../keepers/useKeepers';
 import { MemoryDrawer } from '../memory/MemoryDrawer';
 import { SettingsSheet } from '../settings/SettingsSheet';
+import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
 import { moodFor, phaseWords } from './mood';
 import { TopBar } from './TopBar';
 import { touchLine, type Touch } from './touch-lines';
 import { UpdateBanner } from './UpdateBanner';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { useStageState } from './useStageState';
 import './dashboard.css';
 
 /** One touch reaction at a time; a burst of clicks is one poke. */
@@ -38,10 +42,13 @@ export function Dashboard({ initial }: { initial: Settings }) {
 
   const keepers = useKeepers();
   const keeper = keepers.active;
+  const kit = useKit();
+  const soul = keeper ? kit.soul(keeper.soul) : undefined;
   const chats = useChats(keeper?.id ?? null);
   const celebrate = () => setHappyUntil(Date.now() + HAPPY_MS);
 
   const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult) => {
+    stage.take(r);
     if (r.learned.length || r.actions.some((a) => a.succeeded)) celebrate();
     speakRef.current(r.reply);
     events.refreshHealth();
@@ -59,6 +66,9 @@ export function Dashboard({ initial }: { initial: Settings }) {
   speakRef.current = voice.speak;
 
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
+  const stage = useStageState(assistant.phase, assistant.detail, assistant.busy);
+  // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
+  const sidebarOpen = panelOpen && !stage.showing;
 
   const mood = moodFor({ speaking: voice.speaking, listening: voice.listening, phase: assistant.phase, happyUntil, now: events.now });
   const name = keeper?.name ?? 'Keeper';
@@ -72,7 +82,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const touched = (kind: Touch) => {
     const now = Date.now();
     if (now - lastTouch.current.at < TOUCH_GAP_MS || assistant.busy) return;
-    const line = touchLine(kind, { name, you: events.personName, last: lastTouch.current.line });
+    const line = touchLine(kind, { name, you: events.personName, last: lastTouch.current.line, soulLines: kind === 'poke' ? soul?.pokeLines : soul?.patLines });
     lastTouch.current = { at: now, line };
     if (kind === 'pat') celebrate();
     assistant.announce(line, name);
@@ -102,8 +112,13 @@ export function Dashboard({ initial }: { initial: Settings }) {
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
-    <main className={`dashboard ${panelOpen ? 'has-panel' : ''}`}>
-      <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
+    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
+      <div className="stage-frame">
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={keeper?.wearables} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
+      </div>
+      {stage.showing && (
+        <Stage panels={stage.panels} activity={stage.activity} working={assistant.busy} keeperName={name} onFocus={(f) => assistant.send(focusQuestion(f))} onClose={stage.close} />
+      )}
       {events.updated && <UpdateBanner version={events.updated} />}
       <TopBar
         assistantName={name}
@@ -118,10 +133,12 @@ export function Dashboard({ initial }: { initial: Settings }) {
       <KeeperSidebar
         keepers={keepers.list?.keepers ?? []}
         active={keeper}
-        domains={keepers.list?.domains ?? []}
+        roles={keepers.list?.roles ?? []}
         chats={chats.chats}
         chatId={assistant.chatId}
-        open={panelOpen}
+        open={sidebarOpen}
+        souls={kit.kit?.souls ?? []}
+        onImported={() => { kit.refresh(); keepers.reload(); }}
         error={chats.error ?? keepers.error}
         onToggle={() => setPanelOpen((o) => !o)}
         onActivate={(id) => keepers.activate(id).catch(() => undefined)}
@@ -138,7 +155,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         partial={voice.partial}
         voiceError={voice.error}
         assistantName={name}
-        full={panelOpen && assistant.chatId !== ''}
+        full={sidebarOpen && assistant.chatId !== ''}
         onSend={(t) => assistant.send(t)}
         onMic={voice.listen}
         onStop={stop}
@@ -149,6 +166,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
           open={settingsOpen}
           settings={settings}
           keeper={keeper}
+          kit={kit.kit}
+          onKitChanged={() => { kit.refresh(); keepers.reload(); }}
           onClose={() => setSettingsOpen(false)}
           onSaved={setSettings}
           onKeeperChange={changeKeeper}

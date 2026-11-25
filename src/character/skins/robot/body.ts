@@ -12,6 +12,10 @@
  *
  * The torso is a lathe of a Catmull-Rom profile sampled finely, so its silhouette is
  * one continuous crafted curve rather than stacked primitives.
+ *
+ * Lights are set together (`setLights`): the ear glow follows the microphone, presence dims
+ * the whole being asleep, and heat (work) warms the heart-light toward amber and makes the
+ * visor's gold rim glow. With heat 0 everything is exactly as it shipped.
  */
 import {
   CircleGeometry,
@@ -50,16 +54,21 @@ const TORSO_PROFILE: readonly [number, number][] = [
   [0.001, -1.5],
 ];
 
+/** How bright the visor rim glows at full heat. */
+const RIM_HEAT = 1.1;
+
 export interface Body {
   readonly root: Group;
   readonly body: Group;
   readonly head: Group;
   /** The chest heart-light (memory sparks start at its world position). */
   readonly heart: Mesh;
-  /** Ear glow 0..1 (the microphone level, eased by the animator). */
-  setEarGlow(level: number): void;
-  /** Overall light of the being 0..1 (asleep dims it). */
-  setPresence(presence: number): void;
+  /**
+   * Ear glow 0..1 (the microphone level), overall light 0..1 (asleep dims it) and heat
+   * 0..1 (work warms the heart-light toward amber, `heartBoost` times brighter at full heat,
+   * and lights the visor rim), all already eased.
+   */
+  setLights(earGlow: number, presence: number, heat: number, heartBoost: number): void;
   dispose(): void;
 }
 
@@ -147,34 +156,34 @@ export function createBody(): Body {
 
   const visorShape = { halfWidth: 0.7, halfHeight: 0.4, centreY: 0.02, exponent: 4.2 };
   const border = new Mesh(ellipsoidPatch({ ...visorShape, halfWidth: 0.735, halfHeight: 0.435, inflate: 0.006 }), gold);
+  // The rim has its own gold so only it (not the ears or the emblem) glows with heat.
+  const rimGold = gold.clone();
+  rimGold.emissive.set(PALETTE.heatAmber);
+  rimGold.emissiveIntensity = 0;
+  border.material = rimGold;
   const visor = new Mesh(ellipsoidPatch({ ...visorShape, inflate: 0.013 }), visorGlass);
   head.add(border, visor);
 
   for (const side of [-1, 1]) head.add(buildEar(side, gold, earGlowMaterial));
 
   const baseRim = earGlowMaterial.emissiveIntensity;
-  let presence = 1;
-  let earGlow = 0;
-  const applyLight = (): void => {
+  const heartRest = heartMaterial.emissive.clone();
+  const heartHot = new Color(PALETTE.heatAmber);
+  const applyLight = (earGlow: number, presence: number, heat: number, heartBoost: number): void => {
     earGlowMaterial.emissiveIntensity = (baseRim + earGlow * 2.6) * presence;
-    heartMaterial.emissiveIntensity = (1 + 2.2 * presence) * (0.85 + earGlow * 0.6);
+    heartMaterial.emissiveIntensity = (1 + 2.2 * presence) * (0.85 + earGlow * 0.6) * (1 + heartBoost * heat);
+    heartMaterial.emissive.copy(heartRest).lerp(heartHot, heat);
+    rimGold.emissiveIntensity = RIM_HEAT * heat * presence;
     navyGloss.sheen = 0.2 + 0.5 * presence;
   };
-  applyLight();
+  applyLight(0, 1, 0, 0);
 
   return {
     root,
     body,
     head,
     heart,
-    setEarGlow(level) {
-      earGlow = level;
-      applyLight();
-    },
-    setPresence(value) {
-      presence = value;
-      applyLight();
-    },
+    setLights: applyLight,
     dispose: () => disposeTree(root),
   };
 }

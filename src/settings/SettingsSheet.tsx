@@ -5,7 +5,10 @@
  */
 import { useState } from 'react';
 
-import { core, sentence, type KeeperChange, type KeeperProfile, type Settings, type SettingsChange } from '../kernel/ipc';
+import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, type KitCatalog, type Settings, type SettingsChange } from '../kernel/ipc';
+import { OutfitSection } from '../keepers/OutfitSection';
+import { ShareSection } from '../keepers/ShareSection';
+import { SoulSection } from '../keepers/SoulSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
@@ -18,6 +21,9 @@ interface Props {
   open: boolean;
   settings: Settings;
   keeper: KeeperProfile;
+  kit: KitCatalog | null;
+  /** A soul was saved or a pack imported: reload the kit and the keepers. */
+  onKitChanged: (imported?: Imported) => void;
   onClose: () => void;
   onSaved: (settings: Settings) => void;
   onKeeperChange: (change: KeeperChange) => void;
@@ -25,7 +31,7 @@ interface Props {
   onRemoveKeeper?: () => void;
 }
 
-export function SettingsSheet({ open, settings, keeper, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
+export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) =>
     core
@@ -49,10 +55,28 @@ export function SettingsSheet({ open, settings, keeper, onClose, onSaved, onKeep
 
         <p className="eyebrow">This keeper</p>
         <KeeperNameField key={keeper.id} name={keeper.name} onSave={(name) => onKeeperChange({ name })} />
-        <LookSection value={keeper.skin} onPick={(skin) => onKeeperChange({ skin })} />
         <p className="muted small">
-          Memory graph <span className="mono selectable">{keeper.graphId}</span>
+          Memory graph <span className="mono selectable">{keeper.graphId}</span>: what it has experienced.
         </p>
+
+        <p className="eyebrow">Soul: who {keeper.name} is</p>
+        {kit && <SoulSection value={keeper.soul} souls={kit.souls} onPick={(soul) => onKeeperChange({ soul })} onSaved={(s) => { onKitChanged(); onKeeperChange({ soul: s.id }); }} />}
+
+        <p className="eyebrow">Role: what {keeper.name} can do</p>
+        {kit && (
+          <div className="looks" role="radiogroup" aria-label="Role">
+            {kit.roles.map((r) => (
+              <button key={r.id} type="button" role="radio" aria-checked={keeper.role === r.id} className={`mind look ${keeper.role === r.id ? 'is-on' : ''}`} onClick={() => onKeeperChange({ role: r.id })}>
+                <strong>{r.title}</strong>
+                <span className="mind-body">{r.blurb}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="eyebrow">Body and outfit</p>
+        <LookSection value={keeper.skin} onPick={(skin) => onKeeperChange({ skin })} />
+        {kit && <OutfitSection kit={kit} species={keeper.skin} wearables={keeper.wearables} onChange={(wearables) => onKeeperChange({ wearables })} />}
 
         <p className="eyebrow">{keeper.name}'s brain</p>
         {open && <EnginePicker value={keeper.brain} model={keeper.model} onPick={(brain, model) => onKeeperChange(brain === keeper.brain ? { model } : { brain, model })} />}
@@ -74,6 +98,9 @@ export function SettingsSheet({ open, settings, keeper, onClose, onSaved, onKeep
 
         <p className="eyebrow">Your phone</p>
         {open && <PhoneSection name={keeper.name} />}
+
+        <p className="eyebrow">Share</p>
+        {kit && <ShareSection keeper={keeper} soulName={kit.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} onImported={onKitChanged} />}
 
         <p className="eyebrow">Updates</p>
         {open && <UpdatesSection autoUpdate={settings.autoUpdate} onToggle={(autoUpdate) => save({ autoUpdate })} />}

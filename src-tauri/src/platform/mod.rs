@@ -24,6 +24,11 @@ pub fn open_url(url: &str) -> Result<()> {
     os::open_url(url)
 }
 
+/// Show a file in the system file manager (Finder on macOS).
+pub fn reveal(path: &std::path::Path) {
+    os::reveal(path)
+}
+
 pub fn notify(title: &str, body: &str) {
     os::notify(title, body)
 }

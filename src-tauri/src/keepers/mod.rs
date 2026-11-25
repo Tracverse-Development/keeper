@@ -1,12 +1,14 @@
-//! Keepers: each keeper is an agent with its own look, mind and DOMAIN, remembering in its own
-//! Context Graph (one graph per domain it keeps). Keeper #1 is the System Administration keeper.
+//! Keepers: each keeper is assembled from the Keeper Kit (`kit/`, docs/design/keeper-kit.md):
+//! a SOUL (who it is), a ROLE (what it can do), a BODY (species + wearables) and its own Context
+//! Graph (its memory). Keeper #1 is the System Administration keeper.
 //!
 //! Creating a keeper creates its graph on the node and writes its profile as the graph's first
 //! Knowledge Asset (who it is, what it keeps, its look), then proves the round trip by reading
 //! the name back. Removing a keeper takes it off this computer's list; its graph stays on the
 //! node (DKG writes are additive; nothing here deletes graph data).
 
-pub mod domains;
+pub mod kit;
+pub mod kit_commands;
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
@@ -43,21 +45,32 @@ pub fn graph_id_for(seed: &str, first: bool) -> String {
 
 /// Create the keeper's graph and profile asset; returns the profile's UAL and whether the
 /// read-back matched.
-pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile) -> Result<(String, bool)> {
-    let domain = domains::get(&keeper.domain);
-    client.ensure_graph(&keeper.graph_id, &format!("{}: {} (Keeper)", keeper.name, domain.title)).await?;
+pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &kit::souls::Soul) -> Result<(String, bool)> {
+    let role = kit::roles::get(&keeper.role);
+    client.ensure_graph(&keeper.graph_id, &format!("{}: {} (Keeper)", keeper.name, role.title)).await?;
     let mut quads = AssetBuilder::new(ASSISTANT)
         .a(class::AGENT)
         .a("schema:SoftwareApplication")
         .text(pred::NAME, &keeper.name)
-        .text("desk:domain", &keeper.domain)
+        .text("desk:role", &keeper.role)
+        .text("desk:domain", &keeper.role)
         .text("desk:skin", &keeper.skin)
-        .text("schema:description", domain.title)
+        .text("desk:soul", &soul.id)
+        .text("desk:wearables", &serde_json::to_string(&keeper.wearables).unwrap_or_default())
+        .text("schema:description", role.title)
         .link(pred::ABOUT, OWNER)
         .time(pred::AT, &time::now_iso())
         .build();
     quads.extend(AssetBuilder::new(OWNER).a(class::PERSON).time(pred::AT, &time::now_iso()).build());
     let written = client.write_asset(&keeper.graph_id, "desk-profile", &quads).await?;
+    // The soul the keeper was born with, in its own graph: who it is travels with what it remembers.
+    let soul_quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
+        .a("desk:Soul")
+        .text(pred::NAME, &soul.name)
+        .text("desk:definition", &serde_json::to_string(soul).unwrap_or_default())
+        .time(pred::AT, &time::now_iso())
+        .build();
+    client.write_asset(&keeper.graph_id, "desk-soul", &soul_quads).await?;
     let sparql = "PREFIX schema: <http://schema.org/> PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?name WHERE { <urn:umoja:desk:agent:assistant> a prov:SoftwareAgent ; schema:name ?name } LIMIT 5";
     let rows = client.query(&keeper.graph_id, sparql, Layer::Working).await?;
     let verified = rows.iter().any(|r| r.get("name").is_some_and(|n| n == &keeper.name));
@@ -69,13 +82,13 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile) -> Result
 pub struct KeeperList {
     pub keepers: Vec<KeeperProfile>,
     pub active: String,
-    pub domains: Vec<domains::DomainInfo>,
+    pub roles: &'static [kit::roles::Role],
 }
 
 fn list(state: &AppState) -> KeeperList {
     let s = state.settings();
     let active = s.active().map(|k| k.id.clone()).unwrap_or_default();
-    KeeperList { keepers: s.keepers, active, domains: domains::all() }
+    KeeperList { keepers: s.keepers, active, roles: kit::roles::ROLES }
 }
 
 #[tauri::command]
@@ -88,7 +101,10 @@ pub fn keepers_list(state: State<'_, AppState>) -> KeeperList {
 pub struct NewKeeper {
     pub name: String,
     pub skin: String,
-    pub domain: String,
+    pub role: String,
+    /// A soul id; empty = the role's default soul.
+    #[serde(default)]
+    pub soul: String,
 }
 
 #[tauri::command]
@@ -96,9 +112,10 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
     if !valid_name(&keeper.name) {
         return Err(DeskError::Invalid("Give your keeper a short name (letters and numbers).".into()));
     }
-    if !SKINS.contains(&keeper.skin.as_str()) || !domains::exists(&keeper.domain) {
-        return Err(DeskError::Invalid("Choose one of the looks and domains offered.".into()));
+    if !SKINS.contains(&keeper.skin.as_str()) || !kit::roles::exists(&keeper.role) {
+        return Err(DeskError::Invalid("Choose one of the bodies and roles offered.".into()));
     }
+    let soul = state.soul(if keeper.soul.is_empty() { kit::souls::default_for(&keeper.role) } else { &keeper.soul });
     let settings = state.settings();
     if settings.keepers.len() >= MAX_KEEPERS {
         return Err(DeskError::Invalid("That's the most keepers one computer can hold for now.".into()));
@@ -112,12 +129,14 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
         id: if first { "keeper-1".into() } else { format!("keeper-{}", short_hash(&seed, 10)) },
         name: keeper.name.trim().to_string(),
         skin: keeper.skin,
-        domain: keeper.domain,
+        role: keeper.role,
+        soul: soul.id.clone(),
+        wearables: crate::kernel::settings::default_wearables(),
         graph_id: graph_id_for(&seed, first),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
         model: settings.active().map(|k| k.model.clone()).unwrap_or_default(),
     };
-    write_profile(&state.client()?, &profile).await?;
+    write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
         s.active_keeper = profile.id.clone();
         s.keepers.push(profile);
@@ -143,6 +162,9 @@ pub struct KeeperChange {
     pub skin: Option<String>,
     pub brain: Option<String>,
     pub model: Option<String>,
+    pub role: Option<String>,
+    pub soul: Option<String>,
+    pub wearables: Option<Vec<kit::parts::WornPart>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -166,6 +188,20 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
             return Err(DeskError::Invalid("That look does not exist.".into()));
         }
     }
+    if let Some(r) = &change.role {
+        if !kit::roles::exists(r) {
+            return Err(DeskError::Invalid("That role does not exist.".into()));
+        }
+    }
+    if let Some(soul) = &change.soul {
+        if state.soul_known(soul).is_none() {
+            return Err(DeskError::Invalid("That soul isn't in your kit.".into()));
+        }
+    }
+    let outfit = match &change.wearables {
+        Some(w) => Some(kit::parts::check_outfit(w, change.skin.as_deref().unwrap_or(&current.skin)).map_err(DeskError::Invalid)?),
+        None => None,
+    };
     if let Some(m) = &change.model {
         if m.len() > 80 || !m.chars().all(|c| c.is_ascii_alphanumeric() || "._:-/".contains(c)) {
             return Err(DeskError::Invalid("That isn't a model name.".into()));
@@ -185,6 +221,15 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
             }
             if let Some(m) = change.model {
                 k.model = m;
+            }
+            if let Some(r) = change.role {
+                k.role = r;
+            }
+            if let Some(soul) = change.soul {
+                k.soul = soul;
+            }
+            if let Some(w) = outfit {
+                k.wearables = w;
             }
         }
     })?;

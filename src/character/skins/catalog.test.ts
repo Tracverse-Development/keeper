@@ -4,7 +4,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_SKIN_ID, SKINS, isSkinId, resolveSkinId } from './catalog.ts';
+import { SLOT_IDS } from '../parts/catalog.ts';
+import { DEFAULT_SKIN_ID, SKINS, isSkinId, resolveSkinId, slotsOf } from './catalog.ts';
 
 test('the catalogue lists the robot (default) and the puppy', () => {
   assert.deepEqual(
@@ -38,4 +39,23 @@ test('resolveSkinId falls back to the default for anything unknown', () => {
   assert.equal(resolveSkinId('retired-skin'), DEFAULT_SKIN_ID);
   assert.equal(resolveSkinId(''), DEFAULT_SKIN_ID);
   assert.equal(resolveSkinId(42), DEFAULT_SKIN_ID);
+});
+
+test('every species declares the halo, base and aura slots with finite placements', () => {
+  for (const skin of SKINS) {
+    assert.deepEqual(Object.keys(skin.slots).sort(), [...SLOT_IDS].sort(), skin.id);
+    for (const [slot, placement] of Object.entries(skin.slots)) {
+      assert.equal(placement.position.length, 3, `${skin.id}.${slot}`);
+      assert.equal(placement.rotation.length, 3, `${skin.id}.${slot}`);
+      for (const n of [...placement.position, ...placement.rotation, placement.scale]) assert.ok(Number.isFinite(n), `${skin.id}.${slot}`);
+      assert.ok(placement.scale > 0.2 && placement.scale < 3, `${skin.id}.${slot} scale`);
+    }
+  }
+});
+
+test('the halo and base anchors are where the halo and the ark always sat (the default look)', () => {
+  for (const id of ['robot', 'puppy'] as const) {
+    assert.deepEqual(slotsOf(id).halo, { position: [0, 0.15, 0], rotation: [0.32, 0, -0.1], scale: 1 });
+    assert.deepEqual(slotsOf(id).base, { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 });
+  }
 });

@@ -31,8 +31,10 @@ export function useKeepers() {
     list,
     active,
     error,
+    /** Re-read the list (after a keeper pack was imported). */
+    reload: useCallback(() => core.keepers().then(take).catch((e) => setError(sentence(e))), []),
     activate: useCallback((id: string) => core.activateKeeper(id).then(take).catch(fail), []),
-    create: useCallback((k: { name: string; skin: string; domain: string }) => core.createKeeper(k).then(take).catch(fail), []),
+    create: useCallback((k: { name: string; skin: string; role: string; soul?: string }) => core.createKeeper(k).then(take).catch(fail), []),
     remove: useCallback((id: string) => core.removeKeeper(id).then(take).catch(fail), []),
     /** Edit a keeper; resolves with what it says about the change (its new brain), if anything. */
     update: useCallback(

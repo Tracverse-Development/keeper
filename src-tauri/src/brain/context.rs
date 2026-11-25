@@ -9,8 +9,8 @@ use crate::skills::ActionRequest;
 pub struct Context {
     pub said: String,
     pub assistant_name: String,
-    /// What this keeper keeps (its domain's instructions).
-    pub domain_brief: &'static str,
+    /// Who this keeper is and what it can do: its soul's brief, then its role's brief.
+    pub identity: String,
     /// Facts recalled from the DKG for this turn (already ranked).
     pub facts: Vec<Fact>,
     /// The last exchanges, newest first (from the DKG).
@@ -52,6 +52,9 @@ pub struct Thought {
     pub forget: Vec<String>,
     #[serde(default)]
     pub actions: Vec<ActionRequest>,
+    /// What to show on the Stage (raw from the engine; `stage::read` validates and caps it).
+    #[serde(default)]
+    pub panels: serde_json::Value,
     /// Filled by agent engines from their event stream, never by the model's JSON.
     #[serde(skip_deserializing)]
     pub steps: Vec<AgentStep>,

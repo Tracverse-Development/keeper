@@ -1,9 +1,9 @@
 /**
- * The per-frame life of the character, shared by every skin: mood blending, the voice
- * and mouth followers, blinking, gaze, touch reactions, and handing eased values to the
- * stage (halo, sparks, ark, backdrop, lights) and to the worn skin.
+ * The per-frame life of the character, shared by every skin: mood blending, the voice,
+ * mouth and work followers, blinking, gaze, touch reactions, and handing eased values to
+ * the stage (backdrop, lights, sparkles), the wardrobe (the worn parts) and the worn skin.
  *
- * Inputs arrive at any rate (`setMood`, `setVoiceLevel`, `setMouth`, `lookAt`, `react`)
+ * Inputs arrive at any rate (`setMood`, `setVoiceLevel`, `setMouth`, `setWork`, `lookAt`, `react`)
  * and are only RECORDED; `frame(dt)` is the single place they turn into motion, always
  * through frame-rate independent easing (`damp`), so nothing ever snaps. What the dials
  * MEAN for a body is the skin's business (`skins/skin.ts`, Strategy): this class never
@@ -28,15 +28,15 @@ import {
   type MoodParams,
   type MotionProfile,
 } from './moods';
+import type { PartFrame } from './parts';
 import { foldTouch, reactionEnvelope } from './reactions';
 import type { SkinSwitcher } from './skin-switcher';
 import type { Skin } from './skins';
-import type { Ark } from './stage/ark';
 import type { Backdrop } from './stage/backdrop';
-import type { Halo } from './stage/halo';
-import type { MemorySparks } from './stage/memory-spark';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
+import type { Wardrobe } from './wardrobe';
+import { clampWork, easeWork } from './work-level';
 
 /** Easing rates (1/s): moods glide, voice and mouth follow speech closely. */
 const MOOD_RATE = 3.2;
@@ -53,10 +53,8 @@ const SWAP_SPARKLES = 10;
 export interface StageParts {
   stage: Stage;
   skins: SkinSwitcher;
-  halo: Halo;
-  sparks: MemorySparks;
+  wardrobe: Wardrobe;
   touchSparkles: TouchSparkles;
-  ark: Ark;
   backdrop: Backdrop;
 }
 
@@ -75,6 +73,10 @@ export class Animator {
   private voice = 0;
   private mouthInput = 0;
   private mouth = 0;
+  private workInput = 0;
+  private work = 0;
+  /** Reused every frame for the wardrobe (no allocation in the loop). */
+  private readonly partFrame: { -readonly [K in keyof PartFrame]: PartFrame[K] };
 
   private pointer = { x: 0, y: 0 };
   private pointerAge = Infinity;
@@ -93,6 +95,7 @@ export class Animator {
 
   constructor(parts: StageParts) {
     this.parts = parts;
+    this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0 };
   }
 
   setMood(mood: Mood): void {
@@ -108,15 +111,20 @@ export class Animator {
     this.mouthInput = clampUnit(openness);
   }
 
+  setWork(level: number): void {
+    this.workInput = clampWork(level);
+  }
+
   lookAt(x: number, y: number): void {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
     this.pointer = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
     this.pointerAge = 0;
   }
 
+  /** A memory spark from the chest into the worn halo (nothing when no halo is worn). */
   pulseMemory(): void {
     this.parts.skins.active.sparkOrigin.getWorldPosition(this.scratch);
-    this.parts.sparks.launch(this.scratch, this.time);
+    this.parts.wardrobe.pulse(this.scratch);
   }
 
   /** Starts a touch reaction: the envelope, a surprised blink on a poke, sparkles on a pat. */
@@ -136,6 +144,7 @@ export class Animator {
     this.parts.skins.active.touchOrigin.getWorldPosition(this.scratch);
     this.parts.touchSparkles.burst(this.scratch.setY(this.scratch.y - 0.6), this.time, SWAP_SPARKLES, 0.9);
     this.parts.skins.swap(skin, this.time);
+    this.parts.wardrobe.setSpecies(skin);
   }
 
   setReducedMotion(reduced: boolean): void {
@@ -150,14 +159,16 @@ export class Animator {
     for (const mood of MOOD_NAMES) this.weights[mood] = damp(this.weights[mood], mood === this.targetMood ? 1 : 0, MOOD_RATE, dt);
     this.voice = damp(this.voice, this.voiceInput * p.voiceGain, VOICE_RATE, dt);
     this.mouth = damp(this.mouth, this.mouthInput, MOUTH_RATE, dt);
-    this.touch.poke = reactionEnvelope('poke', this.time - this.touchStartedAt.poke);
-    this.touch.pat = reactionEnvelope('pat', this.time - this.touchStartedAt.pat);
+    this.work = easeWork(this.work, this.workInput, dt);
+    const timing = this.parts.skins.active.reactions;
+    this.touch.poke = reactionEnvelope('poke', this.time - this.touchStartedAt.poke, timing.poke);
+    this.touch.pat = reactionEnvelope('pat', this.time - this.touchStartedAt.pat, timing.pat);
     const expression = foldTouch(Object.assign(this.expression, p), this.touch);
 
     const blink = this.stepBlink(dt, p);
     this.stepGaze(dt, p);
 
-    const { stage, skins, halo, sparks, touchSparkles, ark, backdrop } = this.parts;
+    const { stage, skins, wardrobe, touchSparkles, backdrop } = this.parts;
     skins.apply({
       dt,
       time: this.time,
@@ -169,19 +180,17 @@ export class Animator {
       mouth: this.mouth,
       voice: this.voice,
       touch: this.touch,
+      work: this.work,
     });
 
-    halo.update({
-      dt,
-      time: this.time,
-      speed: p.haloSpeed * this.motion.speed,
-      glow: p.haloGlow * (1 + this.voice * 0.7),
-      scale: p.haloScale * (1 + this.voice * 0.14 * this.motion.amplitude),
-      amplitude: this.motion.amplitude,
-    });
-    sparks.update(this.time, p.haloGlow);
+    const partFrame = this.partFrame;
+    partFrame.dt = dt;
+    partFrame.time = this.time;
+    partFrame.motion = this.motion;
+    partFrame.voice = this.voice;
+    partFrame.work = this.work;
+    wardrobe.update(partFrame);
     touchSparkles.update(this.time);
-    ark.update({ time: this.time, amplitude: this.motion.amplitude, speed: this.motion.speed, presence: p.presence });
     backdrop.update(this.time * this.motion.speed, p.presence);
 
     const voiceGlow = 1 + this.voice * 0.15;

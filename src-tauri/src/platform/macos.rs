@@ -29,6 +29,10 @@ fn applescript_text(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+pub fn reveal(path: &std::path::Path) {
+    let _ = Command::new("/usr/bin/open").arg("-R").arg(path).output();
+}
+
 pub fn notify(title: &str, body: &str) {
     let script = format!("display notification {} with title {}", applescript_text(body), applescript_text(title));
     let _ = Command::new("/usr/bin/osascript").arg("-e").arg(script).output();

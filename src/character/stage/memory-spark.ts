@@ -1,17 +1,18 @@
 /**
  * Memory sparks: what the person sees when something is written to the DKG.
  *
- * `launch` reserves a new node in the halo and sends a bright spark with a fading
- * comet trail from the chest heart-light, up along an arc (a quadratic Bezier toward
- * the camera) to that node. The target is re-read every frame because the halo keeps
- * orbiting; on arrival the halo reveals the node, which flashes and links into the graph.
+ * `launch` reserves a new node in the worn halo (any `SparkTarget`) and sends a bright
+ * spark with a fading comet trail from the chest heart-light, up along an arc (a quadratic
+ * Bezier toward the camera) to that node. The target is re-read every frame because the
+ * halo keeps orbiting; on arrival the halo reveals the node, which flashes and links into
+ * the graph. When a halo is taken off, `forget` drops the sparks still flying to it.
  *
  * Points are kept in world space (the group sits at the scene origin, unrotated).
  */
 import { BufferAttribute, BufferGeometry, Group, Points, Vector3 } from 'three';
 import { disposeTree } from '../dispose-tree';
 import { createGlowPointsMaterial } from './glow-points-material';
-import type { Halo } from './halo';
+import type { SparkTarget } from '../parts/part';
 
 const MAX_SPARKS = 8;
 const TRAIL = 18;
@@ -19,6 +20,7 @@ const TRAIL_SPACING = 0.022;
 const FLIGHT_SECONDS = 1.25;
 
 interface Spark {
+  target: SparkTarget;
   node: number;
   startedAt: number;
   origin: Vector3;
@@ -26,14 +28,16 @@ interface Spark {
 
 export interface MemorySparks {
   readonly group: Group;
-  /** Sends one spark from `origin` (world space) into a new halo node. */
-  launch(origin: Vector3, time: number): void;
+  /** Sends one spark from `origin` (world space) into a new node of `target`. */
+  launch(origin: Vector3, time: number, target: SparkTarget): void;
+  /** Drops every spark flying to `target` (it was taken off). */
+  forget(target: SparkTarget): void;
   setPointScale(scale: number): void;
   update(time: number, glow: number): void;
   dispose(): void;
 }
 
-export function createMemorySparks(halo: Halo): MemorySparks {
+export function createMemorySparks(): MemorySparks {
   const group = new Group();
   group.name = 'memory-sparks';
   const count = MAX_SPARKS * TRAIL;
@@ -75,7 +79,7 @@ export function createMemorySparks(halo: Halo): MemorySparks {
         arrived.push(spark);
         return;
       }
-      halo.nodeWorldPosition(spark.node, target);
+      spark.target.nodeWorldPosition(spark.node, target);
       control.copy(spark.origin).lerp(target, 0.5).add(point.set(0, 1.1, 0.9));
       for (let k = 0; k < TRAIL; k++) {
         const t = easeOutCubic(Math.max(progress - k * TRAIL_SPACING, 0));
@@ -86,7 +90,7 @@ export function createMemorySparks(halo: Halo): MemorySparks {
         brights[i] = (k === 0 ? 4 : 2.2) * fade * fade;
       }
     });
-    for (const spark of arrived) halo.revealNode(spark.node, time);
+    for (const spark of arrived) spark.target.revealNode(spark.node, time);
     if (arrived.length) sparks = sparks.filter((spark) => !arrived.includes(spark));
     material.uniforms.uGlow.value = Math.max(glow, 0.6);
     for (const name of ['position', 'aSize', 'aBright']) geometry.getAttribute(name).needsUpdate = true;
@@ -94,12 +98,15 @@ export function createMemorySparks(halo: Halo): MemorySparks {
 
   return {
     group,
-    launch(origin, time) {
+    launch(origin, time, into) {
       if (sparks.length >= MAX_SPARKS) {
         const oldest = sparks.shift();
-        if (oldest) halo.revealNode(oldest.node, time);
+        if (oldest) oldest.target.revealNode(oldest.node, time);
       }
-      sparks.push({ node: halo.reserveNode(), startedAt: time, origin: origin.clone() });
+      sparks.push({ target: into, node: into.reserveNode(), startedAt: time, origin: origin.clone() });
+    },
+    forget(gone) {
+      sparks = sparks.filter((spark) => spark.target !== gone);
     },
     setPointScale(scale) {
       material.uniforms.uScale.value = scale;

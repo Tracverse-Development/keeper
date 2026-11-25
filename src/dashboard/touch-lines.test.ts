@@ -23,3 +23,8 @@ test('the first name comes from the identity fact', () => {
   assert.equal(nameFromFacts([{ text: 'Your name is Ada Lovelace', category: 'identity' }]), 'Ada');
   assert.equal(nameFromFacts([{ text: 'You love sorrel', category: 'preference' }]), null);
 });
+
+test("a soul's own lines are used when it has them", () => {
+  const line = touchLine('pat', { name: 'K', you: 'Ada', last: null, soulLines: ['You good to me, {you}.'] });
+  assert.equal(line, 'You good to me, Ada.');
+});

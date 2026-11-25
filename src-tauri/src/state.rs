@@ -4,6 +4,7 @@
 use std::sync::Mutex;
 
 use crate::dkg::{node, DkgClient};
+use crate::keepers::kit::souls::{self, Soul};
 use crate::kernel::settings::{KeeperProfile, Settings};
 use crate::kernel::{DeskError, Result};
 use crate::memory::Memory;
@@ -16,13 +17,15 @@ pub struct AppState {
     pub voice: Voice,
     pub reminders: Scheduler,
     pub phone: PhoneLink,
+    /// The person's own souls (from their kit graph on the DKG), refreshed at launch and on change.
+    souls: Mutex<Vec<Soul>>,
 }
 
 impl AppState {
     pub fn new(settings: Settings, reminders: Scheduler) -> AppState {
         let voice = Voice::new();
         voice.set_wake_required(settings.wake_word);
-        let state = AppState { settings: Mutex::new(settings), voice, reminders, phone: PhoneLink::default() };
+        let state = AppState { settings: Mutex::new(settings), voice, reminders, phone: PhoneLink::default(), souls: Mutex::new(Vec::new()) };
         state.refresh_voice_names();
         state
     }
@@ -66,6 +69,31 @@ impl AppState {
             return self.active_keeper();
         }
         self.settings().keeper(id).cloned().ok_or_else(|| DeskError::Invalid("There is no such keeper.".into()))
+    }
+
+    /// A soul by id: built in, or one of the person's own; None when unknown.
+    pub fn soul_known(&self, id: &str) -> Option<Soul> {
+        souls::builtin().into_iter().find(|s| s.id == id).or_else(|| self.souls.lock().ok()?.iter().find(|s| s.id == id).cloned())
+    }
+
+    /// A soul by id, falling back to Steady (a keeper is never without a personality).
+    pub fn soul(&self, id: &str) -> Soul {
+        self.soul_known(id).unwrap_or_else(|| souls::builtin().remove(0))
+    }
+
+    pub fn custom_souls(&self) -> Vec<Soul> {
+        self.souls.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    /// Reload the person's souls from their kit graph.
+    pub async fn refresh_souls(&self) {
+        let Ok(client) = self.client() else { return };
+        let Ok(graph) = crate::keepers::kit::inventory::kit(&client).await else { return };
+        if let Ok(list) = crate::keepers::kit::inventory::souls(&client, &graph).await {
+            if let Ok(mut s) = self.souls.lock() {
+                *s = list;
+            }
+        }
     }
 
     /// The active keeper's memory.

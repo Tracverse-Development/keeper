@@ -101,13 +101,16 @@ pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, a
         id: "keeper-1".into(),
         name: name.clone(),
         skin: existing.as_ref().map(|k| k.skin.clone()).unwrap_or_else(|| "robot".into()),
-        domain: "system".into(),
+        role: "system".into(),
+        soul: existing.as_ref().map(|k| k.soul.clone()).unwrap_or_else(|| "steady".into()),
+        wearables: existing.as_ref().map(|k| k.wearables.clone()).unwrap_or_else(crate::kernel::settings::default_wearables),
         graph_id: keepers::graph_id_for(&name, true),
         brain: existing.as_ref().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
         model: existing.map(|k| k.model).unwrap_or_default(),
     };
     let started = std::time::Instant::now();
-    let (profile_ual, verified) = keepers::write_profile(&client, &keeper).await?;
+    let soul = state.soul(&keeper.soul);
+    let (profile_ual, verified) = keepers::write_profile(&client, &keeper, &soul).await?;
     let query_ms = started.elapsed().as_millis();
     let graph_id = keeper.graph_id.clone();
     let home = node_home.clone();

@@ -29,4 +29,12 @@ export const PALETTE = {
   iris600: 0x5a321a,
   tongue400: 0xe5807e,
   mouth900: 0x3a181b,
+  // Work colours (not brand tokens): the robot's eyes go electric cyan while it works and
+  // hot amber near its limit; embers and the chest heat glow use the amber; the puppy's
+  // sweat drop is a cool glint.
+  workCyanCore: 0xd8fcff,
+  workCyanEdge: 0x1fd2d6,
+  heatCore: 0xffe4bd,
+  heatAmber: 0xff7a1e,
+  sweatGlint: 0xd2efff,
 } as const;

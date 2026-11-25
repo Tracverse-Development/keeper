@@ -20,7 +20,20 @@ pub enum VoiceEngine {
     Elevenlabs,
 }
 
-/// One keeper: an agent with its own look, mind and domain, remembering in its own graph.
+/// One worn part with its effect values (validated by `keepers::kit::parts::check`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WornPart {
+    pub part: String,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub effects: std::collections::BTreeMap<String, serde_json::Value>,
+}
+
+/// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
+pub fn default_wearables() -> Vec<WornPart> {
+    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default() }).collect()
+}
+
+/// One keeper: soul (who), role (what it can do), body (species + wearables) and its own graph (memory).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct KeeperProfile {
@@ -28,10 +41,15 @@ pub struct KeeperProfile {
     pub id: String,
     /// What the person calls it (also its wake word: "Hey <name>").
     pub name: String,
-    /// The character's look: an id from the window's skin registry ("robot", "puppy").
+    /// Its body: a species id ("robot", "puppy"); the window's skin registry draws it.
     pub skin: String,
-    /// What it keeps: an id from `keepers::DOMAINS` ("system", "companion").
-    pub domain: String,
+    /// Its job: an id from `keepers::kit::roles::ROLES` ("system", "companion"). Was `domain`.
+    #[serde(alias = "domain")]
+    pub role: String,
+    /// Its personality: a soul id (built in, or from the person's kit on the DKG).
+    pub soul: String,
+    /// What it wears, slot by slot (halo, base, aura).
+    pub wearables: Vec<WornPart>,
     /// Its Context Graph: the exact id (DKG reference §2).
     pub graph_id: String,
     /// The engine that thinks: an id from `brain::engines::CATALOGUE`.
@@ -42,7 +60,7 @@ pub struct KeeperProfile {
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), domain: "system".into(), graph_id: String::new(), brain: "reflex".into(), model: String::new() }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new() }
     }
 }
 
@@ -133,7 +151,9 @@ impl Settings {
             id: "keeper-1".into(),
             name: if self.assistant_name.is_empty() { "Keeper".into() } else { self.assistant_name.clone() },
             skin: if self.skin.is_empty() { "robot".into() } else { self.skin.clone() },
-            domain: "system".into(),
+            role: "system".into(),
+            soul: "steady".into(),
+            wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
             model,
@@ -166,12 +186,19 @@ mod tests {
         let mut s = s;
         s.migrate();
         let k = s.active().unwrap();
-        assert_eq!((k.name.as_str(), k.graph_id.as_str(), k.brain.as_str(), k.skin.as_str(), k.domain.as_str()), ("Kofi", "umoja-desk-x", "claude", "puppy", "system"));
+        assert_eq!((k.name.as_str(), k.graph_id.as_str(), k.brain.as_str(), k.skin.as_str(), k.role.as_str()), ("Kofi", "umoja-desk-x", "claude", "puppy", "system"));
+        assert_eq!((k.soul.as_str(), k.wearables.len()), ("steady", 2));
         assert_eq!(s.voice, "Bahh");
         assert!(s.wake_word && s.auto_update && !s.agent_actions);
         assert_eq!(s.talk_shortcut, "Alt+Space");
         let saved = serde_json::to_string(&s).unwrap();
         assert!(!saved.contains("assistantName") && saved.contains("\"keepers\""));
+    }
+
+    #[test]
+    fn a_v03_keeper_with_a_domain_reads_as_a_role() {
+        let k: KeeperProfile = serde_json::from_str(r#"{"id":"keeper-2","name":"Pup","skin":"puppy","domain":"companion","graphId":"g","brain":"reflex"}"#).unwrap();
+        assert_eq!((k.role.as_str(), k.soul.as_str(), k.wearables.len()), ("companion", "steady", 2));
     }
 
     #[test]

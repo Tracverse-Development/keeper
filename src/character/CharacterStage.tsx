@@ -8,13 +8,16 @@
  *
  * Touch: a click on the character is a poke, a back-and-forth stroke is a pat
  * (`touch-gestures.ts`). The stage plays the reaction itself and reports it through
- * `onTouch` (e.g. so the assistant can say something). `skin` swaps the look live.
+ * `onTouch` (e.g. so the assistant can say something). `skin` swaps the species live,
+ * `wearables` swaps what it wears (compared by content, so a new array with the same parts
+ * does nothing) and `work` (0..1) drives the working animations.
  *
  * `memoryPulse` is a counter: every increase sends one spark into the memory halo.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, HitRegion, Mood, TouchKind } from './contract';
+import type { Character, HitRegion, Mood, TouchKind, WornPart } from './contract';
 import { createCharacter } from './create-character';
+import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
 import { attachTouchGestures } from './touch-gestures';
 
@@ -28,6 +31,10 @@ export interface CharacterStageProps {
   mouth: number;
   /** Increments trigger `pulseMemory()`. */
   memoryPulse: number;
+  /** What it wears (`PARTS` ids plus effect values). Default: `DEFAULT_WEARABLES`. */
+  wearables?: readonly WornPart[];
+  /** How hard it is working, 0..1 (turn phase blended with machine load). Default 0. */
+  work?: number;
   /** Called once per touch gesture on the character, after its reaction started. */
   onTouch?: (kind: TouchKind, region: HitRegion) => void;
   className?: string;
@@ -37,12 +44,15 @@ const CANVAS_STYLE: CSSProperties = { display: 'block', width: '100%', height: '
 
 export function CharacterStage(props: CharacterStageProps) {
   const { skin = DEFAULT_SKIN_ID, mood, voiceLevel, mouth, memoryPulse, onTouch, className } = props;
+  const { wearables = DEFAULT_WEARABLES, work = 0 } = props;
+  // Compared by content: a parent that rebuilds the array every render causes no swap.
+  const wearKey = JSON.stringify(wearables);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const characterRef = useRef<Character | null>(null);
   const lastPulse = useRef(memoryPulse);
   // The latest props, read once at mount so the new character starts in the right state.
-  const initial = useRef({ skin, mood, voiceLevel, mouth });
-  initial.current = { skin, mood, voiceLevel, mouth };
+  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work });
+  initial.current = { skin, mood, voiceLevel, mouth, wearables, work };
   const onTouchRef = useRef(onTouch);
   onTouchRef.current = onTouch;
 
@@ -51,7 +61,7 @@ export function CharacterStage(props: CharacterStageProps) {
     if (!canvas) return;
     let character: Character;
     try {
-      character = createCharacter(canvas, { skin: initial.current.skin });
+      character = createCharacter(canvas, { skin: initial.current.skin, wearables: initial.current.wearables });
     } catch (error) {
       // No WebGL2 (or a lost GPU): the rest of the app keeps working without the face.
       if (import.meta.env.DEV) console.warn('[character] could not start WebGL', error);
@@ -61,6 +71,7 @@ export function CharacterStage(props: CharacterStageProps) {
     character.setMood(initial.current.mood);
     character.setVoiceLevel(initial.current.voiceLevel);
     character.setMouth(initial.current.mouth);
+    character.setWork(initial.current.work);
 
     const onPointerMove = (event: PointerEvent): void => {
       const x = (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
@@ -78,6 +89,8 @@ export function CharacterStage(props: CharacterStageProps) {
   }, []);
 
   useEffect(() => characterRef.current?.setSkin(skin), [skin]);
+  useEffect(() => characterRef.current?.setWearables(JSON.parse(wearKey) as WornPart[]), [wearKey]);
+  useEffect(() => characterRef.current?.setWork(work), [work]);
   useEffect(() => characterRef.current?.setMood(mood), [mood]);
   useEffect(() => characterRef.current?.setVoiceLevel(voiceLevel), [voiceLevel]);
   useEffect(() => characterRef.current?.setMouth(mouth), [mouth]);

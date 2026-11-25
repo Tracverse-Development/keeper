@@ -14,12 +14,16 @@ mod phone;
 mod platform;
 mod setup;
 mod skills;
+mod stage;
 mod state;
+mod system;
 mod updater;
 mod voice;
 
 use serde_json::json;
-use tauri::{Emitter, Manager, RunEvent, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
+#[cfg(target_os = "macos")]
+use tauri::RunEvent;
 
 use kernel::{events, settings::Settings};
 use skills::reminders::Scheduler;
@@ -53,6 +57,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
+                state.refresh_souls().await;
                 for keeper in state.settings().keepers {
                     if let Ok(memory) = state.memory_for(&keeper) {
                         for r in memory.upcoming_reminders().await.unwrap_or_default() {
@@ -102,6 +107,11 @@ pub fn run() {
             keepers::keepers_activate,
             keepers::keepers_update,
             keepers::keepers_remove,
+            keepers::kit_commands::kit_catalog,
+            keepers::kit_commands::souls_save,
+            keepers::kit_commands::pack_export,
+            keepers::kit_commands::pack_import,
+            system::system_load,
             hotkey::talk_hide,
             hotkey::talk_shortcut_status,
             setup::setup_folders,

@@ -115,3 +115,14 @@
 
 .remove-keeper { color: var(--danger); align-self: flex-start; }
 .dashboard.has-panel .dock { left: calc(50% + 140px); width: min(720px, calc(100% - 330px)); }
+
+/* The keepers panel slides away while the stage shows something (see useStageState). */
+.keepers { transition: width 420ms var(--ease), transform 520ms var(--ease), opacity 420ms var(--ease); }
+.dashboard.has-stage .keepers.is-rail { transform: translateX(-8px); opacity: 0.85; }
+/* While the stage shows, the character's canvas becomes the left column (it re-frames itself to
+   the new size) and the conversation sits under it, so nothing overlaps the panels. */
+.stage-frame { position: absolute; inset: 0; transition: right 650ms var(--ease); }
+.dashboard.has-stage .stage-frame { right: 62%; }
+.dashboard.has-stage .dock { left: 19%; width: min(420px, calc(38% - 32px)); }
+.dashboard.has-stage .dock-feed { max-height: 26vh; }
+.dashboard.has-stage { --stage-left: 38%; --stage-bottom: 24px; }

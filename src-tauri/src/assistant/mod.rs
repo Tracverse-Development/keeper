@@ -42,6 +42,8 @@ pub struct TurnResult {
     pub actions: Vec<Outcome>,
     /// What an agent engine did on the computer this turn.
     pub steps: Vec<crate::brain::AgentStep>,
+    /// What to show on the Stage (validated and capped).
+    pub panels: Vec<crate::stage::Panel>,
     pub traces: Vec<QueryTrace>,
     pub writes: Vec<WriteReceipt>,
     /// Recall failed (the node is down): the answer was made without memory.
@@ -125,14 +127,16 @@ async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &Keepe
         Err(_) => (Recall { facts: vec![], recent: vec![], traces: vec![] }, true),
     };
 
+    let role = crate::keepers::kit::roles::get(&keeper.role);
     let ctx = Context {
         said: said.to_string(),
         assistant_name: keeper.name.clone(),
-        domain_brief: crate::keepers::domains::get(&keeper.domain).brief,
+        identity: format!("{} {}", crate::keepers::kit::souls::brief(&state.soul(&keeper.soul)), role.brief),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         now_local: chrono::Local::now().format("%A %-d %B %Y, %-I:%M %p").to_string(),
-        may_act: state.settings().agent_actions,
+        // Acting needs both: the person allows it, and the keeper's role is one that acts.
+        may_act: state.settings().agent_actions && role.may_act,
     };
     phase(app, "thinking", crate::brain::engines::label(&keeper.brain));
     let progress = |step: &str| phase(app, "acting", step);
@@ -151,6 +155,11 @@ async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &Keepe
         phase(app, "acting", "");
         let env = SkillEnv { memory, reminders: &state.reminders };
         for request in thought.actions.iter().take(4) {
+            // A role only uses the skills it is allowed (a companion does not open apps).
+            if !role.allows(&request.skill) {
+                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None });
+                continue;
+            }
             let mut outcome = skills::run(request, &env).await;
             if let Some(Effect::SwitchEngine(id)) = outcome.effect.clone() {
                 outcome.summary = change_engine(app, state, &keeper.id, &id, None, &turn_id).await.unwrap_or_else(|e| e.to_string());
@@ -193,7 +202,7 @@ async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &Keepe
     writes.push(receipt);
     phase(app, "done", "");
 
-    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, steps: thought.steps, traces: recall.traces, writes, memory_offline })
+    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels: crate::stage::read(&thought.panels), steps: thought.steps, traces: recall.traces, writes, memory_offline })
 }
 
 /// The mind's words, then what the skills did (a skill's own sentence is the truth about it).

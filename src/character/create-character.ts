@@ -1,7 +1,7 @@
 /**
- * `createCharacter(canvas, options)`: assembles the character (the shared stage, halo,
- * sparks, ark and backdrop, plus the worn skin), runs the render loop and returns the
- * `Character` contract.
+ * `createCharacter(canvas, options)`: assembles the character (the shared stage, sparks and
+ * backdrop, the species (skin) and the wearables in its slots), runs the render loop and
+ * returns the `Character` contract.
  *
  * Pattern: Facade. Callers see a handful of methods; the scene graph, the skins, the animator and the
  * browser plumbing stay behind it. The facade also owns the plumbing every host would
@@ -11,16 +11,16 @@
  */
 import { Raycaster, Vector2, type Camera } from 'three';
 import { Animator } from './animator';
-import type { Character, HitRegion, Mood, TouchKind } from './contract';
+import type { Character, HitRegion, Mood, TouchKind, WornPart } from './contract';
 import { isMood } from './moods';
+import { DEFAULT_WEARABLES } from './parts';
 import { SkinSwitcher } from './skin-switcher';
 import { DEFAULT_SKIN_ID, createSkin, resolveSkinId } from './skins';
-import { createArk } from './stage/ark';
 import { createBackdrop } from './stage/backdrop';
-import { createHalo } from './stage/halo';
 import { createMemorySparks } from './stage/memory-spark';
 import { createStage } from './stage/scene';
 import { createTouchSparkles } from './stage/touch-sparkles';
+import { Wardrobe } from './wardrobe';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const TOUCH_KINDS: readonly TouchKind[] = ['poke', 'pat'];
@@ -28,22 +28,23 @@ const TOUCH_KINDS: readonly TouchKind[] = ['poke', 'pat'];
 export interface CreateCharacterOptions {
   /** The skin to start in, without a transition (`SKINS` ids; default: the robot). */
   skin?: string;
+  /** The wearables to start in, without a transition (default: `DEFAULT_WEARABLES`). */
+  wearables?: readonly WornPart[];
 }
 
 export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharacterOptions = {}): Character {
   const stage = createStage(canvas);
   let skinId = resolveSkinId(options.skin ?? DEFAULT_SKIN_ID);
   const firstSkin = createSkin(skinId);
-  const halo = createHalo();
-  const sparks = createMemorySparks(halo);
-  const ark = createArk();
+  const sparks = createMemorySparks();
+  const wardrobe = new Wardrobe(sparks, firstSkin, options.wearables ?? DEFAULT_WEARABLES);
   const backdrop = createBackdrop();
   stage.scene.add(backdrop.mesh);
   const skins = new SkinSwitcher(stage.scene, firstSkin);
   const touchSparkles = createTouchSparkles();
-  stage.scene.add(halo.group, sparks.group, ark.group, touchSparkles.group);
+  stage.scene.add(wardrobe.group, sparks.group, touchSparkles.group);
 
-  const animator = new Animator({ stage, skins, halo, sparks, touchSparkles, ark, backdrop });
+  const animator = new Animator({ stage, skins, wardrobe, touchSparkles, backdrop });
   const hitTest = createHitTester(stage.camera, skins);
 
   const reducedMotion = window.matchMedia?.(REDUCED_MOTION_QUERY);
@@ -62,8 +63,8 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     stage.resize(width, height, ratio);
     backdrop.setAspect(width / height);
     const pixelsPerUnit = (height * ratio) / (2 * Math.tan((stage.camera.fov * Math.PI) / 360));
-    halo.setPointScale(pixelsPerUnit);
-    sparks.setPointScale(pixelsPerUnit);
+    wardrobe.setPointScale(pixelsPerUnit);
+    skins.setPointScale(pixelsPerUnit);
     touchSparkles.setPointScale(pixelsPerUnit);
   };
   const resizeObserver = new ResizeObserver(fitToCanvas);
@@ -103,6 +104,10 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       skinId = next;
       animator.setSkin(createSkin(next));
     },
+    setWearables(parts: readonly WornPart[]) {
+      if (!disposed && Array.isArray(parts)) wardrobe.setWearables(parts);
+    },
+    setWork: (level) => animator.setWork(level),
     hitTest,
     react(kind: TouchKind) {
       if (TOUCH_KINDS.includes(kind)) animator.react(kind);
@@ -116,9 +121,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       resizeObserver.disconnect();
       skins.dispose();
       touchSparkles.dispose();
-      sparks.dispose();
-      halo.dispose();
-      ark.dispose();
+      wardrobe.dispose();
       backdrop.dispose();
       stage.dispose();
     },

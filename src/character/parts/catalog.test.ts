@@ -1,0 +1,93 @@
+/**
+ * Tests for the parts catalogue and wear-list resolution (pure data, no three.js).
+ * Run: node --test --experimental-strip-types src/character/parts/catalog.test.ts
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { SKINS } from '../skins/catalog.ts';
+import { DEFAULT_WEARABLES, PARTS, SLOT_IDS, findPart, fitsSpecies, resolveWearables } from './catalog.ts';
+import { resolveEffects } from './effects.ts';
+
+test('the built-in parts: Memory Halo, Ark Hull, Star Aura, one per slot', () => {
+  assert.deepEqual(
+    PARTS.map((part) => [part.id, part.slot]),
+    [
+      ['memory-halo', 'halo'],
+      ['ark-hull', 'base'],
+      ['star-aura', 'aura'],
+    ],
+  );
+});
+
+test('every row is well formed: kebab id, name, known slot, species, effects schema', () => {
+  const skinIds = SKINS.map((skin) => skin.id as string);
+  const ids = new Set<string>();
+  for (const part of PARTS) {
+    assert.match(part.id, /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/);
+    assert.ok(!ids.has(part.id), `duplicate ${part.id}`);
+    ids.add(part.id);
+    assert.ok(part.name.trim().length > 0);
+    assert.ok(part.description.length > 10 && part.description.length <= 120, `${part.id} description`);
+    assert.ok((SLOT_IDS as readonly string[]).includes(part.slot));
+    const species = part.species as 'any' | readonly string[];
+    if (species !== 'any') for (const s of species) assert.ok(skinIds.includes(s), `${part.id} names unknown species ${s}`);
+    assert.ok(Object.keys(part.effects).length > 0, `${part.id} has effects`);
+    for (const [key, spec] of Object.entries(part.effects)) {
+      assert.match(key, /^[a-z][a-zA-Z]*$/, `${part.id}.${key}`);
+      if (spec.kind === 'number') {
+        assert.ok(spec.min < spec.max, `${part.id}.${key} range`);
+        assert.ok(spec.default >= spec.min && spec.default <= spec.max, `${part.id}.${key} default in range`);
+      } else {
+        assert.match(spec.default, /^#[0-9a-f]{6}$/, `${part.id}.${key} colour default`);
+      }
+    }
+  }
+});
+
+test('the effects named in the brief exist', () => {
+  assert.deepEqual(Object.keys(findPart('memory-halo')!.effects), ['color', 'spinIdle', 'spinWork', 'nodes']);
+  assert.deepEqual(Object.keys(findPart('ark-hull')!.effects), ['color', 'rock']);
+  assert.deepEqual(Object.keys(findPart('star-aura')!.effects), ['color', 'count', 'speed']);
+});
+
+test('DEFAULT_WEARABLES is the shipped look: Memory Halo and Ark Hull, no effects', () => {
+  assert.deepEqual(DEFAULT_WEARABLES, [{ part: 'memory-halo' }, { part: 'ark-hull' }]);
+});
+
+test('resolveWearables: one per slot (first wins), unknown parts skipped, effects clamped', () => {
+  const worn = resolveWearables(
+    [
+      { part: 'memory-halo', effects: { color: '#e2425f', spinWork: 3, bogus: 1 } },
+      { part: 'memory-halo', effects: { color: '#00ff00' } },
+      { part: 'dragon-wings' },
+      null,
+      42,
+      { part: 'star-aura', effects: { count: 9999 } },
+    ],
+    'puppy',
+  );
+  assert.deepEqual(Object.keys(worn).sort(), ['aura', 'halo']);
+  assert.equal(worn.halo?.effects.color, '#e2425f');
+  assert.equal(worn.halo?.effects.spinWork, 3);
+  assert.equal('bogus' in (worn.halo?.effects ?? {}), false);
+  assert.equal(worn.aura?.effects.count, 120);
+  assert.deepEqual(resolveWearables('nope', 'robot'), {});
+  assert.deepEqual(resolveWearables([], 'robot'), {});
+});
+
+test('a variant is data: the Ruby Halo resolves against the halo schema', () => {
+  const ruby = resolveWearables([{ part: 'memory-halo', effects: { color: '#e2425f', spinWork: 3 } }], 'robot').halo!;
+  assert.deepEqual(ruby.effects, resolveEffects(findPart('memory-halo')!.effects, { color: '#e2425f', spinWork: 3 }));
+  const plain = resolveWearables([{ part: 'memory-halo' }], 'robot').halo!;
+  assert.notEqual(ruby.key, plain.key, 'a variant swaps; the same content keeps its key');
+  assert.equal(plain.key, resolveWearables([{ part: 'memory-halo', effects: {} }], 'robot').halo!.key);
+});
+
+test('species fit: "any" fits every species; a listed part only its own', () => {
+  const halo = findPart('memory-halo')!;
+  assert.equal(fitsSpecies(halo, 'robot'), true);
+  assert.equal(fitsSpecies(halo, 'puppy'), true);
+  const robotOnly = { ...halo, species: ['robot'] as const };
+  assert.equal(fitsSpecies(robotOnly, 'robot'), true);
+  assert.equal(fitsSpecies(robotOnly, 'puppy'), false);
+});

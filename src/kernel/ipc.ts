@@ -7,6 +7,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
+import type { Answer, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+
 export const EVENTS = {
   assistantPhase: 'assistant://phase',
   assistantSays: 'assistant://says',
@@ -19,273 +21,19 @@ export const EVENTS = {
   assistantReply: 'assistant://reply',
 } as const;
 
-/** An engine id from the core's catalogue (`brain/engines/mod.rs`): claude, codex, gemini, hermes, ollama, reflex. */
-export type EngineId = string;
-export type VoiceEngine = 'system' | 'elevenlabs';
-
-/** One keeper: its own look, mind and domain, remembering in its own Context Graph. */
-export interface KeeperProfile {
-  id: string;
-  name: string;
-  skin: string;
-  domain: string;
-  graphId: string;
-  brain: EngineId;
-  model: string;
-}
-
-export interface DomainInfo {
-  id: string;
-  title: string;
-  blurb: string;
-}
-
-export interface KeeperList {
-  keepers: KeeperProfile[];
-  active: string;
-  domains: DomainInfo[];
-}
-
-export interface KeeperSaved {
-  list: KeeperList;
-  announcement: string | null;
-}
-
-export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model'>>;
-
-export interface Settings {
-  setupComplete: boolean;
-  nodeHome: string;
-  keepers: KeeperProfile[];
-  activeKeeper: string;
-  agentActions: boolean;
-  voice: string;
-  voiceEngine: VoiceEngine;
-  elevenVoiceId: string;
-  alwaysListening: boolean;
-  wakeWord: boolean;
-  talkShortcut: string;
-  autoUpdate: boolean;
-}
-
-export interface ModelOption {
-  id: string;
-  name: string;
-}
-
-export interface Chat {
-  id: string;
-  title: string;
-  at: string;
-}
-
-export type QuestionParam = 'days' | 'category' | 'chat' | 'skill';
-
-export interface QuestionInfo {
-  id: string;
-  title: string;
-  group: string;
-  params: QuestionParam[];
-}
-
-export interface Answer {
-  trace: QueryTrace;
-  rows: Record<string, string>[];
-}
-
-export interface FolderAccess {
-  folder: string;
-  granted: boolean;
-}
-
-export interface ShortcutStatus {
-  shortcut: string;
-  registered: boolean;
-}
-
-export interface EngineStatus {
-  id: EngineId;
-  label: string;
-  blurb: string;
-  place: 'device' | 'cloud';
-  canAct: boolean;
-  available: boolean;
-  problem: string | null;
-  models: ModelOption[];
-}
-
-export interface ElevenVoice {
-  id: string;
-  name: string;
-}
-
-export interface PhoneStatus {
-  on: boolean;
-  url: string;
-  qr: string;
-}
-
-export interface UpdateStatus {
-  current: string;
-  installed: string | null;
-}
-
-export interface AgentStep {
-  tool: string;
-  detail: string;
-}
-
-export interface NodeStatus {
-  name: string;
-  version: string;
-  networkName: string;
-  peerId: string;
-}
-
-export interface FoundNode {
-  home: string;
-  port: number;
-  status: NodeStatus;
-}
-
-export interface Scan {
-  node: FoundNode | null;
-  silentNodes: string[];
-  ollamaModels: string[];
-  hermesInstalled: boolean;
-  voiceHelper: boolean;
-  computerName: string;
-}
-
-export interface GraphReady {
-  graphId: string;
-  uri: string;
-  profileUal: string;
-  merkleRoot: string;
-  verified: boolean;
-  queryMs: number;
-}
-
-export interface Fact {
-  id: string;
-  text: string;
-  category: string;
-  at: string;
-}
-
-export interface Turn {
-  id: string;
-  said: string;
-  replied: string;
-  mind: string;
-  at: string;
-  chat: string;
-}
-
-export interface ActionRecord {
-  id: string;
-  skill: string;
-  input: string;
-  outcome: string;
-  succeeded: boolean;
-  at: string;
-}
-
-export interface Reminder {
-  id: string;
-  text: string;
-  dueAt: string;
-  at: string;
-}
-
-export interface QueryTrace {
-  label: string;
-  sparql: string;
-  rows: number;
-  ms: number;
-  layer: string;
-}
-
-export interface WriteReceipt {
-  name: string;
-  ual: string;
-  status: string;
-  queued: boolean;
-}
-
-export interface MindUsed {
-  id: EngineId;
-  label: string;
-  local: boolean;
-  fellBack: string | null;
-}
-
-export interface Outcome {
-  skill: string;
-  input: string;
-  summary: string;
-  succeeded: boolean;
-}
-
-export interface TurnResult {
-  keeper: string;
-  chat: string;
-  reply: string;
-  mind: MindUsed;
-  learned: Fact[];
-  forgotten: Fact[];
-  actions: Outcome[];
-  steps: AgentStep[];
-  traces: QueryTrace[];
-  writes: WriteReceipt[];
-  memoryOffline: boolean;
-}
-
-export interface Counts {
-  facts: number;
-  turns: number;
-  actions: number;
-  reminders: number;
-  waiting: number;
-}
-
-export interface Overview {
-  graphId: string;
-  node: NodeStatus | null;
-  counts: Counts;
-  facts: Fact[];
-  turns: Turn[];
-  actions: ActionRecord[];
-  reminders: Reminder[];
-  traces: QueryTrace[];
-}
-
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate'>>;
-
-export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
-
-export type VoiceEvent =
-  | { type: 'ready'; onDevice: boolean }
-  | { type: 'level'; value: number }
-  | { type: 'partial'; text: string }
-  | { type: 'final'; text: string }
-  | { type: 'listening'; on: boolean; mode?: string }
-  | { type: 'woken' }
-  | { type: 'speech-start' }
-  | { type: 'word'; length: number }
-  | { type: 'mouth'; value: number }
-  | { type: 'speech-end' }
-  | { type: 'authorized'; speech: string; mic: boolean; onDevice: boolean }
-  | { type: 'voices'; voices: { name: string; language: string; quality: number }[] }
-  | { type: 'stopped' }
-  | { type: 'error'; message: string };
+export type * from './ipc-types';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
   settings: () => invoke<Settings>('app_settings'),
   saveSettings: (change: SettingsChange) => invoke<Settings>('save_settings', { change }),
   keepers: () => invoke<KeeperList>('keepers_list'),
-  createKeeper: (keeper: { name: string; skin: string; domain: string }) => invoke<KeeperList>('keepers_create', { keeper }),
+  createKeeper: (keeper: { name: string; skin: string; role: string; soul?: string }) => invoke<KeeperList>('keepers_create', { keeper }),
+  kit: () => invoke<KitCatalog>('kit_catalog'),
+  saveSoul: (soul: Soul) => invoke<Soul>('souls_save', { soul }),
+  exportPack: (kind: 'keeper' | 'soul', id: string) => invoke<string>('pack_export', { kind, id }),
+  importPack: (text: string) => invoke<Imported>('pack_import', { text }),
+  systemLoad: () => invoke<SystemLoad>('system_load'),
   activateKeeper: (id: string) => invoke<KeeperList>('keepers_activate', { id }),
   updateKeeper: (id: string, change: KeeperChange) => invoke<KeeperSaved>('keepers_update', { id, change }),
   removeKeeper: (id: string) => invoke<KeeperList>('keepers_remove', { id }),

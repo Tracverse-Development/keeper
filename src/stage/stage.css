@@ -1,0 +1,131 @@
+/* The Stage: layout, glass panel cards, entrances, the activity feed. Per-kind looks live in
+   panels.css. Tokens only (no hex). Class names start with stage-/panel-/act- (".stage" is the
+   character canvas in dashboard.css). The dashboard can tune --stage-left / --stage-bottom. */
+@import './panels.css';
+
+.stage-area {
+  position: absolute; z-index: 3; top: 52px; right: 14px; bottom: var(--stage-bottom, 118px);
+  left: var(--stage-left, 33.4%); display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.stage-area > * { pointer-events: auto; }
+.stage-area::before { /* a soft navy wash so cards read over the night sky without hiding the character */
+  content: ''; position: absolute; inset: -52px -14px calc(-1 * var(--stage-bottom, 118px)) -60px; z-index: -1; pointer-events: none;
+  background: radial-gradient(120% 90% at 100% 40%, rgba(7, 10, 22, 0.72), rgba(7, 10, 22, 0) 70%);
+  animation: stage-wash 700ms var(--ease) both;
+}
+.stage-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px; animation: fade-up 480ms var(--ease) both; }
+.stage-dismiss { gap: 6px; height: 28px; }
+.stage-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px 6px 28px; margin: 0 -6px;
+  display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+  mask-image: linear-gradient(180deg, transparent 0, black 10px, black calc(100% - 26px), transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, black 10px, black calc(100% - 26px), transparent);
+}
+.stage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 14px; align-items: start; }
+.stage-icon { flex: none; display: block; }
+.stage-small-btn { height: 34px; padding: 0 14px; font-size: 13px; gap: 6px; }
+
+@media (max-width: 999px) {
+  .stage-area { left: 14px; }
+  .stage-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- the glass panel card ---------- */
+.panel-card {
+  position: relative; overflow: hidden; padding: 18px 20px 14px; border-radius: var(--radius-lg);
+  background: linear-gradient(165deg, rgba(42, 55, 96, 0.55), rgba(17, 24, 48, 0.9) 55%, rgba(11, 16, 32, 0.92));
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(244, 238, 226, 0.08), 0 0 0 1px rgba(211, 151, 68, 0.05);
+  animation: panel-in 760ms var(--ease) both; animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+  transition: border-color 260ms var(--ease), box-shadow 260ms var(--ease), transform 260ms var(--ease);
+}
+.panel-card::before { /* a gold hairline along the top edge */
+  content: ''; position: absolute; inset: 0 18% auto; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-400), transparent); opacity: 0.55;
+}
+.panel-card:hover { border-color: rgba(211, 151, 68, 0.28); box-shadow: var(--shadow), 0 0 40px rgba(211, 151, 68, 0.08), inset 0 1px 0 rgba(244, 238, 226, 0.1); }
+.panel-card.is-wide { grid-column: 1 / -1; }
+.panel-card.is-leaving { animation: panel-out 320ms var(--ease) both; pointer-events: none; }
+.panel-sheen { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.panel-sheen::after {
+  content: ''; position: absolute; top: -20%; bottom: -20%; width: 38%; left: 0; transform: translateX(-160%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(240, 201, 138, 0.16), rgba(251, 248, 242, 0.1), transparent);
+  animation: sheen 1500ms var(--ease) both; animation-delay: calc(var(--i, 0) * 110ms + 520ms);
+}
+.panel-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.panel-kind { font-size: 10.5px; letter-spacing: 0.2em; }
+.panel-title { margin: 5px 0 0; font-family: var(--font-serif); font-weight: 600; font-size: 21px; line-height: 1.2; color: var(--cream-50); letter-spacing: 0.005em; }
+.panel-close {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--border); background: rgba(7, 10, 22, 0.5); color: var(--text-muted);
+  transition: color 200ms var(--ease), border-color 200ms var(--ease), transform 260ms var(--ease);
+}
+.panel-close:hover { color: var(--cream-50); border-color: var(--border-strong); transform: rotate(90deg); }
+.panel-asked {
+  position: relative; margin: 10px 0 0; min-height: 18px; display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--gold-300); opacity: 0; transform: translateY(4px); transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.panel-asked.is-on { opacity: 1; transform: none; }
+.panel-card button:focus-visible { outline: 2px solid var(--gold-400); outline-offset: 2px; }
+
+/* ---------- breadcrumbs (files panel + activity) ---------- */
+.crumbs { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.crumb-wrap { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.crumb {
+  padding: 2px 8px; border-radius: 999px; font-size: 12px; color: var(--cream-300);
+  background: rgba(244, 238, 226, 0.06); border: 1px solid var(--border); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.crumb.is-leaf { color: var(--cream-50); background: var(--accent-soft); border-color: rgba(211, 151, 68, 0.35); }
+.crumb-sep { color: var(--gold-500); font-size: 12px; opacity: 0.8; }
+
+/* ---------- the activity feed ---------- */
+.activity { padding: 14px 16px 12px; border-radius: var(--radius-lg); animation: panel-in 560ms var(--ease) both; flex: none; }
+.activity.is-working { border-color: rgba(211, 151, 68, 0.3); box-shadow: var(--shadow), 0 0 36px rgba(211, 151, 68, 0.1); }
+.activity-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.activity-title { font-size: 14px; font-weight: 600; color: var(--cream-50); }
+.activity-count { margin-left: auto; font-size: 11.5px; color: var(--text-muted); }
+.activity-earlier { margin: 0 0 6px 40px; font-size: 11.5px; color: var(--text-muted); }
+.activity-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.activity-list::before { content: ''; position: absolute; left: 14px; top: 6px; bottom: 6px; width: 1px; background: linear-gradient(180deg, transparent, var(--border-strong), transparent); }
+.act {
+  position: relative; overflow: hidden; display: grid; grid-template-columns: 30px auto minmax(0, 1fr); align-items: center; gap: 10px;
+  padding: 5px 10px 5px 0; border-radius: var(--radius); animation: act-in 480ms var(--ease) both;
+}
+.act-icon {
+  position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--navy-800); border: 1px solid var(--border); color: var(--gold-300);
+}
+.act-icon.is-web { color: var(--ok); }
+.act-icon.is-edit { color: var(--gold-400); }
+.act-verb { font-size: 13px; color: var(--cream-100); white-space: nowrap; }
+.act-detail { min-width: 0; overflow: hidden; }
+.act-chip {
+  display: inline-block; max-width: 100%; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
+  background: rgba(7, 10, 22, 0.55); color: var(--cream-300); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+}
+.act.is-latest { background: linear-gradient(90deg, rgba(211, 151, 68, 0.1), transparent 70%); }
+.act.is-latest .act-icon { border-color: var(--gold-500); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 18px rgba(211, 151, 68, 0.45); animation: act-pulse 1.4s ease-in-out infinite; }
+.act.is-latest::after { /* the progress shimmer */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(240, 201, 138, 0.14) 50%, transparent 70%);
+  background-size: 220% 100%; animation: shimmer 1.6s linear infinite;
+}
+
+/* ---------- motion ---------- */
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(26px) scale(0.955); filter: blur(6px); }
+  60% { filter: blur(0); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes panel-out { to { opacity: 0; transform: translateY(-8px) scale(0.94); filter: blur(4px); } }
+@keyframes sheen { from { transform: translateX(-160%) skewX(-18deg); } to { transform: translateX(380%) skewX(-18deg); } }
+@keyframes stage-wash { from { opacity: 0; } }
+@keyframes act-in { from { opacity: 0; transform: translateX(-14px); } }
+@keyframes act-pulse { 50% { box-shadow: 0 0 0 7px rgba(211, 151, 68, 0.06), 0 0 26px rgba(211, 151, 68, 0.6); } }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-card, .activity, .act, .stage-head, .stage-area::before { animation: none !important; }
+  .panel-card.is-leaving { animation: panel-out 1ms both !important; }
+  .panel-sheen, .act.is-latest::after { display: none; }
+}

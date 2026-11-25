@@ -19,7 +19,7 @@ const KEEP = 40;
 
 /** A stored turn as an on-screen exchange (from a chat loaded off the graph). */
 function fromTurn(id: number, t: Turn, keeper: string): Exchange {
-  const result: TurnResult = { keeper, chat: t.chat, reply: t.replied, mind: { id: t.mind, label: t.mind || 'reflex', local: true, fellBack: null }, learned: [], forgotten: [], actions: [], steps: [], traces: [], writes: [], memoryOffline: false };
+  const result: TurnResult = { keeper, chat: t.chat, reply: t.replied, mind: { id: t.mind, label: t.mind || 'reflex', local: true, fellBack: null }, learned: [], forgotten: [], actions: [], panels: [], steps: [], traces: [], writes: [], memoryOffline: false };
   return { id, said: t.said, result, error: null };
 }
 
@@ -73,7 +73,7 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   /** Something the keeper said by itself (a reminder, a brain change, a reaction to a touch). */
   const announce = (text: string, label = 'Keeper') => {
     const id = nextId.current++;
-    const result: TurnResult = { keeper: keeper ?? '', chat: chatRef.current, reply: text, mind: { id: 'reflex', label, local: true, fellBack: null }, learned: [], forgotten: [], actions: [], steps: [], traces: [], writes: [], memoryOffline: false };
+    const result: TurnResult = { keeper: keeper ?? '', chat: chatRef.current, reply: text, mind: { id: 'reflex', label, local: true, fellBack: null }, learned: [], forgotten: [], actions: [], panels: [], steps: [], traces: [], writes: [], memoryOffline: false };
     setExchanges((list) => [...list, { id, said: '', result, error: null }].slice(-KEEP));
   };
 

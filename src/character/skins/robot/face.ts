@@ -5,10 +5,12 @@
  * The face holds no timing of its own: the animator computes one `FaceState` per
  * frame (lids, squint, gaze, mouth) and `update` writes it into the shader uniforms.
  * Gaze slides the eye shapes across the glass inside their quads, so the eyes move
- * like light under the visor rather than like objects stuck on it.
+ * like light under the visor rather than like objects stuck on it. While the robot works
+ * the glyphs shift from warm cream toward electric cyan (`cool`), then hot amber (`hot`).
  */
-import { Group, Mesh, Vector2 } from 'three';
+import { Color, Group, Mesh, Vector2 } from 'three';
 import { disposeTree } from '../../dispose-tree';
+import { PALETTE } from '../../palette';
 import { createGlyphMaterial, type GlyphMaterial } from './glyph-material';
 import { curvedQuad } from './head-shape';
 
@@ -25,7 +27,15 @@ export interface FaceState {
   /** Mouth openness 0..1 and resting smile -1..1. */
   mouthOpen: number;
   smile: number;
+  /** Working tint 0..1: toward cyan (`cool`), then amber over it (`hot`). 0 = the warm face. */
+  cool: number;
+  hot: number;
 }
+
+/** The glyph colours at rest, working and hot (core, edge). */
+const REST = { core: new Color(PALETTE.cream50), edge: new Color(PALETTE.gold400) };
+const COOL = { core: new Color(PALETTE.workCyanCore), edge: new Color(PALETTE.workCyanEdge) };
+const HOT = { core: new Color(PALETTE.heatCore), edge: new Color(PALETTE.heatAmber) };
 
 const EYE_HALF = new Vector2(0.115, 0.17);
 const EYE_SPACING = 0.3;
@@ -63,10 +73,15 @@ export function createFace(): Face {
   const mouthMesh = new Mesh(curvedQuad(mouthQuad.x, mouthQuad.y, 0, MOUTH_Y, FACE_INFLATE), mouth);
   mouthMesh.renderOrder = 2;
   group.add(mouthMesh);
+  const glyphs: readonly GlyphMaterial[] = [...eyes, mouth];
 
   function update(state: FaceState): void {
     const shiftX = state.gazeX * GAZE_TRAVEL.x;
     const shiftY = state.gazeY * GAZE_TRAVEL.y;
+    for (const glyph of glyphs) {
+      glyph.uniforms.uCore.value.copy(REST.core).lerp(COOL.core, state.cool).lerp(HOT.core, state.hot);
+      glyph.uniforms.uEdge.value.copy(REST.edge).lerp(COOL.edge, state.cool).lerp(HOT.edge, state.hot);
+    }
     for (const eye of eyes) {
       const u = eye.uniforms;
       u.uOpen.value = Math.max(state.eyeOpen, 0);

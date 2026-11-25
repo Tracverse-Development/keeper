@@ -78,3 +78,16 @@ test('no Keychain calls: keys live in the private store (FIX-0003)', () => {
   assert.ok(!readFileSync(join(root, 'src-tauri/Cargo.toml'), 'utf8').includes('security-framework'));
   for (const f of files(core, /\.rs$/)) assert.ok(!readFileSync(f, 'utf8').includes('passwords::get_generic_password'), relative(root, f));
 });
+
+test('parts: the core and the character list the same parts, slots, effects and ranges', async () => {
+  const { PARTS } = await import('./character/parts/catalog.ts');
+  const rust = readFileSync(join(core, 'keepers/kit/parts.rs'), 'utf8');
+  const rows = [...rust.matchAll(/Part \{ id: "([^"]+)", name: "[^"]+", slot: "([^"]+)", species: &\[([^\]]*)\], effects: &\[([^\]]*)\] \}/g)];
+  const fromRust = Object.fromEntries(rows.map((m) => [m[1], { slot: m[2], effects: Object.fromEntries([...m[4].matchAll(/(num|color)\("([^"]+)"(?:, ([\d.]+), ([\d.]+))?\)/g)].map((e) => [e[2], e[1] === 'num' ? [Number(e[3]), Number(e[4])] : 'colour'])) }]));
+  assert.deepEqual(Object.keys(fromRust).sort(), PARTS.map((p: { id: string }) => p.id).sort(), 'part ids differ');
+  for (const p of PARTS as unknown as readonly { id: string; slot: string; effects: Record<string, { kind: string; min?: number; max?: number }> }[]) {
+    assert.equal(fromRust[p.id].slot, p.slot, `${p.id} slot`);
+    const ts = Object.fromEntries(Object.entries(p.effects).map(([k, e]) => [k, e.kind === 'number' ? [e.min, e.max] : 'colour']));
+    assert.deepEqual(fromRust[p.id].effects, ts, `${p.id} effects`);
+  }
+});

@@ -28,9 +28,9 @@ const PAT = [
   'That made my day. Now, what can I do for you?',
 ];
 
-/** Pick a line for a touch. `last` is the previously spoken line (never repeated); `random` is injectable for tests. */
-export function touchLine(kind: Touch, opts: { name: string; you: string | null; last: string | null; random?: () => number }): string {
-  const pool = (kind === 'poke' ? POKE : PAT).map((l) => l.replaceAll('{name}', opts.name).replaceAll('{you}', opts.you ?? 'friend'));
+/** Pick a line for a touch: the keeper's soul's own lines when it has them, else the defaults. */
+export function touchLine(kind: Touch, opts: { name: string; you: string | null; last: string | null; random?: () => number; soulLines?: string[] }): string {
+  const pool = (opts.soulLines && opts.soulLines.length > 0 ? opts.soulLines : kind === 'poke' ? POKE : PAT).map((l) => l.replaceAll('{name}', opts.name).replaceAll('{you}', opts.you ?? 'friend'));
   const choices = pool.filter((l) => l !== opts.last);
   const r = opts.random ?? Math.random;
   return choices[Math.floor(r() * choices.length) % choices.length];

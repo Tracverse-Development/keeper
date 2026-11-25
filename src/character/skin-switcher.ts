@@ -21,6 +21,7 @@ export class SkinSwitcher {
   private current: Worn;
   private outgoing: Worn | null = null;
   private swapStartedAt = 0;
+  private pointScale = 0;
 
   constructor(parent: Object3D, first: Skin) {
     this.parent = parent;
@@ -62,6 +63,13 @@ export class SkinSwitcher {
     this.current.skin.apply(frame);
   }
 
+  /** Device pixels per world unit, forwarded to skins that draw point sprites (and new ones). */
+  setPointScale(scale: number): void {
+    this.pointScale = scale;
+    this.current.skin.setPointScale?.(scale);
+    this.outgoing?.skin.setPointScale?.(scale);
+  }
+
   dispose(): void {
     if (this.outgoing) this.release(this.outgoing);
     this.outgoing = null;
@@ -73,6 +81,7 @@ export class SkinSwitcher {
     holder.name = `skin-${skin.id}`;
     holder.add(skin.root);
     this.parent.add(holder);
+    if (this.pointScale > 0) skin.setPointScale?.(this.pointScale);
     return { skin, holder };
   }
 

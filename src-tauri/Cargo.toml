@@ -1,6 +1,6 @@
 [package]
 name = "keeper"
-version = "0.3.1"
+version = "0.4.0"
 description = "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node"
 edition = "2021"
 rust-version = "1.80"
@@ -37,6 +37,8 @@ tiny_http = "0.12"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 getrandom = "0.2"
 base64 = "0.22"
+# CPU and memory load (the keeper visibly works harder when the computer does).
+sysinfo = { version = "0.40", default-features = false, features = ["system"] }
 # The push-to-talk keeper button (a global shortcut, held to talk).
 tauri-plugin-global-shortcut = "2"
 

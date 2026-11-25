@@ -1,9 +1,11 @@
 /**
- * The memory halo: Umoja's knowledge graph drawn as a slow, tilted orbit of tiny gold
- * nodes, neighbours joined by faint edges, inside two hair-thin orbit rings.
+ * The memory halo's graph: the keeper's knowledge graph drawn as a slow orbit of tiny gold
+ * nodes, neighbours joined by faint edges, inside two hair-thin orbit rings. The tilt and
+ * height come from the slot it is worn in (the species' halo anchor), not from here.
  *
  * It orbits faster while thinking, swells and brightens with the voice while listening
- * and dims when asleep (the animator passes eased values to `update`). New memories
+ * and dims when asleep (the part passes eased values to `update`). While the keeper works
+ * (`flow` 0..1) the nodes twinkle harder and the edges flicker like data flowing. New memories
  * arrive through `reserveNode` + `revealNode`: the spark (memory-spark.ts) reserves a
  * slot, flies to its world position and reveals it on arrival, when the node flashes
  * and joins the graph. Once the capacity is full the oldest learned node is recycled.
@@ -15,7 +17,6 @@ import {
   AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
-  Color,
   Group,
   LineBasicMaterial,
   LineSegments,
@@ -25,12 +26,13 @@ import {
   TorusGeometry,
   Vector3,
 } from 'three';
-import { disposeTree } from '../dispose-tree';
-import { createGlowPointsMaterial } from './glow-points-material';
-import { PALETTE } from '../palette';
+import { disposeTree } from '../../dispose-tree';
+import { PALETTE } from '../../palette';
+import { createGlowPointsMaterial } from '../../stage/glow-points-material';
+import type { SparkTarget } from '../part';
+import { tintColour } from '../tint';
 
 const CAPACITY = 240;
-const SEED_NODES = 84;
 const ORBIT_RADIUS = 2.05;
 const EDGE_REACH = 0.62;
 const EDGES_PER_NODE = 2;
@@ -47,16 +49,20 @@ export interface HaloFrame {
   scale: number;
   /** Amplitude multiplier for wobble (reduced motion). */
   amplitude: number;
+  /** Work 0..1: harder twinkle and flickering edges ("data flowing"); 0 changes nothing. */
+  flow: number;
 }
 
-export interface Halo {
+export interface HaloOptions {
+  /** The chosen colour (0xrrggbb); gold500 is the shipped look. */
+  colour: number;
+  /** How many nodes the graph starts with. */
+  seedNodes: number;
+}
+
+/** Spark target: reserve a slot, follow it as it orbits, reveal it when the spark lands. */
+export interface Halo extends SparkTarget {
   readonly group: Group;
-  /** Claims a node slot for an incoming memory and returns its index. */
-  reserveNode(): number;
-  /** World position of a node now (it moves with the orbit). */
-  nodeWorldPosition(index: number, out: Vector3): Vector3;
-  /** Lights a reserved node up and links it into the graph. */
-  revealNode(index: number, time: number): void;
   setPointScale(scale: number): void;
   update(frame: HaloFrame): void;
   dispose(): void;
@@ -70,11 +76,12 @@ interface NodeSeed {
   base: number;
 }
 
-export function createHalo(random: () => number = Math.random): Halo {
+const TWINKLE = 0.3;
+
+export function createHaloGraph(options: HaloOptions, random: () => number = Math.random): Halo {
+  const seedNodes = Math.min(Math.max(Math.round(options.seedNodes), 1), CAPACITY);
   const group = new Group();
   group.name = 'memory-halo';
-  group.position.y = 0.15;
-  group.rotation.set(0.32, 0, -0.1);
   const orbit = new Group();
   group.add(orbit);
 
@@ -96,21 +103,22 @@ export function createHalo(random: () => number = Math.random): Halo {
     };
   };
 
-  for (let i = 0; i < SEED_NODES; i++) {
+  for (let i = 0; i < seedNodes; i++) {
     seeds.push(makeSeed());
     sizes[i] = 0.035 + random() * 0.035;
     brights[i] = seeds[i].base;
     phases[i] = seeds[i].phase;
   }
-  let used = SEED_NODES;
-  let recycleCursor = SEED_NODES;
+  let used = seedNodes;
+  let recycleCursor = seedNodes;
 
   const pointsGeometry = new BufferGeometry();
   pointsGeometry.setAttribute('position', new BufferAttribute(positions, 3));
   pointsGeometry.setAttribute('aSize', new BufferAttribute(sizes, 1));
   pointsGeometry.setAttribute('aBright', new BufferAttribute(brights, 1));
   pointsGeometry.setAttribute('aPhase', new BufferAttribute(phases, 1));
-  const pointsMaterial = createGlowPointsMaterial(0.3);
+  const pointsMaterial = createGlowPointsMaterial(TWINKLE);
+  pointsMaterial.uniforms.uWarm.value.copy(tintColour(PALETTE.gold500, options.colour));
   const points = new Points(pointsGeometry, pointsMaterial);
   points.frustumCulled = false;
   orbit.add(points);
@@ -120,7 +128,7 @@ export function createHalo(random: () => number = Math.random): Halo {
   const edgePositions = new Float32Array(edgeCapacity * 6);
   const edgeGeometry = new BufferGeometry();
   edgeGeometry.setAttribute('position', new BufferAttribute(edgePositions, 3));
-  const edgeColour = new Color(PALETTE.gold400).multiplyScalar(0.55);
+  const edgeColour = tintColour(PALETTE.gold400, options.colour).multiplyScalar(0.55);
   const edgeMaterial = new LineBasicMaterial({
     color: edgeColour,
     transparent: true,
@@ -133,7 +141,7 @@ export function createHalo(random: () => number = Math.random): Halo {
   orbit.add(edgeLines);
 
   const ringMaterial = new MeshBasicMaterial({
-    color: new Color(PALETTE.gold500).multiplyScalar(0.7),
+    color: tintColour(PALETTE.gold500, options.colour).multiplyScalar(0.7),
     transparent: true,
     opacity: 0.35,
     blending: AdditiveBlending,
@@ -188,7 +196,10 @@ export function createHalo(random: () => number = Math.random): Halo {
     orbit.rotation.y += frame.speed * frame.dt;
     for (const ring of rings) ring.scale.setScalar(frame.scale);
     ringMaterial.opacity = 0.32 * Math.min(frame.glow, 1.6);
-    edgeMaterial.opacity = 0.5 * Math.min(frame.glow, 1.8);
+    // Data flowing: two beating sines make the edges flicker unevenly (0 at rest).
+    const flicker = 0.5 + 0.5 * Math.sin(frame.time * 29) * Math.sin(frame.time * 7.3 + 1.1);
+    edgeMaterial.opacity = 0.5 * Math.min(frame.glow, 1.8) * (1 + frame.flow * (0.3 + 1.1 * flicker));
+    pointsMaterial.uniforms.uTwinkle.value = TWINKLE + 0.55 * frame.flow;
     pointsMaterial.uniforms.uTime.value = frame.time;
     pointsMaterial.uniforms.uGlow.value = 1.6 * frame.glow;
 
@@ -219,7 +230,7 @@ export function createHalo(random: () => number = Math.random): Halo {
         seeds.push(makeSeed());
       } else {
         index = recycleCursor;
-        recycleCursor = recycleCursor + 1 >= CAPACITY ? SEED_NODES : recycleCursor + 1;
+        recycleCursor = recycleCursor + 1 >= CAPACITY ? seedNodes : recycleCursor + 1;
         seeds[index] = makeSeed();
       }
       sizes[index] = 0.05 + random() * 0.03;

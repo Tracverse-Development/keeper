@@ -94,7 +94,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_claude_answers_in_the_contract() {
-        let ctx = Context { said: "My name is Ada and I love sorrel. What is 2 plus 2?".into(), assistant_name: "Kofi".into(), domain_brief: "", facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false };
+        let ctx = Context { said: "My name is Ada and I love sorrel. What is 2 plus 2?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false };
         let t = think(&ctx, "", &|_| {}).await.expect("claude answered");
         assert!(t.reply.contains('4'), "reply: {}", t.reply);
         assert!(t.remember.iter().any(|l| l.text.contains("Ada")), "learned: {:?}", t.remember);
@@ -105,15 +105,27 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_claude_acting_turn_records_steps() {
-        let ctx = Context { said: "List the files in /tmp with a shell command and tell me how many there are.".into(), assistant_name: "Kofi".into(), domain_brief: "", facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: true };
+        let ctx = Context { said: "List the files in /tmp with a shell command and tell me how many there are.".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: true };
         let t = think(&ctx, "", &|_| {}).await.expect("claude answered");
         assert!(!t.steps.is_empty(), "the tool call was captured");
         assert!(t.steps.iter().any(|s| s.tool == "Bash"), "steps: {:?}", t.steps);
     }
 
+    /// Teaching answers with Stage panels, not a web page: `cargo test live_claude_teaches -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore]
+    async fn live_claude_teaches_with_panels() {
+        let ctx = Context { said: "I need to understand math. Can you pull up some tables and show me how multiplication works?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false };
+        let t = think(&ctx, "", &|_| {}).await.expect("claude answered");
+        let panels = crate::stage::read(&t.panels);
+        println!("reply: {}\npanels: {:?}", t.reply, panels.iter().map(|p| serde_json::to_value(p).unwrap()["kind"].clone()).collect::<Vec<_>>());
+        assert!(!panels.is_empty(), "no panels; reply was: {}", t.reply);
+        assert!(t.steps.is_empty(), "it built nothing on disk");
+    }
+
     #[test]
     fn chat_turns_cannot_act() {
-        let ctx = Context { said: "hi".into(), assistant_name: "U".into(), domain_brief: "", facts: vec![], recent: vec![], now_local: String::new(), may_act: false };
+        let ctx = Context { said: "hi".into(), assistant_name: "U".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: String::new(), may_act: false };
         let a = args(&ctx, "claude-haiku-5-5");
         assert!(a.windows(2).any(|w| w[0] == "--model" && w[1] == "claude-haiku-5-5"));
         assert!(a.contains(&"--disallowedTools".to_string()));
