@@ -29,10 +29,10 @@ app_tgz="$bundle/macos/Keeper.app.tar.gz"
 [ -f "$app_tgz" ] && [ -f "$app_tgz.sig" ] || { echo "build did not produce a signed updater archive"; exit 1; }
 
 out="$(mktemp -d)"
-tgz_name="Nia_${version}_${arch}.app.tar.gz"
-dmg_name="Nia_${version}_${arch}.dmg"
+tgz_name="Keeper_${version}_${arch}.app.tar.gz"
+dmg_name="Keeper_${version}_${arch}.dmg"
 cp "$app_tgz" "$out/$tgz_name"
-cp "$bundle/dmg/Nia_${version}_${arch}.dmg" "$out/$dmg_name"
+cp "$bundle/dmg/Keeper_${version}_${arch}.dmg" "$out/$dmg_name"
 python3 - "$out" "$version" "$notes" "$repo" "$tgz_name" "$arch" "$(cat "$app_tgz.sig")" <<'PY'
 import json, sys, datetime
 out, version, notes, repo, tgz, arch, sig = sys.argv[1:]
