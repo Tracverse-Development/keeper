@@ -1,0 +1,45 @@
+/*
+ * Umoja Ark design tokens for Umoja Desk. Colours come from the brand kit
+ * (ark-and-waves, 2026-10): navy #151C33, gold #D39744, cream #F4EEE2.
+ * Every colour in the app is one of these tokens; no hex anywhere else.
+ * The app is dark by design (a night-sky stage for the character), with a
+ * light variant kept for the installer's paper cards.
+ */
+:root {
+  --navy-950: #070a16;
+  --navy-900: #0b1020;
+  --navy-800: #111830;
+  --navy-700: #151c33;
+  --navy-600: #1e2848;
+  --navy-500: #2a3760;
+  --gold-300: #f0c98a;
+  --gold-400: #e3b06a;
+  --gold-500: #d39744;
+  --gold-600: #b57b2c;
+  --cream-50: #fbf8f2;
+  --cream-100: #f4eee2;
+  --cream-300: #d9cfbd;
+  --ink-muted: #9aa3bf;
+  --ok: #7fc8a0;
+  --warn: #e6b450;
+  --danger: #e2786a;
+
+  --bg: var(--navy-900);
+  --bg-deep: var(--navy-950);
+  --surface: rgba(30, 40, 72, 0.55);
+  --surface-strong: rgba(21, 28, 51, 0.88);
+  --border: rgba(244, 238, 226, 0.10);
+  --border-strong: rgba(211, 151, 68, 0.45);
+  --text: var(--cream-100);
+  --text-muted: var(--ink-muted);
+  --accent: var(--gold-500);
+  --accent-soft: rgba(211, 151, 68, 0.16);
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --shadow: 0 24px 60px rgba(3, 5, 12, 0.55);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif;
+  --font-serif: "New York", "Iowan Old Style", Georgia, serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}

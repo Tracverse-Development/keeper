@@ -1,0 +1,49 @@
+[package]
+name = "umoja-desk"
+version = "0.2.0"
+description = "Umoja Desk: a personal assistant whose memory lives on your own OriginTrail DKG node"
+edition = "2021"
+rust-version = "1.80"
+default-run = "umoja-desk"
+
+[[bin]]
+name = "umoja-desk"
+path = "src/main.rs"
+
+[lib]
+name = "umoja_desk_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "~2.12", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# rustls so the build needs no OpenSSL. Talks only to loopback services (the DKG node, Ollama).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+tokio = { version = "1", features = ["process", "time", "io-util", "sync", "macros", "rt-multi-thread"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+sha2 = "0.10"
+hex = "0.4"
+dirs = "5"
+thiserror = "1"
+regex = "1"
+# Auto-update from the GitHub releases (signed with the updater key; scripts/release.sh).
+tauri-plugin-updater = "2"
+# The phone link: a tiny LAN server and the QR code that pairs a phone.
+tiny_http = "0.12"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+getrandom = "0.2"
+base64 = "0.22"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The ElevenLabs key lives in the login Keychain (platform::secret_*), never in a file or argv.
+security-framework = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -1,0 +1,157 @@
+/**
+ * The stage: one WebGL renderer, the camera, the lights, the image-based environment
+ * and the post-processing chain (render -> bloom -> ACES tone map + sRGB output).
+ *
+ * Why a composer: the eyes, mouth and halo are drawn in HDR (values above 1) and only
+ * those bright parts bloom; the physically based body stays crisp. Tone mapping and
+ * colour space conversion happen once, in `OutputPass`, at the end of the chain.
+ *
+ * Framing: the character (halo top to wave rings) is ~4.3 units tall. `resize` picks a
+ * camera distance so it fills ~60% of the viewport height (or fits the width on a narrow
+ * window) and aims slightly below it, leaving the bottom of the window for the chat bar.
+ */
+import {
+  ACESFilmicToneMapping,
+  AmbientLight,
+  Color,
+  DirectionalLight,
+  HalfFloatType,
+  PMREMGenerator,
+  PerspectiveCamera,
+  PointLight,
+  SRGBColorSpace,
+  Scene,
+  Vector2,
+  WebGLRenderTarget,
+  WebGLRenderer,
+} from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { PALETTE } from '../palette';
+
+/** Height of the framed subject (world units) and the share of the viewport it fills. */
+const SUBJECT_HEIGHT = 4.3;
+const SUBJECT_WIDTH = 4.8;
+const VIEWPORT_SHARE = 0.6;
+/** World y of the subject's centre, and how far below it the camera aims (chat-bar room). */
+const SUBJECT_CENTRE_Y = -0.35;
+const AIM_DROP_SHARE = 0.12;
+const FIELD_OF_VIEW = 30;
+const MAX_PIXEL_RATIO = 2;
+
+export interface Stage {
+  readonly renderer: WebGLRenderer;
+  readonly scene: Scene;
+  readonly camera: PerspectiveCamera;
+  readonly bloom: UnrealBloomPass;
+  /** The light that follows the eyes' glow onto the visor and chest; its intensity is eased. */
+  readonly faceLight: PointLight;
+  /** The gold rim lights, dimmed together when the character sleeps. */
+  readonly rimLights: readonly DirectionalLight[];
+  /** Resize to CSS pixels; `pixelRatio` is capped at 2. */
+  resize(width: number, height: number, pixelRatio: number): void;
+  render(): void;
+  dispose(): void;
+}
+
+export function createStage(canvas: HTMLCanvasElement): Stage {
+  const renderer = new WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  renderer.outputColorSpace = SRGBColorSpace;
+  renderer.setClearColor(PALETTE.navy900, 1);
+
+  const scene = new Scene();
+  scene.background = new Color(PALETTE.navy900);
+
+  const pmrem = new PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const environment = pmrem.fromScene(room, 0.04).texture;
+  room.dispose();
+  pmrem.dispose();
+  scene.environment = environment;
+  scene.environmentIntensity = 0.3;
+
+  const camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100);
+
+  const { faceLight, rimLights } = addLights(scene);
+
+  // MSAA on the HDR buffers keeps the glossy silhouette smooth even with post-processing.
+  const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
+  const composer = new EffectComposer(renderer, target);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new Vector2(1, 1), 0.6, 0.55, 1.05);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+
+  function resize(width: number, height: number, pixelRatio: number): void {
+    const w = Math.max(1, Math.floor(width));
+    const h = Math.max(1, Math.floor(height));
+    const ratio = Math.min(Math.max(pixelRatio, 1), MAX_PIXEL_RATIO);
+    renderer.setPixelRatio(ratio);
+    renderer.setSize(w, h, false);
+    composer.setPixelRatio(ratio);
+    composer.setSize(w, h);
+    frameSubject(camera, w / h);
+  }
+
+  return {
+    renderer,
+    scene,
+    camera,
+    bloom,
+    faceLight,
+    rimLights,
+    resize,
+    render: () => composer.render(),
+    dispose() {
+      composer.dispose();
+      target.dispose();
+      bloom.dispose();
+      environment.dispose();
+      renderer.dispose();
+    },
+  };
+}
+
+/** Key, fill and two gold rim lights from behind, plus the eye-glow light on the face. */
+function addLights(scene: Scene): { faceLight: PointLight; rimLights: DirectionalLight[] } {
+  scene.add(new AmbientLight(PALETTE.navy500, 0.35));
+
+  const key = new DirectionalLight(PALETTE.cream50, 1.25);
+  key.position.set(-3, 4, 5);
+  scene.add(key);
+
+  const fill = new DirectionalLight(PALETTE.navy500, 0.9);
+  fill.position.set(4, -1, 3);
+  scene.add(fill);
+
+  const rimLeft = new DirectionalLight(PALETTE.gold400, 2.6);
+  rimLeft.position.set(-4.5, 2.5, -4);
+  const rimRight = new DirectionalLight(PALETTE.gold500, 2.2);
+  rimRight.position.set(4.5, 1.5, -4.5);
+  scene.add(rimLeft, rimRight);
+
+  const faceLight = new PointLight(PALETTE.gold300, 0.5, 2.5, 2);
+  faceLight.position.set(0, 0.6, 1.6);
+  scene.add(faceLight);
+
+  return { faceLight, rimLights: [rimLeft, rimRight] };
+}
+
+/** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width. */
+function frameSubject(camera: PerspectiveCamera, aspect: number): void {
+  const halfFov = (FIELD_OF_VIEW * Math.PI) / 360;
+  const distanceForHeight = SUBJECT_HEIGHT / VIEWPORT_SHARE / (2 * Math.tan(halfFov));
+  const distanceForWidth = SUBJECT_WIDTH / 0.9 / (2 * Math.tan(halfFov) * aspect);
+  const distance = Math.max(distanceForHeight, distanceForWidth);
+  const visibleHeight = 2 * distance * Math.tan(halfFov);
+  const aimY = SUBJECT_CENTRE_Y - visibleHeight * AIM_DROP_SHARE;
+  camera.aspect = aspect;
+  camera.position.set(0, aimY + 0.4, distance);
+  camera.lookAt(0, aimY, 0);
+  camera.updateProjectionMatrix();
+}

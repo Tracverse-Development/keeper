@@ -1,0 +1,92 @@
+/* The installer: an animated ark stage (left) and the step panel (right). Tokens only. */
+.installer { display: grid; grid-template-columns: minmax(420px, 1.05fr) minmax(460px, 1fr); height: 100%; background: var(--bg-deep); }
+
+/* ---------- the stage ---------- */
+.installer-stage { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 18%, var(--navy-600) 0%, var(--navy-800) 45%, var(--navy-950) 100%); }
+.stage-glow { position: absolute; width: 620px; height: 620px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -58%);
+  background: radial-gradient(circle, rgba(211, 151, 68, 0.22) 0%, rgba(211, 151, 68, 0.06) 40%, transparent 70%); animation: breathe 7s ease-in-out infinite; }
+.stage-rings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -58%); }
+.stage-rings span { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%;
+  border: 1px solid rgba(240, 201, 138, 0.35); animation: ripple 6.4s var(--ease) infinite; opacity: 0; }
+.stage-motes { position: absolute; inset: 0; }
+.stage-motes i { position: absolute; bottom: -10px; width: 3px; height: 3px; border-radius: 50%; background: var(--gold-300); box-shadow: 0 0 8px var(--gold-400);
+  animation-name: rise; animation-iteration-count: infinite; animation-timing-function: linear; opacity: 0; }
+.stage-mark { position: relative; z-index: 1; transition: transform 900ms var(--ease), filter 900ms var(--ease); animation: float 6s ease-in-out infinite;
+  filter: drop-shadow(0 18px 40px rgba(211, 151, 68, 0.35)); }
+.stage-mark.is-small { transform: translateY(-12px); }
+.stage-words { position: relative; z-index: 1; text-align: center; margin-top: 26px; animation: fade-up 900ms var(--ease) both 200ms; }
+.stage-words h1 { margin: 0; font-family: var(--font-serif); font-weight: 500; font-size: 44px; letter-spacing: 0.01em;
+  background: linear-gradient(180deg, var(--cream-50), var(--cream-300)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.stage-words p { margin: 10px 0 0; color: var(--text-muted); letter-spacing: 0.04em; font-size: 14px; }
+.stage-waves { position: absolute; bottom: 0; left: 0; width: 200%; height: 150px; }
+.wave { fill: var(--gold-500); }
+.wave.w1 { opacity: 0.10; animation: drift 18s linear infinite; }
+.wave.w2 { opacity: 0.16; animation: drift 12s linear infinite reverse; }
+
+@keyframes breathe { 0%, 100% { opacity: 0.75; transform: translate(-50%, -58%) scale(0.96); } 50% { opacity: 1; transform: translate(-50%, -58%) scale(1.04); } }
+@keyframes ripple { 0% { transform: scale(0.6); opacity: 0; } 15% { opacity: 0.8; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes rise { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 10% { opacity: 0.9; } 100% { transform: translateY(-105vh) scale(1.2); opacity: 0; } }
+@keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ---------- the panel ---------- */
+.installer-panel { position: relative; display: flex; flex-direction: column; padding: 56px 56px 36px; overflow-y: auto;
+  background: linear-gradient(180deg, var(--navy-800), var(--navy-900)); border-left: 1px solid var(--border); }
+.stepper { display: flex; gap: 6px; list-style: none; margin: 0 0 40px; padding: 0; }
+.stepper li { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 12px; color: var(--text-muted); position: relative; }
+.stepper li:not(:last-child)::after { content: ''; flex: 1; height: 1px; background: var(--border); margin: 0 4px; }
+.stepper-dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 650; flex: none;
+  border: 1px solid var(--border); background: var(--navy-900); transition: all 400ms var(--ease); }
+.stepper li.is-current .stepper-dot { border-color: var(--gold-500); color: var(--gold-300); box-shadow: 0 0 0 4px var(--accent-soft); }
+.stepper li.is-done .stepper-dot { background: var(--gold-500); border-color: var(--gold-500); color: var(--navy-950); }
+.stepper li.is-current .stepper-label { color: var(--text); }
+.stepper-label { display: none; }
+@media (min-width: 1180px) { .stepper-label { display: inline; } }
+
+.panel-body { flex: 1; display: flex; flex-direction: column; gap: 14px; animation: fade-up 520ms var(--ease) both; max-width: 560px; }
+.panel-body h2 { margin: 0 0 4px; font-family: var(--font-serif); font-weight: 500; font-size: 30px; line-height: 1.2; color: var(--cream-50); }
+.lead { margin: 0; color: var(--text-muted); line-height: 1.6; font-size: 14.5px; }
+.label { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.hint { margin: 0; font-size: 12px; color: var(--text-muted); opacity: 0.8; }
+.panel-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 28px; }
+
+.promises { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.promises li { display: flex; gap: 16px; padding: 16px 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); animation: fade-up 620ms var(--ease) both; }
+.promises strong { display: block; margin-bottom: 4px; color: var(--cream-50); }
+.promises p { margin: 0; color: var(--text-muted); font-size: 13.5px; line-height: 1.55; }
+.promise-num { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+  color: var(--gold-300); background: var(--accent-soft); border: 1px solid var(--border-strong); }
+
+.scanning { display: flex; align-items: center; gap: 12px; color: var(--text-muted); }
+.facts-grid { display: grid; grid-template-columns: 110px 1fr; gap: 10px 16px; margin: 6px 0 0; padding: 18px 20px; border-radius: var(--radius);
+  background: rgba(7, 10, 22, 0.55); border: 1px solid var(--border); font-size: 13.5px; }
+.facts-grid dt { color: var(--text-muted); }
+.facts-grid dd { margin: 0; overflow-wrap: anywhere; }
+.facts-grid.reveal { animation: fade-up 600ms var(--ease) both; }
+.status-line { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.status-line.ok { color: var(--ok); }
+.status-line.warn { color: var(--warn); }
+.log { list-style: none; margin: 0; padding: 14px 16px; border-radius: var(--radius); background: rgba(7, 10, 22, 0.7); border: 1px solid var(--border);
+  font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--cream-300); display: flex; flex-direction: column; gap: 6px; }
+
+.create-graph { align-self: flex-start; margin-top: 4px; }
+.stages { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.stages li { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 14px; transition: color 300ms var(--ease); }
+.stages li.is-active { color: var(--text); }
+.stages li.is-done { color: var(--cream-300); }
+.stage-tick { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; font-size: 11px; transition: all 300ms var(--ease); }
+.stages li.is-active .stage-tick { border-color: var(--gold-400); border-top-color: transparent; animation: spin 0.9s linear infinite; }
+.stages li.is-done .stage-tick { background: var(--gold-500); border-color: var(--gold-500); color: var(--navy-950); }
+
+.mind .field { margin-top: 6px; height: 40px; }
+.mind-test { display: flex; gap: 12px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+.voice-row { display: flex; gap: 10px; }
+.voice-row .field { flex: 1; }
+
+.summary { list-style: none; margin: 4px 0 6px; padding: 18px 20px; border-radius: var(--radius); background: rgba(7, 10, 22, 0.55); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
+.summary li { display: flex; align-items: center; gap: 12px; animation: fade-up 500ms var(--ease) both; }
+.summary li:nth-child(2) { animation-delay: 90ms; } .summary li:nth-child(3) { animation-delay: 180ms; } .summary li:nth-child(4) { animation-delay: 270ms; }
+
+.boot-error { padding: 80px; color: var(--danger); }

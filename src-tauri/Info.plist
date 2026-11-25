@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Umoja listens on this Mac so you can talk to it. Your voice is recognised on the device and never leaves it.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Umoja turns your speech into text on this Mac, without sending it anywhere.</string>
+</dict>
+</plist>
