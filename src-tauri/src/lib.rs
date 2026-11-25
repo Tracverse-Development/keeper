@@ -116,11 +116,16 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("Keeper failed to start")
         .run(|app, event| {
+            // Clicking the Dock icon brings the hidden window back (macOS only; elsewhere the
+            // tray/taskbar entry does it and this event does not exist).
+            #[cfg(target_os = "macos")]
             if let RunEvent::Reopen { .. } = event {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.show();
                     let _ = w.set_focus();
                 }
             }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
         });
 }
