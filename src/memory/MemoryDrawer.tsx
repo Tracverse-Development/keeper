@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { core, sentence, type Overview } from '../kernel/ipc';
 import { withoutPrefixes } from './questions';
 import { QuestionsTab } from './QuestionsTab';
+import { useEscape } from '../kernel/use-escape';
 
 const TABS = ['Conversations', 'Knowledge', 'Actions', 'Reminders', 'Questions', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
@@ -19,6 +20,7 @@ function when(iso: string): string {
 }
 
 export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: boolean; onClose: () => void; refreshKey: number; keeper: string }) {
+  useEscape(open, onClose);
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('Conversations');

@@ -1,5 +1,5 @@
 /**
- * The robot skin (species), "Umoja": the pearl head with the navy visor face, gold ear
+ * The robot skin (species), "Robot": the pearl head with the navy visor face, gold ear
  * rings and the glossy navy spirit torso. The DEFAULT look; its idle pose and expressions
  * are the ones the character first shipped with, unchanged (`body.ts`, `face.ts`).
  *

@@ -17,6 +17,7 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 | 5 | Robustness: node dies mid-session (FIX-0010, FIX-0011): answers go on from hot memory, writes wait in the outbox, a watchdog restarts the node and flushes | VM: 3–13 ms answers with the node down; node back within a minute; 0 writes lost |
 | 6 | Useful for a new person: "Set up Claude Code for me" + "Sign in to Claude"; the phone link keeps one chat per session; the setup button reachable by VoiceOver | VM: Claude Code 2.1.322 installed by Keeper on a Mac with neither Node.js nor Claude Code; Terminal opens on its sign-in |
 | 7 | Fast interface: the command palette (⌘K): switch keeper, new chat, brief, stop, settings, memory, scenes, pinned scenes; anything else is asked of the keeper | WebKit: "pu" + Enter switched to Pup, free text was sent; ranking tested |
+| 8 | Wardrobe in the real app: dress one keeper, give the jacket to another; robot skin label "Robot" (was "Umoja"); Esc closes Settings and Memory | VM: Ark Jacket worn by Kofi (robot) → Move → worn by Pup (puppy), refitted with sleeves; saved state agrees |
 
 ## Decisions taken with the recommended option (founder to review after round 10)
 

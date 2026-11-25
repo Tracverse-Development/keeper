@@ -18,6 +18,7 @@ import { PhoneSection } from './PhoneSection';
 import { ShortcutSection } from './ShortcutSection';
 import { UpdatesSection } from './UpdatesSection';
 import { VoiceSection } from './VoiceSection';
+import { useEscape } from '../kernel/use-escape';
 
 interface Props {
   open: boolean;
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
+  useEscape(open, onClose);
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) =>
     core

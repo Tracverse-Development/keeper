@@ -62,7 +62,7 @@ const ARK_BASE: SlotPlacement = { position: [0, 0, 0], rotation: [0, 0, 0], scal
 export const SKINS = [
   {
     id: 'robot',
-    name: 'Umoja',
+    name: 'Robot',
     description: 'The pearl robot with a glowing visor face, floating over the ark.',
     slots: {
       halo: HALO_RING,
