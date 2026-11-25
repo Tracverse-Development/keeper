@@ -101,7 +101,10 @@ jobs:
           workspaces: src-tauri -> target
           key: ${{ matrix.target }}
 
-      - run: npm ci
+      # npm install, not npm ci: the lockfile (written on macOS) omits two optional packages that only
+      # the bundler's WebAssembly build needs (@emnapi/core|runtime for @rolldown/binding-wasm32-wasi),
+      # and npm ci refuses that gap; npm install keeps every locked version and fills it.
+      - run: npm install --no-audit --no-fund
 
       - name: Voice helper (macOS sidecar)
         if: runner.os == 'macOS'
