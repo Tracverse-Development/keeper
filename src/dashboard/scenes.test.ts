@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { makeScene, sceneTitle, scenesFromTurns, sceneSignature } from './scenes.ts';
+import { makeScene, sceneTitle, scenesFromTurns, sceneSignature, parentIndex, parentTitle } from './scenes.ts';
 
 const text = (title: string) => ({ kind: 'text' as const, id: 'panel-0', title, body: 'b' });
 
@@ -27,4 +27,14 @@ test('a pinned copy of a scene is recognised as the same scene', () => {
   const live = makeScene('chat-1', panels, 'show me');
   assert.equal(sceneSignature(live.title, live.panels), sceneSignature('Times table', panels));
   assert.notEqual(sceneSignature('Times table', panels), sceneSignature('Other', panels));
+});
+
+test('a follow-up scene knows the scene it came from', () => {
+  assert.equal(parentTitle('About "How a rainbow forms": explain the card Refraction.'), 'How a rainbow forms');
+  assert.equal(parentTitle('Explain rainbows'), undefined);
+  const lesson = makeScene('a', [{ id: 'p', kind: 'cards', title: 'How a rainbow forms', cards: [] }] as never[], 'Explain rainbows');
+  const other = makeScene('b', [{ id: 'p', kind: 'text', title: 'Weather', body: '' }] as never[], 'weather');
+  const follow = makeScene('c', [{ id: 'p', kind: 'text', title: 'Refraction', body: '' }] as never[], 'About "How a rainbow forms": explain the card Refraction.');
+  assert.equal(parentIndex([lesson, other, follow], 2), 0);
+  assert.equal(parentIndex([lesson, other, follow], 1), -1);
 });

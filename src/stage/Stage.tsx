@@ -15,6 +15,7 @@ import { ActivityPanel } from './ActivityPanel.tsx';
 import { Icon } from './icons.tsx';
 import { PanelCard } from './PanelCard.tsx';
 import { SceneNav, type ScenePins, type SceneTab } from './SceneNav.tsx';
+import { SceneStrip } from './SceneStrip.tsx';
 import type { Panel, PanelAction, PanelFocus } from './panel-spec.ts';
 import './stage.css';
 
@@ -91,6 +92,7 @@ export function Stage({ panels, activity, working, onFocus, onAction, onClose, k
           ))}
         </div>
       </div>
+      <SceneStrip scenes={scenes} current={current} onScene={onScene} />
     </aside>
   );
 }

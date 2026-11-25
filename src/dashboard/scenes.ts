@@ -11,6 +11,14 @@ export interface Scene {
   id: string;
   title: string;
   panels: Panel[];
+  /** The scene it was opened from (a follow-up on a card or panel: "About \"X\": …"). */
+  parent?: string;
+}
+
+/** The panel a follow-up was asked about (`focusQuestion` starts 'About "<panel title>": '). */
+export function parentTitle(said: string): string | undefined {
+  const m = /^About "([^"]{1,120})":/.exec(said.trim());
+  return m?.[1];
 }
 
 const TITLE_MAX = 48;
@@ -26,7 +34,17 @@ export function scoped(sceneId: string, panels: Panel[]): Panel[] {
 }
 
 export function makeScene(id: string, panels: Panel[], said: string): Scene {
-  return { id, title: sceneTitle(panels, said), panels: scoped(id, panels) };
+  return { id, title: sceneTitle(panels, said), panels: scoped(id, panels), parent: parentTitle(said) };
+}
+
+/** The scene a breadcrumb points back to: the newest earlier scene with a panel of that title. */
+export function parentIndex(scenes: Scene[], current: number): number {
+  const parent = scenes[current]?.parent;
+  if (!parent) return -1;
+  for (let i = current - 1; i >= 0; i--) {
+    if (scenes[i].title === parent || scenes[i].panels.some((p) => p.title === parent)) return i;
+  }
+  return -1;
 }
 
 /** A chat's scenes, oldest first, from its stored turns. */

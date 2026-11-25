@@ -12,6 +12,8 @@ import { Icon } from './icons.tsx';
 export interface SceneTab {
   id: string;
   title: string;
+  /** The scene this one was opened from (index), for the breadcrumb; -1 or absent: none. */
+  parentAt?: number;
 }
 
 /** Pinned scenes, supplied by the dashboard (they live on the keeper's graph). */
@@ -43,6 +45,12 @@ export function SceneNav({ scenes, current, onScene, pins }: Props) {
       <button type="button" className="scene-step" onClick={() => go(current - 1)} disabled={current <= 0} aria-label="Previous scene">
         <Icon name="back" size={14} />
       </button>
+      {(scenes[current]?.parentAt ?? -1) >= 0 && (
+        <button type="button" className="scene-crumb" onClick={() => go(scenes[current].parentAt ?? -1)} title="Back to the scene this came from">
+          {scenes[scenes[current].parentAt ?? 0]?.title}
+          <span aria-hidden> ›</span>
+        </button>
+      )}
       <button type="button" className="scene-title" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen} title="All scenes in this chat">
         <span className="scene-name">{scenes[current]?.title || 'Scene'}</span>
         <span className="scene-count">

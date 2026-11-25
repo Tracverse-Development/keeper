@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { core, EVENTS, on, type Phase, type SystemLoad, type Turn, type TurnResult } from '../kernel/ipc';
 import type { Panel } from '../kernel/panel-spec';
-import { makeScene, scenesFromTurns, scoped, type Scene } from './scenes';
+import { makeScene, parentIndex, scenesFromTurns, scoped, type Scene } from './scenes';
 import { workLevel } from './work-level';
 
 const LOAD_EVERY_MS = 1500;
@@ -77,7 +77,7 @@ export function useStageState(keeper: string | null, phase: Phase | null, detail
     activity,
     scenes,
     current: streaming ? Math.max(0, scenes.length) : current,
-    tabs: streaming ? [...scenes, { id: 'live', title: 'Arriving…', panels: live }] : scenes,
+    tabs: (streaming ? [...scenes, { id: 'live', title: 'Arriving…', panels: live }] : scenes).map((s, i, all) => ({ ...s, parentAt: parentIndex(all, i) })),
     open,
     work: workLevel(busy ? (phase ?? 'thinking') : null, load),
     /** The stage is on screen: the keepers panel steps aside. */

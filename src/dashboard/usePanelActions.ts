@@ -21,6 +21,8 @@ interface Deps {
   keeper: string | null;
   speak: (text: string) => void;
   celebrate: () => void;
+  /** A quiz streak: the character's confetti spin. */
+  streak: () => void;
   announce: (text: string) => void;
   decide: (token: string, approve: boolean) => Promise<void>;
   brief: () => Promise<void>;
@@ -67,6 +69,7 @@ export function usePanelActions(deps: Deps) {
       const done = await core.stageAction(a, d.keeper ?? undefined);
       if (a.type === 'quiz' && a.correct && done.streak >= STREAK) {
         d.celebrate();
+        d.streak();
         const line = `${done.streak} right in a row!`;
         d.announce(line);
         d.speak(line);

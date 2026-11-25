@@ -15,7 +15,7 @@
  * `memoryPulse` is a counter: every increase sends one spark into the memory halo.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, HitRegion, Mood, TouchKind, WornPart } from './contract';
+import type { Character, HitRegion, Mood, TouchKind, WornPart, Emote } from './contract';
 import { createCharacter } from './create-character';
 import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
@@ -31,6 +31,8 @@ export interface CharacterStageProps {
   mouth: number;
   /** Increments trigger `pulseMemory()`. */
   memoryPulse: number;
+  /** A one-shot emote: each new `n` plays `name` once (`Character.emote`). */
+  emote?: { name: Emote; n: number };
   /** What it wears (`PARTS` ids plus effect values). Default: `DEFAULT_WEARABLES`. */
   wearables?: readonly WornPart[];
   /** How hard it is working, 0..1 (turn phase blended with machine load). Default 0. */
@@ -50,6 +52,7 @@ export function CharacterStage(props: CharacterStageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const characterRef = useRef<Character | null>(null);
   const lastPulse = useRef(memoryPulse);
+  const lastEmote = useRef(props.emote?.n ?? 0);
   // The latest props, read once at mount so the new character starts in the right state.
   const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work });
   initial.current = { skin, mood, voiceLevel, mouth, wearables, work };
@@ -98,6 +101,12 @@ export function CharacterStage(props: CharacterStageProps) {
     if (memoryPulse > lastPulse.current) characterRef.current?.pulseMemory();
     lastPulse.current = memoryPulse;
   }, [memoryPulse]);
+
+  useEffect(() => {
+    const e = props.emote;
+    if (e && e.n > lastEmote.current) characterRef.current?.emote(e.name);
+    lastEmote.current = e?.n ?? lastEmote.current;
+  }, [props.emote]);
 
   return <canvas ref={canvasRef} className={className} style={CANVAS_STYLE} aria-hidden="true" />;
 }

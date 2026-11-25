@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { CharacterStage, DEFAULT_WEARABLES } from '../character';
+import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
 import { useAssistant } from '../conversation/useAssistant';
 import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
@@ -49,10 +49,21 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const soul = keeper ? kit.soul(keeper.soul) : undefined;
   const chats = useChats(keeper?.id ?? null);
   const celebrate = () => setHappyUntil(Date.now() + HAPPY_MS);
+  // One-shot emotes on real events (each call plays once).
+  const [emote, setEmote] = useState<{ name: Emote; n: number }>({ name: 'wave', n: 0 });
+  const play = (name: Emote) => setEmote((e) => ({ name, n: e.n + 1 }));
 
   const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult, said: string) => {
     stage.take(r, said);
-    if (r.learned.length || r.actions.some((a) => a.succeeded)) celebrate();
+    if (r.learned.length) {
+      celebrate();
+      play('celebrate');
+    } else if (r.actions.some((a) => a.succeeded) || r.steps.length) {
+      celebrate();
+      play('nod');
+    } else if (r.mind.fellBack) {
+      play('surprised');
+    }
     actions.speakFinal(r.reply);
     events.refreshHealth();
     chats.refresh();
@@ -81,6 +92,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     keeper: keeper?.id ?? null,
     speak: (t) => speakRef.current(t),
     celebrate,
+    streak: () => play('streak'),
     announce: (t) => assistant.announce(t, keeper?.name ?? 'Keeper'),
     decide: assistant.decide,
     brief: assistant.brief,
@@ -95,6 +107,10 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const stage = useStageState(keeper?.id ?? null, assistant.phase, assistant.detail, assistant.busy);
   // Another keeper is a fresh stage; its scenes are its own.
   useEffect(() => stage.reset(), [keeper?.id]);
+  // A keeper says hello when you switch to it.
+  useEffect(() => {
+    if (keeper?.id) play('wave');
+  }, [keeper?.id]);
   const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const sidebarOpen = panelOpen && !stage.showing;
@@ -148,7 +164,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   return (
     <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage

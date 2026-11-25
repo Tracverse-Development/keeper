@@ -162,3 +162,15 @@
 .pipeline li.is-now .pipe-dot { background: var(--gold-300); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 14px var(--gold-400); animation: pipe-pulse 1.1s ease-in-out infinite; }
 @keyframes pipe-pulse { 50% { transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) { .pipeline li.is-now .pipe-dot { animation: none; } }
+
+/* Breadcrumb back to the scene a follow-up came from. */
+.scene-crumb { border: 0; background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 6px; border-radius: var(--radius-sm); }
+.scene-crumb:hover { color: var(--gold-300); background: var(--surface); }
+/* The scene strip: every scene of the chat, one click away. */
+.scene-strip { display: flex; gap: 6px; padding: 8px 10px; overflow-x: auto; scrollbar-width: thin; flex: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(14px); }
+.scene-chip { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 200px; padding: 5px 10px 5px 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; transition: background 160ms var(--ease), border-color 160ms var(--ease); }
+.scene-chip:hover { border-color: var(--border-strong); }
+.scene-chip.is-on { background: var(--accent-soft); border-color: var(--gold-500); color: var(--gold-300); }
+.scene-chip.is-follow { margin-left: 10px; }
+.scene-chip-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--surface-strong); font-size: 10px; }
+.scene-chip-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
