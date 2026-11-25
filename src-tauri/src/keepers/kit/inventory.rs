@@ -1,5 +1,5 @@
-//! The person's kit on the DKG: souls and part variants they made or imported, each a Knowledge
-//! Asset (`desk:Soul`, `desk:KitItem`) in their own kit graph, with the item's validated
+//! The person's kit on the DKG: souls and part variants they made or imported (the wardrobe's own
+//! items, `wardrobe.rs`), each a Knowledge Asset (`desk:Soul`, `desk:KitItem`) in their own kit graph, with the item's validated
 //! definition as a JSON literal plus its name for reading at a glance. Listing is a bounded query
 //! per class (one asset each, LES-001); the definition is re-validated when read back.
 
@@ -49,6 +49,34 @@ mod live_tests {
         let back = souls(&client, &graph).await.unwrap();
         assert!(back.iter().any(|s| s.id == "test-vibes" && s.catchphrases == vec!["Leh we go!".to_string()]), "{back:?}");
     }
+
+    /// The real node: a one-of-a-kind wardrobe item saved twice comes back once, as its newest
+    /// version, re-validated into the wardrobe. `cargo test live_wardrobe -- --ignored`
+    /// (writes only to `umoja-desk-livetest`).
+    #[tokio::test]
+    #[ignore]
+    async fn live_wardrobe_item_versions_read_newest_first() {
+        use crate::keepers::kit::{packs::Variant, parts::WornPart, wardrobe};
+        let loc = node::locate(&dirs::home_dir().unwrap().join(".dkg")).expect("a DKG node in ~/.dkg");
+        let client = DkgClient::new(&loc);
+        let graph = ensure(&client, "umoja-desk-livetest").await.unwrap();
+        let stamp = time::now_iso();
+        let id = format!("live-jacket-{}", short_hash(&stamp, 6));
+        let jacket = |colour: &str| Variant {
+            id: id.clone(),
+            name: "Live Jacket".into(),
+            worn: serde_json::from_value::<WornPart>(serde_json::json!({"part": "ark-jacket", "effects": {"color": colour}})).unwrap(),
+            one_of_a_kind: true,
+        };
+        assert!(save_variant(&client, &graph, &jacket("#151c33")).await.unwrap().starts_with("did:dkg:"));
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await; // the next second: a later version
+        assert!(save_variant(&client, &graph, &jacket("#d39744")).await.unwrap().starts_with("did:dkg:"));
+        let items = wardrobe::items(&variants(&client, &graph).await.unwrap());
+        let mine: Vec<_> = items.iter().filter(|i| i.id == format!("kit:{id}")).collect();
+        assert_eq!(mine.len(), 1, "one item per id");
+        assert!(mine[0].one_of_a_kind && mine[0].slot == "torso");
+        assert_eq!(mine[0].effects.get("color"), Some(&serde_json::json!("#d39744")), "the newest version wins");
+    }
 }
 
 /// A finalized asset never changes (the node answers 409 to a second write under its name), so
@@ -69,16 +97,19 @@ pub async fn save_soul(client: &DkgClient, graph: &str, soul: &Soul) -> Result<S
     Ok(client.write_asset(graph, &version_name("soul", &soul.id, &at), &quads).await?.ka_ual)
 }
 
+/// Save a wardrobe item (a part variant). A save of an existing id is its next version: the asset
+/// name hashes the time AND the definition, so two different saves in one second never collide.
 pub async fn save_variant(client: &DkgClient, graph: &str, variant: &Variant) -> Result<String> {
     let at = time::now_iso();
+    let definition = serde_json::to_string(variant)?;
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:kit:{}", variant.id))
         .a("desk:KitItem")
         .text(pred::NAME, &variant.name)
-        .text("desk:definition", &serde_json::to_string(variant)?)
+        .text("desk:definition", &definition)
         .link(pred::BY, ASSISTANT)
         .time(pred::AT, &at)
         .build();
-    Ok(client.write_asset(graph, &version_name("kit", &variant.id, &at), &quads).await?.ka_ual)
+    Ok(client.write_asset(graph, &version_name("kit", &variant.id, &format!("{at}\u{0}{definition}")), &quads).await?.ka_ual)
 }
 
 async fn definitions(client: &DkgClient, graph: &str, class: &str) -> Result<Vec<String>> {

@@ -34,26 +34,12 @@ import {
 import { disposeTree } from '../../dispose-tree';
 import { HEAD_RADII, ellipsoidPatch } from './head-shape';
 import { PALETTE } from '../../palette';
+import { ROBOT_COLLAR, ROBOT_HEAD_CENTRE_Y, ROBOT_NECK_Y, ROBOT_TORSO_PROFILE } from './robot-shape';
 
-/** World height of the head centre and of the neck (top of the torso). */
-export const HEAD_CENTRE_Y = 0.5;
-const NECK_Y = -0.42;
-
-/** The torso silhouette as (radius, height below the neck) control points. */
-const TORSO_PROFILE: readonly [number, number][] = [
-  [0.001, 0.06],
-  [0.2, 0.05],
-  [0.31, 0],
-  [0.4, -0.14],
-  [0.53, -0.36],
-  [0.6, -0.6],
-  [0.57, -0.84],
-  [0.47, -1.06],
-  [0.33, -1.27],
-  [0.18, -1.41],
-  [0.07, -1.48],
-  [0.001, -1.5],
-];
+/** World height of the head centre (the rig's measurements live in `robot-shape.ts`). */
+export const HEAD_CENTRE_Y = ROBOT_HEAD_CENTRE_Y;
+const NECK_Y = ROBOT_NECK_Y;
+const TORSO_PROFILE = ROBOT_TORSO_PROFILE;
 
 /** How bright the visor rim glows at full heat. */
 const RIM_HEAT = 1.1;
@@ -140,7 +126,7 @@ export function createBody(): Body {
   torso.position.y = NECK_Y;
   body.add(torso);
 
-  const collar = new Mesh(new TorusGeometry(0.335, 0.048, 32, 128), pearl);
+  const collar = new Mesh(new TorusGeometry(ROBOT_COLLAR.radius, ROBOT_COLLAR.tube, 32, 128), pearl);
   collar.rotation.x = Math.PI / 2;
   collar.position.y = NECK_Y + 0.005;
   body.add(collar);

@@ -56,7 +56,7 @@ pub fn pack_export(state: State<'_, AppState>, kind: String, id: String) -> Resu
     let (pack, name) = match kind.as_str() {
         "keeper" => {
             let k = state.settings().keeper(&id).cloned().ok_or_else(|| DeskError::Invalid("There is no such keeper.".into()))?;
-            let bp = KeeperBlueprint { name: k.name.clone(), species: k.skin.clone(), role: k.role.clone(), soul: state.soul(&k.soul), wearables: k.wearables.clone() };
+            let bp = KeeperBlueprint { name: k.name.clone(), species: k.skin.clone(), role: k.role.clone(), soul: state.soul(&k.soul), wearables: packs::data_only(&k.wearables) };
             (Pack::Keeper { format: packs::FORMAT.into(), keeper: bp }, k.name)
         }
         "soul" => {

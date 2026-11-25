@@ -30,12 +30,13 @@ import { addPuppyBody } from './puppy-body';
 import { addPuppyHead } from './puppy-head';
 import { createPuppyKit } from './puppy-kit';
 import { blendPuppyDials, puppyDials } from './puppy-moods';
+import { PUPPY_HEAD_Y } from './puppy-shape';
 import { addPuppySweat } from './puppy-sweat';
 import { addPuppyThinking } from './puppy-thinking';
 import { PUPPY_REACTIONS as R } from './reactions';
 
 /** Head centre height (world units). */
-const HEAD_Y = 0.22;
+const HEAD_Y = PUPPY_HEAD_Y;
 /** Ears hang this far out from the head at rest, and swing this much more fully perked. */
 const EAR_REST = 0.26;
 const EAR_PERK = 0.5;
@@ -51,7 +52,7 @@ export function createPuppySkin(): Skin {
   const head = face.head;
   const sweat = addPuppySweat(head, kit);
   const bubble = addPuppyThinking(body);
-  const slots = addSlotAnchors(root, slotsOf('puppy'));
+  const slots = addSlotAnchors(root, slotsOf('puppy'), { body, head });
 
   const headProxy = addHitProxy(head, { radii: [1.06, 0.9, 0.95], centre: [0, 0, 0.05] });
   const bodyProxy = addHitProxy(body, { radii: [0.72, 0.8, 0.66], centre: [0, -1.2, 0.05] });

@@ -3,9 +3,11 @@
  * so a kit screen can list them, a pack importer can validate variants against them, and the
  * tests can check them without a GPU.
  *
- * A part fills one SLOT that a species declares (`halo` around the head and upper body,
- * `base` under it, `aura` around the whole body), lists the species it fits (`'any'` or skin
- * ids) and carries an effects schema (`effects.ts`). A variant is a part id plus effect values.
+ * Pattern: Registry. A part fills one SLOT a species declares (`slots.ts`: floating `halo`,
+ * `base`, `aura`; worn on the body `head`, `neck`, `torso`, `back`), lists the species it fits
+ * (`'any'` or skin ids) and carries an effects schema (`effects.ts`). A variant is a part id
+ * plus effect values. Worn parts fit themselves to the body's published shape (`fit.ts`), so
+ * `'any'` really means any species that offers the slot.
  *
  * Adding a part: one row here, one factory under `parts/<id>/` and one line in
  * `parts/index.ts` (whose table is typed against `PartId`, so a row without a factory fails
@@ -13,10 +15,9 @@
  */
 import type { WornPart } from '../contract';
 import { effectsKey, resolveEffects, type EffectSchema, type EffectValues } from './effects.ts';
+import type { SlotId } from './slots.ts';
 
-/** The slots a species can offer, in drawing order. */
-export const SLOT_IDS = ['halo', 'base', 'aura'] as const;
-export type SlotId = (typeof SLOT_IDS)[number];
+export { SLOT_IDS, SLOTS, isWornSlot, type SlotId, type SlotKind } from './slots.ts';
 
 export interface PartInfo {
   /** Stable kebab-case id, stored in profiles and packs; never rename a shipped one. */
@@ -65,6 +66,53 @@ export const PARTS = [
       color: { kind: 'colour', label: 'Colour', default: '#e3b06a' },
       count: { kind: 'number', label: 'Motes', min: 8, max: 120, default: 42, step: 1 },
       speed: { kind: 'number', label: 'Speed', min: 0, max: 4, default: 1 },
+    },
+  },
+  {
+    id: 'ark-jacket',
+    name: 'Ark Jacket',
+    slot: 'torso',
+    species: 'any',
+    description: 'A soft open jacket cut to the body, gold-piped, with cuffs wherever there are arms.',
+    effects: {
+      color: { kind: 'colour', label: 'Cloth', default: '#f4eee2' },
+      trim: { kind: 'colour', label: 'Trim', default: '#d39744' },
+      sway: { kind: 'number', label: 'Sway', min: 0, max: 2, default: 1 },
+    },
+  },
+  {
+    id: 'knit-scarf',
+    name: 'Knit Scarf',
+    slot: 'neck',
+    species: 'any',
+    description: 'A striped knit scarf wrapped round the neck, its two ends swinging.',
+    effects: {
+      color: { kind: 'colour', label: 'Wool', default: '#d39744' },
+      stripe: { kind: 'colour', label: 'Stripes', default: '#151c33' },
+      sway: { kind: 'number', label: 'Swing', min: 0, max: 2, default: 1 },
+    },
+  },
+  {
+    id: 'crew-cap',
+    name: 'Crew Cap',
+    slot: 'head',
+    species: 'any',
+    description: 'A six-panel cap shaped to the head, with a gold brim and button.',
+    effects: {
+      color: { kind: 'colour', label: 'Crown', default: '#151c33' },
+      trim: { kind: 'colour', label: 'Brim', default: '#d39744' },
+    },
+  },
+  {
+    id: 'trail-pack',
+    name: 'Trail Pack',
+    slot: 'back',
+    species: 'any',
+    description: 'A rounded backpack on two belts, with a pocket and a gold zip.',
+    effects: {
+      color: { kind: 'colour', label: 'Canvas', default: '#1e2848' },
+      trim: { kind: 'colour', label: 'Trim', default: '#d39744' },
+      sway: { kind: 'number', label: 'Bounce', min: 0, max: 2, default: 1 },
     },
   },
 ] as const satisfies readonly PartInfo[];

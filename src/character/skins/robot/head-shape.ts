@@ -8,9 +8,10 @@
  * on it, and `curvedQuad` builds a UV-mapped quad on it for the glowing glyph shaders.
  */
 import { BufferAttribute, BufferGeometry, PlaneGeometry, Vector3 } from 'three';
+import { ROBOT_HEAD_RADII } from './robot-shape';
 
 /** Half-extents of the head ellipsoid (x wide, y tall, z deep). */
-export const HEAD_RADII = { x: 1, y: 0.9, z: 0.92 } as const;
+export const HEAD_RADII = ROBOT_HEAD_RADII;
 
 /** z of the front surface at (x, y), for an ellipsoid inflated by `inflate` (0.01 = 1%). */
 export function surfaceZ(x: number, y: number, inflate = 0): number {

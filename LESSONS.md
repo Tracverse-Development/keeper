@@ -19,3 +19,13 @@
 - **Context:** The 0.6 live tests found that a second write under an asset name answers 409 (`KA_ASSERTION_ALREADY_FINALIZED`), and that treating every error as "node down" filled the outbox with writes that could never succeed. The same 409 means "graph already exists".
 - **Lesson:** On the DKG an asset is immutable once written: a record that changes (a soul, a cached scene, a setting) is a series of versions read newest-first, never an overwrite. And an error class decides what happens next: "unreachable" may retry, "already there" is done, "refused" is reported. Never collapse them into one.
 - **Rule added:** `DeskError::Exists` for 409; `Memory::write` and the outbox never queue it; changing records use time-versioned asset names with newest-first reads (`inventory::version_name`, `scene_cache`).
+
+### LES-005 — A wearable reads the body's shape, never the species (2026-11-25)
+- **Context:** The founder wants anything one keeper can wear (a jacket) to work on another. Slots held three floating parts placed by anchor position only; anything worn ON a body would have needed per-species code (a robot jacket, a dog jacket).
+- **Lesson:** Make the body publish what a garment needs (the surface rings at the slot, depth, squareness, reach, lean, limbs) and make every wearable an Adapter over that shape. Take the measurements from the SAME constants the rig is built from (one `<species>-shape.ts` per species), or the published shape drifts from the body it describes.
+- **Rule added:** Worn slots carry `follow` + `shape` (`skins/catalog.ts`); parts get `PartFit` and never branch on the species id; `wearables-fit.test.ts` builds every worn part on every body offering its slot (and a made-up boxy one) and fails if anything sinks in or floats off.
+
+### LES-006 — A worktree's dev server needs its own dependency cache (2026-11-25)
+- **Context:** A preview served from this worktree answered `504 Outdated Optimize Dep` and logged reloads for files from another worktree: `node_modules` is a link into the main checkout, so `node_modules/.vite` is shared by every worktree's Vite at once.
+- **Lesson:** Two Vite servers on one shared `node_modules/.vite` re-optimise each other's dependencies. Any throwaway preview server in a worktree sets its own `cacheDir`.
+- **Rule added:** Previews under `misc/` start Vite with a config whose `cacheDir` is inside the preview folder.

@@ -12,6 +12,12 @@
  * against the catalogue every time (`resolveWearables`: unknown parts and parts that do not
  * fit the species are skipped, effects clamped), and an unchanged list is a no-op.
  *
+ * Slots worn ON the body (head, neck, torso, back) work differently: their part is built FOR
+ * the species (fitted to the shape its anchor publishes: `parts/fit.ts`) and parented to that
+ * anchor on the rig, so a cap turns with the head and a jacket leans with the body. Its key
+ * includes the species, so a species swap re-tailors it: the old jacket shrinks away on the old
+ * body while a new one, cut to the new body, grows in on it. A slot the species lacks is empty.
+ *
  * Memory sparks fly into the worn part that offers a `sparkTarget` (the Memory Halo); with
  * no such part worn, `pulse` shows nothing.
  */
@@ -19,6 +25,7 @@ import { Group, type Vector3 } from 'three';
 import type { WornPart } from './contract';
 import { DEFAULT_WEARABLES, SLOT_IDS, createPart, resolveWearables, type PartFrame, type PartInstance, type SlotId, type SparkTarget } from './parts';
 import type { Skin } from './skins';
+import type { SlotAnchor } from './skins/anchors';
 import { swapPose } from './skins/skin-transition';
 import type { MemorySparks } from './stage/memory-spark';
 
@@ -123,14 +130,18 @@ export class Wardrobe {
 
   /** Brings every slot in line with the resolved wear list for the current species. */
   private reconcile(instant: boolean): void {
-    const wanted = resolveWearables(this.worn, this.species.id);
+    const species = this.species;
+    const wanted = resolveWearables(this.worn, species.id);
     for (const slot of this.slots) {
-      const next = this.species.slots[slot.id] ? wanted[slot.id] : undefined;
-      if ((next?.key ?? null) === (slot.current?.key ?? null)) continue;
+      const anchor = species.slots[slot.id];
+      const next = anchor ? wanted[slot.id] : undefined;
+      // A fitted part is cut for one body: another species needs a new one.
+      const key = next && anchor?.shape ? `${next.key}|${species.id}` : next?.key;
+      if ((key ?? null) === (slot.current?.key ?? null)) continue;
       if (slot.outgoing) this.release(slot.outgoing);
       slot.outgoing = instant ? null : slot.current;
       if (instant && slot.current) this.release(slot.current);
-      slot.current = next ? this.wear(slot, next.key, createPart(next.id, next.effects)) : null;
+      slot.current = next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id, next.effects, { species: species.id, shape: anchor.shape })) : null;
       slot.swapStartedAt = this.time;
       slot.swapping = !instant;
       setPresence(slot.current, instant ? 1 : 0);
@@ -151,7 +162,8 @@ export class Wardrobe {
   /** Eases a slot holder toward its anchor (blend 1 = jump), snapping once close. */
   private place(slot: Slot, blend: number): void {
     const anchor = this.species.slots[slot.id];
-    if (!anchor) {
+    if (!anchor || anchor.shape) {
+      // No such slot, or one worn on the body (its part rides the anchor itself).
       slot.settled = true;
       return;
     }
@@ -171,10 +183,11 @@ export class Wardrobe {
     }
   }
 
-  private wear(slot: Slot, key: string, instance: PartInstance): Worn {
+  /** Puts `instance` on: on the anchor itself for a worn slot, in the gliding holder otherwise. */
+  private wear(slot: Slot, anchor: SlotAnchor, key: string, instance: PartInstance): Worn {
     const presence = new Group();
     presence.add(instance.group);
-    slot.holder.add(presence);
+    (anchor.shape ? anchor.object : slot.holder).add(presence);
     if (this.pointScale > 0) instance.setPointScale?.(this.pointScale);
     return { key, instance, presence };
   }

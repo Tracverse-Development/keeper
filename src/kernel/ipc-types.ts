@@ -12,6 +12,8 @@ export type VoiceEngine = 'system' | 'elevenlabs';
 export interface WornPart {
   part: string;
   effects?: Record<string, number | string>;
+  /** The wardrobe item it was put on from (`part:…`, `stock:…`, `kit:…`). */
+  item?: string;
 }
 
 export interface KeeperProfile {
@@ -72,6 +74,7 @@ export interface PartInfo {
 export interface Variant extends WornPart {
   id: string;
   name: string;
+  oneOfAKind?: boolean;
 }
 
 export interface KitCatalog {
