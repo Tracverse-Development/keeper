@@ -55,6 +55,7 @@ Dependency rule: modules use `kernel` freely. `memory → dkg`; `brain → memor
 | `conversation/` | `useAssistant` (turns and phases), `ConversationDock`, `DkgTrail` (the queries and writes behind an answer). | `ConversationDock` |
 | `voice/` | `useVoice` (level, transcript, speaking, mouth). | `useVoice` |
 | `memory/` | `MemoryDrawer` (per keeper: Conversations, Knowledge, Actions, Reminders, Questions, Queries; forget) and `QuestionsTab` (the DKG question catalog: pick, fill validated inputs, ask, see rows and SPARQL). | `MemoryDrawer` |
+| `palette/` | The command palette (⌘K): `CommandPalette` (type, ↑↓, Enter, Esc; words that match nothing are asked of the keeper), `rank` (every typed word starts a word of the command; tested), `palette-commands` (the commands for the screen as it is: other keepers, new chat, brief, stop, settings, memory, scenes, pinned scenes). | `CommandPalette` |
 | `settings/` | `SettingsSheet` and its sections (the keeper's soul, role, body and wardrobe come from `keepers/`): `KeeperNameField`, `EnginePicker` + `ModelSelect` (engine and model; shared with the installer), `ShortcutSection` (the keeper button), `LookSection`, `VoiceSection` (Mac voice or ElevenLabs), `PhoneSection` (QR), `UpdatesSection`. | `SettingsSheet` |
 
 ## Native (`native/voice/`)

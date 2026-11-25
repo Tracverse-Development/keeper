@@ -17,6 +17,8 @@ import { focusQuestion } from '../kernel/panel-spec';
 import { useChats } from '../keepers/useChats';
 import { useKeepers } from '../keepers/useKeepers';
 import { MemoryDrawer } from '../memory/MemoryDrawer';
+import { CommandPalette } from '../palette/CommandPalette';
+import { paletteCommands } from '../palette/palette-commands';
 import { SettingsSheet } from '../settings/SettingsSheet';
 import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
@@ -38,6 +40,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
   const lastTouch = useRef<{ at: number; line: string | null }>({ at: 0, line: null });
@@ -114,6 +117,18 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const sidebarOpen = panelOpen && !stage.showing;
+
+  // ⌘K / Ctrl+K anywhere opens the command palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const mood = moodFor({ speaking: voice.speaking, listening: voice.listening, phase: assistant.phase, happyUntil, now: events.now });
   const name = keeper?.name ?? 'Keeper';
@@ -234,6 +249,28 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onSend={(t) => assistant.send(t)}
         onMic={voice.listen}
         onStop={stop}
+      />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onAsk={(t) => void assistant.send(t)}
+        commands={paletteCommands({
+          keepers: keepers.list?.keepers ?? [],
+          activeKeeper: keeper?.id ?? null,
+          pinned: pins.list,
+          busy: assistant.busy,
+          activate: (id) => void keepers.activate(id).catch(() => undefined),
+          newChat: () => {
+            assistant.newChat();
+            stage.reset();
+          },
+          brief: () => void assistant.send('Brief me'),
+          stop,
+          openSettings: () => setSettingsOpen(true),
+          openMemory: () => setMemoryOpen(true),
+          openScenes: stage.reopen,
+          openPinned: pins.open,
+        })}
       />
       {keeper && <MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} />}
       {keeper && (
