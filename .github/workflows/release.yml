@@ -43,12 +43,15 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
+        # A draft the build jobs upload into (made with `gh release create`: the raw API call with
+        # generated notes answered an empty body on this repo, 2026-11-25). Re-runs reuse it.
         run: |
-          id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1)"
-          if [ -z "$id" ]; then
-            id="$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
-              -f tag_name="$TAG" -f name="Keeper $TAG" -F draft=true -F generate_release_notes=true --jq .id)"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Keeper ${TAG#v}" --notes "Keeper ${TAG#v}. Install: the .dmg (macOS), the .exe or .msi (Windows), the .AppImage or .deb (Linux). Installed copies update themselves."
           fi
+          id="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json databaseId --jq .databaseId)"
+          [ -n "$id" ] || { echo "no draft release for $TAG"; exit 1; }
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
