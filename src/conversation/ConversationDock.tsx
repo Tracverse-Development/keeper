@@ -31,6 +31,8 @@ export function ConversationDock(p: Props) {
   const input = useRef<HTMLInputElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const shown = p.full ? p.exchanges : p.exchanges.slice(p.compact ? -1 : -3);
+  // While the keeper listens, speaks or works, the button stops it.
+  const stoppable = p.listening || p.speaking || p.busy;
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });
@@ -47,7 +49,12 @@ export function ConversationDock(p: Props) {
       <div className="dock-feed" ref={scroller} aria-live="polite">
         {shown.map((x) => (
           <div key={x.id} className="exchange">
-            {x.said && <p className="bubble you selectable">{x.said}</p>}
+            {x.said && (
+              <p className={`bubble you selectable ${x.queued ? 'is-queued' : ''}`}>
+                {x.said}
+                {x.queued && <span className="queued-note">waiting its turn</span>}
+              </p>
+            )}
             {x.result && (
               <div className="bubble them">
                 <p className="selectable">{x.result.reply}</p>
@@ -98,8 +105,8 @@ export function ConversationDock(p: Props) {
           maxLength={2000}
           autoFocus
         />
-        <button type="button" className={`mic ${p.listening ? 'is-on' : ''}`} onClick={p.listening || p.speaking ? p.onStop : p.onMic} aria-label={p.listening ? 'Stop listening' : 'Speak'}>
-          {p.listening || p.speaking ? (
+        <button type="button" className={`mic ${p.listening || p.busy ? 'is-on' : ''}`} onClick={stoppable ? p.onStop : p.onMic} aria-label={p.listening ? 'Stop listening' : p.busy ? 'Stop' : p.speaking ? 'Stop speaking' : 'Speak'} title={p.busy ? 'Stop (Esc)' : undefined}>
+          {stoppable ? (
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
               <rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" />
             </svg>

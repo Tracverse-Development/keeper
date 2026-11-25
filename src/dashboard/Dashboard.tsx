@@ -102,9 +102,11 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const mood = moodFor({ speaking: voice.speaking, listening: voice.listening, phase: assistant.phase, happyUntil, now: events.now });
   const name = keeper?.name ?? 'Keeper';
 
+  /** Stop: the microphone, the voice, and the turn in progress (its engine is killed). */
   const stop = () => {
     voice.stop();
     voice.hush();
+    if (assistant.busy) void core.cancel().catch(() => undefined);
   };
 
   /** A poke or a pat on the character: it answers in its own words, out loud. */

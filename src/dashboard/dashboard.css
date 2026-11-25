@@ -144,3 +144,6 @@
 @keyframes status-sweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 @keyframes pipe-pulse { 50% { transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) { .thinking-words, .thinking-words::before { animation: none; } }
+
+.bubble.you.is-queued { opacity: 0.7; }
+.queued-note { display: block; margin-top: 4px; font-size: 11px; color: var(--text-muted); }

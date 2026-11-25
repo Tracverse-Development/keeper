@@ -15,6 +15,8 @@ export interface Exchange {
   error: string | null;
   /** The reply's words so far, while the keeper is still writing it (live typing). */
   live?: string;
+  /** Sent while the keeper was busy: waiting its turn. */
+  queued?: boolean;
 }
 
 const KEEP = 40;
@@ -53,10 +55,11 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     () =>
       on<{ keeper: string; text: string }>(EVENTS.replyDelta, (e) => {
         if (e.keeper !== keeperRef.current) return;
+        // The exchange being answered: unanswered and not waiting in the queue.
         setExchanges((list) => {
-          const last = list[list.length - 1];
-          if (!last || last.result || last.error) return list;
-          return [...list.slice(0, -1), { ...last, live: (last.live ?? '') + e.text }];
+          const i = list.findIndex((x) => !x.result && !x.error && !x.queued);
+          if (i < 0) return list;
+          return list.map((x, j) => (j === i ? { ...x, live: (x.live ?? '') + e.text } : x));
         });
       }),
     [],
@@ -68,27 +71,48 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     setChatId('');
   }, [keeper]);
 
-  /** Run one turn (`call`) shown as `said`; its result goes on screen and to `onReply`. */
-  const run = async (said: string, call: () => Promise<TurnResult | null>) => {
-    if (busy) return;
-    const id = nextId.current++;
-    setExchanges((list) => [...list, { id, said, result: null, error: null }].slice(-KEEP));
+  // Messages sent while a turn runs wait here and go in order (never dropped).
+  const queue = useRef<{ id: number; said: string; call: () => Promise<TurnResult | null> }[]>([]);
+  const busyRef = useRef(false);
+
+  /** Run one turn (`call`) for the exchange `id`; then the next queued message, if any. */
+  const drive = async (id: number, said: string, call: () => Promise<TurnResult | null>) => {
+    busyRef.current = true;
     setBusy(true);
+    setExchanges((list) => list.map((x) => (x.id === id ? { ...x, queued: false } : x)));
     try {
       const result = await call();
       if (!result) {
         setExchanges((list) => list.filter((x) => x.id !== id));
-        return;
+      } else {
+        setChatId(result.chat);
+        setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
+        replyRef.current(result, said);
       }
-      setChatId(result.chat);
-      setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
-      replyRef.current(result, said);
     } catch (e) {
       setExchanges((list) => list.map((x) => (x.id === id ? { ...x, error: sentence(e) } : x)));
     } finally {
-      setBusy(false);
       setPhase(null);
+      const next = queue.current.shift();
+      if (next) {
+        void drive(next.id, next.said, next.call);
+      } else {
+        busyRef.current = false;
+        setBusy(false);
+      }
     }
+  };
+
+  /** Run one turn (`call`) shown as `said`, now or after the turn in progress. */
+  const run = async (said: string, call: () => Promise<TurnResult | null>) => {
+    const id = nextId.current++;
+    const waiting = busyRef.current;
+    setExchanges((list) => [...list, { id, said, result: null, error: null, queued: waiting }].slice(-KEEP));
+    if (waiting) {
+      queue.current.push({ id, said, call });
+      return;
+    }
+    await drive(id, said, call);
   };
 
   /** Send to `toKeeper` (default: the keeper on screen) in the current chat. */

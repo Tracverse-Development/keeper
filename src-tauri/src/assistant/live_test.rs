@@ -102,3 +102,19 @@ async fn live_claude_v07_warm_spare_speed() {
         println!("SPEED {label:>10}: reply ready {:?} ms, done {} ms: {}", early.into_inner().unwrap(), started.elapsed().as_millis(), t.reply);
     }
 }
+
+/// Stop: a long answer is cut off at once and the engine process is gone.
+#[tokio::test]
+#[ignore]
+async fn live_claude_v07_stop_cuts_a_turn() {
+    let c = ctx("Write a 2000-word essay on the history of bread.");
+    tokio::spawn(async {
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        crate::brain::engines::cli::cancel();
+    });
+    let started = std::time::Instant::now();
+    let r = claude::think(&c, "", &|_: Progress| {}).await;
+    println!("STOP after {} ms: {:?}", started.elapsed().as_millis(), r.as_ref().err());
+    assert!(matches!(r, Err(crate::kernel::DeskError::Brain(ref m)) if m == crate::brain::engines::cli::STOPPED));
+    assert!(started.elapsed().as_millis() < 2500);
+}

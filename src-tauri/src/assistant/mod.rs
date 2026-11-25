@@ -140,3 +140,9 @@ pub async fn brief_today(app: AppHandle, state: State<'_, AppState>) -> Result<O
     state.update_settings(|s| s.last_brief = today)?;
     Ok(Some(run_turn(&app, &state, "", "", "Brief me").await?))
 }
+
+/// The Stop button: end the turn in progress (the engine process is killed).
+#[tauri::command]
+pub fn assistant_cancel() {
+    crate::brain::engines::cli::cancel();
+}

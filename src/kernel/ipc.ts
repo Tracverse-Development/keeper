@@ -65,6 +65,8 @@ export const core = {
   planDecide: (token: string, approve: boolean) => invoke<TurnResult>('plan_decide', { token, approve }),
   briefToday: () => invoke<TurnResult | null>('brief_today'),
   /** Start the next turn's engine now (opening, switching keeper, coming back); returns spares ready. */
+  /** The Stop button: end the turn in progress. */
+  cancel: () => invoke<void>('assistant_cancel'),
   warm: (keeper?: string) => invoke<number>('assistant_warm', { keeper }),
   pimAccess: () => invoke<PimAccess>('pim_access'),
   pinnedScenes: (keeper?: string) => invoke<PinnedScene[]>('scenes_pinned', { keeper }),

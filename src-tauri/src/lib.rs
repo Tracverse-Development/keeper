@@ -99,6 +99,7 @@ pub fn run() {
             assistant::assistant_turn,
             assistant::brief_today,
             assistant::warm::assistant_warm,
+            assistant::assistant_cancel,
             pim::commands::pim_access,
             memory::pinned_scenes::scenes_pinned,
             memory::pinned_scenes::scene_pin,

@@ -11,6 +11,16 @@ use tokio::process::{Child, Command};
 
 use crate::kernel::{paths, programs, DeskError, Result};
 
+/// Stops every engine run in progress (the Stop button); `kill_on_drop` ends the process.
+static STOP: tokio::sync::Notify = tokio::sync::Notify::const_new();
+/// The words a stopped turn ends with.
+pub const STOPPED: &str = "stopped";
+
+/// Stop the engine runs in progress now.
+pub fn cancel() {
+    STOP.notify_waiters();
+}
+
 /// A chat answer should come quickly; an agent doing real work on the computer may take minutes.
 pub const CHAT_TIMEOUT: Duration = Duration::from_secs(180);
 pub const ACT_TIMEOUT: Duration = Duration::from_secs(900);
@@ -88,7 +98,12 @@ pub async fn drive(mut child: Child, input: Option<String>, timeout: Duration, m
         let status = child.wait().await;
         (all, err, status.map(|s| s.success()).unwrap_or(false))
     };
-    let (stdout, stderr, success) = tokio::time::timeout(timeout, work).await.map_err(|_| DeskError::Brain(format!("it took longer than {} minutes", timeout.as_secs() / 60)))?;
+    // The person can stop a turn at any moment (`cancel`): the program is killed with the future.
+    let bounded = tokio::time::timeout(timeout, work);
+    let (stdout, stderr, success) = tokio::select! {
+        done = bounded => done.map_err(|_| DeskError::Brain(format!("it took longer than {} minutes", timeout.as_secs() / 60)))?,
+        _ = STOP.notified() => return Err(DeskError::Brain(STOPPED.into())),
+    };
     Ok(Run { success, stdout, stderr })
 }
 

@@ -48,6 +48,10 @@ pub async fn think(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(Pro
             };
             (thought, MindUsed { id: spec.id.into(), label, local: spec.place == Place::Device, fell_back: None })
         }
+        // The person pressed Stop: say so, never fall back to another mind.
+        (Some(Err(crate::kernel::DeskError::Brain(m))), _) if m == engines::cli::STOPPED => {
+            (Thought { reply: "Okay, I stopped.".into(), ..Thought::default() }, MindUsed { id: "stopped".into(), label: "Stopped".into(), local: true, fell_back: None })
+        }
         (Some(Err(e)), _) => (reflex::think(ctx), builtin(Some(format!("{}: {e}", engines::label(id))))),
         _ => (reflex::think(ctx), builtin(None)),
     }
