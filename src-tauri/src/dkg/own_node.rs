@@ -5,6 +5,7 @@
 //! removed (deleting the app alone left the daemon listening on the network, with its 547 MB).
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tokio::process::Command;
@@ -50,7 +51,22 @@ async fn run_dkg(verb: &str) -> Result<()> {
 /// Start Keeper's own node if it is the one in use and does not answer. A node the person runs
 /// themselves is left alone.
 pub async fn ensure_running(node_home: &str) -> Result<bool> {
-    if !is_own(node_home) || answers(&home()).await || !dkg_program().exists() {
+    if !is_own(node_home) || !dkg_program().exists() {
+        return Ok(false);
+    }
+    // One start at a time: several failing turns in a row must not start several daemons.
+    if STARTING.swap(true, Ordering::SeqCst) {
+        return Ok(false);
+    }
+    let result = start_and_wait().await;
+    STARTING.store(false, Ordering::SeqCst);
+    result
+}
+
+static STARTING: AtomicBool = AtomicBool::new(false);
+
+async fn start_and_wait() -> Result<bool> {
+    if answers(&home()).await {
         return Ok(false);
     }
     run_dkg("start").await?;
@@ -63,6 +79,32 @@ pub async fn ensure_running(node_home: &str) -> Result<bool> {
     }
     Err(DeskError::Node("Keeper's memory node was started but did not answer within a minute".into()))
 }
+
+/// The watchdog: every `WATCH_EVERY`, start Keeper's own node if it stopped answering, and send
+/// the writes that waited in the outbox once it answers. Hot memory hides a dead node from the
+/// conversation (turns still answer and remember), so nothing else would notice it (round 5, VM).
+pub fn watch(node_home: impl Fn() -> String + Send + 'static) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(WATCH_EVERY).await;
+            let home_now = node_home();
+            if home_now.is_empty() {
+                continue;
+            }
+            let _ = ensure_running(&home_now).await;
+            if crate::memory::outbox::waiting() > 0 {
+                if let Some(location) = node::locate(Path::new(&home_now)) {
+                    let client = DkgClient::new(&location);
+                    if client.status().await.is_ok() {
+                        crate::memory::outbox::flush(&client).await;
+                    }
+                }
+            }
+        }
+    });
+}
+
+const WATCH_EVERY: Duration = Duration::from_secs(20);
 
 /// Stop Keeper's own node (before removing Keeper). Never touches another node.
 pub async fn stop() -> Result<()> {

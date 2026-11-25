@@ -74,3 +74,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** at launch, when the node in use is Keeper's own and does not answer, `dkg start` runs with Keeper's Node.js and Keeper waits up to a minute for it. A node the person runs themselves is never started or stopped.
 - **Guard:** `own_node::tests::only_keepers_own_node_is_ever_started_or_stopped`; the VM reboot test in round 2.
 - **Evidence:** VM: after quitting Keeper the daemon kept running, after deleting the app too (removal now stops it).
+
+### FIX-0010 — With the memory node stopped, every turn failed with "Finish setup first" (2026-11-25)
+- **Area:** `src-tauri/src/dkg/node.rs` (`locate`)
+- **Symptom:** round-5 VM test: after the node stopped, the phone link and the window got HTTP 400 "Keeper is not connected to a memory node yet. Finish setup first." for every message.
+- **Root cause:** a stopped node removes its `api.port`; `locate` needed it, so no client could be built and the turn aborted before it could answer without memory.
+- **Fix:** `locate` falls back to the node's configured `apiPort` (config.json); the turn then answers (hot memory or none) and queues its writes in the outbox.
+- **Guard:** `node::tests::a_stopped_node_is_found_by_its_configured_port`; VM test (turns answered in 3–13 ms with the node down).
+- **Evidence:** before: 400 on every turn; after: answers, writes held (5 → 7 in the outbox).
+
+### FIX-0011 — A memory node that died mid-session stayed dead, and its writes waited forever (2026-11-25)
+- **Area:** `src-tauri/src/dkg/own_node.rs` (`watch`), `assistant/turn.rs`
+- **Symptom:** round-5 VM test: hot memory hid the dead node (turns still answered and remembered), so nothing restarted it; the outbox only flushed on the next successful write, which never came.
+- **Root cause:** restart only at launch (FIX-0009); the outbox flush rode on a successful write.
+- **Fix:** a watchdog every 20 s starts Keeper's own node if it stopped answering (single flight) and flushes the outbox once it answers; a recall failure also triggers a restart at once.
+- **Guard:** VM test; `own_node` only ever touches Keeper's own node (`is_own` test).
+- **Evidence:** node killed mid-session → back (200) within a minute, outbox 3 → 0; after a cold relaunch the graph held the facts learned while the node was down.

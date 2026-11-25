@@ -38,7 +38,15 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     phase(app, "recalling", &format!("Querying your DKG graph {}", memory.graph()));
     let (recall, memory_offline) = match memory.recall(said).await {
         Ok(r) => (r, false),
-        Err(_) => (Recall { facts: vec![], recent: vec![], traces: vec![] }, true),
+        Err(_) => {
+            // Keeper's own node went down mid-session: start it again in the background (the
+            // answer goes on without memory; this turn's writes wait in the outbox).
+            let node_home = state.settings().node_home;
+            tauri::async_runtime::spawn(async move {
+                let _ = crate::dkg::own_node::ensure_running(&node_home).await;
+            });
+            (Recall { facts: vec![], recent: vec![], traces: vec![] }, true)
+        }
     };
     let recall_ms = started.elapsed().as_millis();
 

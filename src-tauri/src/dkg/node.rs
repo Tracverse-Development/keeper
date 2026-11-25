@@ -34,9 +34,16 @@ pub fn read_token(text: &str) -> Option<String> {
     text.lines().map(str::trim).find(|l| !l.is_empty() && !l.starts_with('#')).map(str::to_string)
 }
 
-/// Read a node's location from its home folder, or None when it has no port or token.
+/// Read a node's location from its home folder, or None when it has no port or token. A
+/// stopped node has no `api.port` (the daemon removes it), so the configured `apiPort` is used:
+/// Keeper can then still answer (without memory) and queue writes until the node is back.
 pub fn locate(home: &Path) -> Option<NodeLocation> {
-    let port = std::fs::read_to_string(home.join("api.port")).ok()?.trim().parse().ok()?;
+    let running = std::fs::read_to_string(home.join("api.port")).ok().and_then(|p| p.trim().parse().ok());
+    let configured = || -> Option<u16> {
+        let config: serde_json::Value = serde_json::from_slice(&std::fs::read(home.join("config.json")).ok()?).ok()?;
+        config["apiPort"].as_u64().and_then(|p| u16::try_from(p).ok())
+    };
+    let port = running.or_else(configured)?;
     let token = read_token(&std::fs::read_to_string(home.join("auth.token")).ok()?)?;
     Some(NodeLocation { home: home.to_path_buf(), port, token })
 }
@@ -142,6 +149,17 @@ mod tests {
         assert_eq!(c["autoUpdate"]["enabled"], false);
         assert_eq!(c["auth"]["enabled"], true);
         assert_eq!(c["nodeRole"], "edge");
+    }
+
+    #[test]
+    fn a_stopped_node_is_found_by_its_configured_port() {
+        let dir = std::env::temp_dir().join(format!("keeper-locate-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("auth.token"), "# comment\nsecret\n").unwrap();
+        std::fs::write(dir.join("config.json"), r#"{"apiPort": 9210}"#).unwrap();
+        let loc = locate(&dir).expect("found without api.port");
+        assert_eq!((loc.port, loc.token.as_str()), (9210, "secret"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -14,6 +14,7 @@ Speed is judged by `scripts/bench/run.sh` (a real, isolated Keeper driven throug
 | 2 | Real-time chat + VM: Stop ends a turn, messages queue while busy; clean-Mac VM install (tart): own Node.js, node restart after reboot, Remove Keeper, honest brief | Stop in 1.5 s; VM: node installs with no Node.js present, comes back 14 s after a reboot; calendar read into the brief; 11/11 VM turns ok |
 | 3 | Scenes + face: breadcrumbs, scene strip, arrow keys; emotes, screen faces, particles, idle life; wardrobe merged | navigation click-tested (0 page errors); 60 fps held (p95 21 → 18 ms) |
 | 4 | Scale: recall window 200 → 5,000 facts (FIX-0008) | 1,000 facts: all in reach; cold 94 ms, hot 7.5 ms |
+| 5 | Robustness: node dies mid-session (FIX-0010, FIX-0011): answers go on from hot memory, writes wait in the outbox, a watchdog restarts the node and flushes | VM: 3–13 ms answers with the node down; node back within a minute; 0 writes lost |
 
 ## Decisions taken with the recommended option (founder to review after round 10)
 

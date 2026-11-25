@@ -60,6 +60,9 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 state.refresh_souls().await;
+                // Keep watching it: restart it if it stops, send what waited in the outbox.
+                let watched = app_handle.clone();
+                crate::dkg::own_node::watch(move || watched.state::<AppState>().settings().node_home);
                 // Keeper's own memory node does not survive a reboot by itself: start it (FIX-0009).
                 if let Err(e) = crate::dkg::own_node::ensure_running(&state.settings().node_home).await {
                     let _ = app_handle.emit(events::ASSISTANT_SAYS, json!({ "text": format!("I couldn't start my memory node: {e}"), "reason": "node" }));
