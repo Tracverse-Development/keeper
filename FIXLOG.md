@@ -50,3 +50,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** in rail mode the button has no padding, frame or fill and centres the badge; the badge alone shows active (gold edge, glow) and hover. The toggle is sized for the rail too.
 - **Guard:** `src/keepers/rail.test.ts`.
 - **Evidence:** headless WebKit measurement, badge left minus button left: before 7px, after 0px (all three rows); before shot reproduces the screenshot, after shows one frame.
+
+### FIX-0007 — The double-blink guard never held: a double blink could chain into a triple (2026-11-25)
+- **Area:** `src/character/blink.ts` (was `Animator.stepBlink`)
+- **Symptom:** None reported; found while extracting the blink scheduler into a pure, tested helper. About 3% of blinks became three or more in a row.
+- **Root cause:** The "no third blink" check read `pendingDoubleBlink`, which was always reset to false just before the next blink started, so every blink could draw another double.
+- **Fix:** The scheduler remembers whether the playing blink is the second of a double (`secondOfDouble`) and never draws a double from it.
+- **Guard:** `src/character/blink.test.ts` "a drawn double blink follows quickly, and never three in a row" (random fixed at 0, which always draws).
+- **Evidence:** the test failed on the extracted original logic ("a triple blink") and passes with the fix.

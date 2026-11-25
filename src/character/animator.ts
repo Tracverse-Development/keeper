@@ -18,19 +18,9 @@
  */
 import { Vector3 } from 'three';
 import type { Mood, TouchKind } from './contract';
-import {
-  BLINK_DURATION,
-  MOOD_NAMES,
-  blendInto,
-  blinkClosure,
-  clampUnit,
-  damp,
-  moodTarget,
-  motionProfile,
-  nextBlinkDelay,
-  type MoodParams,
-  type MotionProfile,
-} from './moods';
+import { BlinkScheduler } from './blink';
+import { GazeFollower } from './gaze';
+import { MOOD_NAMES, blendInto, clampUnit, damp, moodTarget, motionProfile, type MoodParams, type MotionProfile } from './moods';
 import type { PartFrame } from './parts';
 import { foldTouch, reactionEnvelope } from './reactions';
 import type { SkinSwitcher } from './skin-switcher';
@@ -46,8 +36,6 @@ import { clampWork, easeWork } from './work-level';
 const MOOD_RATE = 3.2;
 const VOICE_RATE = 14;
 const MOUTH_RATE = 24;
-const GAZE_RATE = 6;
-const POINTER_IDLE_SECONDS = 3.5;
 /** Longest frame step we animate; a longer gap (a stalled tab) is clamped, not jumped. */
 const MAX_STEP = 1 / 20;
 /** Motes that rise from the head on a pat, and on a skin swap. */
@@ -86,14 +74,8 @@ export class Animator {
   /** Reused every frame for the wardrobe (no allocation in the loop). */
   private readonly partFrame: { -readonly [K in keyof PartFrame]: PartFrame[K] };
 
-  private pointer = { x: 0, y: 0 };
-  private pointerAge = Infinity;
-  private pointerWeight = 0;
-  private gaze = { x: 0, y: 0 };
-
-  private blinkIn = nextBlinkDelay();
-  private blinkAt = -1;
-  private pendingDoubleBlink = false;
+  private readonly gaze = new GazeFollower();
+  private readonly blinks = new BlinkScheduler();
 
   private readonly touchStartedAt: Record<TouchKind, number> = { poke: -Infinity, pat: -Infinity };
   private readonly touch: Record<TouchKind, number> = { poke: 0, pat: 0 };
@@ -125,9 +107,7 @@ export class Animator {
   }
 
   lookAt(x: number, y: number): void {
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    this.pointer = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
-    this.pointerAge = 0;
+    this.gaze.point(x, y);
   }
 
   /** A memory spark from the chest into the worn halo (nothing when no halo is worn). */
@@ -141,7 +121,7 @@ export class Animator {
     this.touchStartedAt[kind] = this.time;
     const skin = this.parts.skins.active;
     skin.react(kind);
-    if (kind === 'poke' && this.blinkAt < 0) this.blinkAt = this.time;
+    if (kind === 'poke') this.blinks.blinkNow(this.time);
     if (kind === 'pat') {
       skin.touchOrigin.getWorldPosition(this.scratch);
       this.parts.touchSparkles.burst(this.scratch, this.time, PAT_SPARKLES);
@@ -175,8 +155,8 @@ export class Animator {
     const expression = foldTouch(Object.assign(this.expression, p), this.touch);
     const gotIt = gotItEnvelope(this.time - this.gotItAt) * (0.55 + 0.45 * this.motion.amplitude);
 
-    const blink = this.stepBlink(dt, p);
-    this.stepGaze(dt, p);
+    const blink = this.blinks.step(this.time, dt, p.eyeOpen);
+    this.gaze.step(dt, this.time, p, this.motion, this.headOnScreen(), this.touch);
 
     const { stage, skins, wardrobe, touchSparkles, backdrop } = this.parts;
     skins.apply({
@@ -185,7 +165,7 @@ export class Animator {
       motion: this.motion,
       mood: expression,
       weights: this.weights,
-      gaze: this.gaze,
+      gaze: this.gaze.gaze,
       blink,
       mouth: this.mouth,
       voice: this.voice,
@@ -214,68 +194,12 @@ export class Animator {
     stage.render();
   }
 
-  /** Lid closure 0..1 from the idle blink schedule (no blinking while asleep). */
-  private stepBlink(dt: number, p: MoodParams): number {
-    if (this.blinkAt >= 0) {
-      const elapsed = this.time - this.blinkAt;
-      if (elapsed < BLINK_DURATION) return blinkClosure(elapsed);
-      this.blinkAt = -1;
-      this.blinkIn = this.pendingDoubleBlink ? 0.12 : nextBlinkDelay();
-      this.pendingDoubleBlink = false;
-    }
-    this.blinkIn -= dt;
-    if (this.blinkIn <= 0 && p.eyeOpen > 0.3) {
-      this.blinkAt = this.time;
-      this.pendingDoubleBlink = !this.pendingDoubleBlink && Math.random() < 0.18;
-    }
-    return 0;
-  }
-
-  /**
-   * Eases the gaze toward the pointer (relative to the head on screen) or an idle drift.
-   * A poke turns the eyes to the viewer for a moment; a pat lowers them contentedly.
-   */
-  private stepGaze(dt: number, p: MoodParams): void {
-    this.pointerAge += dt;
-    const pointerLive = this.pointerAge < POINTER_IDLE_SECONDS ? 1 : 0;
-    this.pointerWeight = damp(this.pointerWeight, pointerLive, 2.5, dt);
-
-    const t = this.time * this.motion.speed;
-    const driftX = (Math.sin(t * 0.23) + 0.5 * Math.sin(t * 0.61 + 1.3)) / 1.5;
-    const driftY = (Math.sin(t * 0.17 + 2.1) + 0.5 * Math.sin(t * 0.53 + 0.4)) / 1.5;
-    const idleX = p.gazeX + driftX * p.gazeDrift * this.motion.amplitude;
-    const idleY = p.gazeY + driftY * p.gazeDrift * 0.6 * this.motion.amplitude;
-
-    const head = this.headOnScreen();
-    // A mood's own gaze (thinking looks up and aside) wins over the pointer as it grows.
-    const moodHold = Math.min(1, Math.hypot(p.gazeX, p.gazeY));
-    const follow = this.pointerWeight * (1 - 0.75 * moodHold);
-    const pointerX = clampSigned((this.pointer.x - head.x) * 1.4);
-    const pointerY = clampSigned((this.pointer.y - head.y) * 1.4);
-
-    let targetX = idleX + (pointerX - idleX) * follow;
-    let targetY = idleY + (pointerY - idleY) * follow;
-    const { poke, pat } = this.touch;
-    if (poke > 0) {
-      targetX -= targetX * poke;
-      targetY -= targetY * poke;
-    }
-    if (pat > 0) targetY += (-0.2 - targetY) * pat * 0.6;
-
-    this.gaze.x = damp(this.gaze.x, targetX, GAZE_RATE, dt);
-    this.gaze.y = damp(this.gaze.y, targetY, GAZE_RATE, dt);
-  }
-
   /** The gaze anchor's centre in normalised device coordinates (-1..1). */
   private headOnScreen(): { x: number; y: number } {
     this.parts.skins.active.gazeAnchor.getWorldPosition(this.headWorld);
     this.headWorld.project(this.parts.stage.camera);
     return { x: this.headWorld.x, y: this.headWorld.y };
   }
-}
-
-function clampSigned(value: number): number {
-  return Math.max(-1, Math.min(1, value));
 }
 
 function oneHot(mood: Mood): Record<Mood, number> {
