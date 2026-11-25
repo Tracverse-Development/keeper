@@ -12,6 +12,8 @@ import { nameFromFacts } from './touch-lines';
 /** How long the character celebrates after remembering or doing something. */
 export const HAPPY_MS = 1800;
 const HEALTH_EVERY_MS = 30_000;
+/** Coming back to the window looks for an update, at most this often. */
+const UPDATE_ON_FOCUS_MS = 10 * 60_000;
 
 interface Hooks {
   keeper: string | null;
@@ -60,6 +62,14 @@ export function useDashboardEvents({ keeper, assistant, onCelebrate }: Hooks) {
     });
     const offPhone = on<{ said: string; result: TurnResult }>(EVENTS.phoneTurn, (p) => assistant.record(p.said, p.result));
     const offUpdate = on<{ version: string }>(EVENTS.appUpdate, (u) => setUpdated(u.version));
+    // Back at the window: look for an update (the core installs it; `app://update` says when).
+    let lastCheck = Date.now();
+    const onFocus = () => {
+      if (Date.now() - lastCheck < UPDATE_ON_FOCUS_MS) return;
+      lastCheck = Date.now();
+      core.updateCheck().catch(() => undefined);
+    };
+    window.addEventListener('focus', onFocus);
     // The mood rule needs the time to end a celebration; a slow tick is enough.
     const tick = window.setInterval(() => setNow(Date.now()), 500);
     return () => {
@@ -68,8 +78,12 @@ export function useDashboardEvents({ keeper, assistant, onCelebrate }: Hooks) {
       offPhone();
       offUpdate();
       window.clearInterval(tick);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
-  return { node, nodeChecked, counts, personName, pulse, updated, now, refreshHealth };
+  /** The engine's display name for the working pipeline ("Claude Code"). */
+  const mindLabel = (brain?: string) => ({ claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', hermes: 'Hermes', ollama: 'a local model', reflex: 'the built-in mind' } as Record<string, string>)[brain ?? ''] ?? '';
+
+  return { node, nodeChecked, counts, personName, pulse, updated, now, refreshHealth, mindLabel };
 }

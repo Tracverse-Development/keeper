@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 export type IconName =
   | 'run' | 'edit' | 'read' | 'search' | 'web' | 'work'
   | 'open' | 'create' | 'move' | 'delete' | 'find'
-  | 'close' | 'file' | 'next' | 'check' | 'cross' | 'ask';
+  | 'close' | 'file' | 'next' | 'back' | 'check' | 'cross' | 'ask';
 
 const PATHS: Record<IconName, ReactNode> = {
   run: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="m7 9 3 3-3 3M12.5 15H17" /></>,
@@ -24,6 +24,7 @@ const PATHS: Record<IconName, ReactNode> = {
   close: <><path d="M6 6l12 12M18 6 6 18" /></>,
   file: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></>,
   next: <><path d="m9 6 6 6-6 6" /></>,
+  back: <><path d="m15 6-6 6 6 6" /></>,
   check: <><path d="m5 12.5 4.5 4.5L19 7.5" /></>,
   cross: <><path d="M7 7l10 10M17 7 7 17" /></>,
   ask: <><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z" /><path d="M10 8.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4M12 13.6v.1" /></>,

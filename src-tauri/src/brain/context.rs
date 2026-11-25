@@ -19,6 +19,15 @@ pub struct Context {
     pub now_local: String,
     /// May an agent engine act on this computer this turn?
     pub may_act: bool,
+    /// Show this answer visually on the Stage (panels), or in words?
+    pub visual: bool,
+}
+
+/// What an engine reports while it works: a tool step it took, or a Stage panel it finished
+/// writing (streamed, so it can be shown before the answer is complete).
+pub enum Progress<'a> {
+    Step(&'a str),
+    Panel(crate::stage::Panel),
 }
 
 /// Something learned about the person, written in the second person ("Your sister is Maya").

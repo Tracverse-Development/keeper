@@ -23,7 +23,7 @@ function fromTurn(id: number, t: Turn, keeper: string): Exchange {
   return { id, said: t.said, result, error: null };
 }
 
-export function useAssistant(keeper: string | null, onReply: (result: TurnResult) => void) {
+export function useAssistant(keeper: string | null, onReply: (result: TurnResult, said: string) => void) {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [chatId, setChatId] = useState('');
   const [phase, setPhase] = useState<Phase | null>(null);
@@ -61,7 +61,7 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
       const result = await core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined);
       setChatId(result.chat);
       setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
-      replyRef.current(result);
+      replyRef.current(result, said);
     } catch (e) {
       setExchanges((list) => list.map((x) => (x.id === id ? { ...x, error: sentence(e) } : x)));
     } finally {

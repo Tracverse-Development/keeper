@@ -5,6 +5,8 @@
 //! kinds and malformed panels are dropped (never shown as raw text), and every string, list and
 //! table is capped (`cap`) so one answer cannot flood the window. The window renders text only.
 
+pub mod stream;
+
 use serde::{Deserialize, Serialize};
 
 const MAX_PANELS: usize = 6;
@@ -147,6 +149,30 @@ impl Panel {
     }
 }
 
+impl Panel {
+    /// Give the panel its id (streamed panels are numbered in arrival order).
+    pub fn set_id(&mut self, new: &str) {
+        let (Panel::Text { id, .. } | Panel::Table { id, .. } | Panel::Steps { id, .. } | Panel::Formula { id, .. } | Panel::Cards { id, .. } | Panel::Quiz { id, .. } | Panel::Chart { id, .. } | Panel::Files { id, .. }) = self;
+        *id = new.to_string();
+    }
+}
+
+/// Does the person want this answer shown visually? Their own words win ("just text", "show me
+/// visually"); otherwise their setting (`default`). Matching is on whole phrases, never single
+/// common words.
+pub fn wants_visual(said: &str, default: bool) -> bool {
+    let s = said.to_lowercase();
+    let text_only = ["just text", "in text", "text only", "only text", "no panels", "plain text", "wall of text", "just tell me", "no visuals", "without visuals"];
+    let visual = ["visually", "show me", "visual", "diagram", "draw it", "draw me", "picture of", "chart", "make a table", "in a table", "on the stage", "in panels"];
+    if text_only.iter().any(|p| s.contains(p)) {
+        return false;
+    }
+    if visual.iter().any(|p| s.contains(p)) {
+        return true;
+    }
+    default
+}
+
 /// Read the engine's `panels` value: keep the valid ones (capped), drop the rest silently, at most six.
 pub fn read(raw: &serde_json::Value) -> Vec<Panel> {
     raw.as_array()
@@ -159,15 +185,19 @@ pub fn read(raw: &serde_json::Value) -> Vec<Panel> {
         .collect()
 }
 
-/// The instructions every engine gets about showing things.
-pub const RULES: &str = "SHOWING THINGS: you have a stage inside this app. When you teach, explain, compare, list, calculate or report \
+/// What engines are told when the person wants text this time.
+pub const TEXT_RULES: &str = "SHOWING THINGS: answer in words this time (\"panels\": []), unless you must report files you changed, \
+then one \"files\" panel. NEVER create HTML files, web pages or documents and NEVER open a browser just to show something.";
+
+/// The instructions every engine gets about showing things (visual mode, the default).
+pub const RULES: &str = "SHOWING THINGS: you have a stage inside this app, and the person likes to see things. When you teach, explain, compare, list, calculate or report \
 what you did, put it in \"panels\" (shown beautifully inside Keeper, clickable so the person can ask about any piece). NEVER create HTML \
 files, web pages or documents and NEVER open a browser just to show something: use panels. Panel kinds (JSON objects in the \"panels\" \
 array, at most 6): {\"kind\":\"text\",\"title\",\"body\",\"bullets\":[]}, {\"kind\":\"table\",\"title\",\"caption\",\"columns\":[],\"rows\":[[]],\"highlight\":[{\"row\":0,\"col\":0}]}, \
 {\"kind\":\"steps\",\"title\",\"steps\":[{\"label\",\"detail\",\"math\"}]}, {\"kind\":\"formula\",\"title\",\"expression\",\"parts\":[{\"symbol\",\"meaning\"}]}, \
 {\"kind\":\"cards\",\"title\",\"cards\":[{\"title\",\"body\",\"emoji\"}]}, {\"kind\":\"quiz\",\"title\",\"question\",\"choices\":[],\"answer\":0,\"explain\"}, \
 {\"kind\":\"chart\",\"title\",\"labels\":[],\"values\":[],\"unit\"}, {\"kind\":\"files\",\"title\",\"items\":[{\"action\":\"open|create|move|edit|delete|find\",\"path\",\"to\"}]}. \
-With panels, keep \"reply\" to one or two spoken sentences that point at them.";
+With panels, keep \"reply\" to one or two spoken sentences that point at them, and write \"reply\" BEFORE \"panels\" in the JSON.";
 
 #[cfg(test)]
 mod tests {
@@ -193,6 +223,14 @@ mod tests {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn the_persons_words_win_over_the_setting() {
+        assert!(!wants_visual("Explain fractions, just text please", true));
+        assert!(wants_visual("show me visually how fractions work", false));
+        assert!(wants_visual("what is a fraction", true));
+        assert!(!wants_visual("what is a fraction", false));
     }
 
     #[test]

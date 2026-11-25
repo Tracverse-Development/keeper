@@ -26,3 +26,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** keys live in Keeper's private store (0600 file in the app folder), read once and cached.
 - **Guard:** `kernel::secrets::tests::saves_reads_and_removes_privately` (0600 checked); `structure.test.ts` "no Keychain calls" (no `security-framework`, no `security add-generic-password`).
 - **Evidence:** `codesign -dr - /Applications/Keeper.app` → `designated => cdhash H"61f4…"`.
+
+### FIX-0004 — A reopened chat lost its scenes (2026-11-25)
+- **Area:** `src-tauri/src/memory/catalog.rs` (question `chat-turns`)
+- **Symptom:** caught before release by the live test: a turn's Stage panels were stored on the node, but reopening the chat returned none.
+- **Root cause:** the query read `?panels` in an `OPTIONAL` block but its `SELECT` did not list it, so the value never left the store.
+- **Fix:** `SELECT … ?panels`.
+- **Guard:** `catalog::tests::every_optional_value_is_selected`; live test `live_scenes_come_back_with_their_chat` (quotes, braces, newlines round-trip exactly).
+- **Evidence:** direct query showed the stored JSON; after the fix the live test passes.

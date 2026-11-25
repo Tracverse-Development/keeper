@@ -9,6 +9,9 @@
  * MEAN for a body is the skin's business (`skins/skin.ts`, Strategy): this class never
  * names a head shape, an ear or a visor.
  *
+ * A reply arriving after real thinking (`thinking` -> `speaking`/`happy`) starts the short
+ * "got it" flash (`thinking.ts`), handed to the skin and the parts as `gotIt`.
+ *
  * Gaze is aimed at the pointer relative to where the skin's gaze anchor (its head) is on
  * screen (projected every frame), so the eyes look AT the cursor, not at a point offset
  * by the framing. With no pointer for a few seconds the gaze drifts on its own.
@@ -36,6 +39,7 @@ import type { Backdrop } from './stage/backdrop';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
 import type { Wardrobe } from './wardrobe';
+import { gotItEnvelope, isGotIt } from './thinking';
 import { clampWork, easeWork } from './work-level';
 
 /** Easing rates (1/s): moods glide, voice and mouth follow speech closely. */
@@ -75,6 +79,10 @@ export class Animator {
   private mouth = 0;
   private workInput = 0;
   private work = 0;
+  /** When the last "got it" beat started (a reply arriving after thinking). */
+  private gotItAt = -Infinity;
+  /** The worn skin's head centre in world space, refreshed every frame for the parts. */
+  private readonly headPoint = new Vector3();
   /** Reused every frame for the wardrobe (no allocation in the loop). */
   private readonly partFrame: { -readonly [K in keyof PartFrame]: PartFrame[K] };
 
@@ -95,10 +103,11 @@ export class Animator {
 
   constructor(parts: StageParts) {
     this.parts = parts;
-    this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0 };
+    this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0, thinking: 0, gotIt: 0, head: this.headPoint };
   }
 
   setMood(mood: Mood): void {
+    if (isGotIt(this.targetMood, mood, this.weights.thinking)) this.gotItAt = this.time;
     this.target = moodTarget(mood);
     this.targetMood = mood;
   }
@@ -164,6 +173,7 @@ export class Animator {
     this.touch.poke = reactionEnvelope('poke', this.time - this.touchStartedAt.poke, timing.poke);
     this.touch.pat = reactionEnvelope('pat', this.time - this.touchStartedAt.pat, timing.pat);
     const expression = foldTouch(Object.assign(this.expression, p), this.touch);
+    const gotIt = gotItEnvelope(this.time - this.gotItAt) * (0.55 + 0.45 * this.motion.amplitude);
 
     const blink = this.stepBlink(dt, p);
     this.stepGaze(dt, p);
@@ -181,6 +191,7 @@ export class Animator {
       voice: this.voice,
       touch: this.touch,
       work: this.work,
+      gotIt,
     });
 
     const partFrame = this.partFrame;
@@ -189,6 +200,9 @@ export class Animator {
     partFrame.motion = this.motion;
     partFrame.voice = this.voice;
     partFrame.work = this.work;
+    partFrame.thinking = this.weights.thinking;
+    partFrame.gotIt = gotIt;
+    skins.active.gazeAnchor.getWorldPosition(this.headPoint);
     wardrobe.update(partFrame);
     touchSparkles.update(this.time);
     backdrop.update(this.time * this.motion.speed, p.presence);

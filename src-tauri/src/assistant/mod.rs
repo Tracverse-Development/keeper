@@ -137,9 +137,15 @@ async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &Keepe
         now_local: chrono::Local::now().format("%A %-d %B %Y, %-I:%M %p").to_string(),
         // Acting needs both: the person allows it, and the keeper's role is one that acts.
         may_act: state.settings().agent_actions && role.may_act,
+        visual: crate::stage::wants_visual(said, state.settings().visual),
     };
     phase(app, "thinking", crate::brain::engines::label(&keeper.brain));
-    let progress = |step: &str| phase(app, "acting", step);
+    let progress = |p: brain::Progress| match p {
+        brain::Progress::Step(step) => phase(app, "acting", step),
+        brain::Progress::Panel(panel) => {
+            let _ = app.emit(events::STAGE_PANEL, json!({ "keeper": keeper.id, "chat": chat, "panel": panel }));
+        }
+    };
     let (thought, mind) = brain::think(keeper, &ctx, &progress).await;
 
     let mut forgotten = Vec::new();
@@ -196,13 +202,15 @@ async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &Keepe
         }
     }
 
-    let turn = Turn::new(said, &reply, &mind.id, &at, &chat);
+    let panels = crate::stage::read(&thought.panels);
+    // The scene is kept with the turn, so reopening the chat brings its panels back.
+    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels);
     let receipt = memory.write(&turn).await;
     wrote(app, &receipt, "turn");
     writes.push(receipt);
     phase(app, "done", "");
 
-    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels: crate::stage::read(&thought.panels), steps: thought.steps, traces: recall.traces, writes, memory_offline })
+    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline })
 }
 
 /// The mind's words, then what the skills did (a skill's own sentence is the truth about it).

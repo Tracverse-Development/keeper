@@ -56,6 +56,8 @@ pub mod pred {
     pub const DUE_AT: &str = "desk:dueAt";
     pub const RETRACTS: &str = "desk:retracts";
     pub const IN_CHAT: &str = "desk:inChat";
+    /// A turn's Stage panels (its scene), as validated JSON.
+    pub const PANELS: &str = "desk:panels";
     pub const ABOUT: &str = "schema:about";
     pub const AT: &str = "prov:generatedAtTime";
     pub const BY: &str = "prov:wasAttributedTo";

@@ -58,7 +58,7 @@ pub const QUESTIONS: &[Question] = &[
     Question { id: "chats", title: "Our chats", group: "Conversations", params: &[],
         body: "SELECT ?c ?title ?at WHERE { ?c a desk:Chat ; schema:name ?title ; prov:generatedAtTime ?at } ORDER BY DESC(?at) LIMIT 100" },
     Question { id: "chat-turns", title: "One chat, start to finish", group: "Conversations", params: &[Param::Chat],
-        body: "SELECT ?t ?said ?replied ?mind ?at WHERE { ?t a desk:Turn ; desk:inChat <urn:umoja:desk:chat:{chat}> ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } } ORDER BY ?at LIMIT 300" },
+        body: "SELECT ?t ?said ?replied ?mind ?at ?panels WHERE { ?t a desk:Turn ; desk:inChat <urn:umoja:desk:chat:{chat}> ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } OPTIONAL { ?t desk:panels ?panels } } ORDER BY ?at LIMIT 300" },
     Question { id: "turns-recent", title: "What we talked about lately", group: "Conversations", params: &[Param::Days],
         body: "SELECT ?t ?said ?replied ?mind ?at WHERE { ?t a desk:Turn ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } FILTER(?at >= \"{since}\"^^xsd:dateTime) } ORDER BY DESC(?at) LIMIT 200" },
     Question { id: "turns-per-day", title: "How much we talk each day", group: "Conversations", params: &[],
@@ -169,6 +169,21 @@ mod tests {
             assert!(!s.contains('{') || !s.contains("{days}") && !s.contains("{since}") && !s.contains("{chat}"), "{} left a placeholder", q.id);
         }
         assert!(QUESTIONS.len() >= 20);
+    }
+
+    #[test]
+    fn every_optional_value_is_selected() {
+        // FIX-0004: chat-turns read ?panels in an OPTIONAL but did not SELECT it, so scenes never came back.
+        for q in QUESTIONS {
+            if q.body.contains("COUNT(") {
+                continue;
+            }
+            let select = &q.body[..q.body.find("WHERE").unwrap_or(0)];
+            for part in q.body.split("OPTIONAL {").skip(1) {
+                let var = part.split('}').next().unwrap_or("").split_whitespace().last().unwrap_or("");
+                assert!(select.contains(var), "{}: OPTIONAL {var} is never selected", q.id);
+            }
+        }
     }
 
     #[test]

@@ -2,9 +2,10 @@
  * The puppy's reaction tuning as data (shape: `skins/reactions-table.ts`). Poke, pat, hop,
  * curl and timing numbers are the ones the puppy first shipped with; `work` adds how it
  * concentrates: ears perk and twitch, the tail wags faster, the head bobs, it pants with
- * its tongue out at high work and a little sweat drop sparkles at the very top end.
+ * its tongue out at high work and a little sweat drop sparkles at the very top end. `think`
+ * tunes the thinking drama (puzzled tilt, ear twitches, tail sweeps, sniffs, "got it").
  */
-import type { PatTuning, PokeTuning, ReactionTable, SleepTuning, WorkTuning } from '../reactions-table';
+import type { PatTuning, PokeTuning, ReactionTable, SleepTuning, ThinkTuning, WorkTuning } from '../reactions-table';
 
 export interface PuppyPokeTuning extends PokeTuning {
   readonly earPop: number;
@@ -35,6 +36,24 @@ export interface PuppyWorkTuning extends WorkTuning {
   readonly sweatFrom: number;
 }
 
+/** Thinking drama: the puzzled tilt, alternating ear twitches, slow tail sweeps, sniffing, "got it". */
+export interface PuppyThinkTuning extends ThinkTuning {
+  /** Side-to-side head tilt (rad) and the seconds of one full left-right cycle. */
+  readonly tilt: number;
+  readonly tiltSeconds: number;
+  /** Ear twitch strength and the seconds between twitches of one ear (the other is half a cycle later). */
+  readonly earTwitch: number;
+  readonly earTwitchSeconds: number;
+  /** A slow thoughtful tail sweep (rad) at `tailSweepSpeed` rad/s. */
+  readonly tailSweep: number;
+  readonly tailSweepSpeed: number;
+  /** Seconds between bursts of three sniffs. */
+  readonly sniffSeconds: number;
+  /** The "got it" beat: eye sparkle boost and an ear pop. */
+  readonly gotItSparkle: number;
+  readonly gotItEars: number;
+}
+
 export interface PuppySleepTuning extends SleepTuning {
   /** How far the curled head drops and comes forward. */
   readonly headDrop: number;
@@ -44,6 +63,7 @@ export interface PuppySleepTuning extends SleepTuning {
 export interface PuppyReactions extends ReactionTable {
   readonly poke: PuppyPokeTuning;
   readonly pat: PuppyPatTuning;
+  readonly think: PuppyThinkTuning;
   readonly work: PuppyWorkTuning;
   readonly sleep: PuppySleepTuning;
 }
@@ -64,7 +84,18 @@ export const PUPPY_REACTIONS: PuppyReactions = {
     earFlop: 0.45,
     earBack: 0.75,
   },
-  think: { workBoost: 0.35 },
+  think: {
+    workBoost: 0.35,
+    tilt: 0.24,
+    tiltSeconds: 3.4,
+    earTwitch: 1,
+    earTwitchSeconds: 1.5,
+    tailSweep: 0.32,
+    tailSweepSpeed: 1.9,
+    sniffSeconds: 1.9,
+    gotItSparkle: 1.5,
+    gotItEars: 0.7,
+  },
   work: {
     vibration: 0,
     vibrationSpeed: 0,

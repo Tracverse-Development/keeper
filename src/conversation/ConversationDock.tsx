@@ -18,6 +18,8 @@ interface Props {
   assistantName: string;
   /** Show the whole chat (opened from the keepers panel), not just the last few exchanges. */
   full: boolean;
+  /** Beside the stage: only the latest exchange, so nothing covers the character. */
+  compact?: boolean;
   onSend: (text: string) => void;
   onMic: () => void;
   onStop: () => void;
@@ -27,7 +29,7 @@ export function ConversationDock(p: Props) {
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const shown = p.full ? p.exchanges : p.exchanges.slice(-3);
+  const shown = p.full ? p.exchanges : p.exchanges.slice(p.compact ? -1 : -3);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });

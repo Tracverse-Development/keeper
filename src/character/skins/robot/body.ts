@@ -15,7 +15,8 @@
  *
  * Lights are set together (`setLights`): the ear glow follows the microphone, presence dims
  * the whole being asleep, and heat (work) warms the heart-light toward amber and makes the
- * visor's gold rim glow. With heat 0 everything is exactly as it shipped.
+ * visor's gold rim glow; `beat` (the thinking heartbeat, 0..1+) flashes the heart-light on
+ * top. With heat and beat 0 everything is exactly as it shipped.
  */
 import {
   CircleGeometry,
@@ -66,9 +67,10 @@ export interface Body {
   /**
    * Ear glow 0..1 (the microphone level), overall light 0..1 (asleep dims it) and heat
    * 0..1 (work warms the heart-light toward amber, `heartBoost` times brighter at full heat,
-   * and lights the visor rim), all already eased.
+   * and lights the visor rim), all already eased; `beat` multiplies the heart-light by
+   * `1 + beat` (the thinking heartbeat and the "got it" flash; 0 = no change).
    */
-  setLights(earGlow: number, presence: number, heat: number, heartBoost: number): void;
+  setLights(earGlow: number, presence: number, heat: number, heartBoost: number, beat?: number): void;
   dispose(): void;
 }
 
@@ -169,9 +171,9 @@ export function createBody(): Body {
   const baseRim = earGlowMaterial.emissiveIntensity;
   const heartRest = heartMaterial.emissive.clone();
   const heartHot = new Color(PALETTE.heatAmber);
-  const applyLight = (earGlow: number, presence: number, heat: number, heartBoost: number): void => {
+  const applyLight = (earGlow: number, presence: number, heat: number, heartBoost: number, beat = 0): void => {
     earGlowMaterial.emissiveIntensity = (baseRim + earGlow * 2.6) * presence;
-    heartMaterial.emissiveIntensity = (1 + 2.2 * presence) * (0.85 + earGlow * 0.6) * (1 + heartBoost * heat);
+    heartMaterial.emissiveIntensity = (1 + 2.2 * presence) * (0.85 + earGlow * 0.6) * (1 + heartBoost * heat) * (1 + beat);
     heartMaterial.emissive.copy(heartRest).lerp(heartHot, heat);
     rimGold.emissiveIntensity = RIM_HEAT * heat * presence;
     navyGloss.sheen = 0.2 + 0.5 * presence;

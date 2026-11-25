@@ -32,7 +32,7 @@ Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [
         now = ctx.now_local,
         skills = skills::catalogue(),
         acting = if ctx.may_act { ACTING } else { NOT_ACTING },
-        stage = crate::stage::RULES,
+        stage = if ctx.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES },
     )
 }
 

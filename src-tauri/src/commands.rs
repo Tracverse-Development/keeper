@@ -29,6 +29,7 @@ pub struct SettingsChange {
     pub always_listening: Option<bool>,
     pub wake_word: Option<bool>,
     pub talk_shortcut: Option<String>,
+    pub visual: Option<bool>,
     pub auto_update: Option<bool>,
 }
 
@@ -63,6 +64,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         }
         if let Some(t) = change.talk_shortcut {
             s.talk_shortcut = t;
+        }
+        if let Some(v) = change.visual {
+            s.visual = v;
         }
         if let Some(u) = change.auto_update {
             s.auto_update = u;

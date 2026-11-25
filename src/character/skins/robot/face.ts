@@ -7,6 +7,9 @@
  * Gaze slides the eye shapes across the glass inside their quads, so the eyes move
  * like light under the visor rather than like objects stuck on it. While the robot works
  * the glyphs shift from warm cream toward electric cyan (`cool`), then hot amber (`hot`).
+ * While it thinks (`scan` 0..1) the eyes narrow and widen into two processing bars, go cyan,
+ * pulse alternately and carry one scan bar that sweeps through both (`scanX` -1..1 across the
+ * pair); `scan` 0 leaves every uniform exactly as before.
  */
 import { Color, Group, Mesh, Vector2 } from 'three';
 import { disposeTree } from '../../dispose-tree';
@@ -30,6 +33,10 @@ export interface FaceState {
   /** Working tint 0..1: toward cyan (`cool`), then amber over it (`hot`). 0 = the warm face. */
   cool: number;
   hot: number;
+  /** Thinking display 0..1, the scan bar's place across both eyes -1..1, and its clock (s). */
+  scan: number;
+  scanX: number;
+  scanTime: number;
 }
 
 /** The glyph colours at rest, working and hot (core, edge). */
@@ -42,6 +49,10 @@ const EYE_SPACING = 0.3;
 const EYE_Y = 0.08;
 const EYE_MARGIN = 0.15;
 const GAZE_TRAVEL = new Vector2(0.075, 0.055);
+/** Thinking eyes: lid opening of the processing bar, extra width, and pulse rate (rad/s). */
+const SCAN_OPEN = 0.3;
+const SCAN_WIDEN = 0.22;
+const SCAN_PULSE_RATE = 7;
 
 const MOUTH_HALF = new Vector2(0.1, 0.016);
 const MOUTH_Y = -0.2;
@@ -60,7 +71,8 @@ export function createFace(): Face {
   group.name = 'face';
 
   const eyeQuad = new Vector2(EYE_HALF.x + EYE_MARGIN, EYE_HALF.y + EYE_MARGIN).multiplyScalar(2);
-  const eyes: GlyphMaterial[] = [-1, 1].map((side) => {
+  const sides = [-1, 1] as const;
+  const eyes: GlyphMaterial[] = sides.map((side) => {
     const material = createGlyphMaterial({ quad: eyeQuad, half: EYE_HALF, line: 0.016, glowWidth: 0.045 });
     const mesh = new Mesh(curvedQuad(eyeQuad.x, eyeQuad.y, side * EYE_SPACING, EYE_Y, FACE_INFLATE), material);
     mesh.renderOrder = 2;
@@ -78,17 +90,28 @@ export function createFace(): Face {
   function update(state: FaceState): void {
     const shiftX = state.gazeX * GAZE_TRAVEL.x;
     const shiftY = state.gazeY * GAZE_TRAVEL.y;
+    const scan = state.scan;
+    // Thinking reads data in cyan whatever the work level; amber heat still shows, halved.
+    const cool = scan > 0 ? Math.max(state.cool, scan) : state.cool;
+    const hot = scan > 0 ? state.hot * (1 - 0.5 * scan) : state.hot;
     for (const glyph of glyphs) {
-      glyph.uniforms.uCore.value.copy(REST.core).lerp(COOL.core, state.cool).lerp(HOT.core, state.hot);
-      glyph.uniforms.uEdge.value.copy(REST.edge).lerp(COOL.edge, state.cool).lerp(HOT.edge, state.hot);
+      glyph.uniforms.uCore.value.copy(REST.core).lerp(COOL.core, cool).lerp(HOT.core, hot);
+      glyph.uniforms.uEdge.value.copy(REST.edge).lerp(COOL.edge, cool).lerp(HOT.edge, hot);
     }
-    for (const eye of eyes) {
-      const u = eye.uniforms;
-      u.uOpen.value = Math.max(state.eyeOpen, 0);
+    const barX = state.scanX * (EYE_SPACING + EYE_HALF.x);
+    for (let i = 0; i < eyes.length; i++) {
+      const u = eyes[i].uniforms;
+      const open = Math.max(state.eyeOpen, 0);
+      u.uOpen.value = scan > 0 ? open + (Math.min(open, SCAN_OPEN) - open) * scan : open;
+      u.uHalf.value.set(EYE_HALF.x * (1 + SCAN_WIDEN * scan), EYE_HALF.y);
       u.uSquint.value = state.squint;
-      u.uBend.value = state.eyeBend;
+      u.uBend.value = state.eyeBend * (1 - scan);
       u.uGlow.value = state.glow;
       u.uShift.value.set(shiftX, shiftY);
+      u.uScan.value = scan;
+      u.uScanX.value = barX - sides[i] * EYE_SPACING;
+      u.uScanPulse.value = 1 + 0.45 * Math.sin(state.scanTime * SCAN_PULSE_RATE + (sides[i] * Math.PI) / 2);
+      u.uScanTime.value = state.scanTime;
     }
 
     const m = mouth.uniforms;

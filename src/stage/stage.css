@@ -129,3 +129,32 @@
   .panel-card.is-leaving { animation: panel-out 1ms both !important; }
   .panel-sheen, .act.is-latest::after { display: none; }
 }
+
+/* ---------- scenes (one per answer that showed panels) ---------- */
+.scene-nav { position: relative; display: flex; align-items: center; gap: 4px; margin-left: auto; margin-right: 8px; pointer-events: auto; }
+.scene-step { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--cream-100);
+  display: grid; place-items: center; cursor: pointer; transition: border-color 200ms var(--ease), opacity 200ms var(--ease); }
+.scene-step:hover:not(:disabled) { border-color: var(--border-strong); color: var(--gold-300); }
+.scene-step:disabled { opacity: 0.3; cursor: default; }
+.scene-title { display: flex; align-items: center; gap: 10px; max-width: 340px; height: 30px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(7, 10, 22, 0.55); color: var(--text); cursor: pointer; }
+.scene-title:hover { border-color: var(--border-strong); }
+.scene-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.scene-count { font-size: 11px; color: var(--gold-300); font-variant-numeric: tabular-nums; flex: none; }
+.scene-list { position: absolute; top: 38px; right: 34px; z-index: 5; list-style: none; margin: 0; padding: 6px; min-width: 260px; max-height: 50vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px; animation: fade-up 260ms var(--ease) both; }
+.scene-list button { width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+.scene-list button:hover { background: var(--surface); }
+.scene-list button.is-on { background: var(--accent-soft); color: var(--gold-300); }
+.scene-index { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; margin-right: 6px; font-size: 11px; background: var(--surface); }
+
+/* ---------- the working pipeline (no tool steps yet) ---------- */
+.pipeline { list-style: none; margin: 10px 0 2px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.pipeline li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); transition: color 300ms var(--ease); }
+.pipe-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--navy-500); transition: all 300ms var(--ease); }
+.pipeline li.is-done { color: var(--cream-300); }
+.pipeline li.is-done .pipe-dot { background: var(--gold-500); }
+.pipeline li.is-now { color: var(--gold-300); }
+.pipeline li.is-now .pipe-dot { background: var(--gold-300); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 14px var(--gold-400); animation: pipe-pulse 1.1s ease-in-out infinite; }
+@keyframes pipe-pulse { 50% { transform: scale(1.35); } }
+@media (prefers-reduced-motion: reduce) { .pipeline li.is-now .pipe-dot { animation: none; } }

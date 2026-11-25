@@ -112,6 +112,8 @@ export interface Settings {
   alwaysListening: boolean;
   wakeWord: boolean;
   talkShortcut: string;
+  /** Answer visually on the Stage by default. */
+  visual: boolean;
   autoUpdate: boolean;
 }
 
@@ -227,6 +229,8 @@ export interface Turn {
   mind: string;
   at: string;
   chat: string;
+  /** The Stage panels this turn showed (its scene). */
+  panels?: Panel[];
 }
 
 export interface ActionRecord {
@@ -309,7 +313,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 

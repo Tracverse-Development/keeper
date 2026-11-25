@@ -19,6 +19,7 @@ export const EVENTS = {
   phoneTurn: 'phone://turn',
   appUpdate: 'app://update',
   assistantReply: 'assistant://reply',
+  stagePanel: 'stage://panel',
 } as const;
 
 export type * from './ipc-types';

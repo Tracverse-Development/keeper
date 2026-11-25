@@ -10,13 +10,17 @@
  * (inertia + gravity), so they feel soft. A poke jolts it and pops the ears up; a pat
  * leans the head into the hand, flops the ears back and sets the tail going. Work makes
  * it concentrate: ears perk and twitch, the tail goes faster, the head bobs, it pants at
- * high work and a sweat drop beads at the very top. Every amplitude and timing is data
- * (`reactions.ts`); at zero touch and zero work every number is what it shipped with.
+ * high work and a sweat drop beads at the very top. Thinking (drama from `thinking.ts`) adds a
+ * puzzled side-to-side head tilt, alternating ear twitches, slow tail sweeps, a sniffing nose
+ * and a looping thought bubble (`puppy-thinking.ts`); a reply arriving makes the eyes sparkle
+ * and the ears pop ("got it"). Every amplitude and timing is data (`reactions.ts`); at zero
+ * touch, zero work and no thinking every number is what it shipped with.
  */
 import { Group, Object3D } from 'three';
 import type { TouchKind } from '../../contract';
 import { disposeTree } from '../../dispose-tree';
 import { damp } from '../../moods';
+import { cyclePhase, holdWave, sniff, thinkDrama, twitch } from '../../thinking';
 import { band, effectiveWork } from '../../work-level';
 import { addSlotAnchors } from '../anchors';
 import { slotsOf } from '../catalog';
@@ -27,6 +31,7 @@ import { addPuppyHead } from './puppy-head';
 import { createPuppyKit } from './puppy-kit';
 import { blendPuppyDials, puppyDials } from './puppy-moods';
 import { addPuppySweat } from './puppy-sweat';
+import { addPuppyThinking } from './puppy-thinking';
 import { PUPPY_REACTIONS as R } from './reactions';
 
 /** Head centre height (world units). */
@@ -45,6 +50,7 @@ export function createPuppySkin(): Skin {
   const face = addPuppyHead(body, kit, HEAD_Y);
   const head = face.head;
   const sweat = addPuppySweat(head, kit);
+  const bubble = addPuppyThinking(body);
   const slots = addSlotAnchors(root, slotsOf('puppy'));
 
   const headProxy = addHitProxy(head, { radii: [1.06, 0.9, 0.95], centre: [0, 0, 0.05] });
@@ -68,6 +74,8 @@ export function createPuppySkin(): Skin {
     const { poke, pat } = frame.touch;
     const w = effectiveWork(frame.work, frame.weights.thinking, R.think.workBoost);
     const pant = band(w, R.work.pantFrom, R.work.pantTo);
+    const T = R.think;
+    const drama = thinkDrama(frame.weights.thinking, frame.work);
 
     // Breathing lives in the chest; the whole puppy bobs less than the floating robot.
     const breath = Math.sin(t * Math.PI * 2 * p.bobSpeed);
@@ -88,6 +96,7 @@ export function createPuppySkin(): Skin {
       d.headTilt +
       d.curl * 0.14 +
       leanSide * R.pat.headRoll * pat;
+    if (drama > 0) head.rotation.z += drama * a * T.tilt * holdWave(cyclePhase(t, T.tiltSeconds));
     head.position.y = HEAD_Y - d.curl * R.sleep.headDrop;
     head.position.z = d.curl * R.sleep.headForward;
 
@@ -96,32 +105,47 @@ export function createPuppySkin(): Skin {
       squint: p.squint,
       gazeX: frame.gaze.x,
       gazeY: frame.gaze.y,
-      sparkle: p.presence,
+      sparkle: p.presence * (1 + T.gotItSparkle * frame.gotIt),
     });
     const panting = pant * (0.42 + 0.2 * Math.sin(t * Math.PI * 2 * R.work.pantSpeed) * a);
     face.setMouth(
       Math.max(d.mouthOpen * (1 - d.curl), frame.mouth, R.pat.mouth * pat, panting),
       Math.max(d.tongue, R.pat.tongue * pat, pant),
     );
-    poseEars(frame, d.earPerk + R.poke.earPop * poke + 0.25 * frame.voice + R.work.earPerk * w, d.earTwitch, R.work.earTwitch * w, pat, t);
+    const perk = d.earPerk + R.poke.earPop * poke + 0.25 * frame.voice + R.work.earPerk * w + T.gotItEars * frame.gotIt;
+    const flickLeft = drama * T.earTwitch * twitch(cyclePhase(t, T.earTwitchSeconds));
+    const flickRight = drama * T.earTwitch * twitch(cyclePhase(t + T.earTwitchSeconds / 2, T.earTwitchSeconds));
+    poseEars(frame, perk, d.earTwitch, R.work.earTwitch * w, pat, t, flickLeft, flickRight);
+    face.sniff(drama * sniff(cyclePhase(t, T.sniffSeconds)));
 
     const tailSpeed = d.tailSpeed + R.pat.tailSpeed * pat + R.poke.tailSpeed * poke + R.work.tailSpeed * w;
     tailPhase += frame.dt * Math.PI * 2 * tailSpeed * frame.motion.speed;
-    const wag = Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w) * a;
+    const sweep = drama > 0 ? drama * T.tailSweep * Math.sin(t * T.tailSweepSpeed) : 0;
+    const wag = (Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w) + sweep) * a;
     parts.tail.rotation.set(0.15 + d.curl * 0.5, wag * 0.35, -0.38 - d.curl * 0.7 + wag);
 
     parts.tag.rotation.x = Math.sin(t * 1.1 + 0.4) * 0.05 * a - body.rotation.x * 0.6 + R.poke.tagSwing * poke;
     parts.tag.rotation.z = Math.sin(t * 0.9) * 0.07 * a - body.rotation.z;
     kit.materials.tagGlow.color.copy(tagColour).multiplyScalar((0.45 + 0.55 * p.presence) * (1 + frame.voice * 0.6));
     sweat.update(band(w, R.work.sweatFrom, 1), frame.time, frame.motion.speed);
+    bubble.update(drama, t);
   }
 
   /**
    * Ears: perk/droop, a pat flops them back, they trail the head's tilt (inertia + gravity).
    * `twitch` flicks one ear now and then (thinking); `busyTwitch` adds quicker flicks of both
-   * ears while working.
+   * ears while working; `flickLeft`/`flickRight` are the thinking twitches, one ear then the other.
    */
-  function poseEars(frame: SkinFrame, perk: number, twitch: number, busyTwitch: number, pat: number, t: number): void {
+  function poseEars(
+    frame: SkinFrame,
+    perk: number,
+    twitch: number,
+    busyTwitch: number,
+    pat: number,
+    t: number,
+    flickLeft: number,
+    flickRight: number,
+  ): void {
     headLag = damp(headLag, head.rotation.z, 5, frame.dt);
     const hang = -0.45 * head.rotation.z - 0.7 * (head.rotation.z - headLag);
     const out = Math.max(EAR_REST + EAR_PERK * perk, 0.12) * (1 - R.pat.earFlop * pat);
@@ -130,8 +154,8 @@ export function createPuppySkin(): Skin {
     const busy = busyTwitch > 0 ? busyTwitch * Math.max(0, Math.sin(t * 5.3 + 0.6)) ** 10 * 0.5 : 0;
     const flick = twitch * Math.max(0, Math.sin(t * 2.3)) ** 12 + busy;
     face.setEars(
-      { out: out - hang + sway, back },
-      { out: out + hang - sway + 0.4 * flick, back: back - 0.25 * flick },
+      { out: out - hang + sway + 0.4 * flickLeft, back: back - 0.25 * flickLeft },
+      { out: out + hang - sway + 0.4 * (flick + flickRight), back: back - 0.25 * (flick + flickRight) },
     );
   }
 
@@ -148,6 +172,7 @@ export function createPuppySkin(): Skin {
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
+    setPointScale: (scale) => bubble.setPointScale(scale),
     dispose: () => disposeTree(root),
   };
 }

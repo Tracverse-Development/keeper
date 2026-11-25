@@ -19,3 +19,5 @@ pub const PHONE_TURN: &str = "phone://turn";
 pub const APP_UPDATE: &str = "app://update";
 /// A turn finished (the talk window shows the reply).
 pub const ASSISTANT_REPLY: &str = "assistant://reply";
+/// A Stage panel the engine just finished writing (streamed before the answer is complete).
+pub const STAGE_PANEL: &str = "stage://panel";

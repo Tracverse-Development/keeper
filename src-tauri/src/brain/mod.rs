@@ -10,7 +10,7 @@ pub mod reflex;
 
 use serde::Serialize;
 
-pub use context::{AgentStep, Context, Thought};
+pub use context::{AgentStep, Context, Progress, Thought};
 use crate::kernel::settings::KeeperProfile;
 use engines::Place;
 
@@ -26,7 +26,7 @@ pub struct MindUsed {
 }
 
 /// Think with the keeper's engine and model. `progress` hears what an agent is doing as it does it.
-pub async fn think(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(&str) + Sync)) -> (Thought, MindUsed) {
+pub async fn think(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(Progress) + Sync)) -> (Thought, MindUsed) {
     let id = keeper.brain.as_str();
     let model = keeper.model.as_str();
     let attempt = match id {

@@ -64,11 +64,19 @@ pub struct Turn {
     pub at: String,
     /// The chat this turn belongs to ("" for turns from before chats existed).
     pub chat: String,
+    /// The Stage panels this turn showed (its scene), validated.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub panels: Vec<crate::stage::Panel>,
 }
 
 impl Turn {
     pub fn new(said: &str, replied: &str, mind: &str, at: &str, chat: &str) -> Turn {
-        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into(), chat: chat.into() }
+        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into(), chat: chat.into(), panels: vec![] }
+    }
+
+    pub fn with_panels(mut self, panels: &[crate::stage::Panel]) -> Turn {
+        self.panels = panels.to_vec();
+        self
     }
     pub fn iri(&self) -> String {
         entity("turn", &self.id)
@@ -89,6 +97,7 @@ impl Record for Turn {
             .link(pred::BY, ASSISTANT)
             .time(pred::AT, &self.at);
         let b = if self.chat.is_empty() { b } else { b.link(pred::IN_CHAT, &entity("chat", &self.chat)) };
+        let b = if self.panels.is_empty() { b } else { b.text(pred::PANELS, &serde_json::to_string(&self.panels).unwrap_or_default()) };
         b.build()
     }
 }

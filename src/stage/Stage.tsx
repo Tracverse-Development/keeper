@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityPanel } from './ActivityPanel.tsx';
 import { Icon } from './icons.tsx';
 import { PanelCard } from './PanelCard.tsx';
+import { SceneNav, type SceneTab } from './SceneNav.tsx';
 import type { Panel, PanelFocus } from './panel-spec.ts';
 import './stage.css';
 
@@ -22,6 +23,13 @@ export interface StageProps {
   onFocus: (f: PanelFocus) => void;
   onClose: () => void;
   keeperName: string;
+  /** The chat's scenes (one per answer that showed panels) and the one on screen. */
+  scenes: SceneTab[];
+  current: number;
+  onScene: (index: number) => void;
+  /** The turn's phase and engine name, for the working pipeline. */
+  phase?: string | null;
+  mind?: string;
 }
 
 /** Whether a panel takes the full width of the stage grid (the rest pair up two by two). */
@@ -30,7 +38,7 @@ function isWide(panel: Panel): boolean {
   return panel.kind === 'table' || panel.kind === 'steps' || panel.kind === 'files' || panel.kind === 'text' || panel.kind === 'chart';
 }
 
-export function Stage({ panels, activity, working, onFocus, onClose, keeperName }: StageProps) {
+export function Stage({ panels, activity, working, onFocus, onClose, keeperName, scenes, current, onScene, phase, mind }: StageProps) {
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -57,12 +65,13 @@ export function Stage({ panels, activity, working, onFocus, onClose, keeperName 
     <aside className="stage-area" aria-label={`${keeperName}'s stage`}>
       <header className="stage-head">
         <p className="eyebrow">{keeperName} is showing you</p>
+        <SceneNav scenes={scenes} current={current} onScene={onScene} />
         <button type="button" className="pill pill-button stage-dismiss" onClick={onClose}>
           <Icon name="close" size={13} /> Close
         </button>
       </header>
       <div className="stage-scroll" ref={scroller}>
-        {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} />}
+        {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} phase={phase} mind={mind} />}
         <div className="stage-grid">
           {visible.map((panel, i) => (
             <PanelCard key={panel.id} panel={panel} index={i} wide={isWide(panel)} onFocus={onFocus} onClose={closePanel} />

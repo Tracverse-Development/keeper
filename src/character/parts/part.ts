@@ -22,6 +22,12 @@ export interface PartFrame {
   readonly voice: number;
   /** The eased work level 0..1. */
   readonly work: number;
+  /** How much of the thinking mood is showing 0..1 (eased), for the thinking drama. */
+  readonly thinking: number;
+  /** The "got it" flash 0..1 as a reply arrives after thinking; 0 otherwise. */
+  readonly gotIt: number;
+  /** The worn species' head centre in world space (thinking sparks stream into it). */
+  readonly head: Readonly<Vector3>;
 }
 
 /**

@@ -23,6 +23,8 @@ const JAW_HINGE = [0, -0.33, 0.52] as const;
 /** Largest jaw opening (radians) and how far the tongue slides out at full `tongue`. */
 const JAW_MAX = 0.42;
 const TONGUE_REACH = 0.11;
+const NOSE_RADII = [0.12, 0.08, 0.09] as const;
+const NOSE_AT = [0, -0.07, 0.9] as const;
 
 /** One ear's pose: swing out from the head, flop back, and droop forward (radians). */
 export interface EarPose {
@@ -37,6 +39,8 @@ export interface PuppyHead {
   setMouth(open: number, tongue: number): void;
   /** Ear poses, left (-x) then right (+x). */
   setEars(left: EarPose, right: EarPose): void;
+  /** A sniff 0..1: the nose twitches up and puffs wider (0 = the nose at rest, exactly). */
+  sniff(amount: number): void;
 }
 
 export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): PuppyHead {
@@ -50,7 +54,7 @@ export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): 
   kit.blob(head, m.cream, [0.17, 0.4, 0.12], [0, 0.14, 0.67]); // blaze between the eyes
   for (const side of [-1, 1]) kit.blob(head, m.cream, [0.25, 0.2, 0.24], [side * 0.19, -0.27, 0.56]); // cheeks
   kit.blob(head, m.cream, [0.3, 0.2, 0.27], [0, -0.2, 0.64]); // muzzle
-  kit.blob(head, m.nose, [0.12, 0.08, 0.09], [0, -0.07, 0.9]);
+  const nose = kit.blob(head, m.nose, NOSE_RADII, NOSE_AT);
   kit.blob(head, m.mouth, [0.16, 0.09, 0.16], [0, -0.34, 0.6]); // inside of the mouth
 
   const jaw = new Group();
@@ -77,6 +81,10 @@ export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): 
     setEars(left, right) {
       ears[0].rotation.set(left.back, 0, -left.out);
       ears[1].rotation.set(right.back, 0, right.out);
+    },
+    sniff(amount) {
+      nose.scale.set(NOSE_RADII[0] * (1 + 0.12 * amount), NOSE_RADII[1] * (1 - 0.1 * amount), NOSE_RADII[2]);
+      nose.position.y = NOSE_AT[1] + 0.012 * amount;
     },
   };
 }

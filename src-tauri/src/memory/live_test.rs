@@ -22,7 +22,7 @@ async fn live_remember_recall_forget() {
     let memory = live_memory().await;
     let stamp = time::now_iso();
     let said = format!("I love sorrel with ginger {stamp}");
-    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false };
+    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false, visual: true };
     let thought = reflex::think(&ctx);
     assert_eq!(thought.remember.len(), 1, "the reflex mind learns the statement");
 
@@ -81,4 +81,22 @@ async fn live_every_catalog_question_runs_and_chats_link() {
         let (rows, trace) = result.unwrap();
         println!("{:<20} {:>3} rows {:>4} ms", q.id, rows.len(), trace.ms);
     }
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_scenes_come_back_with_their_chat() {
+    let memory = live_memory().await;
+    let stamp = time::now_iso();
+    let chat = Chat::start(&format!("Math {stamp}"), &stamp);
+    assert!(!memory.write(&chat).await.queued);
+    let panels = crate::stage::read(&serde_json::json!([
+        {"kind": "table", "title": "Times \"table\" {x}", "columns": ["x", "1"], "rows": [["1", 1]], "highlight": [{"row": 0, "col": 1}]},
+        {"kind": "steps", "title": "Solve 2x + 4 = 10", "steps": [{"label": "Subtract 4\nfrom both sides", "math": "2x = 6"}]}
+    ]));
+    let turn = Turn::new("teach me", "Here you go.", "claude", &stamp, &chat.id).with_panels(&panels);
+    assert!(!memory.write(&turn).await.queued);
+    let back = memory.chat_turns(&chat.id).await.unwrap();
+    let t = back.iter().find(|t| t.id == turn.id).expect("the turn");
+    assert_eq!(t.panels, panels, "the scene comes back exactly, quotes, braces and newlines included");
 }

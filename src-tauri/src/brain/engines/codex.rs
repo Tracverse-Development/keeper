@@ -5,7 +5,7 @@
 use serde_json::Value;
 
 use super::cli::{self, ACT_TIMEOUT, CHAT_TIMEOUT};
-use crate::brain::context::{AgentStep, Context, Thought};
+use crate::brain::context::{AgentStep, Context, Progress, Thought};
 use crate::brain::prompt;
 use crate::kernel::{DeskError, Result};
 
@@ -46,13 +46,13 @@ pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, message: &mut Option<St
     }
 }
 
-pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(&str) + Sync)) -> Result<Thought> {
+pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sync)) -> Result<Thought> {
     let program = cli::program("codex").ok_or_else(|| DeskError::Brain("Codex is not installed".into()))?;
     let (mut steps, mut message, mut error) = (Vec::new(), None, None);
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
     cli::run(&program, &args(ctx, model), &cli::workdir(ctx.may_act), timeout, |line| {
         if let Some(step) = read_line(line, &mut steps, &mut message, &mut error) {
-            progress(&step);
+            progress(Progress::Step(&step));
         }
     })
     .await?;

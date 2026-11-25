@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, type KitCatalog, type Settings, type SettingsChange } from '../kernel/ipc';
 import { OutfitSection } from '../keepers/OutfitSection';
 import { ShareSection } from '../keepers/ShareSection';
+import { ShowingSection } from './ShowingSection';
 import { SoulSection } from '../keepers/SoulSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
@@ -89,6 +90,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClo
             </span>
           </span>
         </label>
+
+        <p className="eyebrow">Showing things</p>
+        <ShowingSection visual={settings.visual} save={save} />
 
         <p className="eyebrow">Voice</p>
         {open && <VoiceSection settings={settings} name={keeper.name} save={save} />}

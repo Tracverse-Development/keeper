@@ -14,6 +14,31 @@ interface Props {
   activity: { tool: string; detail: string }[];
   working: boolean;
   keeperName: string;
+  /** The turn's phase and the engine's name, shown as a pipeline while there are no tool steps. */
+  phase?: string | null;
+  mind?: string;
+}
+
+/** The turn's stages, in order (recalling from the DKG → thinking → showing → remembering). */
+const STAGES: { phase: string; words: (mind: string) => string }[] = [
+  { phase: 'recalling', words: () => 'Recalling from your DKG' },
+  { phase: 'thinking', words: (mind) => (mind ? `Thinking with ${mind}` : 'Thinking') },
+  { phase: 'acting', words: () => 'Working on it' },
+  { phase: 'remembering', words: () => 'Writing to memory' },
+];
+
+function Pipeline({ phase, mind }: { phase: string; mind: string }) {
+  const at = Math.max(0, STAGES.findIndex((s) => s.phase === phase));
+  return (
+    <ol className="pipeline">
+      {STAGES.map((s, i) => (
+        <li key={s.phase} className={i < at ? 'is-done' : i === at ? 'is-now' : ''}>
+          <span className="pipe-dot" aria-hidden="true" />
+          {s.words(mind)}
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 function Detail({ detail }: { detail: string }) {
@@ -23,7 +48,7 @@ function Detail({ detail }: { detail: string }) {
   return detail ? <span className="act-chip mono" title={detail}>{detail}</span> : null;
 }
 
-export function ActivityPanel({ activity, working, keeperName }: Props) {
+export function ActivityPanel({ activity, working, keeperName, phase, mind = '' }: Props) {
   const start = Math.max(0, activity.length - SHOWN);
   const shown = activity.slice(start);
   return (
@@ -31,8 +56,9 @@ export function ActivityPanel({ activity, working, keeperName }: Props) {
       <header className="activity-head">
         {working ? <span className="spinner" aria-hidden="true" /> : <span className="dot ok" aria-hidden="true" />}
         <span className="activity-title">{working ? `${keeperName} is working` : `${keeperName} finished`}</span>
-        <span className="activity-count">{activity.length} {activity.length === 1 ? 'step' : 'steps'}</span>
+        {activity.length > 0 && <span className="activity-count">{activity.length} {activity.length === 1 ? 'step' : 'steps'}</span>}
       </header>
+      {working && activity.length === 0 && <Pipeline phase={phase ?? 'thinking'} mind={mind} />}
       {start > 0 && <p className="activity-earlier">+ {start} earlier</p>}
       <ol className="activity-list">
         {shown.map((item, i) => {

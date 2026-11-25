@@ -1,5 +1,5 @@
 //! Auto-update: the app checks its GitHub releases (`latest.json`, signed with the updater key;
-//! the public half is in tauri.conf.json) at launch and every few hours while auto-update is on,
+//! the public half is in tauri.conf.json) at launch, every 30 minutes and when the window is focused,
 //! installs a newer signed version in the background, and tells the window, which offers a
 //! restart. "Check for updates" in Settings does the same on demand. An update whose signature
 //! does not match is refused by the updater itself.
@@ -14,7 +14,8 @@ use tauri_plugin_updater::UpdaterExt;
 use crate::kernel::{events, DeskError, Result};
 use crate::state::AppState;
 
-const EVERY: Duration = Duration::from_secs(6 * 3600);
+/// How often installed copies look for a newer release (also at launch and when the window is focused).
+const EVERY: Duration = Duration::from_secs(30 * 60);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

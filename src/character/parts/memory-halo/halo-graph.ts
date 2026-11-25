@@ -9,6 +9,8 @@
  * arrive through `reserveNode` + `revealNode`: the spark (memory-spark.ts) reserves a
  * slot, flies to its world position and reveals it on arrival, when the node flashes
  * and joins the graph. Once the capacity is full the oldest learned node is recycled.
+ * While the keeper thinks (`think` 0..1) waves of light travel around the nodes and sparks
+ * stream from them into the head (`halo-stream.ts`); `gotIt` flashes every node at once.
  *
  * Node positions are recomputed on the CPU each frame (a gentle per-node wobble and the
  * voice swell): a few hundred points is cheaper than a second shader path.
@@ -30,7 +32,9 @@ import { disposeTree } from '../../dispose-tree';
 import { PALETTE } from '../../palette';
 import { createGlowPointsMaterial } from '../../stage/glow-points-material';
 import type { SparkTarget } from '../part';
+import { nodeWave } from '../../thinking';
 import { tintColour } from '../tint';
+import { addHaloStream } from './halo-stream';
 
 const CAPACITY = 240;
 const ORBIT_RADIUS = 2.05;
@@ -51,6 +55,14 @@ export interface HaloFrame {
   amplitude: number;
   /** Work 0..1: harder twinkle and flickering edges ("data flowing"); 0 changes nothing. */
   flow: number;
+  /** Thinking drama 0..1: travelling node waves and sparks streaming into `head`; 0 changes nothing. */
+  think: number;
+  /** The "got it" flash 0..1: every node lights up at once; 0 changes nothing. */
+  gotIt: number;
+  /** The head's centre in world space (where the thinking sparks stream to). */
+  head: Readonly<Vector3>;
+  /** Speed multiplier for the thinking waves and stream (reduced motion: slower). */
+  pace: number;
 }
 
 export interface HaloOptions {
@@ -77,6 +89,10 @@ interface NodeSeed {
 }
 
 const TWINKLE = 0.3;
+/** Thinking: how bright a node gets on a passing wave, the wave speed (rad/s), the "got it" flash. */
+const WAVE_BRIGHT = 3.2;
+const WAVE_SPEED = 3.4;
+const GOT_IT_BRIGHT = 3;
 
 export function createHaloGraph(options: HaloOptions, random: () => number = Math.random): Halo {
   const seedNodes = Math.min(Math.max(Math.round(options.seedNodes), 1), CAPACITY);
@@ -122,6 +138,7 @@ export function createHaloGraph(options: HaloOptions, random: () => number = Mat
   const points = new Points(pointsGeometry, pointsMaterial);
   points.frustumCulled = false;
   orbit.add(points);
+  const stream = addHaloStream(orbit, pointsMaterial.uniforms.uWarm.value);
 
   const edgeCapacity = CAPACITY * EDGES_PER_NODE;
   let edges: [number, number][] = [];
@@ -209,8 +226,11 @@ export function createHaloGraph(options: HaloOptions, random: () => number = Mat
         const sinceBirth = frame.time - bornAt[i];
         const flash = sinceBirth < FLASH_SECONDS ? (1 - sinceBirth / FLASH_SECONDS) ** 2 * 5 : 0;
         brights[i] = seeds[i].base + flash;
+        if (frame.think > 0) brights[i] += frame.think * WAVE_BRIGHT * nodeWave(seeds[i].angle, frame.time * frame.pace, WAVE_SPEED);
+        if (frame.gotIt > 0) brights[i] += frame.gotIt * GOT_IT_BRIGHT;
       }
     }
+    stream.update(frame.think, frame.time * frame.pace, positions, used, frame.head);
     for (let e = 0; e < edges.length; e++) {
       const [a, b] = edges[e];
       edgePositions.set(positions.subarray(a * 3, a * 3 + 3), e * 6);
@@ -250,6 +270,7 @@ export function createHaloGraph(options: HaloOptions, random: () => number = Mat
     },
     setPointScale(scale) {
       pointsMaterial.uniforms.uScale.value = scale;
+      stream.setPointScale(scale);
     },
     update,
     dispose: () => disposeTree(group),

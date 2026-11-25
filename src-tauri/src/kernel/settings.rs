@@ -85,6 +85,8 @@ pub struct Settings {
     /// While always listening: wait for "Hey <keeper>" (true), or treat every sentence as meant
     /// for the active keeper (false, "open mic").
     pub wake_word: bool,
+    /// Answer visually on the Stage (panels) by default; "just text" in a message overrides it.
+    pub visual: bool,
     /// The global push-to-talk shortcut ("Alt+Space"); empty = off.
     pub talk_shortcut: String,
     /// Install updates by itself (checked at launch and every few hours).
@@ -116,6 +118,7 @@ impl Default for Settings {
             eleven_voice_id: String::new(),
             always_listening: false,
             wake_word: true,
+            visual: true,
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,
             assistant_name: String::new(),

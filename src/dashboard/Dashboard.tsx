@@ -5,7 +5,7 @@
  * `useChats`, `useAssistant`, `useVoice`, `useDashboardEvents`) and the pure rules (`mood.ts`,
  * `touch-lines.ts`).
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CharacterStage } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
@@ -47,8 +47,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const chats = useChats(keeper?.id ?? null);
   const celebrate = () => setHappyUntil(Date.now() + HAPPY_MS);
 
-  const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult) => {
-    stage.take(r);
+  const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult, said: string) => {
+    stage.take(r, said);
     if (r.learned.length || r.actions.some((a) => a.succeeded)) celebrate();
     speakRef.current(r.reply);
     events.refreshHealth();
@@ -66,7 +66,9 @@ export function Dashboard({ initial }: { initial: Settings }) {
   speakRef.current = voice.speak;
 
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
-  const stage = useStageState(assistant.phase, assistant.detail, assistant.busy);
+  const stage = useStageState(keeper?.id ?? null, assistant.phase, assistant.detail, assistant.busy);
+  // Another keeper is a fresh stage; its scenes are its own.
+  useEffect(() => stage.reset(), [keeper?.id]);
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const sidebarOpen = panelOpen && !stage.showing;
 
@@ -108,7 +110,10 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const openChat = (id: string) =>
     chats
       .open(id)
-      .then((turns) => assistant.showChat(id, turns))
+      .then((turns) => {
+        assistant.showChat(id, turns);
+        stage.fromTurns(turns);
+      })
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
@@ -117,9 +122,26 @@ export function Dashboard({ initial }: { initial: Settings }) {
         <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={keeper?.wearables} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
-        <Stage panels={stage.panels} activity={stage.activity} working={assistant.busy} keeperName={name} onFocus={(f) => assistant.send(focusQuestion(f))} onClose={stage.close} />
+        <Stage
+          panels={stage.panels}
+          activity={stage.activity}
+          working={assistant.busy}
+          keeperName={name}
+          scenes={stage.tabs}
+          current={stage.current}
+          onScene={stage.goTo}
+          phase={assistant.phase}
+          mind={events.mindLabel(keeper?.brain)}
+          onFocus={(f) => assistant.send(focusQuestion(f))}
+          onClose={stage.close}
+        />
       )}
-      {events.updated && <UpdateBanner version={events.updated} />}
+      {!stage.showing && stage.scenes.length > 0 && (
+        <button type="button" className="pill pill-button scenes-pill" onClick={stage.reopen}>
+          Scenes · {stage.scenes.length}
+        </button>
+      )}
+      {events.updated && <UpdateBanner version={events.updated} idle={!assistant.busy && !voice.speaking && !voice.listening} />}
       <TopBar
         assistantName={name}
         node={events.node}
@@ -142,7 +164,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         error={chats.error ?? keepers.error}
         onToggle={() => setPanelOpen((o) => !o)}
         onActivate={(id) => keepers.activate(id).catch(() => undefined)}
-        onNewChat={assistant.newChat}
+        onNewChat={() => { assistant.newChat(); stage.reset(); }}
         onOpenChat={openChat}
         onCreate={(k) => keepers.create(k)}
       />
@@ -156,6 +178,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         voiceError={voice.error}
         assistantName={name}
         full={sidebarOpen && assistant.chatId !== ''}
+        compact={stage.showing}
         onSend={(t) => assistant.send(t)}
         onMic={voice.listen}
         onStop={stop}

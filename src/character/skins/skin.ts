@@ -15,8 +15,9 @@
  *    and scale `root` freely every frame.
  *  - `apply` is called once per frame with eased values only; a skin never keeps its own
  *    clock for moods, it reads `frame.time` (and its own spring state if it wants one).
- *  - With both touch envelopes at 0 a skin must look exactly as it does without touch, and
- *    with `work` at 0 exactly as it does without work.
+ *  - With both touch envelopes at 0 a skin must look exactly as it does without touch, with
+ *    `work` at 0 exactly as it does without work, and with the thinking weight and `gotIt`
+ *    at 0 exactly as it does without the thinking drama (`thinking.ts`).
  *  - It declares its slots (`slots`, built from its catalogue row by `anchors.ts`) and keeps
  *    every reaction amplitude and timing in its data table (`reactions`).
  */
@@ -48,6 +49,8 @@ export interface SkinFrame {
   readonly touch: Readonly<Record<TouchKind, number>>;
   /** The eased work level 0..1 (`work-level.ts`), applied on top of the mood. */
   readonly work: number;
+  /** The "got it" flash 0..1 as a reply arrives after thinking (`thinking.ts`); 0 otherwise. */
+  readonly gotIt: number;
 }
 
 export interface Skin {

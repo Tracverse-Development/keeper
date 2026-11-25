@@ -8,6 +8,11 @@
  * (that is what the bloom picks up) and a small catchlight that follows the gaze.
  * Drawing it in a shader, not with geometry, keeps every transition perfectly smooth.
  *
+ * While the robot thinks (`scan` > 0) the glyph becomes a processing display: fine moving
+ * scanlines, a bright scan bar sweeping across the glass (`scanX`, in glass units so one bar
+ * can travel through both eyes) and a pulse (`scanPulse`) that alternates between the eyes.
+ * With `scan` 0 that branch never runs, so the face is exactly the shipped one.
+ *
  * All sizes are in head-space units, the same units as the quad the material sits on.
  */
 import { AdditiveBlending, Color, ShaderMaterial, type IUniform, Vector2 } from 'three';
@@ -25,6 +30,10 @@ export interface GlyphUniforms extends Record<string, IUniform> {
   uGlowWidth: { value: number };
   uCore: { value: Color };
   uEdge: { value: Color };
+  uScan: { value: number };
+  uScanX: { value: number };
+  uScanPulse: { value: number };
+  uScanTime: { value: number };
 }
 
 export type GlyphMaterial = ShaderMaterial & { uniforms: GlyphUniforms };
@@ -49,6 +58,10 @@ const FRAGMENT = /* glsl */ `
   uniform float uGlowWidth;
   uniform vec3 uCore;
   uniform vec3 uEdge;
+  uniform float uScan;
+  uniform float uScanX;
+  uniform float uScanPulse;
+  uniform float uScanTime;
   varying vec2 vUv;
 
   float roundBox(vec2 p, vec2 halfSize, float radius) {
@@ -81,6 +94,14 @@ const FRAGMENT = /* glsl */ `
     vec3 colour = mix(uEdge, uCore, inner) * body * 1.45;
     colour += uCore * catchlight * 0.9;
     colour += uEdge * halo * (1.0 - body) * 0.35;
+    if (uScan > 0.0) {
+      // Reading data: scanlines flow down the glyph and a bright bar sweeps across the glass.
+      float lines = 0.62 + 0.38 * sin((p.y + uShift.y) * 240.0 - uScanTime * 9.0);
+      // The glyph dims to a backlit panel so the bright bar reads clearly as it passes.
+      float bar = exp(-pow((p.x + uShift.x - uScanX) / 0.028, 2.0));
+      colour *= mix(1.0, lines * uScanPulse * 0.55, uScan);
+      colour += uCore * bar * (body * 1.9 + halo * 0.45) * uScan;
+    }
     gl_FragColor = vec4(colour * uGlow, 1.0);
   }
 `;
@@ -110,6 +131,10 @@ export function createGlyphMaterial(options: GlyphOptions): GlyphMaterial {
     uGlowWidth: { value: options.glowWidth },
     uCore: { value: new Color(PALETTE.cream50) },
     uEdge: { value: new Color(PALETTE.gold400) },
+    uScan: { value: 0 },
+    uScanX: { value: 0 },
+    uScanPulse: { value: 1 },
+    uScanTime: { value: 0 },
   };
   return new ShaderMaterial({
     uniforms,
