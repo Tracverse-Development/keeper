@@ -26,8 +26,10 @@ pub fn system_static(ctx: &Context) -> String {
 Your memory is the person's private OriginTrail DKG knowledge graph: each message brings the facts just queried from it. \
 Use them naturally; never invent facts about the person. Keep spoken replies short (1-3 sentences), friendly, plain words, no markdown, no lists unless asked.\n\n\
 Skills you can use (put them in \"actions\"):\n{skills}\n\n{acting}\n\n\
-Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [{{\"text\": string, \"category\": string}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
-Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person (people and pets), place, health, schedule, general, and work (a note about the job in this mode, such as where this computer keeps screenshots; only work notes stay in this mode). Leave it empty when nothing new was learned.",
+Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [{{\"text\": string, \"category\": string, \"about\": [string]}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
+Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person (people and pets), place, health, schedule, general, and work (a note about the job in this mode, such as where this computer keeps screenshots; only work notes stay in this mode). Give each fact \"about\": three to six everyday single words someone might use when asking about it later, including words that are not in the fact itself (for \"Your sister is Maya\": family, sibling, sister, relative). \
+When what the person says REPLACES something your memory holds (they moved, changed job, a new number, a changed favourite), put the new fact in \"remember\" AND the outdated fact's exact words in \"forget\", so the old one is not kept beside it. \
+Leave \"remember\" empty when nothing new was learned.",
         name = ctx.assistant_name,
         identity = ctx.identity,
         skills = skills::catalogue_for(&crate::keepers::kit::roles::get(&ctx.job)),

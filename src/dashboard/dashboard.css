@@ -29,6 +29,7 @@
 .learned { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .learned li { font-size: var(--text-sm); color: var(--gold-300); }
 .learned li::before { content: '◆ '; font-size: var(--text-2xs); vertical-align: 1px; }
+.learned li.is-gone { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border-strong); }
 
 /* Something handed over (a dropped file): its card above the message box, and the hint while dragging. */
 .handed { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2); border-radius: var(--radius); }

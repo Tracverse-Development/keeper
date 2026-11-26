@@ -7,6 +7,7 @@
 pub mod catalog;
 pub mod hot;
 pub mod later;
+pub mod meaning;
 pub mod outbox;
 mod erase;
 pub mod relocate;
@@ -206,7 +207,7 @@ impl Memory {
             .filter(|r| !gone.contains(&get(r, "f")))
             .map(|r| {
                 let iri = get(r, "f");
-                Fact { id: iri.rsplit(':').next().unwrap_or_default().to_string(), text: get(r, "text"), category: get(r, "category"), at: get(r, "at"), mode: get(r, "mode") }
+                Fact { id: iri.rsplit(':').next().unwrap_or_default().to_string(), text: get(r, "text"), category: get(r, "category"), at: get(r, "at"), mode: get(r, "mode"), topics: get(r, "topics").split_whitespace().map(str::to_string).collect() }
             })
             .collect::<Vec<_>>();
         let trace = QueryTrace { rows: facts.len(), ..trace };

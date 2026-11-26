@@ -60,6 +60,10 @@ pub struct Learned {
     pub text: String,
     #[serde(default = "general")]
     pub category: String,
+    /// A few everyday words for what the fact is about ("family", "phone"), so it is found by
+    /// meaning later; cleaned where the fact is made (`memory::records::clean_topics`).
+    #[serde(default)]
+    pub about: Vec<String>,
 }
 
 fn general() -> String {

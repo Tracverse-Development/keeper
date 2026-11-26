@@ -44,6 +44,26 @@ async fn live_handed_material_is_read_and_its_orders_are_not_followed() {
     assert!(t.remember.is_empty(), "a note's contents are not facts about the person");
 }
 
+/// The mind gives a new fact topic words and names the fact it replaces
+/// (`cargo test --lib live_memory_meaning -- --ignored --nocapture`).
+#[tokio::test]
+#[ignore]
+async fn live_memory_meaning_topics_and_replacement() {
+    use crate::memory::Fact;
+    let known = vec![Fact::new("You live in Port of Spain", "place", "2026-10-01T10:00:00Z"), Fact::new("Your sister is Maya", "person", "2026-10-01T10:00:00Z")];
+    let moved = Context { visual: false, facts: known.clone(), ..ctx("I moved to Boston last month, by the way. And my brother Kofi just had a baby.") };
+    let t = claude::think(&moved, "haiku", &|_: Progress| {}).await.expect("the helper model answered");
+    println!("reply: {}\nremember: {:?}\nforget: {:?}", t.reply, t.remember, t.forget);
+    let boston = t.remember.iter().find(|l| l.text.contains("Boston")).expect("the move is remembered");
+    assert!(!crate::memory::records::clean_topics(&boston.about).is_empty(), "with topic words");
+    // Replaced either by the mind naming the old fact, or by the slot rule in the core.
+    let named = t.forget.iter().any(|f| f.contains("Port of Spain"));
+    let by_slot = crate::memory::meaning::slot(&boston.text) == crate::memory::meaning::slot(&known[0].text) && crate::memory::meaning::slot(&boston.text).is_some();
+    println!("old address replaced: named by the mind {named}, by the slot rule {by_slot}");
+    assert!(named || by_slot, "the old address does not stay beside the new one");
+    assert!(!t.forget.iter().any(|f| f.contains("Maya")), "the sister is not forgotten");
+}
+
 /// On a child profile the keeper keeps no personal details a child gives it
 /// (`cargo test --lib live_child -- --ignored --nocapture`).
 #[tokio::test]

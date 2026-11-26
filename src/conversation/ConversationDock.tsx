@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { DkgTrail } from './DkgTrail';
 import { KnownFacts } from './KnownFacts';
+import { forgottenWords } from './known-facts';
 import { speedWords } from './speed-words';
 import type { Exchange } from './useAssistant';
 
@@ -63,10 +64,13 @@ export function ConversationDock(p: Props) {
             {x.result && (
               <div className="bubble them">
                 <p className="selectable">{x.result.reply}</p>
-                {x.result.learned.length > 0 && (
+                {x.result.learned.length + x.result.forgotten.length > 0 && (
                   <ul className="learned">
                     {x.result.learned.map((f) => (
                       <li key={f.id}>Remembered: {f.text}</li>
+                    ))}
+                    {x.result.forgotten.map((f) => (
+                      <li key={f.id} className="is-gone">{forgottenWords(x.result!.learned.length > 0)}: {f.text}</li>
                     ))}
                   </ul>
                 )}

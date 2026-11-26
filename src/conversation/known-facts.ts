@@ -14,3 +14,11 @@ export function knownLine(left: number, total: number): string {
   if (left === 0) return total === 1 ? 'Forgot the one thing it knew' : `Forgot all ${total} things it knew`;
   return left === 1 ? 'Knew 1 thing about you' : `Knew ${left} things about you`;
 }
+
+/**
+ * The label on a fact that left memory in a turn: beside something newly remembered it was
+ * replaced by it ("Replaced: You live in Port of Spain"); alone, it was forgotten on request.
+ */
+export function forgottenWords(learnedSomething: boolean): string {
+  return learnedSomething ? 'Replaced' : 'Forgot';
+}

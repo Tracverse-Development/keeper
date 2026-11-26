@@ -246,6 +246,8 @@ export interface Fact {
   text: string;
   category: string;
   at: string;
+  /** Everyday words for what it is about, added when it was learned (absent on older facts). */
+  topics?: string[];
 }
 
 export interface Turn {

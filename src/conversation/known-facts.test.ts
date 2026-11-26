@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { knownLine, stillKnown } from './known-facts.ts';
+import { forgottenWords, knownLine, stillKnown } from './known-facts.ts';
+
+test('known facts: a fact that left memory is labelled replaced or forgotten', () => {
+  assert.equal(forgottenWords(true), 'Replaced');
+  assert.equal(forgottenWords(false), 'Forgot');
+});
 
 const fact = (id: string) => ({ id, text: `fact ${id}`, category: 'general', at: '2026-11-26T00:00:00Z' });
 

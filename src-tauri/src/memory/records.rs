@@ -34,6 +34,10 @@ pub struct Fact {
     /// The mode whose working memory it belongs to ("" = personal: every mode recalls it).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub mode: String,
+    /// Everyday words for what the fact is about ("family", "phone"), added by the mind when
+    /// it learns it, so it is found by meaning as well as by its own words (`rank`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
 }
 
 /// The one category that is a mode's working note ("your screenshots go to Desktop/Shots" in
@@ -43,7 +47,13 @@ pub const WORK: &str = "work";
 
 impl Fact {
     pub fn new(text: &str, category: &str, at: &str) -> Fact {
-        Fact { id: short_hash(&normalise(text), 16), text: text.trim().to_string(), category: category.to_string(), at: at.to_string(), mode: String::new() }
+        Fact { id: short_hash(&normalise(text), 16), text: text.trim().to_string(), category: category.to_string(), at: at.to_string(), mode: String::new(), topics: Vec::new() }
+    }
+
+    /// With the topic words the mind gave it, cleaned: lower-case single words, a handful.
+    pub fn about(mut self, topics: &[String]) -> Fact {
+        self.topics = clean_topics(topics);
+        self
     }
 
     /// Learned in `mode`: a work fact is filed under that mode; a personal one stays shared.
@@ -62,6 +72,19 @@ impl Fact {
     pub fn iri(&self) -> String {
         entity("fact", &self.id)
     }
+}
+
+/// Topic words as kept: lower-case words of letters and digits, 2 to 24 characters, at most 8,
+/// no repeats (anything else a mind sends is dropped).
+pub fn clean_topics(topics: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for t in topics.iter().flat_map(|t| t.split_whitespace()) {
+        let word: String = t.to_lowercase().chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+        if (2..=24).contains(&word.chars().count()) && !out.contains(&word) && out.len() < 8 {
+            out.push(word);
+        }
+    }
+    out
 }
 
 /// The Knowledge Asset a fact is written as (one asset per fact, so it can be erased alone).
@@ -85,6 +108,7 @@ impl Record for Fact {
             .link(pred::BY, ASSISTANT)
             .time(pred::AT, &self.at);
         let b = if self.mode.is_empty() { b } else { b.text("desk:mode", &self.mode) };
+        let b = if self.topics.is_empty() { b } else { b.text("desk:topics", &self.topics.join(" ")) };
         b.build()
     }
 }
@@ -287,6 +311,14 @@ impl Record for Retraction {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn topic_words_are_cleaned_and_written_with_the_fact() {
+        let f = Fact::new("Rex goes to the groomer monthly", "general", "2026-11-25T10:00:00Z").about(&["Dog".into(), "pet care".into(), "dog".into(), "<b>".into(), "x".into()]);
+        assert_eq!(f.topics, vec!["dog", "pet", "care"]);
+        assert!(f.quads().iter().any(|q| q.predicate.ends_with("topics") && q.object.contains("dog pet care")));
+        assert!(!Fact::new("x y", "general", "t").quads().iter().any(|q| q.predicate.ends_with("topics")), "no topics, no triple");
+    }
 
     #[test]
     fn the_same_fact_said_twice_is_one_asset() {

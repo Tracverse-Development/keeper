@@ -184,7 +184,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut learned = Vec::new();
     if !thought.remember.is_empty() {
         for l in thought.remember.iter().take(6) {
-            let fact = Fact::new(&l.text, &l.category, &at).learned_in(&mode_used);
+            let fact = Fact::new(&l.text, &l.category, &at).about(&l.about).learned_in(&mode_used);
+            // A newer fact about a single-valued thing (where you live, your number) replaces
+            // the older one: memory never holds both.
+            for old in memory.replace_stale(&fact).await {
+                if !forgotten.iter().any(|f: &Fact| f.id == old.id) {
+                    forgotten.push(old);
+                }
+            }
             writes.push(later.add(&fact, "fact"));
             learned.push(fact);
         }

@@ -66,7 +66,7 @@ pub fn to_second_person(text: &str) -> String {
 
 fn learned(text: String, category: &str) -> Thought {
     let reply_text = format!("Got it. I'll remember that {}.", lower_first(&text));
-    Thought { reply: reply_text, remember: vec![Learned { text, category: category.into() }], ..Thought::default() }
+    Thought { reply: reply_text, remember: vec![Learned { text, category: category.into(), about: vec![] }], ..Thought::default() }
 }
 
 fn lower_first(s: &str) -> String {
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn learns_a_name_in_the_second_person() {
         let t = think(&ctx("My name is Ada", vec![]));
-        assert_eq!(t.remember[0], Learned { text: "Your name is Ada".into(), category: "identity".into() });
+        assert_eq!(t.remember[0], Learned { text: "Your name is Ada".into(), category: "identity".into(), about: vec![] });
     }
 
     #[test]
