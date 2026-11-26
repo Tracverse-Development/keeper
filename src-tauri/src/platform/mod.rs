@@ -5,6 +5,7 @@
 
 #[cfg(target_os = "macos")]
 mod macos;
+pub mod read_commands;
 #[cfg(target_os = "macos")]
 mod spotlight_macos;
 #[cfg(target_os = "macos")]
