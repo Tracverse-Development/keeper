@@ -51,6 +51,8 @@ export interface CharacterStageProps {
   focusZone?: string | null;
   /** Its simulated mood for the body (`Feeling`); null or absent = none. Compared by content. */
   feeling?: Feeling | null;
+  /** Filled with a function that takes a picture of the character (`Character.snapshot`) while it is mounted. */
+  snapshotRef?: { current: (() => string | null) | null };
   /** Called once per touch gesture on the character, after its reaction started. */
   onTouch?: (kind: TouchKind, region: HitRegion) => void;
   className?: string;
@@ -97,6 +99,8 @@ export function CharacterStage(props: CharacterStageProps) {
     character.setWork(initial.current.work);
     character.focusZone(initial.current.focusZone);
     character.setFeeling(initial.current.feeling);
+    const snapshotRef = props.snapshotRef;
+    if (snapshotRef) snapshotRef.current = () => character.snapshot();
 
     const onPointerMove = (event: PointerEvent): void => {
       const x = (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
@@ -108,6 +112,7 @@ export function CharacterStage(props: CharacterStageProps) {
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
       detachTouch();
+      if (snapshotRef) snapshotRef.current = null;
       character.dispose();
       characterRef.current = null;
     };

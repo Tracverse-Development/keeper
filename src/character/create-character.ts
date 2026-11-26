@@ -131,6 +131,16 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     setFeeling(feeling) {
       if (!disposed) animator.setFeeling(feeling);
     },
+    snapshot() {
+      if (disposed) return null;
+      try {
+        // Drawn and read in the same task: the drawing buffer is still there to read.
+        animator.frame(0);
+        return canvas.toDataURL('image/png');
+      } catch {
+        return null;
+      }
+    },
     hitTest,
     react(kind: TouchKind) {
       if (TOUCH_KINDS.includes(kind)) animator.react(kind);

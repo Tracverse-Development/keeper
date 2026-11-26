@@ -186,6 +186,7 @@ pub fn run() {
             keepers::studio_commands::personal_set,
             keepers::studio_commands::personal_remove,
             keepers::studio_commands::personal_list,
+            keepers::studio_commands::card_save,
             keepers::wardrobe_commands::wardrobe_wear,
             keepers::wardrobe_commands::wardrobe_take_off,
             keepers::wardrobe_commands::wardrobe_give,

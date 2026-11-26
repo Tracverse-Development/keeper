@@ -104,6 +104,8 @@ export const core = {
   /** The focus session running now (null: none), and ending it early. */
   focusState: () => invoke<FocusSession | null>('focus_state'),
   focusStop: () => invoke<FocusSession | null>('focus_stop'),
+  /** Save a keeper card the Studio drew (PNG bytes in base64) to Downloads; resolves to its path. */
+  cardSave: (name: string, data: string) => invoke<string>('card_save', { name, data }),
   /** Save every keeper, its memory and the kit as one sealed file in Downloads. */
   backupSave: (passphrase: string) => invoke<{ path: string; keepers: number; records: number }>('backup_save', { passphrase }),
   /** Bring a backup in (`data`: the file's bytes in base64): adds and merges, never removes. */

@@ -8,7 +8,7 @@
  * it away). Outfit changes go through the wardrobe commands at once, as before. Opened from the
  * top bar, the keepers panel and the ⌘K palette. Design: docs/design/keeper-ecosystem.md.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CharacterStage } from '../character';
 import { core, sentence, type KeeperProfile, type KeeperVoice, type Soul, type ZoneLook } from '../kernel/ipc';
@@ -20,6 +20,7 @@ import { FeelingsTab } from './FeelingsTab';
 import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
 import { InventoryTab } from './InventoryTab';
+import { KeeperCard } from './KeeperCard';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
@@ -87,6 +88,8 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
   // The Outfit tab's try-on, shown on the big stage.
   // Trying on a thinking or celebration effect plays that moment on the stage.
   const [celebrateN, setCelebrateN] = useState(0);
+  // Takes a picture of the keeper on the stage (for its card).
+  const snapshot = useRef<(() => string | null) | null>(null);
   // One wardrobe for the Inventory, the Forge and the Marketplace.
   const usesWardrobe = tab === 'inventory' || tab === 'forge' || tab === 'market';
   const market = useWardrobe(open && usesWardrobe, () => {
@@ -182,6 +185,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             voiceLevel={0}
             mouth={0}
             memoryPulse={0}
+            snapshotRef={snapshot}
           />
           {tab === 'look' && zone && info && <span className="studio-caption">{info.zones.find((z) => z.id === zone)?.name}</span>}
           {usesWardrobe && outfit && <span className="studio-caption">{outfit.caption}</span>}
@@ -232,7 +236,12 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             {tab === 'modes' && <ModesTab onChanged={onSaved} />}
             {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
             {tab === 'voice' && <VoiceTab name={keeper.name} voice={voice} onVoice={setVoice} />}
-            {info && tab === 'level' && <LevelTab info={info} name={keeper.name} />}
+            {info && tab === 'level' && (
+              <>
+                <LevelTab info={info} name={keeper.name} />
+                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: keeper.skin }} snapshot={() => snapshot.current?.() ?? null} />
+              </>
+            )}
             {info && tab === 'market' && (
               <MarketTab
                 info={info}

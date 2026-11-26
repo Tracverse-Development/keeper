@@ -181,6 +181,16 @@ export interface Feeling {
   readonly arousal: number;
 }
 
+// A picture of the character (appended by declaration merging).
+export interface Character {
+  /**
+   * The character as it looks this instant: one frame is drawn and the canvas is returned as a
+   * PNG data URL (its own size, the stage's backdrop included). Null when it cannot be read
+   * (disposed, or the browser refuses). For a keeper card, never for anything automatic.
+   */
+  snapshot(): string | null;
+}
+
 // The mood in the body (appended by declaration merging).
 export interface Character {
   /** Show this mood in the body, eased over a couple of seconds; null = no mood. */
