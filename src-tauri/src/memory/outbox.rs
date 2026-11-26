@@ -9,6 +9,9 @@ use crate::kernel::paths;
 #[derive(Serialize, Deserialize)]
 struct Pending {
     graph: String,
+    /// The sub-graph (missing in lines written before sub-graphs: the graph itself).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sub: Option<String>,
     name: String,
     quads: Vec<PendingQuad>,
 }
@@ -20,9 +23,10 @@ struct PendingQuad {
     object: String,
 }
 
-pub fn hold(graph: &str, name: &str, quads: &[Quad]) {
+pub fn hold(place: &crate::dkg::Place, name: &str, quads: &[Quad]) {
     let pending = Pending {
-        graph: graph.into(),
+        graph: place.graph.clone(),
+        sub: place.sub.clone(),
         name: name.into(),
         quads: quads.iter().map(|q| PendingQuad { subject: q.subject.clone(), predicate: q.predicate.clone(), object: q.object.clone() }).collect(),
     };
@@ -47,7 +51,7 @@ pub async fn flush(client: &DkgClient) {
         let Ok(p) = serde_json::from_str::<Pending>(line) else { continue };
         let quads: Vec<Quad> = p.quads.iter().map(|q| Quad { subject: q.subject.clone(), predicate: q.predicate.clone(), object: q.object.clone() }).collect();
         // Kept already (a 409) counts as sent: retrying it forever would never succeed.
-        if let Err(e) = client.write_asset(&p.graph, &p.name, &quads).await {
+        if let Err(e) = client.write_asset(crate::dkg::Place::new(&p.graph, p.sub.as_deref()), &p.name, &quads).await {
             if matches!(e, crate::kernel::DeskError::Exists(_)) {
                 continue;
             }

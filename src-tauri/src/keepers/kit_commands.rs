@@ -25,7 +25,7 @@ pub struct Catalog {
 pub async fn kit_catalog(state: State<'_, AppState>) -> Result<Catalog> {
     state.refresh_souls().await;
     let variants = match state.client() {
-        Ok(c) => match inventory::kit(&c).await { Ok(g) => inventory::variants(&c, &g).await, Err(e) => Err(e) }.unwrap_or_default(),
+        Ok(c) => match inventory::kit(&c, &state.kit_place()).await { Ok(g) => inventory::variants(&c, &g).await, Err(e) => Err(e) }.unwrap_or_default(),
         Err(_) => vec![],
     };
     let mut all = souls::builtin();
@@ -38,7 +38,7 @@ pub async fn kit_catalog(state: State<'_, AppState>) -> Result<Catalog> {
 pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result<souls::Soul> {
     let clean = souls::sanitize(&soul).map_err(DeskError::Invalid)?;
     let client = state.client()?;
-    inventory::save_soul(&client, &inventory::kit(&client).await?, &clean).await?;
+    inventory::save_soul(&client, &inventory::kit(&client, &state.kit_place()).await?, &clean).await?;
     state.refresh_souls().await;
     Ok(clean)
 }
@@ -49,7 +49,7 @@ pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result
 pub async fn modes_save(state: State<'_, AppState>, mode: roles::Role) -> Result<Vec<roles::Role>> {
     let clean = roles::sanitize(&mode, &crate::skills::names()).map_err(DeskError::Invalid)?;
     let client = state.client()?;
-    inventory::save_mode(&client, &inventory::kit(&client).await?, &clean, false).await?;
+    inventory::save_mode(&client, &inventory::kit(&client, &state.kit_place()).await?, &clean, false).await?;
     state.refresh_souls().await;
     Ok(roles::all())
 }
@@ -62,7 +62,7 @@ pub async fn modes_reset(state: State<'_, AppState>, id: String) -> Result<Vec<r
         return Err(DeskError::Invalid(format!("A keeper uses {} as its default mode; choose another first.", mode.title)));
     }
     let client = state.client()?;
-    inventory::save_mode(&client, &inventory::kit(&client).await?, &mode, true).await?;
+    inventory::save_mode(&client, &inventory::kit(&client, &state.kit_place()).await?, &mode, true).await?;
     state.refresh_souls().await;
     Ok(roles::all())
 }
@@ -129,7 +129,7 @@ pub struct Imported {
 #[tauri::command]
 pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imported> {
     let client = state.client()?;
-    let kit = inventory::kit(&client).await?;
+    let kit = inventory::kit(&client, &state.kit_place()).await?;
     match packs::read(&text).map_err(DeskError::Invalid)? {
         Pack::Soul { soul, .. } => {
             inventory::save_soul(&client, &kit, &soul).await?;
@@ -148,14 +148,17 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
                 state.refresh_souls().await;
             }
             let seed = format!("{name}\u{0}{}", time::now_iso());
+            let id = format!("keeper-{}", short_hash(&seed, 10));
             let profile = KeeperProfile {
-                id: format!("keeper-{}", short_hash(&seed, 10)),
+                memory_sub: Some(crate::memory::relocate::keeper_sub(&id)),
+                legacy_graph: None,
+                id,
                 name: name.clone(),
                 skin: bp.species.clone(),
                 role: bp.role.clone(),
                 soul: bp.soul.id.clone(),
                 wearables: bp.wearables.clone(),
-                graph_id: super::graph_id_for(&seed, false),
+                graph_id: super::graph_id_for(&seed, true),
                 brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
                 model: settings.active().map(|k| k.model.clone()).unwrap_or_default(),
                 look: bp.look.clone(),

@@ -56,9 +56,19 @@ impl AppState {
             .ok_or_else(|| DeskError::Node("Keeper is not connected to a memory node yet. Finish setup first.".into()))
     }
 
-    /// A keeper's memory: its own Context Graph.
+    /// A keeper's memory: its sub-graph of the home context graph (its old graph before the move),
+    /// erasing from the backup of its old place too.
     pub fn memory_for(&self, keeper: &KeeperProfile) -> Result<Memory> {
-        Ok(Memory::new(self.client()?, &keeper.graph_id))
+        Ok(Memory::at(self.client()?, keeper.place()).with_legacy(keeper.legacy_place()))
+    }
+
+    /// Where the kit lives: the home graph's `kit` sub-graph once moved (its own graph before).
+    pub fn kit_place(&self) -> crate::dkg::Place {
+        if self.settings().kit_moved {
+            crate::dkg::Place::new(&crate::keepers::graph_id_for("", true), Some(crate::keepers::kit::inventory::KIT_SUB))
+        } else {
+            crate::dkg::Place::from(crate::keepers::kit::inventory::graph_id().as_str())
+        }
     }
 
     pub fn active_keeper(&self) -> Result<KeeperProfile> {
@@ -90,7 +100,7 @@ impl AppState {
     /// Reload the person's souls and modes from their kit graph.
     pub async fn refresh_souls(&self) {
         let Ok(client) = self.client() else { return };
-        let Ok(graph) = crate::keepers::kit::inventory::kit(&client).await else { return };
+        let Ok(graph) = crate::keepers::kit::inventory::kit(&client, &self.kit_place()).await else { return };
         if let Ok(modes) = crate::keepers::kit::inventory::modes(&client, &graph, &crate::skills::names()).await {
             crate::keepers::kit::roles::set_personal(modes);
         }

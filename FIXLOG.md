@@ -163,3 +163,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Guard:** `look_hook` tests (reads pass, writes denied with the mark, bad input denied, backstop trips only when a refused call ran); `activity.test.ts` (network narration, no command in the status line, grouping).
 - **Evidence:** live, System Administrator, 0 guard stops: "which devices are on my network" → 2 tables + live, found 5 Tailscale devices (35 s); "show me my home network" → live, 2 tables, diagram (28 s). Earlier experiment: a hook-denied `touch` never created its file and the run continued.
 
+### FIX-0021 — A forgotten fact survived in the action log; personal facts filed as "general" were lost in other modes (2026-11-26)
+- **Area:** `assistant/turn.rs` (`stored_outcome`), `memory/records.rs` (`WORK`, `learned_in`, `belongs_in`), `brain/prompt.rs`
+- **Symptom:** (memory bench) after "forget my bench test cat", a memory-lookup Action record still held "Your bench test cat is called Biscuit Moon"; in Tutor mode the keeper did not know the cat's name the Assistant had learned.
+- **Root cause:** the ask-memory skill's answer (quoting facts) was stored whole as the Action's outcome; facts in every category except a fixed personal list were tagged with the mode they were learned in, and "general" (pets, misc personal facts) was not on the list.
+- **Fix:** an ask-memory action keeps only its heading ("What I learned recently (6 found)"); only "work" facts belong to one mode, everything else the person tells is personal and recalled in every mode (also older facts tagged before); the prompt names "work" as the one per-mode category.
+- **Guard:** `stored_outcome_tests`, records tests (personal in every mode, work notes in their mode).
+- **Evidence:** live, test copy: remember 2.7 s, recall new chat 1.4 s, recall in Tutor 2.9 s (was "I do not have it"), forget 3.3 s; afterwards the DKG holds the words only in the conversation's own turns (deleted with the chat).
+
+### FIX-0022 — Test copies of Keeper wrote into the real home and kit graphs (2026-11-26)
+- **Area:** `keepers/mod.rs` (`install_base`), `keepers/kit/inventory.rs` (`graph_id`)
+- **Symptom:** found while building the one-graph move: a test copy (`KEEPER_HOME=misc/bench-home`) derives the home graph id from the home folder and computer name, so it would have moved bench data into the founder's real graph; the kit graph id already did this (bench souls/modes went to the real `keeper-kit-…`, which held 0 assets when checked).
+- **Root cause:** graph ids were derived from the computer account only, ignoring the test copy's own folder.
+- **Fix:** `install_base()` uses `KEEPER_HOME` when set (a test copy gets its own home graph); real installs are unchanged (same id).
+- **Guard:** the live relocation test and the bench run against `umoja-desk-09ec185b58` (the test copy's home), never the real one.
+- **Evidence:** bench move: 620 assets into `umoja-desk-09ec185b58/keeper-bench`, verified; the real `umoja-desk-176b503b62` untouched (88 assets).
+

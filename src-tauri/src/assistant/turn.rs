@@ -155,7 +155,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
                 outcomes.push(outcome);
                 continue;
             }
-            let record = ActionRecord::new(&outcome.skill, &outcome.input, &outcome.summary, outcome.succeeded, &time::now_iso(), &turn_id);
+            let record = ActionRecord::new(&outcome.skill, &outcome.input, &stored_outcome(&outcome.skill, &outcome.summary), outcome.succeeded, &time::now_iso(), &turn_id);
             writes.push(later.add(&record, "action"));
             outcomes.push(outcome);
         }
@@ -280,3 +280,22 @@ mod tests {
     }
 }
 
+
+/// What an action's record keeps of its outcome. A memory question keeps only its heading
+/// ("What I learned recently (6 found)"): its answer quotes facts, and a copy in the action log
+/// would survive the person forgetting them (memory bench 2026-11-26).
+fn stored_outcome(skill: &str, summary: &str) -> String {
+    if skill == "ask-memory" {
+        return summary.split(':').next().unwrap_or("Asked my memory").trim().to_string();
+    }
+    summary.to_string()
+}
+
+#[cfg(test)]
+mod stored_outcome_tests {
+    #[test]
+    fn memory_answers_are_not_copied_into_the_action_log() {
+        assert_eq!(super::stored_outcome("ask-memory", "What I learned recently (6 found): Your cat is called Biscuit."), "What I learned recently (6 found)");
+        assert_eq!(super::stored_outcome("open-app", "Opened Notes"), "Opened Notes");
+    }
+}

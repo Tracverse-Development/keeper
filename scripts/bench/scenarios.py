@@ -41,6 +41,9 @@ SCENARIOS = {
         ('I had a rough day at work.', NONE, {'quiz', 'live', 'table', 'flashcards'}),
         ('Thanks, that helps.', NONE, {'quiz', 'live', 'table'}),
     ]),
+    'memory': ('assistant', [
+        ('Remember that my bench test cat is called Biscuit Moon.', NONE | {'facts', 'text'}, {'quiz', 'live'}),
+    ]),
     'switch': ('system', [
         ('How do I make banana bread?', TEACH | {'checklist'}, {'live', 'approval'}),
     ]),

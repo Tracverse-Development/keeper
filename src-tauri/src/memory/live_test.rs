@@ -172,10 +172,10 @@ async fn live_modes_save_reload_and_reset_on_the_kit_graph() {
     let mut tutor = roles::get("tutor");
     tutor.brief = format!("Teach with stories {}", time::now_iso());
     let clean = roles::sanitize(&tutor, &crate::skills::names()).unwrap();
-    inventory::save_mode(client, graph, &clean, false).await.expect("saved");
-    let mine = inventory::modes(client, graph, &crate::skills::names()).await.unwrap();
+    inventory::save_mode(client, &crate::dkg::Place::from(graph), &clean, false).await.expect("saved");
+    let mine = inventory::modes(client, &crate::dkg::Place::from(graph), &crate::skills::names()).await.unwrap();
     assert!(mine.iter().any(|m| m.id == "tutor" && m.brief == clean.brief && m.edited), "the edited tutor comes back");
-    inventory::save_mode(client, graph, &clean, true).await.expect("reset");
-    let after = inventory::modes(client, graph, &crate::skills::names()).await.unwrap();
+    inventory::save_mode(client, &crate::dkg::Place::from(graph), &clean, true).await.expect("reset");
+    let after = inventory::modes(client, &crate::dkg::Place::from(graph), &crate::skills::names()).await.unwrap();
     assert!(!after.iter().any(|m| m.id == "tutor"), "reset drops the edited version");
 }

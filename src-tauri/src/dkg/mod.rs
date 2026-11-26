@@ -10,9 +10,11 @@ pub mod client;
 pub mod literal;
 pub mod node;
 pub mod own_node;
+pub mod place;
 pub mod runtime;
 pub mod ontology;
 pub mod quads;
 
 pub use client::{DkgClient, Layer, Row};
+pub use place::Place;
 pub use quads::{AssetBuilder, Quad};

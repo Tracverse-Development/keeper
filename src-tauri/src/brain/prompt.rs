@@ -27,7 +27,7 @@ Your memory is the person's private OriginTrail DKG knowledge graph: each messag
 Use them naturally; never invent facts about the person. Keep spoken replies short (1-3 sentences), friendly, plain words, no markdown, no lists unless asked.\n\n\
 Skills you can use (put them in \"actions\"):\n{skills}\n\n{acting}\n\n\
 Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [{{\"text\": string, \"category\": string}}], \"forget\": [string], \"actions\": [{{\"skill\": string, \"input\": object}}]}}. \
-Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
+Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person (people and pets), place, health, schedule, general, and work (a note about the job in this mode, such as where this computer keeps screenshots; only work notes stay in this mode). Leave it empty when nothing new was learned.",
         name = ctx.assistant_name,
         identity = ctx.identity,
         skills = skills::catalogue_for(&crate::keepers::kit::roles::get(&ctx.job)),

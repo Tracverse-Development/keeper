@@ -8,6 +8,7 @@ pub mod catalog;
 pub mod hot;
 pub mod later;
 pub mod outbox;
+pub mod relocate;
 pub mod panel_events;
 pub mod pinned_scenes;
 pub mod queries;
@@ -96,20 +97,51 @@ pub struct Counts {
 #[derive(Clone)]
 pub struct Memory {
     client: DkgClient,
+    /// The keeper's place: its sub-graph of the home context graph (or a whole graph, before the move).
+    place: crate::dkg::Place,
+    /// Hot-memory key for this place ("graph/sub").
     graph: String,
+    /// The memory's old place, kept as a backup after the move: erasure removes it there too.
+    legacy: Option<crate::dkg::Place>,
 }
 
 const LAYER: Layer = Layer::Working;
 const LAYER_NAME: &str = "working-memory";
 
 impl Memory {
+    /// Memory over a whole graph (tests on scratch graphs).
+    #[cfg(test)]
     pub fn new(client: DkgClient, graph: &str) -> Memory {
-        Memory { client, graph: graph.to_string() }
+        Memory::at(client, crate::dkg::Place::from(graph))
     }
 
+    /// Memory kept in one place (a sub-graph of the home graph).
+    pub fn at(client: DkgClient, place: crate::dkg::Place) -> Memory {
+        let graph = place.key();
+        Memory { client, place, graph, legacy: None }
+    }
+
+    /// Also erase from the memory's old place (its backup from before the move).
+    pub fn with_legacy(mut self, legacy: Option<crate::dkg::Place>) -> Memory {
+        self.legacy = legacy.filter(|l| *l != self.place);
+        self
+    }
+
+    /// Discard one asset here and from the backup of the old place. The backup may not have it
+    /// (written after the move): only the current place's answer counts.
+    async fn discard_everywhere(&self, name: &str) -> Result<()> {
+        self.client.discard(&self.place, name).await?;
+        if let Some(old) = &self.legacy {
+            let _ = self.client.discard(old, name).await;
+        }
+        Ok(())
+    }
+
+    /// The hot-memory key of this place ("graph/sub"; the graph id alone before the move).
     pub fn graph(&self) -> &str {
         &self.graph
     }
+
 
     pub fn client(&self) -> &DkgClient {
         &self.client
@@ -139,7 +171,7 @@ impl Memory {
 
     /// Send one asset to the node (used by `write` and by `later`, which applied hot memory itself).
     pub async fn write_quads(&self, name: String, quads: &[crate::dkg::Quad]) -> WriteReceipt {
-        match self.client.write_asset(&self.graph, &name, quads).await {
+        match self.client.write_asset(&self.place, &name, quads).await {
             Ok(w) => {
                 if outbox::waiting() > 0 {
                     outbox::flush(&self.client).await;
@@ -149,7 +181,7 @@ impl Memory {
             // Already kept (an identical record written before): done, never queued to retry.
             Err(crate::kernel::DeskError::Exists(_)) => WriteReceipt { name, ual: String::new(), status: "already in memory".into(), queued: false },
             Err(_) => {
-                outbox::hold(&self.graph, &name, quads);
+                outbox::hold(&self.place, &name, quads);
                 WriteReceipt { name, ual: String::new(), status: "waiting for the node".into(), queued: true }
             }
         }
@@ -158,7 +190,7 @@ impl Memory {
     async fn run(&self, q: &queries::Query) -> Result<(Vec<Row>, QueryTrace)> {
         let sparql = q.sparql();
         let started = Instant::now();
-        let rows = self.client.query(&self.graph, &sparql, LAYER).await?;
+        let rows = self.client.query(&self.place, &sparql, LAYER).await?;
         let trace = QueryTrace { label: q.label.into(), sparql, rows: rows.len(), ms: started.elapsed().as_millis(), layer: LAYER_NAME };
         Ok((rows, trace))
     }
@@ -204,7 +236,7 @@ impl Memory {
         let q = catalog::find(id).ok_or_else(|| crate::kernel::DeskError::Invalid(format!("There is no question called {id}.")))?;
         let sparql = catalog::build(q, args)?;
         let started = Instant::now();
-        let rows = self.client.query(&self.graph, &sparql, LAYER).await?;
+        let rows = self.client.query(&self.place, &sparql, LAYER).await?;
         let trace = QueryTrace { label: q.title.into(), sparql, rows: rows.len(), ms: started.elapsed().as_millis(), layer: LAYER_NAME };
         Ok((rows, trace))
     }
@@ -330,9 +362,9 @@ impl Memory {
     pub async fn erase_chat(&self, chat_id: &str) -> Result<usize> {
         let turns = self.chat_turns(chat_id).await?;
         for t in &turns {
-            self.client().discard(self.graph(), &format!("desk-turn-{}", t.id)).await?;
+            self.discard_everywhere(&format!("desk-turn-{}", t.id)).await?;
         }
-        self.client().discard(self.graph(), &format!("desk-chat-{chat_id}")).await?;
+        self.discard_everywhere(&format!("desk-chat-{chat_id}")).await?;
         hot::apply(&self.graph, hot::HotChange::DropChat(chat_id.to_string()));
         Ok(turns.len())
     }
@@ -348,7 +380,7 @@ impl Memory {
     /// The one erase path: spoken "forget", the Forget button and the memory screen all use it.
     pub async fn erase_fact(&self, fact_id: &str) -> WriteReceipt {
         let name = records::fact_asset_name(fact_id);
-        match self.client().discard(self.graph(), &name).await {
+        match self.discard_everywhere(&name).await {
             Ok(()) => {
                 hot::apply(&self.graph, hot::HotChange::Retract(fact_id.to_string()));
                 WriteReceipt { name, ual: String::new(), status: "erased".into(), queued: false }

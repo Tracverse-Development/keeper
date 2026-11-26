@@ -94,11 +94,31 @@ pub struct KeeperProfile {
     /// The person turned this keeper's (simulated) mood off, in every mode.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub feelings_off: bool,
+    /// Its sub-graph of the ONE home context graph (`graph_id`); None = the whole graph, as
+    /// before the move (docs/design/keeper-memory-graph.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_sub: Option<String>,
+    /// Where its memory was before the move: kept as a backup, and erased together with the new
+    /// copy until a confirmed clean-up removes it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_graph: Option<String>,
+}
+
+impl KeeperProfile {
+    /// Where this keeper's memory lives (its sub-graph of the home graph, after the move).
+    pub fn place(&self) -> crate::dkg::Place {
+        crate::dkg::Place::new(&self.graph_id, self.memory_sub.as_deref())
+    }
+
+    /// The backup of its memory from before the move (the old graph, its root).
+    pub fn legacy_place(&self) -> Option<crate::dkg::Place> {
+        self.legacy_graph.as_deref().map(crate::dkg::Place::from)
+    }
 }
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None }
     }
 }
 
@@ -139,6 +159,9 @@ pub struct Settings {
     pub talk_shortcut: String,
     /// Install updates by itself (checked at launch and every few hours).
     pub auto_update: bool,
+    /// The kit (souls, modes, wardrobe) lives in the `kit` sub-graph of the home graph.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kit_moved: bool,
 
     // Fields of the single-assistant settings (v0.1–v0.2): read once to migrate, never written.
     #[serde(skip_serializing)]
@@ -174,6 +197,7 @@ impl Default for Settings {
             last_brief: String::new(),
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,
+            kit_moved: false,
             assistant_name: String::new(),
             graph_id: String::new(),
             brain: String::new(),
@@ -226,7 +250,7 @@ impl Settings {
             wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
-            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false
+            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None
         });
         self.active_keeper = "keeper-1".into();
     }

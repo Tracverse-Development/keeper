@@ -36,9 +36,10 @@ pub struct Fact {
     pub mode: String,
 }
 
-/// Categories about the PERSON: shared by every mode (docs/design/keeper-modes.md). Everything
-/// else is a mode's working note, recalled in that mode.
-pub const PERSONAL: [&str; 7] = ["identity", "person", "preference", "place", "health", "schedule", "practice"];
+/// The one category that is a mode's working note ("your screenshots go to Desktop/Shots" in
+/// System Administrator): recalled in that mode only. Anything else the person tells about
+/// themselves is personal (memory bench 2026-11-26: a pet filed as "general" was lost in Tutor).
+pub const WORK: &str = "work";
 
 impl Fact {
     pub fn new(text: &str, category: &str, at: &str) -> Fact {
@@ -47,15 +48,16 @@ impl Fact {
 
     /// Learned in `mode`: a work fact is filed under that mode; a personal one stays shared.
     pub fn learned_in(mut self, mode: &str) -> Fact {
-        if !PERSONAL.contains(&self.category.as_str()) {
+        if self.category == WORK {
             self.mode = mode.to_string();
         }
         self
     }
 
-    /// Recalled in `mode`: personal facts and older facts with no mode always; work facts only in their mode.
+    /// Recalled in `mode`: personal facts always (also ones tagged with a mode before only "work"
+    /// was per mode); work facts only in their mode.
     pub fn belongs_in(&self, mode: &str) -> bool {
-        self.mode.is_empty() || self.mode == mode
+        self.category != WORK || self.mode.is_empty() || self.mode == mode
     }
     pub fn iri(&self) -> String {
         entity("fact", &self.id)

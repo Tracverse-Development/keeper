@@ -99,7 +99,15 @@ pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, a
     let loc = node::locate(std::path::Path::new(&node_home)).ok_or_else(|| DeskError::Node("that node folder has no port or sign-in token".into()))?;
     let client = DkgClient::new(&loc);
     let existing = state.settings().keepers.first().cloned();
+    // A fresh install starts in the home graph's `keeper-1` sub-graph; an existing keeper keeps
+    // where it is (its move runs on start).
+    let (memory_sub, legacy_graph) = match &existing {
+        Some(k) => (k.memory_sub.clone(), k.legacy_graph.clone()),
+        None => (Some("keeper-1".to_string()), None),
+    };
     let keeper = KeeperProfile {
+        memory_sub,
+        legacy_graph,
         id: "keeper-1".into(),
         name: name.clone(),
         skin: existing.as_ref().map(|k| k.skin.clone()).unwrap_or_else(|| "robot".into()),

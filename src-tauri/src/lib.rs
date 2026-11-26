@@ -65,6 +65,8 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
+                // One home context graph with sub-graphs: move what is still in the old graphs.
+                crate::memory::relocate::settle(&state).await;
                 state.refresh_souls().await;
                 // Each keeper's level as Keeper opens, so the first message that crosses a level celebrates.
                 for keeper in state.settings().keepers {

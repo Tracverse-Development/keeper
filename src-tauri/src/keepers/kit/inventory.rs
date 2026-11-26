@@ -8,6 +8,8 @@ use crate::dkg::{AssetBuilder, DkgClient, Layer};
 use crate::kernel::slug::short_hash;
 use crate::kernel::{time, Result};
 
+use crate::dkg::Place;
+
 use super::packs::Variant;
 use super::souls::{self, Soul};
 
@@ -15,19 +17,24 @@ const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX sche
 
 /// The kit graph's id: names no person, one per computer account.
 pub fn graph_id() -> String {
-    let home = dirs::home_dir().map(|h| h.display().to_string()).unwrap_or_default();
-    format!("keeper-kit-{}", short_hash(&format!("{home}\u{0}{}", crate::platform::computer_name()), 10))
+    format!("keeper-kit-{}", crate::keepers::install_base())
 }
 
-/// Create the kit graph `id` if needed (idempotent) and return its id.
-pub async fn ensure(client: &DkgClient, id: &str) -> Result<String> {
-    client.ensure_graph(id, "Keeper kit: souls and parts").await?;
-    Ok(id.to_string())
+/// The kit's sub-graph of the home context graph.
+pub const KIT_SUB: &str = "kit";
+
+/// Make sure the kit's place exists (idempotent) and return it.
+pub async fn ensure(client: &DkgClient, place: &Place) -> Result<Place> {
+    client.ensure_graph(&place.graph, "Keeper: your keepers' memory and kit").await?;
+    if let Some(sub) = &place.sub {
+        client.ensure_sub_graph(&place.graph, sub).await?;
+    }
+    Ok(place.clone())
 }
 
-/// The person's kit graph, created if needed.
-pub async fn kit(client: &DkgClient) -> Result<String> {
-    ensure(client, &graph_id()).await
+/// The person's kit at `place` (`AppState::kit_place`), created if needed.
+pub async fn kit(client: &DkgClient, place: &Place) -> Result<Place> {
+    ensure(client, place).await
 }
 
 #[cfg(test)]
@@ -43,7 +50,7 @@ mod live_tests {
     async fn live_kit_soul_round_trip() {
         let loc = node::locate(&dirs::home_dir().unwrap().join(".dkg")).expect("a DKG node in ~/.dkg");
         let client = DkgClient::new(&loc);
-        let graph = ensure(&client, "keeper-kit-livetest").await.unwrap();
+        let graph = ensure(&client, &Place::from("keeper-kit-livetest")).await.unwrap();
         let soul = souls::sanitize(&Soul { id: "test-vibes".into(), name: "Test Vibes".into(), summary: "Cheery tester".into(), catchphrases: vec!["Leh we go!".into()], ..Soul::default() }).unwrap();
         assert!(save_soul(&client, &graph, &soul).await.unwrap().starts_with("did:dkg:"));
         let back = souls(&client, &graph).await.unwrap();
@@ -59,7 +66,7 @@ mod live_tests {
         use crate::keepers::kit::{packs::Variant, parts::WornPart, wardrobe};
         let loc = node::locate(&dirs::home_dir().unwrap().join(".dkg")).expect("a DKG node in ~/.dkg");
         let client = DkgClient::new(&loc);
-        let graph = ensure(&client, "umoja-desk-livetest").await.unwrap();
+        let graph = ensure(&client, &Place::from("umoja-desk-livetest")).await.unwrap();
         let stamp = time::now_iso();
         let id = format!("live-jacket-{}", short_hash(&stamp, 6));
         let jacket = |colour: &str| Variant {
@@ -85,7 +92,7 @@ fn version_name(kind: &str, id: &str, at: &str) -> String {
     format!("desk-{kind}-{id}-{}", short_hash(at, 10))
 }
 
-pub async fn save_soul(client: &DkgClient, graph: &str, soul: &Soul) -> Result<String> {
+pub async fn save_soul(client: &DkgClient, graph: &Place, soul: &Soul) -> Result<String> {
     let at = time::now_iso();
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
         .a("desk:Soul")
@@ -99,7 +106,7 @@ pub async fn save_soul(client: &DkgClient, graph: &str, soul: &Soul) -> Result<S
 
 /// Save one of the person's modes (an edited built-in or their own), or with `removed` its
 /// tombstone (a reset built-in or a deleted mode): each save is the id's next version.
-pub async fn save_mode(client: &DkgClient, graph: &str, mode: &super::roles::Role, removed: bool) -> Result<String> {
+pub async fn save_mode(client: &DkgClient, graph: &Place, mode: &super::roles::Role, removed: bool) -> Result<String> {
     let at = time::now_iso();
     // Versions are ordered by this counter: timestamps have one-second steps, and an edit then a
     // reset within a second must still end reset.
@@ -116,7 +123,7 @@ pub async fn save_mode(client: &DkgClient, graph: &str, mode: &super::roles::Rol
 }
 
 /// The person's modes, newest version per id; tombstones drop the id (back to Keeper's own).
-pub async fn modes(client: &DkgClient, graph: &str, known_skills: &[&str]) -> Result<Vec<super::roles::Role>> {
+pub async fn modes(client: &DkgClient, graph: &Place, known_skills: &[&str]) -> Result<Vec<super::roles::Role>> {
     let mut out: Vec<super::roles::Role> = Vec::new();
     let records: Vec<serde_json::Value> = definitions(client, graph, "Mode").await?.iter().filter_map(|d| serde_json::from_str(d).ok()).collect();
     for v in records {
@@ -134,7 +141,7 @@ pub async fn modes(client: &DkgClient, graph: &str, known_skills: &[&str]) -> Re
 
 /// Save a wardrobe item (a part variant). A save of an existing id is its next version: the asset
 /// name hashes the time AND the definition, so two different saves in one second never collide.
-pub async fn save_variant(client: &DkgClient, graph: &str, variant: &Variant) -> Result<String> {
+pub async fn save_variant(client: &DkgClient, graph: &Place, variant: &Variant) -> Result<String> {
     let at = time::now_iso();
     let definition = with_seq(serde_json::to_value(variant)?);
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:kit:{}", variant.id))
@@ -154,7 +161,7 @@ fn with_seq(mut record: serde_json::Value) -> String {
     record.to_string()
 }
 
-async fn definitions(client: &DkgClient, graph: &str, class: &str) -> Result<Vec<String>> {
+async fn definitions(client: &DkgClient, graph: &Place, class: &str) -> Result<Vec<String>> {
     // Newest first, so the limit drops old versions; returned oldest first so the newest wins.
     let sparql = format!("{PREFIXES}SELECT ?def ?at WHERE {{ ?s a desk:{class} ; desk:definition ?def ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 300");
     let mut defs: Vec<String> = client.query(graph, &sparql, Layer::Working).await?.into_iter().filter_map(|r| r.get("def").cloned()).collect();
@@ -166,7 +173,7 @@ async fn definitions(client: &DkgClient, graph: &str, class: &str) -> Result<Vec
 }
 
 /// The person's own souls (newest write per id wins; invalid ones are skipped).
-pub async fn souls(client: &DkgClient, graph: &str) -> Result<Vec<Soul>> {
+pub async fn souls(client: &DkgClient, graph: &Place) -> Result<Vec<Soul>> {
     let mut out: Vec<Soul> = Vec::new();
     for def in definitions(client, graph, "Soul").await? {
         if let Some(s) = serde_json::from_str::<Soul>(&def).ok().and_then(|s| souls::sanitize(&s).ok()) {
@@ -177,7 +184,7 @@ pub async fn souls(client: &DkgClient, graph: &str) -> Result<Vec<Soul>> {
     Ok(out)
 }
 
-pub async fn variants(client: &DkgClient, graph: &str) -> Result<Vec<Variant>> {
+pub async fn variants(client: &DkgClient, graph: &Place) -> Result<Vec<Variant>> {
     let mut out: Vec<Variant> = Vec::new();
     for def in definitions(client, graph, "KitItem").await? {
         if let Some(v) = serde_json::from_str::<Variant>(&def).ok() {

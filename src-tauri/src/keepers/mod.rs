@@ -33,11 +33,20 @@ pub fn valid_name(name: &str) -> bool {
     !n.is_empty() && n.chars().count() <= 24 && n.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == '-')
 }
 
+/// This install's short id (names no person): the computer account, or a test copy's own folder
+/// (`KEEPER_HOME`), so a test copy never writes into the real home graph.
+pub fn install_base() -> String {
+    let home = match std::env::var("KEEPER_HOME") {
+        Ok(dir) if !dir.is_empty() => format!("test\u{0}{dir}"),
+        _ => dirs::home_dir().map(|h| h.display().to_string()).unwrap_or_default(),
+    };
+    short_hash(&format!("{home}\u{0}{}", platform::computer_name()), 10)
+}
+
 /// A new graph id: names no person, stable per keeper. The first keeper keeps the pre-keepers
 /// spelling (`umoja-desk-<hash>`) so an existing graph keeps its exact id.
 pub fn graph_id_for(seed: &str, first: bool) -> String {
-    let home = dirs::home_dir().map(|h| h.display().to_string()).unwrap_or_default();
-    let base = short_hash(&format!("{home}\u{0}{}", platform::computer_name()), 10);
+    let base = install_base();
     if first {
         format!("umoja-desk-{base}")
     } else {
@@ -49,7 +58,11 @@ pub fn graph_id_for(seed: &str, first: bool) -> String {
 /// read-back matched.
 pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &kit::souls::Soul) -> Result<(String, bool)> {
     let role = kit::roles::get(&keeper.role);
-    client.ensure_graph(&keeper.graph_id, &format!("{}: {} (Keeper)", keeper.name, role.title)).await?;
+    client.ensure_graph(&keeper.graph_id, "Keeper: your keepers' memory and kit").await?;
+    if let Some(sub) = &keeper.memory_sub {
+        client.ensure_sub_graph(&keeper.graph_id, sub).await?;
+    }
+    let _ = role;
     let mut quads = AssetBuilder::new(ASSISTANT)
         .a(class::AGENT)
         .a("schema:SoftwareApplication")
@@ -64,7 +77,7 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
         .time(pred::AT, &time::now_iso())
         .build();
     quads.extend(AssetBuilder::new(OWNER).a(class::PERSON).time(pred::AT, &time::now_iso()).build());
-    let written = client.write_asset(&keeper.graph_id, "desk-profile", &quads).await?;
+    let written = client.write_asset(keeper.place(), "desk-profile", &quads).await?;
     // The soul the keeper was born with, in its own graph: who it is travels with what it remembers.
     let soul_quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
         .a("desk:Soul")
@@ -72,9 +85,9 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
         .text("desk:definition", &serde_json::to_string(soul).unwrap_or_default())
         .time(pred::AT, &time::now_iso())
         .build();
-    client.write_asset(&keeper.graph_id, "desk-soul", &soul_quads).await?;
+    client.write_asset(keeper.place(), "desk-soul", &soul_quads).await?;
     let sparql = "PREFIX schema: <http://schema.org/> PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?name WHERE { <urn:umoja:desk:agent:assistant> a prov:SoftwareAgent ; schema:name ?name } LIMIT 5";
-    let rows = client.query(&keeper.graph_id, sparql, Layer::Working).await?;
+    let rows = client.query(keeper.place(), sparql, Layer::Working).await?;
     let verified = rows.iter().any(|r| r.get("name").is_some_and(|n| n == &keeper.name));
     Ok((written.ka_ual, verified))
 }
@@ -127,14 +140,18 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
     }
     let seed = format!("{}\u{0}{}", keeper.name.trim(), time::now_iso());
     let first = settings.keepers.is_empty();
+    let id = if first { "keeper-1".to_string() } else { format!("keeper-{}", short_hash(&seed, 10)) };
     let profile = KeeperProfile {
-        id: if first { "keeper-1".into() } else { format!("keeper-{}", short_hash(&seed, 10)) },
+        memory_sub: Some(crate::memory::relocate::keeper_sub(&id)),
+        legacy_graph: None,
+        id,
         name: keeper.name.trim().to_string(),
         skin: keeper.skin,
         role: keeper.role,
         soul: soul.id.clone(),
         wearables: crate::kernel::settings::default_wearables(),
-        graph_id: graph_id_for(&seed, first),
+        // Every keeper lives in the ONE home graph, in its own sub-graph.
+        graph_id: graph_id_for(&seed, true),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
         model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false
     };

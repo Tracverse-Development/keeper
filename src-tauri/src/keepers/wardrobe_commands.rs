@@ -48,7 +48,7 @@ pub struct Wardrobe {
 /// The person's own items from the kit graph, and whether the node answered.
 async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
     let Ok(client) = state.client() else { return (vec![], false) };
-    match inventory::kit(&client).await {
+    match inventory::kit(&client, &state.kit_place()).await {
         Ok(graph) => match inventory::variants(&client, &graph).await {
             Ok(v) => (v, true),
             Err(_) => (vec![], false),
@@ -205,7 +205,7 @@ pub async fn wardrobe_add(state: State<'_, AppState>, name: String, part: String
     let worn = parts::check_effects(&parts::WornPart { part, effects, item: None }).map_err(DeskError::Invalid)?;
     let variant = Variant { id: packs::slug(&name), name, worn, one_of_a_kind };
     let client = state.client()?;
-    inventory::save_variant(&client, &inventory::kit(&client).await?, &variant).await?;
+    inventory::save_variant(&client, &inventory::kit(&client, &state.kit_place()).await?, &variant).await?;
     let (own, complete) = own_items(&state).await;
     Ok(listing(wardrobe::items(&own), &state.settings().keepers, complete))
 }

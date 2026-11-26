@@ -41,3 +41,9 @@ Append-only. `### YYYY-MM-DD — title` with **Where / Severity / Status** bulle
 - **Where:** `src-tauri/src/brain/guard.rs`, `brain/engines/{cli,claude,codex}.rs`, `assistant/turn.rs`
 - **Severity:** Medium (closes most of DESK-APPROVAL-001)
 - **Status:** Done. An approved plan builds a `PlanGuard` (its paths, and whether it deletes or sends). Every streamed tool call is checked; a change to a path outside the plan, or a delete/send the plan does not include, stops the engine process at once (`cli::run` kills it) and the keeper says what it refused. Read-only tools and commands stay allowed. Proven live on Claude Code. Limits recorded in DESK-APPROVAL-001 (Codex after-the-fact, Gemini/Hermes unguarded, relative paths).
+
+### 2026-11-26 — Forgotten facts copied into the action log; test copies writing to the real graph
+- **Where:** `assistant/turn.rs` (ask-memory outcomes), `keepers/mod.rs` (`install_base`)
+- **Severity:** Medium (erasure incomplete: a forgotten fact's words stayed in a memory-lookup record) / Low (test data into the real kit graph, empty when checked).
+- **Status:** Fixed (FIX-0021, FIX-0022). Memory lookups store only their heading; test copies get their own home graph. The conversation's own turns still hold what was said until the chat is deleted (by design: deleting a chat erases its turns).
+

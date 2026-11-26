@@ -118,25 +118,57 @@ impl DkgClient {
     }
 
     /// Write one Knowledge Asset into Working Memory (private to this node).
-    pub async fn write_asset(&self, graph: &str, name: &str, quads: &[Quad]) -> Result<Written> {
-        let body = json!({ "contextGraphId": graph, "name": name, "quads": quads, "alsoShareSwm": false });
+    pub async fn write_asset(&self, place: impl Into<super::Place>, name: &str, quads: &[Quad]) -> Result<Written> {
+        let body = place.into().into_body(json!({ "name": name, "quads": quads, "alsoShareSwm": false }));
         let v = self.call(reqwest::Method::POST, "/api/knowledge-assets", Some(body), WRITE_TIMEOUT).await?;
         Ok(serde_json::from_value(v)?)
     }
 
     /// Discard a Knowledge Asset from Working Memory: its triples leave this node (erasure).
     /// Names are Keeper's own (`desk-…`: letters, digits, dashes), never the person's words.
-    pub async fn discard(&self, graph: &str, name: &str) -> Result<()> {
+    pub async fn discard(&self, place: impl Into<super::Place>, name: &str) -> Result<()> {
         if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
             return Err(DeskError::Invalid("That isn't a memory name.".into()));
         }
-        self.call(reqwest::Method::POST, &format!("/api/knowledge-assets/{name}/wm/discard"), Some(json!({ "contextGraphId": graph })), WRITE_TIMEOUT).await?;
+        self.call(reqwest::Method::POST, &format!("/api/knowledge-assets/{name}/wm/discard"), Some(place.into().into_body(json!({}))), WRITE_TIMEOUT).await?;
         Ok(())
     }
 
+    /// True when the node has this context graph (an absent graph has nothing to move or read).
+    pub async fn has_graph(&self, id: &str) -> Result<bool> {
+        let v = self.call(reqwest::Method::GET, "/api/context-graph/list", None, QUERY_TIMEOUT).await?;
+        let list = v["contextGraphs"].as_array().or_else(|| v.as_array()).cloned().unwrap_or_default();
+        Ok(list.iter().any(|g| g["id"].as_str() == Some(id)))
+    }
+
+    /// Create a sub-graph inside a context graph (idempotent: one that exists is fine).
+    pub async fn ensure_sub_graph(&self, graph: &str, sub: &str) -> Result<()> {
+        if !super::place::valid_sub(sub) {
+            return Err(DeskError::Invalid("That isn't a sub-graph name.".into()));
+        }
+        match self.call(reqwest::Method::POST, "/api/sub-graph/create", Some(json!({ "contextGraphId": graph, "subGraphName": sub })), WRITE_TIMEOUT).await {
+            Ok(_) | Err(DeskError::Exists(_)) => Ok(()),
+            Err(DeskError::Node(msg)) if msg.to_lowercase().contains("exist") => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// A bounded SELECT whose bindings come back exactly as the node wrote them (IRIs bare,
+    /// literals quoted with their datatype), for copying records as they are. `layer` None reads
+    /// without a memory-layer view (the node's own `_meta` records live there).
+    pub async fn query_terms(&self, place: impl Into<super::Place>, sparql: &str, layer: Option<Layer>) -> Result<Vec<std::collections::HashMap<String, String>>> {
+        let mut body = place.into().into_body(json!({ "sparql": sparql }));
+        if let Some(layer) = layer {
+            body["view"] = serde_json::to_value(layer)?;
+        }
+        let v = self.call(reqwest::Method::POST, "/api/query", Some(body), QUERY_TIMEOUT).await?;
+        let rows = v["result"]["bindings"].as_array().cloned().unwrap_or_default();
+        Ok(rows.into_iter().filter_map(|r| r.as_object().cloned()).map(|r| r.into_iter().map(|(k, v)| (k, v.as_str().unwrap_or_default().to_string())).collect()).collect())
+    }
+
     /// Run one bounded SPARQL SELECT (see `memory::queries`) over one layer.
-    pub async fn query(&self, graph: &str, sparql: &str, layer: Layer) -> Result<Vec<Row>> {
-        let body = json!({ "contextGraphId": graph, "sparql": sparql, "view": layer });
+    pub async fn query(&self, place: impl Into<super::Place>, sparql: &str, layer: Layer) -> Result<Vec<Row>> {
+        let body = place.into().into_body(json!({ "sparql": sparql, "view": layer }));
         let v = self.call(reqwest::Method::POST, "/api/query", Some(body), QUERY_TIMEOUT).await?;
         let rows = v["result"]["bindings"].as_array().cloned().unwrap_or_default();
         Ok(rows
