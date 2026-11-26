@@ -89,6 +89,27 @@ pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, result: &mut Option<Str
     }
 }
 
+/// One quick question that must be answered with a JSON object (no tools, no chat): used where
+/// Keeper needs structured data from the helper model, such as turning words into a wardrobe
+/// item. The answer is untrusted data; the caller validates every field.
+pub async fn ask_json(system: &str, question: &str, model: &str) -> Result<serde_json::Value> {
+    let program = cli::program("claude").ok_or_else(|| DeskError::Brain("Claude Code is not installed".into()))?;
+    let mut a: Vec<String> = ["-p", "--output-format", "json", "--strict-mcp-config", "--no-session-persistence", "--tools", "", "--disable-slash-commands", "--setting-sources", "", "--max-turns", "1"].iter().map(|s| s.to_string()).collect();
+    a.extend(["--system-prompt".to_string(), system.to_string()]);
+    if !model.is_empty() {
+        a.extend(["--model".to_string(), model.to_string()]);
+    }
+    a.push(question.to_string());
+    let run = cli::run(&program, &a, &cli::workdir(false), std::time::Duration::from_secs(60), |_| true).await?;
+    let envelope: Value = serde_json::from_str(run.stdout.trim()).map_err(|_| DeskError::Brain("The helper model did not answer.".into()))?;
+    let text = envelope["result"].as_str().unwrap_or_default();
+    let (start, end) = (text.find('{'), text.rfind('}'));
+    match (start, end) {
+        (Some(s), Some(e)) if e > s => serde_json::from_str(&text[s..=e]).map_err(|_| DeskError::Brain("The helper model's answer wasn't readable.".into())),
+        _ => Err(DeskError::Brain("The helper model's answer wasn't readable.".into())),
+    }
+}
+
 pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sync)) -> Result<Thought> {
     let program = cli::program("claude").ok_or_else(|| DeskError::Brain("Claude Code is not installed".into()))?;
     let (a, cwd) = (args(ctx, model), cli::workdir(ctx.may_act));

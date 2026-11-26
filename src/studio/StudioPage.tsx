@@ -14,6 +14,7 @@ import { CharacterStage } from '../character';
 import { core, sentence, type KeeperProfile, type KeeperVoice, type ZoneLook } from '../kernel/ipc';
 import { useEscape } from '../kernel/use-escape';
 import { WardrobeSection } from '../keepers/WardrobeSection';
+import { DesignBox } from './DesignBox';
 import { HabitsTab } from './HabitsTab';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
@@ -48,6 +49,7 @@ export function StudioPage({ open, keeper, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   // The Outfit tab's try-on, shown on the big stage.
+  const [wardrobeKey, setWardrobeKey] = useState(0);
   const [outfit, setOutfit] = useState<{ wearables: KeeperProfile['wearables']; caption: string } | null>(null);
 
   // A fresh draft whenever the Studio opens or the keeper changes.
@@ -120,7 +122,8 @@ export function StudioPage({ open, keeper, onClose, onSaved }: Props) {
           {error && <p className="error-line">{error}</p>}
           {!info && !error && <p className="muted">Opening the Studio…</p>}
           {info && tab === 'look' && <LookTab info={info} look={look} zone={zone} onZone={setZone} onLook={setLook} />}
-          {tab === 'outfit' && <WardrobeSection open={open} keeper={keeper} onChanged={() => { onSaved(); reload(); }} studio={info ?? undefined} onPreview={(wearables, caption) => setOutfit({ wearables, caption })} />}
+          {tab === 'outfit' && <DesignBox wearables={keeper.wearables} onPreview={(w, caption) => setOutfit(w ? { wearables: w, caption } : null)} onKept={() => { onSaved(); setWardrobeKey((k) => k + 1); }} />}
+          {tab === 'outfit' && <WardrobeSection key={wardrobeKey} open={open} keeper={keeper} onChanged={() => { onSaved(); reload(); }} studio={info ?? undefined} onPreview={(wearables, caption) => setOutfit({ wearables, caption })} />}
           {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
           {tab === 'voice' && <VoiceTab name={keeper.name} voice={voice} onVoice={setVoice} />}
           {info && tab === 'level' && <LevelTab info={info} name={keeper.name} />}

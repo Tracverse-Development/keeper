@@ -116,6 +116,70 @@ pub async fn wardrobe_give(state: State<'_, AppState>, item: String, from: Strin
     change(&state, &item, |keepers, chosen, items| wardrobe::give(keepers, chosen, &from, &to, how, items)).await
 }
 
+/// A wardrobe item designed from words, not yet saved: the Studio previews it on the keeper and
+/// saves it with `wardrobe_add` if the person likes it.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Designed {
+    pub name: String,
+    pub part: String,
+    pub effects: BTreeMap<String, serde_json::Value>,
+}
+
+/// The helper model's brief: every part with its slot, bodies and effect schema.
+fn designer_brief() -> String {
+    let list: Vec<String> = parts::PARTS
+        .iter()
+        .map(|p| {
+            let effects: Vec<String> = p.effects.iter().map(|e| if e.kind == "color" { format!("{} (#rrggbb)", e.key) } else { format!("{} ({}..{})", e.key, e.min, e.max) }).collect();
+            let bodies = if p.species.is_empty() { "any body".to_string() } else { p.species.join(", ") };
+            format!("- {} \"{}\": slot {}, {}; effects: {}", p.id, p.name, p.slot, bodies, effects.join(", "))
+        })
+        .collect();
+    format!(
+        "You design wardrobe items for a keeper (a small animated character). Pick the ONE part that best fits the request and \
+set its effects; invent a short, charming name (at most 40 characters). Answer ONLY with JSON: \
+{{\"part\": string, \"name\": string, \"effects\": object}}. Use only these parts and effect keys, with values in range:\n{}",
+        list.join("\n")
+    )
+}
+
+/// Design an item from words ("a neon jacket with gold trim"), validated like any import:
+/// a known part, effects only from its schema and in range, a clean name. Not saved.
+#[tauri::command]
+pub async fn wardrobe_design(state: State<'_, AppState>, description: String) -> Result<Designed> {
+    let model = state.settings().fast_model;
+    design(&description, if model.is_empty() { "haiku" } else { &model }).await
+}
+
+/// The designer itself (the command's body; tested live).
+pub async fn design(description: &str, model: &str) -> Result<Designed> {
+    let words: String = description.chars().take(300).collect();
+    if words.trim().len() < 3 {
+        return Err(DeskError::Invalid("Describe the item in a few words.".into()));
+    }
+    let raw = crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await?;
+    let part = raw["part"].as_str().unwrap_or_default().to_string();
+    let effects: BTreeMap<String, serde_json::Value> = raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None }).map_err(DeskError::Invalid)?;
+    let name = packs::clean_name(raw["name"].as_str().unwrap_or("My item")).unwrap_or_else(|_| "My item".into());
+    Ok(Designed { name, part: worn.part, effects: worn.effects })
+}
+
+#[cfg(test)]
+mod design_tests {
+    #[tokio::test]
+    #[ignore]
+    async fn live_words_become_a_valid_item() {
+        let t = std::time::Instant::now();
+        let d = super::design("a neon pink jacket with gold trim", "haiku").await.expect("designed");
+        println!("{:?} in {:?}", d, t.elapsed());
+        assert_eq!(d.part, "ark-jacket");
+        assert!(d.effects.get("color").and_then(|c| c.as_str()).is_some_and(|c| c.starts_with('#')));
+        assert!(!d.name.is_empty());
+    }
+}
+
 /// Make a new item of your own from a part and effect values (validated: known part, effects in
 /// range, a short name). Saving an existing name again is that item's next version.
 #[tauri::command]

@@ -150,6 +150,7 @@ pub fn run() {
             keepers::kit_commands::pack_export,
             keepers::kit_commands::pack_import,
             keepers::wardrobe_commands::wardrobe_list,
+            keepers::wardrobe_commands::wardrobe_design,
             keepers::studio_commands::keeper_studio,
             keepers::wardrobe_commands::wardrobe_wear,
             keepers::wardrobe_commands::wardrobe_take_off,

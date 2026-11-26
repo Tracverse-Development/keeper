@@ -46,6 +46,8 @@ export const core = {
   wardrobeTakeOff: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_take_off', { keeper, item }),
   wardrobeGive: (item: string, from: string, to: string, mode: GiveMode) => invoke<Wardrobe>('wardrobe_give', { item, from, to, mode }),
   wardrobeAdd: (item: NewWardrobeItem) => invoke<Wardrobe>('wardrobe_add', { ...item }),
+  /** Design an item from words (validated, not saved). */
+  wardrobeDesign: (description: string) => invoke<{ name: string; part: string; effects: Record<string, number | string> }>('wardrobe_design', { description }),
   systemLoad: () => invoke<SystemLoad>('system_load'),
   activateKeeper: (id: string) => invoke<KeeperList>('keepers_activate', { id }),
   updateKeeper: (id: string, change: KeeperChange) => invoke<KeeperSaved>('keepers_update', { id, change }),
