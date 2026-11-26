@@ -31,7 +31,8 @@ impl Record for PanelEvent {
     fn hot(&self) -> Option<super::hot::HotChange> {
         match self.kind.as_str() {
             "pin" => Some(super::hot::HotChange::Pin(self.value.clone())),
-            "quiz" | "card" => Some(super::hot::HotChange::Practice(practice_fact(&self.kind, &self.item, &self.value))),
+            "quiz" => Some(super::hot::HotChange::Quiz(practice_fact(&self.kind, &self.item, &self.value), self.value == "yes")),
+            "card" => Some(super::hot::HotChange::Practice(practice_fact(&self.kind, &self.item, &self.value))),
             _ => None,
         }
     }
@@ -79,6 +80,14 @@ impl Memory {
 
     /// Right quiz answers in a row, counting back from the latest.
     pub async fn streak(&self) -> u32 {
+        if let Some(streak) = super::hot::streak(self.graph()) {
+            return streak;
+        }
+        self.streak_from_dkg().await
+    }
+
+    /// The streak read from the graph (fills hot memory).
+    pub(super) async fn streak_from_dkg(&self) -> u32 {
         let results = self.events_of("quiz", 50).await.unwrap_or_default();
         results.iter().take_while(|(_, v)| v == "yes").count() as u32
     }

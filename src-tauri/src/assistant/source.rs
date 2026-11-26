@@ -29,6 +29,9 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {
         return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false };
     }
+    if ctx.said.starts_with(FOLLOW_UP) {
+        super::prefetch::wait_if_preparing(&ctx.said).await;
+    }
     if ctx.visual && !ctx.may_act && crate::memory::scene_cache::cacheable(&ctx.said) {
         if let Ok(Some(scene)) = memory.cached_scene(&ctx.said).await {
             for p in &scene.panels {

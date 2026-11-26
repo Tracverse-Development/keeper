@@ -30,6 +30,8 @@ pub enum HotChange {
     Scene(CachedScene),
     /// A chat was erased: its turns leave the recent conversation.
     DropChat(String),
+    /// A quiz answer: practice for the next turn, and the streak (right answers in a row).
+    Quiz(Fact, bool),
 }
 
 /// What hot memory knows about a question's cached scene.
@@ -50,6 +52,8 @@ pub struct Snapshot {
     pub pinned: HashSet<String>,
     pub recent: Vec<Turn>,
     pub practice: Vec<Fact>,
+    /// Right quiz answers in a row, counting back from the latest.
+    pub streak: u32,
     /// The keys of every scene kept in the graph (`scene_cache::key`); None when they could
     /// not be read (then every lookup asks the DKG, as before).
     pub scene_keys: Option<HashSet<String>>,
@@ -63,6 +67,7 @@ struct Mirror {
     practice: VecDeque<Fact>,
     scene_keys: Option<HashSet<String>>,
     scenes: HashMap<String, CachedScene>,
+    streak: u32,
     loaded: Instant,
 }
 
@@ -78,7 +83,14 @@ pub fn get(graph: &str) -> Option<Snapshot> {
         recent: m.recent.iter().cloned().collect(),
         practice: m.practice.iter().cloned().collect(),
         scene_keys: m.scene_keys.clone(),
+        streak: m.streak,
     })
+}
+
+/// The quiz streak from hot memory (None when the mirror is not loaded).
+pub fn streak(graph: &str) -> Option<u32> {
+    let pool = HOT.lock().ok()?;
+    pool.as_ref()?.get(graph).filter(|m| m.loaded.elapsed() < MAX_AGE).map(|m| m.streak)
 }
 
 /// Look up a cached scene by key without touching the DKG when the answer is already known.
@@ -95,7 +107,7 @@ pub fn scene(graph: &str, key: &str) -> SceneLookup {
 /// Fill the mirror from what the DKG just answered.
 pub fn load(graph: &str, snap: Snapshot) {
     let Ok(mut pool) = HOT.lock() else { return };
-    let m = Mirror { facts: snap.facts, gone: HashSet::new(), pinned: snap.pinned, recent: snap.recent.into_iter().take(RECENT).collect(), practice: snap.practice.into_iter().take(PRACTICE).collect(), scene_keys: snap.scene_keys, scenes: HashMap::new(), loaded: Instant::now() };
+    let m = Mirror { facts: snap.facts, gone: HashSet::new(), pinned: snap.pinned, recent: snap.recent.into_iter().take(RECENT).collect(), practice: snap.practice.into_iter().take(PRACTICE).collect(), scene_keys: snap.scene_keys, scenes: HashMap::new(), streak: snap.streak, loaded: Instant::now() };
     pool.get_or_insert_with(HashMap::new).insert(graph.to_string(), m);
 }
 
@@ -121,6 +133,11 @@ pub fn apply(graph: &str, change: HotChange) {
         HotChange::Practice(p) => {
             m.practice.push_front(p);
             m.practice.truncate(PRACTICE);
+        }
+        HotChange::Quiz(fact, right) => {
+            m.practice.push_front(fact);
+            m.practice.truncate(PRACTICE);
+            m.streak = if right { m.streak + 1 } else { 0 };
         }
         HotChange::DropChat(chat) => {
             m.recent.retain(|t| t.chat != chat);
@@ -152,7 +169,7 @@ mod tests {
         let g = "hot-test";
         assert!(get(g).is_none(), "nothing until loaded");
         let f = Fact::new("Your sister is Maya", "person", "2026-11-25T10:00:00Z");
-        load(g, Snapshot { facts: vec![f.clone()], pinned: HashSet::new(), recent: vec![], practice: vec![], scene_keys: Some(HashSet::from(["old".to_string()])) });
+        load(g, Snapshot { facts: vec![f.clone()], pinned: HashSet::new(), recent: vec![], practice: vec![], scene_keys: Some(HashSet::from(["old".to_string()])), streak: 1 });
         apply(g, HotChange::Fact(Fact::new("You live in Springfield", "place", "2026-11-25T11:00:00Z")));
         apply(g, HotChange::Retract(f.id.clone()));
         apply(g, HotChange::Pin("abc".into()));
@@ -167,5 +184,10 @@ mod tests {
         apply(g, HotChange::Scene(kept));
         assert!(matches!(scene(g, "new"), SceneLookup::Hit(_)));
         assert!(matches!(scene("unloaded", "x"), SceneLookup::Unknown));
+        let q = Fact::new("You answered \"2+2\" right", "practice", "2026-11-25T12:00:00Z");
+        apply(g, HotChange::Quiz(q.clone(), true));
+        assert_eq!(streak(g), Some(2), "a right answer extends the streak at once");
+        apply(g, HotChange::Quiz(q, false));
+        assert_eq!(streak(g), Some(0), "a wrong one ends it");
     }
 }

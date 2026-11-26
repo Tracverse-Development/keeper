@@ -99,6 +99,19 @@ impl Memory {
         self.write_quads(record.asset_name(), &record.quads()).await
     }
 
+    /// Write without waiting: hot memory changes now (recall, streaks and panels see it at once)
+    /// and the asset goes to the node in the background. For panel actions, where the person is
+    /// watching and the node's answer changes nothing on screen.
+    pub fn write_soon(&self, record: &impl Record) {
+        if let Some(change) = record.hot() {
+            hot::apply(&self.graph, change);
+        }
+        let (memory, name, quads) = (self.clone(), record.asset_name(), record.quads());
+        tauri::async_runtime::spawn(async move {
+            memory.write_quads(name, &quads).await;
+        });
+    }
+
     /// Send one asset to the node (used by `write` and by `later`, which applied hot memory itself).
     pub async fn write_quads(&self, name: String, quads: &[crate::dkg::Quad]) -> WriteReceipt {
         match self.client.write_asset(&self.graph, &name, quads).await {
@@ -269,8 +282,8 @@ impl Memory {
 
     /// What recall needs, read from the DKG (fills hot memory).
     async fn load_hot(&self) -> Result<hot::Snapshot> {
-        let ((facts, _), (recent, _), pinned, practice, scene_keys) = tokio::try_join!(self.facts(), self.recent_turns(), async { Ok(self.pinned().await) }, async { Ok(self.practice().await) }, async { Ok(self.scene_keys().await) })?;
-        Ok(hot::Snapshot { facts, pinned, recent, practice, scene_keys })
+        let ((facts, _), (recent, _), pinned, practice, scene_keys, streak) = tokio::try_join!(self.facts(), self.recent_turns(), async { Ok(self.pinned().await) }, async { Ok(self.practice().await) }, async { Ok(self.scene_keys().await) }, async { Ok(self.streak_from_dkg().await) })?;
+        Ok(hot::Snapshot { facts, pinned, recent, practice, scene_keys, streak })
     }
 
     /// Retract the remembered facts that best match `what`; returns what was forgotten.
@@ -294,6 +307,11 @@ impl Memory {
         self.client().discard(self.graph(), &format!("desk-chat-{chat_id}")).await?;
         hot::apply(&self.graph, hot::HotChange::DropChat(chat_id.to_string()));
         Ok(turns.len())
+    }
+
+    /// Stop recalling a fact at once (hot memory); `erase_fact` then removes it from the node.
+    pub fn forget_now(&self, fact_id: &str) {
+        hot::apply(&self.graph, hot::HotChange::Retract(fact_id.to_string()));
     }
 
     /// Forget a fact for real: its Knowledge Asset is discarded from Working Memory, so its words

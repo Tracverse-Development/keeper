@@ -41,18 +41,25 @@ fn fact_id(id: &str) -> Result<String> {
 #[tauri::command]
 pub async fn stage_action(state: State<'_, AppState>, keeper: Option<String>, action: Action) -> Result<ActionDone> {
     let memory = state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?;
+    // Instant: hot memory changes now and the node is written in the background (write_soon),
+    // so a tick, an answer or a pin never waits on the DKG (it took 50-300 ms per action).
     let mut streak = 0;
     match action {
-        Action::Check { panel_title, text, done } => memory.write(&PanelEvent::new("check", &panel_title, &text, yes(done))).await,
-        Action::Submit { panel_title, values } => memory.write(&PanelEvent::new("submit", &panel_title, "form", &serde_json::to_string(&values)?)).await,
+        Action::Check { panel_title, text, done } => memory.write_soon(&PanelEvent::new("check", &panel_title, &text, yes(done))),
+        Action::Submit { panel_title, values } => memory.write_soon(&PanelEvent::new("submit", &panel_title, "form", &serde_json::to_string(&values)?)),
         Action::Quiz { question, correct } => {
-            let r = memory.write(&PanelEvent::new("quiz", "quiz", &question, yes(correct))).await;
+            memory.write_soon(&PanelEvent::new("quiz", "quiz", &question, yes(correct)));
             streak = memory.streak().await;
-            r
         }
-        Action::Card { front, known } => memory.write(&PanelEvent::new("card", "flashcards", &front, yes(known))).await,
-        Action::Forget { fact_id: id } => memory.erase_fact(&fact_id(&id)?).await,
-        Action::Pin { fact_id: id } => memory.write(&PanelEvent::new("pin", "facts", "pin", &fact_id(&id)?)).await,
+        Action::Card { front, known } => memory.write_soon(&PanelEvent::new("card", "flashcards", &front, yes(known))),
+        Action::Forget { fact_id: id } => {
+            let (memory, id) = (memory.clone(), fact_id(&id)?);
+            memory.forget_now(&id);
+            tauri::async_runtime::spawn(async move {
+                memory.erase_fact(&id).await;
+            });
+        }
+        Action::Pin { fact_id: id } => memory.write_soon(&PanelEvent::new("pin", "facts", "pin", &fact_id(&id)?)),
     };
     Ok(ActionDone { streak })
 }
