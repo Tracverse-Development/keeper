@@ -99,34 +99,70 @@ impl Experience {
     }
 }
 
+/// The level each keeper was last seen at (this run of Keeper), to notice a level up.
+static SEEN: std::sync::Mutex<Option<std::collections::HashMap<String, u32>>> = std::sync::Mutex::new(None);
+
+/// Remember `level` for `keeper`; returns the previous level when this is a level UP (the first
+/// look at a keeper only records it, so opening Keeper never "levels up").
+pub fn record_level(keeper: &str, level: u32) -> Option<u32> {
+    let mut seen = SEEN.lock().ok()?;
+    let map = seen.get_or_insert_with(std::collections::HashMap::new);
+    let before = map.insert(keeper.to_string(), level)?;
+    (level > before).then_some(before)
+}
+
+/// After a turn is written: read the keeper's experience and, on a new level, tell the window
+/// what opened (`events::LEVEL_UP`), so it can celebrate. Runs off the reply path.
+pub fn check_level_up(app: &tauri::AppHandle, keeper: String, memory: Memory) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let Some(e) = experience(&memory).await else { return };
+        if let Some(before) = record_level(&keeper, e.level) {
+            let unlocked: Vec<&Unlock> = UNLOCKS.iter().filter(|u| u.level > before && u.level <= e.level).collect();
+            use tauri::Emitter;
+            let _ = app.emit(crate::kernel::events::LEVEL_UP, serde_json::json!({ "keeper": keeper, "level": e.level, "unlocked": unlocked }));
+        }
+    });
+}
+
 const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> ";
 
-/// One bounded count over the keeper's graph (one class per query: LES-001).
-async fn count(memory: &Memory, body: &str) -> u64 {
+/// One bounded count over the keeper's graph (one class per query: LES-001); None when the
+/// node did not answer.
+async fn count(memory: &Memory, body: &str) -> Option<u64> {
     let sparql = format!("{PREFIXES}SELECT (COUNT(?s) AS ?n) WHERE {{ {body} }}");
     memory
         .client()
         .query(memory.graph(), &sparql, Layer::Working)
         .await
         .ok()
-        .and_then(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())))
-        .unwrap_or(0)
+        .map(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))
 }
 
-/// The keeper's experience, read from its graph (four small counts, run together).
-pub async fn experience(memory: &Memory) -> Experience {
+/// The keeper's experience, read from its graph (four small counts, run together), only when
+/// every count was answered: a node that is down must never look like level 0 (the next
+/// message would "level up", and items would lock).
+pub async fn experience(memory: &Memory) -> Option<Experience> {
     let (turns, lessons, quiz_right, actions) = tokio::join!(
         count(memory, "?s a desk:Turn"),
         count(memory, "?s a desk:Turn ; desk:panels ?p . FILTER(STRLEN(?p) > 2)"),
         count(memory, "?s a desk:PanelEvent ; desk:eventKind \"quiz\" ; desk:value \"yes\""),
         count(memory, "?s a desk:Action"),
     );
-    Experience::from_done(Done { turns, lessons, quiz_right, actions })
+    Some(Experience::from_done(Done { turns: turns?, lessons: lessons?, quiz_right: quiz_right?, actions: actions? }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_level_up_is_noticed_once_and_never_on_first_sight() {
+        assert_eq!(record_level("lvl-test", 3), None, "first sight only records");
+        assert_eq!(record_level("lvl-test", 3), None);
+        assert_eq!(record_level("lvl-test", 4), Some(3));
+        assert_eq!(record_level("lvl-test", 4), None);
+    }
 
     #[test]
     fn levels_follow_the_curve() {

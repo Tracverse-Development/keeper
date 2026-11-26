@@ -173,7 +173,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels);
     writes.push(later.add(&turn, "turn"));
     let app_for_writes = app.clone();
-    later.send(move |receipt, kind| wrote(&app_for_writes, receipt, kind));
+    let (level_keeper, level_memory) = (keeper.id.clone(), memory.clone());
+    later.send(move |receipt, kind| {
+        wrote(&app_for_writes, receipt, kind);
+        // Once the turn is on the graph, see whether the keeper reached a new level.
+        if kind == "turn" {
+            crate::keepers::kit::levels::check_level_up(&app_for_writes, level_keeper.clone(), level_memory.clone());
+        }
+    });
     phase(app, "done", "");
 
     let first = first_ms.lock().ok().and_then(|f| *f);

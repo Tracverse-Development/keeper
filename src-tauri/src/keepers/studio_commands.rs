@@ -37,7 +37,14 @@ pub struct Studio {
 #[tauri::command]
 pub async fn keeper_studio(state: State<'_, AppState>, keeper: Option<String>) -> Result<Studio> {
     let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
-    let experience = levels::experience(&state.memory_for(&profile)?).await;
+    let memory = state.memory_for(&profile)?;
+    let experience = match levels::experience(&memory).await {
+        Some(e) => {
+            levels::record_level(&profile.id, e.level);
+            e
+        }
+        None => return Err(crate::kernel::DeskError::Node("Your memory node isn't answering, so the level can't be read right now.".into())),
+    };
     Ok(Studio {
         keeper: profile.id.clone(),
         experience,

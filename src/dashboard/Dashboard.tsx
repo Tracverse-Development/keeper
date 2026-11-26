@@ -21,6 +21,8 @@ import { CommandPalette } from '../palette/CommandPalette';
 import { paletteCommands } from '../palette/palette-commands';
 import { SettingsSheet } from '../settings/SettingsSheet';
 import { StudioPage } from '../studio/StudioPage';
+import { levelUpLine } from '../studio/studio-view';
+import { useLevelUp } from '../studio/useLevelUp';
 import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
 import { moodFor, phaseWords } from './mood';
@@ -84,6 +86,13 @@ export function Dashboard({ initial }: { initial: Settings }) {
   });
   speakRef.current = voice.speak;
 
+  useLevelUp(keeper?.id ?? null, (level, unlocked) => {
+    const line = levelUpLine(keeper?.name ?? 'Keeper', level, unlocked);
+    celebrate();
+    play('celebrate');
+    assistant.announce(line, keeper?.name ?? 'Keeper');
+    speakRef.current(line, true);
+  });
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
   // The next turn's engine starts before the person speaks: on opening, on switching keeper, and
   // whenever the window comes back to the front (a spare retires after 20 minutes).

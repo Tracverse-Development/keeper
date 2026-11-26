@@ -57,6 +57,13 @@ export function habitWords(weight: number): string {
   return 'All the time';
 }
 
+/** What a keeper says when it reaches a new level, naming what opened. */
+export function levelUpLine(name: string, level: number, unlocked: { name: string }[]): string {
+  const opened = unlocked.map((u) => u.name.charAt(0).toLowerCase() + u.name.slice(1));
+  const tail = opened.length === 0 ? '' : opened.length === 1 ? ` I can now wear ${opened[0]}.`.replace('wear a ', 'have a ') : ` New for me: ${opened.slice(0, -1).join(', ')} and ${opened[opened.length - 1]}.`;
+  return `${name} reached level ${level}!${tail}`;
+}
+
 /** A sample line for testing a voice, in the keeper's own name. */
 export function voiceSample(name: string): string {
   return `Hi, I'm ${name}. This is how I'd sound.`;

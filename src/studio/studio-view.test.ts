@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { Experience, StudioInfo } from '../kernel/ipc-studio.ts';
-import { habitWeight, habitWords, levelProgress, lockedUntil, rarityOf, setZone } from './studio-view.ts';
+import { habitWeight, habitWords, levelProgress, levelUpLine, lockedUntil, rarityOf, setZone } from './studio-view.ts';
 
 const rarities = [
   { id: 'common', name: 'Common', level: 1, color: '#9aa3b5' },
@@ -37,4 +37,11 @@ test('habits default to sometimes and read in words', () => {
   assert.equal(habitWeight(undefined, 'sleep'), 1);
   assert.equal(habitWeight({ sleep: 0 }, 'sleep'), 0);
   assert.deepEqual([0, 1, 2, 3].map(habitWords), ['Never', 'Sometimes', 'Often', 'All the time']);
+});
+
+test('a level up says what opened', () => {
+  assert.equal(levelUpLine('Pup', 4, [{ name: 'Rare items' }]), 'Pup reached level 4! I can now wear rare items.');
+  assert.equal(levelUpLine('Pup', 5, [{ name: 'A pendant with your own photo' }]), 'Pup reached level 5! I can now have a pendant with your own photo.');
+  assert.equal(levelUpLine('Pup', 7, []), 'Pup reached level 7!');
+  assert.equal(levelUpLine('Pup', 6, [{ name: 'Celebration effects' }, { name: 'Idle effects' }]), 'Pup reached level 6! New for me: celebration effects and idle effects.');
 });

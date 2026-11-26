@@ -60,6 +60,14 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 state.refresh_souls().await;
+                // Each keeper's level as Keeper opens, so the first message that crosses a level celebrates.
+                for keeper in state.settings().keepers {
+                    if let Ok(memory) = state.memory_for(&keeper) {
+                        if let Some(e) = crate::keepers::kit::levels::experience(&memory).await {
+                            crate::keepers::kit::levels::record_level(&keeper.id, e.level);
+                        }
+                    }
+                }
                 // Idle engine spares past their age are ended, not left holding memory.
                 crate::brain::engines::warm::spawn_sweeper();
                 // Keep watching it: restart it if it stops, send what waited in the outbox.

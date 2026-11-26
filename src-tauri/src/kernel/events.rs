@@ -25,3 +25,5 @@ pub const STAGE_PANEL: &str = "stage://panel";
 pub const EARLY_REPLY: &str = "assistant://early-reply";
 /// New words of the reply as it is written (the chat types them live).
 pub const REPLY_DELTA: &str = "assistant://reply-delta";
+/// A keeper reached a new level: { keeper, level, unlocked: [Unlock] } (`kit::levels::check_level_up`).
+pub const LEVEL_UP: &str = "keeper://level-up";

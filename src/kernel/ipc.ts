@@ -25,6 +25,8 @@ export const EVENTS = {
   stagePanel: 'stage://panel',
   earlyReply: 'assistant://early-reply',
   replyDelta: 'assistant://reply-delta',
+  /** A keeper reached a new level: { keeper, level, unlocked } (`kit::levels::check_level_up`). */
+  levelUp: 'keeper://level-up',
 } as const;
 
 export type * from './ipc-types';
