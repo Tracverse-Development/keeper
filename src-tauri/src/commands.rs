@@ -226,9 +226,9 @@ pub async fn voice_stop(app: AppHandle, state: State<'_, AppState>) -> Result<()
 }
 
 #[tauri::command]
-pub async fn voice_speak(app: AppHandle, state: State<'_, AppState>, text: String) -> Result<()> {
+pub async fn voice_speak(app: AppHandle, state: State<'_, AppState>, text: String, queue: Option<bool>) -> Result<()> {
     let text: String = text.chars().take(1200).collect();
-    state.voice.speak(&app, &text, &state.settings()).await
+    state.voice.speak(&app, &text, &state.settings(), queue.unwrap_or(false)).await
 }
 
 #[tauri::command]

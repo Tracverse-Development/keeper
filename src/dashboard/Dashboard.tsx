@@ -44,7 +44,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
   const lastTouch = useRef<{ at: number; line: string | null }>({ at: 0, line: null });
-  const speakRef = useRef<(t: string) => void>(() => undefined);
+  const speakRef = useRef<(t: string, queue?: boolean) => void>(() => undefined);
 
   const keepers = useKeepers();
   const keeper = keepers.active;
@@ -93,7 +93,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   }, [keeper?.id]);
   const actions = usePanelActions({
     keeper: keeper?.id ?? null,
-    speak: (t) => speakRef.current(t),
+    speak: (t, queue) => speakRef.current(t, queue),
     celebrate,
     streak: () => play('streak'),
     announce: (t) => assistant.announce(t, keeper?.name ?? 'Keeper'),

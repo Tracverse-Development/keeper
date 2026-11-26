@@ -89,7 +89,7 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
       core.listenOnce().catch(fail);
     },
     stop: () => core.stopListening().catch(fail),
-    speak: (text: string) => core.speak(text).catch(fail),
+    speak: (text: string, queue = false) => core.speak(text, queue).catch(fail),
     hush: () => core.hush().catch(fail),
     clearError: () => setState((s) => ({ ...s, error: null })),
   };

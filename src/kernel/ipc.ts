@@ -91,7 +91,8 @@ export const core = {
   voiceAuthorize: () => invoke<void>('voice_authorize'),
   listenOnce: () => invoke<void>('voice_listen_once'),
   stopListening: () => invoke<void>('voice_stop'),
-  speak: (text: string) => invoke<void>('voice_speak', { text }),
+  /** `queue`: say it after what is being said (a reply's rest after its first sentence). */
+  speak: (text: string, queue = false) => invoke<void>('voice_speak', { text, queue }),
   hush: () => invoke<void>('voice_hush'),
   listVoices: () => invoke<void>('voice_list'),
 };

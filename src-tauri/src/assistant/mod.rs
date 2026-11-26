@@ -13,6 +13,7 @@
 pub mod actions;
 pub mod approval;
 mod intent;
+mod speech;
 pub mod persona;
 mod prefetch;
 mod source;
@@ -69,6 +70,8 @@ pub struct Timings {
     pub first_ms: Option<u128>,
     /// The first Stage panel arrived (a lesson's first picture), when the answer has panels.
     pub panel_ms: Option<u128>,
+    /// Something could first be spoken: the reply's first sentence (or the whole reply).
+    pub speak_ms: Option<u128>,
     /// The answer's source (instant, cache, plan, engine) took this long.
     pub think_ms: u128,
     /// The whole turn, up to the reply (the DKG writes happen after it).

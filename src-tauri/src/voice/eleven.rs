@@ -73,7 +73,8 @@ pub async fn voices() -> Result<Vec<ElevenVoice>> {
         .collect())
 }
 
-/// Speak `text` with `voice_id` into an MP3 file (overwritten each time) and return its path.
+/// Speak `text` with `voice_id` into an MP3 file and return its path. Files rotate through a
+/// few names, so a queued sentence is never overwritten while the one before it plays.
 pub async fn render(text: &str, voice_id: &str) -> Result<PathBuf> {
     if !valid_voice_id(voice_id) {
         return Err(DeskError::Invalid("Choose an ElevenLabs voice in Settings.".into()));
@@ -89,7 +90,9 @@ pub async fn render(text: &str, voice_id: &str) -> Result<PathBuf> {
         return Err(DeskError::Io(format!("ElevenLabs answered {}", res.status())));
     }
     let bytes = res.bytes().await.map_err(|e| DeskError::Io(e.to_string()))?;
-    let path = paths::app_home().join("speech.mp3");
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let slot = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % 4;
+    let path = paths::app_home().join(format!("speech-{slot}.mp3"));
     paths::write_private(&path, &bytes)?;
     Ok(path)
 }

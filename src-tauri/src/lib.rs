@@ -44,7 +44,7 @@ pub fn run() {
                     let line = format!("A reminder: {}.", reminder.text.trim_end_matches('.'));
                     platform::notify("Keeper", &line);
                     let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
-                    let _ = state.voice.speak(&app, &line, &state.settings()).await;
+                    let _ = state.voice.speak(&app, &line, &state.settings(), false).await;
                 });
             });
             let state = AppState::new(Settings::load(), reminders);

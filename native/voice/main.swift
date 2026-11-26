@@ -6,6 +6,8 @@
 // Protocol (one JSON object per line):
 //   stdin  {"cmd":"listen","mode":"once"|"always"} {"cmd":"finish"} {"cmd":"stop"} {"cmd":"speak","text":"…","voice":"Samantha"}
 //          {"cmd":"play","path":"/…/speech.mp3"} (ElevenLabs audio; mouth follows the loudness)
+//          "queue": true on speak/play: wait for what is being said instead of cutting it off
+//          (the first sentence of a reply is spoken while the rest is still being written)
 //          {"cmd":"hush"} {"cmd":"authorize"} {"cmd":"voices"}
 //   stdout {"type":"ready","onDevice":true} {"type":"level","value":0.4} {"type":"partial","text":"…"}
 //          {"type":"final","text":"…"} {"type":"listening","on":true} {"type":"speech-start"}
@@ -164,8 +166,8 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
         synth.delegate = self
     }
 
-    func speak(_ text: String, voiceName: String) {
-        synth.stopSpeaking(at: .immediate)
+    func speak(_ text: String, voiceName: String, queue: Bool = false) {
+        if !queue { synth.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: text)
         let voices = AVSpeechSynthesisVoice.speechVoices()
         let preferred = voices.filter { $0.name == voiceName }.sorted { $0.quality.rawValue > $1.quality.rawValue }.first
@@ -191,7 +193,14 @@ final class Player: NSObject, AVAudioPlayerDelegate {
     private var meter: Timer?
     var onFinish: (() -> Void)?
 
-    func play(path: String) {
+    /// Waiting their turn (queued plays), oldest first.
+    private var waiting: [String] = []
+
+    func play(path: String, queue: Bool = false) {
+        if queue, player?.isPlaying == true {
+            waiting.append(path)
+            return
+        }
         stop()
         do {
             let p = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
@@ -213,6 +222,7 @@ final class Player: NSObject, AVAudioPlayerDelegate {
     }
 
     func stop() {
+        waiting.removeAll()
         meter?.invalidate()
         if player?.isPlaying == true {
             player?.stop()
@@ -223,6 +233,14 @@ final class Player: NSObject, AVAudioPlayerDelegate {
 
     func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully flag: Bool) {
         meter?.invalidate()
+        if !waiting.isEmpty {
+            let next = waiting.removeFirst()
+            let rest = waiting
+            player = nil
+            play(path: next)
+            waiting = rest
+            return
+        }
         emit(["type": "mouth", "value": 0])
         emit(["type": "speech-end"])
         onFinish?()
@@ -263,13 +281,15 @@ final class Helper {
             let text = command["text"] as? String ?? ""
             guard !text.isEmpty else { return }
             if listener.mode != "off" { listener.stop(emitState: false) }
-            player.stop()
-            speaker.speak(text, voiceName: command["voice"] as? String ?? "Samantha")
+            let queue = command["queue"] as? Bool ?? false
+            if !queue { player.stop() }
+            speaker.speak(text, voiceName: command["voice"] as? String ?? "Samantha", queue: queue)
         case "play":
             guard let path = command["path"] as? String, path.hasSuffix(".mp3") else { return }
             if listener.mode != "off" { listener.stop(emitState: false) }
-            speaker.hush()
-            player.play(path: path)
+            let queue = command["queue"] as? Bool ?? false
+            if !queue { speaker.hush() }
+            player.play(path: path, queue: queue)
         case "hush":
             speaker.hush()
             player.stop()

@@ -56,11 +56,13 @@ pub struct Voice {
     stdin: Arc<AsyncMutex<Option<ChildStdin>>>,
     shared: Arc<Mutex<Shared>>,
     replies: Arc<Replies>,
+    /// Speech is rendered and handed over one at a time, so queued sentences keep their order.
+    order: Arc<AsyncMutex<()>>,
 }
 
 impl Voice {
     pub fn new() -> Voice {
-        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })), replies: Arc::new(Replies::default()) }
+        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })), replies: Arc::new(Replies::default()), order: Arc::new(AsyncMutex::new(())) }
     }
 
     pub fn set_keepers(&self, keepers: Vec<(String, String)>, active: String) {
@@ -189,16 +191,18 @@ impl Voice {
 
     /// Speak with the chosen voice engine. ElevenLabs that fails falls back to the Mac's voice,
     /// and the window hears why (no silent failures).
-    pub async fn speak(&self, app: &AppHandle, text: &str, settings: &Settings) -> Result<()> {
+    /// `queue`: wait for what is being said (the rest of a reply after its first sentence).
+    pub async fn speak(&self, app: &AppHandle, text: &str, settings: &Settings, queue: bool) -> Result<()> {
+        let _turn = self.order.lock().await;
         if settings.voice_engine == VoiceEngine::Elevenlabs {
             match eleven::render(text, &settings.eleven_voice_id).await {
-                Ok(path) => return self.send(app, json!({ "cmd": "play", "path": path })).await,
+                Ok(path) => return self.send(app, json!({ "cmd": "play", "path": path, "queue": queue })).await,
                 Err(e) => {
                     let _ = app.emit(events::VOICE_EVENT, json!({ "type": "error", "message": format!("{e} Using the Mac's voice instead.") }));
                 }
             }
         }
-        self.send(app, json!({ "cmd": "speak", "text": text, "voice": settings.voice })).await
+        self.send(app, json!({ "cmd": "speak", "text": text, "voice": settings.voice, "queue": queue })).await
     }
 
     /// Ask for the English system voices (answered as a `voices` event).

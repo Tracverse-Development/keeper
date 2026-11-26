@@ -71,6 +71,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         }
     };
     let panel_ms: Mutex<Option<u128>> = Mutex::new(None);
+    // The reply as it is typed, so its first sentence can be spoken before the rest is written.
+    let typed: Mutex<(String, bool)> = Mutex::new((String::new(), false));
+    let speak_ms: Mutex<Option<u128>> = Mutex::new(None);
+    let speakable = || {
+        if let Ok(mut f) = speak_ms.lock() {
+            f.get_or_insert(started.elapsed().as_millis());
+        }
+    };
     let progress = |p: brain::Progress| match p {
         brain::Progress::Step(step) => phase(app, "acting", step),
         brain::Progress::Panel(panel) => {
@@ -83,9 +91,20 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         brain::Progress::ReplyText(words) => {
             seen();
             let _ = app.emit(events::REPLY_DELTA, json!({ "keeper": keeper.id, "text": words }));
+            if let Ok(mut t) = typed.lock() {
+                t.0.push_str(&words);
+                if !t.1 {
+                    if let Some(first) = super::speech::first_sentence(&t.0) {
+                        t.1 = true;
+                        speakable();
+                        let _ = app.emit(events::EARLY_REPLY, json!({ "keeper": keeper.id, "text": first }));
+                    }
+                }
+            }
         }
         brain::Progress::Reply(text) => {
             seen();
+            speakable();
             let _ = app.emit(events::EARLY_REPLY, json!({ "keeper": keeper.id, "text": text }));
         }
     };
@@ -159,7 +178,9 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 
     let first = first_ms.lock().ok().and_then(|f| *f);
     let panel_first = panel_ms.lock().ok().and_then(|f| *f);
-    let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
+    // An answer with no early reply (instant, cache) can be spoken when it is done.
+    let speak_first = speak_ms.lock().ok().and_then(|f| *f);
+    let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, speak_ms: speak_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
     Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
 }
 

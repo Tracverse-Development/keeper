@@ -3,8 +3,9 @@
  * - a panel action (tick, answer, flashcard, form, forget, pin) is written to the keeper's graph;
  *   a submitted form is also sent as the next message, so the keeper carries on with it;
  *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated
- * - the reply arrives before the panels finish (`earlyReply`) and is spoken at once; the final
- *   result then speaks only what was not already said (`unsaid`)
+ * - the reply's first sentence, then the whole reply, arrive before the panels finish
+ *   (`earlyReply`): each is spoken at once, the later ones queued after what is being said and
+ *   only the part not already said (`unsaid`); the final result speaks whatever is left
  * - the brief is asked for once when the keeper's screen first opens (the core shows it at most
  *   once a day)
  */
@@ -19,7 +20,8 @@ const STREAK = 3;
 
 interface Deps {
   keeper: string | null;
-  speak: (text: string) => void;
+  /** `queue`: after what is being said, instead of cutting it off. */
+  speak: (text: string, queue?: boolean) => void;
   celebrate: () => void;
   /** A quiz streak: the character's confetti spin. */
   streak: () => void;
@@ -41,8 +43,10 @@ export function usePanelActions(deps: Deps) {
     () =>
       on<{ keeper: string; text: string }>(EVENTS.earlyReply, (e) => {
         if (e.keeper !== ref.current.keeper) return;
+        const first = !early.current;
+        const rest = unsaid(e.text, early.current);
         early.current = e.text;
-        ref.current.speak(e.text);
+        if (rest) ref.current.speak(rest, !first);
       }),
     [],
   );
@@ -54,9 +58,10 @@ export function usePanelActions(deps: Deps) {
 
   /** The final reply: speak only what the early reply did not already say. */
   const speakFinal = (reply: string) => {
+    const queued = !!early.current;
     const rest = unsaid(reply, early.current);
     early.current = '';
-    if (rest) ref.current.speak(rest);
+    if (rest) ref.current.speak(rest, queued);
   };
 
   const act = async (a: PanelAction) => {
