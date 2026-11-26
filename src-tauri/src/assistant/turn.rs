@@ -215,7 +215,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let panel_first = panel_ms.lock().ok().and_then(|f| *f);
     // An answer with no early reply (instant, cache) can be spoken when it is done.
     let speak_first = speak_ms.lock().ok().and_then(|f| *f);
-    let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, speak_ms: speak_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
+    let cost_usd = thought.cost_usd;
+    let timings = Timings { cost_usd, recall_ms, first_ms: first, panel_ms: panel_first, speak_ms: speak_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
     let used = if answer.cached { vec![] } else { known_for_answer(&recall.facts, &forgotten) };
     Ok(TurnResult { keeper: keeper.id.clone(), mode: mode_used, switched, chat, reply, mind, learned, forgotten, used, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
 }

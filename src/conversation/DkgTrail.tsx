@@ -5,6 +5,7 @@
 import { useState } from 'react';
 
 import type { TurnResult } from '../kernel/ipc';
+import { fellBackWords } from './speed-words';
 
 export function DkgTrail({ result }: { result: TurnResult }) {
   const [open, setOpen] = useState(false);
@@ -17,7 +18,7 @@ export function DkgTrail({ result }: { result: TurnResult }) {
         {result.memoryOffline ? 'Memory node offline' : `${result.traces.length} DKG queries · ${rows} records · ${wrote} written`}
         <span className="trail-mind">{result.mind.label}</span>
       </button>
-      {result.mind.fellBack && <p className="trail-note">The chosen mind did not answer ({result.mind.fellBack}), so the built-in mind replied.</p>}
+      {result.mind.fellBack && <p className="trail-note">{fellBackWords(result.mind.fellBack)}</p>}
       {open && (
         <div className="trail-body selectable">
           {result.traces.map((t) => (

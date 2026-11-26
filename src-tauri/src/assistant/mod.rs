@@ -88,6 +88,9 @@ pub struct Timings {
     pub total_ms: u128,
     /// Which mind or source answered ("instant", "cache", "claude"…).
     pub source: String,
+    /// What the engine says the answer cost, in dollars at its own prices (absent: it reported
+    /// none, or the answer needed no cloud mind).
+    pub cost_usd: Option<f64>,
 }
 
 pub(super) fn phase(app: &AppHandle, name: &str, detail: &str) {

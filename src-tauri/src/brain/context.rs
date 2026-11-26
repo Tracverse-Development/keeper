@@ -98,6 +98,10 @@ pub struct Thought {
     /// Panels only the core may show (a plan to approve, your facts); never from the model.
     #[serde(skip)]
     pub core_panels: Vec<crate::stage::Panel>,
+    /// What the engine says this answer cost, in dollars at its own prices (cloud engines that
+    /// report one; never from the model's JSON).
+    #[serde(skip)]
+    pub cost_usd: Option<f64>,
     /// A conversation turn's engine says the person wants computer work after all; the core
     /// runs the turn again with tools (`assistant::source`).
     #[serde(default, rename = "needsComputer")]

@@ -148,6 +148,10 @@ pub struct Settings {
     pub talk_shortcut: String,
     /// Install updates by itself (checked at launch and every few hours).
     pub auto_update: bool,
+    /// The most the cloud minds may cost in a calendar month, in dollars at their own prices
+    /// (`kernel::usage`); 0 = no limit. Once reached, turns stay on this computer.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub monthly_cap_usd: f64,
     /// The kit (souls, modes, wardrobe) lives in the `kit` sub-graph of the home graph.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kit_moved: bool,
@@ -163,6 +167,10 @@ pub struct Settings {
     ollama_model: String,
     #[serde(skip_serializing)]
     skin: String,
+}
+
+fn is_zero(v: &f64) -> bool {
+    *v == 0.0
 }
 
 impl Default for Settings {
@@ -186,6 +194,7 @@ impl Default for Settings {
             last_brief: String::new(),
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,
+            monthly_cap_usd: 0.0,
             kit_moved: false,
             assistant_name: String::new(),
             graph_id: String::new(),

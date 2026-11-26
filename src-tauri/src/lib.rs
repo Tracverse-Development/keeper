@@ -129,6 +129,7 @@ pub fn run() {
             assistant::assistant_cancel,
             assistant::touch::keeper_touch,
             assistant::attach::attach_peek,
+            commands::usage_month,
             focus::focus_state,
             focus::focus_stop,
             backup::backup_save,

@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { speedWords } from './speed-words.ts';
+import { costWords, fellBackWords, speedWords } from './speed-words.ts';
+
+test('the cost of an answer is said in plain words, and only when there was one', () => {
+  assert.equal(costWords(0.004), 'under 1¢');
+  assert.equal(costWords(0.031), 'about 3¢');
+  assert.equal(costWords(1.2), 'about $1.20');
+  assert.equal(costWords(0), '');
+  assert.equal(speedWords({ recallMs: 0, firstMs: null, thinkMs: 3, totalMs: 900, source: 'claude', costUsd: 0.02 }), 'Answered in 900 ms · claude · about 2¢');
+  assert.match(fellBackWords("this month's spending limit is reached"), /^This month's spending limit is reached/);
+  assert.equal(fellBackWords('Claude: signed out'), 'The chosen mind did not answer (Claude: signed out), so the built-in mind replied.');
+});
 
 test('the speed line says how fast the first words came and who answered', () => {
   assert.equal(speedWords({ recallMs: 0, firstMs: 950, thinkMs: 2000, totalMs: 2100, source: 'claude' }), 'First words in 950 ms · done in 2.1 s · claude');

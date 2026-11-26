@@ -96,6 +96,12 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
     // A tutor teaches with panels every turn: never the quick model.
     let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && style.quick && mode.tools != crate::keepers::kit::roles::Tools::Web && mode.id != "tutor";
     let thinker = if quick { KeeperProfile { model: settings.fast_model.clone(), ..keeper.clone() } } else { keeper.clone() };
+    // This month's spending limit is reached: the turn stays on this computer, and says so.
+    if let Some(local) = within_limit(&thinker, settings.monthly_cap_usd).await {
+        let (thought, mut mind) = brain::think(&local, ctx, progress).await;
+        mind.fell_back = Some(LIMIT_REACHED.into());
+        return Answer { thought, mind, cached: false, switched: None };
+    }
     let (thought, mut mind) = brain::think(&thinker, ctx, progress).await;
     // Taken as conversation, but the engine says it is computer work: run it again with tools
     // (through the plan when the person wants to approve first).
@@ -113,6 +119,23 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
         mind.label = format!("{} (quick)", mind.label);
     }
     Answer { thought, mind, cached: false, switched: None }
+}
+
+/// Why a turn stayed on this computer (shown under the answer).
+pub const LIMIT_REACHED: &str = "this month's spending limit is reached";
+
+/// When this month's spending limit is reached and `keeper` thinks in the cloud: the keeper
+/// to think with instead (a local model when one is installed, else the built-in mind).
+/// None = no limit applies; think as usual.
+async fn within_limit(keeper: &KeeperProfile, cap: f64) -> Option<KeeperProfile> {
+    let cloud = brain::engines::spec(&keeper.brain).is_some_and(|s| s.place != brain::engines::Place::Device);
+    if !cloud || !crate::kernel::usage::over(cap) {
+        return None;
+    }
+    Some(match brain::engines::ollama::models().await.into_iter().next() {
+        Some(model) => KeeperProfile { brain: "ollama".into(), model, ..keeper.clone() },
+        None => KeeperProfile { brain: "reflex".into(), model: String::new(), ..keeper.clone() },
+    })
 }
 
 /// A short conversational turn: not a lesson, a comparison or anything to build. These words

@@ -55,7 +55,7 @@ pub fn spawn(app: &AppHandle, keeper: &KeeperProfile, identity: String, facts: V
     let state = app.state::<AppState>();
     let settings = state.settings();
     let questions = questions(panels);
-    if !settings.prefetch_scenes || settings.fast_model.is_empty() || keeper.brain != "claude" || questions.is_empty() {
+    if crate::kernel::usage::over(settings.monthly_cap_usd) || !settings.prefetch_scenes || settings.fast_model.is_empty() || keeper.brain != "claude" || questions.is_empty() {
         return;
     }
     let (app, keeper, model) = (app.clone(), keeper.clone(), settings.fast_model.clone());

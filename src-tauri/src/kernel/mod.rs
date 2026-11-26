@@ -8,6 +8,7 @@ pub mod programs;
 pub mod secrets;
 pub mod settings;
 pub mod time;
+pub mod usage;
 pub mod slug;
 
 pub use error::{DeskError, Result};

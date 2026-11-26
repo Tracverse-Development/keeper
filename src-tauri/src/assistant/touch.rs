@@ -145,7 +145,8 @@ fn refill(state: &AppState, keeper: &KeeperProfile, soul: &Soul, key: String, fe
         t.tried.insert(key.clone(), Instant::now());
         true
     });
-    if keeper.brain != "claude" || may_start != Some(true) {
+    // Nor when this month's spending limit is reached (the composed lines cost nothing).
+    if keeper.brain != "claude" || crate::kernel::usage::over(state.settings().monthly_cap_usd) || may_start != Some(true) {
         return;
     }
     let helper = state.settings().fast_model;

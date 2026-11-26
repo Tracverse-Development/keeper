@@ -76,6 +76,15 @@ pub fn text_delta(line: &str) -> Option<String> {
     (v["type"] == "stream_event" && v["event"]["delta"]["type"] == "text_delta").then(|| v["event"]["delta"]["text"].as_str().map(str::to_string)).flatten()
 }
 
+/// The cost Claude Code reports on its final line (dollars at API prices), recorded in the
+/// month's ledger as it is read.
+pub fn cost_of(line: &str) -> Option<f64> {
+    let v: Value = serde_json::from_str(line).ok()?;
+    let usd = (v["type"] == "result").then(|| v["total_cost_usd"].as_f64()).flatten()?;
+    crate::kernel::usage::record(usd);
+    Some(usd)
+}
+
 /// What one stream-json line adds: a tool call (a step) or the final answer.
 pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, result: &mut Option<String>) -> Option<String> {
     let v: Value = serde_json::from_str(line).ok()?;
@@ -121,6 +130,9 @@ pub async fn ask_json(system: &str, question: &str, model: &str) -> Result<serde
     a.push(question.to_string());
     let run = cli::run(&program, &a, &cli::workdir(false), std::time::Duration::from_secs(60), |_| true).await?;
     let envelope: Value = serde_json::from_str(run.stdout.trim()).map_err(|_| DeskError::Brain("The helper model did not answer.".into()))?;
+    if let Some(usd) = envelope["total_cost_usd"].as_f64() {
+        crate::kernel::usage::record(usd);
+    }
     let text = envelope["result"].as_str().unwrap_or_default();
     let (start, end) = (text.find('{'), text.rfind('}'));
     match (start, end) {
@@ -153,6 +165,7 @@ pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sy
 async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn Fn(Progress) + Sync)) -> Result<Thought> {
     let mut steps = Vec::new();
     let mut result = None;
+    let mut cost = None;
     let mut panels = PanelStream::default();
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
     // With the look hook, refused calls are denied and the run goes on; the stream only checks
@@ -186,6 +199,9 @@ async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn F
                 }
             }
         }
+        if let Some(usd) = cost_of(line) {
+            cost = Some(usd);
+        }
         if let Some(step) = read_line(line, &mut steps, &mut result) {
             progress(Progress::Step(&step));
             // Under an approved plan, the first tool call outside it stops Claude here.
@@ -202,6 +218,7 @@ async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn F
     let text = result.ok_or_else(|| DeskError::Brain(if run.success { "Claude Code gave no answer".into() } else { cli::short(&run.stderr, 200) }))?;
     let mut thought = prompt::read(&text);
     thought.steps = steps;
+    thought.cost_usd = cost;
     Ok(thought)
 }
 

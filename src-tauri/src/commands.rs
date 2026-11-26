@@ -35,6 +35,8 @@ pub struct SettingsChange {
     pub fast_model: Option<String>,
     pub ask_before_acting: Option<bool>,
     pub quick_replies: Option<bool>,
+    /// The monthly spending limit in dollars (0 = none).
+    pub monthly_cap_usd: Option<f64>,
 }
 
 #[tauri::command]
@@ -63,6 +65,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         }
         if let Some(q) = change.quick_replies {
             s.quick_replies = q;
+        }
+        if let Some(cap) = change.monthly_cap_usd.filter(|c| c.is_finite() && (0.0..=10_000.0).contains(c)) {
+            s.monthly_cap_usd = cap;
         }
         if let Some(v) = change.voice.filter(|v| !v.trim().is_empty()) {
             s.voice = v;
@@ -265,4 +270,21 @@ pub async fn voice_hush(app: AppHandle, state: State<'_, AppState>) -> Result<()
 #[tauri::command]
 pub async fn voice_list(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     state.voice.list_voices(&app).await
+}
+
+/// This month's spending on cloud minds and the limit set for it (`kernel::usage`).
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Spending {
+    pub usd: f64,
+    pub calls: u64,
+    /// The monthly limit in dollars (0 = none) and whether it is reached.
+    pub cap_usd: f64,
+    pub reached: bool,
+}
+
+#[tauri::command]
+pub fn usage_month(state: State<'_, AppState>) -> Spending {
+    let (month, cap_usd) = (crate::kernel::usage::this_month(), state.settings().monthly_cap_usd);
+    Spending { usd: month.usd, calls: month.calls, cap_usd, reached: crate::kernel::usage::reached(cap_usd, month.usd) }
 }

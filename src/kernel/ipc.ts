@@ -9,6 +9,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
 import type { FeelingsInfo, FocusSession, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
+import type { Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -32,6 +33,7 @@ export const EVENTS = {
 export type * from './ipc-types';
 export type * from './ipc-wardrobe';
 export type * from './ipc-studio';
+export type * from './ipc-usage';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -104,6 +106,8 @@ export const core = {
   /** The focus session running now (null: none), and ending it early. */
   focusState: () => invoke<FocusSession | null>('focus_state'),
   focusStop: () => invoke<FocusSession | null>('focus_stop'),
+  /** This month's spending on cloud minds and the limit set for it. */
+  usageMonth: () => invoke<Spending>('usage_month'),
   /** Save a keeper card the Studio drew (PNG bytes in base64) to Downloads; resolves to its path. */
   cardSave: (name: string, data: string) => invoke<string>('card_save', { name, data }),
   /** Save every keeper, its memory and the kit as one sealed file in Downloads. */

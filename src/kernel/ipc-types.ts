@@ -2,6 +2,7 @@
  * The shapes the Rust core sends and takes (serde camelCase), one source for the window. Re-exported
  * by `ipc.ts`, so callers import from there; split out to keep the bridge file small.
  */
+import type { Timings } from './ipc-usage';
 import type { KeeperVoice, RoleInfo, ZoneLook } from './ipc-studio';
 import type { Panel } from './panel-spec';
 
@@ -134,6 +135,8 @@ export interface Settings {
   askBeforeActing: boolean;
   /** Short conversational turns go to the quick helper model. */
   quickReplies: boolean;
+  /** The monthly limit on cloud minds, in dollars (absent or 0 = none). */
+  monthlyCapUsd?: number;
   autoUpdate: boolean;
 }
 
@@ -324,18 +327,6 @@ export interface TurnResult {
   timings?: Timings;
 }
 
-/** One turn's timing in milliseconds (`assistant::Timings`). */
-export interface Timings {
-  recallMs: number;
-  /** The person first saw something (the reply ready, or a panel). */
-  firstMs: number | null;
-  /** The first Stage panel arrived (absent or null when the answer has none). */
-  panelMs?: number | null;
-  thinkMs: number;
-  totalMs: number;
-  source: string;
-}
-
 export interface Counts {
   facts: number;
   turns: number;
@@ -355,7 +346,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd'>>;
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 

@@ -10,6 +10,7 @@ import { ShareSection } from '../keepers/ShareSection';
 import { BackupSection } from './BackupSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
+import { SpendingSection } from './SpendingSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
@@ -110,6 +111,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
 
         <p className="eyebrow">Showing things</p>
         <ShowingSection settings={settings} save={save} />
+
+        <p className="eyebrow">Spending</p>
+        {open && <SpendingSection settings={settings} save={save} />}
 
         <p className="eyebrow">Voice</p>
         {open && <VoiceSection settings={settings} name={keeper.name} save={save} />}
