@@ -8,6 +8,24 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.11.2] - 2026-11-26
+
+### Fixed
+- Reminders stopped being scheduled after about 50 days of use, and a repeating reminder never came back if Keeper was closed for more than a day (FIX-0027).
+- Telling Keeper something like "I moved to the night shift" or "my car is in the shop" could erase an unrelated fact (your address, your car). Keeper now replaces a fact by itself only when it is certain (a new name, address, phone number, email, birthday or favourite); anything else is only suggested in "Tidy my memory" (FIX-0027).
+- Bringing in a backup made on another Mac merged its first keeper into yours. It now arrives as its own keeper (FIX-0027).
+- A dropped document could break out of the space it is read in, and a turn about a dropped file could still forget facts or run skills. Material is now fenced so it cannot close its own fence, and such a turn only reads and answers (FIX-0027).
+- Keeper's own folder (with its keys) and special files could be dropped and read. Only ordinary files outside Keeper's own folders are read, and web pages are read as text without being opened (FIX-0027).
+- On a child profile, an edited Tutor could give a child the web, modes and souls could still be edited, deleting one file turned the profile off, and a phone link left running stayed on. All closed (FIX-0027).
+- The Studio could save over and over without stopping, retried a failed save without end, and lost a change made while a save was running (FIX-0027).
+- "Save that as a PDF" was taken as saving a routine. Saving a routine now needs the word "routine" ("save that as my Friday tidy routine").
+- Reminders and focus sessions ran late after the Mac had been asleep.
+- A phone on the network could ask Keeper to read the Mac's clipboard. Copied text is now only worked on at the Mac.
+- Panels with nothing in them (a table with no rows, a chart with no numbers) no longer appear.
+
+### Added
+- This changelog, kept for every version and shown as the notes of each release.
+
 ## [0.11.1] - 2026-11-26
 
 ### Added
