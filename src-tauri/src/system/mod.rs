@@ -46,6 +46,12 @@ pub struct Live {
     /// Kilobytes per second, all interfaces, since the last reading.
     pub net_down_kbps: f64,
     pub net_up_kbps: f64,
+    /// This computer's own address on its network (IPv4 of the interface that has carried the
+    /// most traffic); empty when it is on no network.
+    pub net_address: String,
+    /// Gigabytes received and sent since the computer started (all real interfaces).
+    pub net_total_down_gb: f64,
+    pub net_total_up_gb: f64,
     pub disk_used_gb: f64,
     pub disk_total_gb: f64,
     /// The apps using the most CPU now (name and percent of one core).
@@ -64,7 +70,7 @@ const GB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 pub fn live() -> Live {
     let readers = LIVE.get_or_init(|| Some(Mutex::new(Readers { sys: System::new().ok()?, nets: sysinfo::Networks::new_with_refreshed_list().ok()?, last: std::time::Instant::now() })));
-    let Some(Ok(mut r)) = readers.as_ref().map(|m| m.lock()) else { return Live { cpu: 0.0, memory: 0.0, memory_used_gb: 0.0, memory_total_gb: 0.0, net_down_kbps: 0.0, net_up_kbps: 0.0, disk_used_gb: 0.0, disk_total_gb: 0.0, top: vec![] } };
+    let Some(Ok(mut r)) = readers.as_ref().map(|m| m.lock()) else { return Live { cpu: 0.0, memory: 0.0, memory_used_gb: 0.0, memory_total_gb: 0.0, net_down_kbps: 0.0, net_up_kbps: 0.0, net_address: String::new(), net_total_down_gb: 0.0, net_total_up_gb: 0.0, disk_used_gb: 0.0, disk_total_gb: 0.0, top: vec![] } };
     r.sys.refresh_cpu_usage();
     r.sys.refresh_memory();
     r.sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -72,6 +78,10 @@ pub fn live() -> Live {
     r.last = std::time::Instant::now();
     r.nets.refresh(true);
     let (down, up) = r.nets.iter().fold((0u64, 0u64), |(d, u), (_, n)| (d + n.received(), u + n.transmitted()));
+    // The interfaces that reach a network: not the loopback, and holding a private or public IPv4.
+    let real: Vec<(&sysinfo::NetworkData, std::net::Ipv4Addr)> = r.nets.iter().filter_map(|(_, n)| n.ip_networks().iter().find_map(|ip| match ip.addr { std::net::IpAddr::V4(v4) if on_a_network(v4) => Some((n, v4)), _ => None })).collect();
+    let net_address = real.iter().max_by_key(|(n, _)| n.total_received() + n.total_transmitted()).map(|(_, ip)| ip.to_string()).unwrap_or_default();
+    let (total_down, total_up) = real.iter().fold((0u64, 0u64), |(d, u), (n, _)| (d + n.total_received(), u + n.total_transmitted()));
     let disks = sysinfo::Disks::new_with_refreshed_list().ok();
     let list: Vec<&sysinfo::Disk> = disks.as_ref().map(|d| d.into_iter().collect()).unwrap_or_default();
     // The startup disk (mounted at /), or the biggest one.
@@ -88,10 +98,18 @@ pub fn live() -> Live {
         memory_total_gb: total / GB,
         net_down_kbps: down as f64 / 1024.0 / secs,
         net_up_kbps: up as f64 / 1024.0 / secs,
+        net_address,
+        net_total_down_gb: total_down as f64 / GB,
+        net_total_up_gb: total_up as f64 / GB,
         disk_used_gb: (disk_total - disk_free) / GB,
         disk_total_gb: disk_total / GB,
         top,
     }
+}
+
+/// An address that means "on a network": not loopback, not the self-assigned 169.254 range.
+fn on_a_network(ip: std::net::Ipv4Addr) -> bool {
+    !ip.is_loopback() && !ip.is_link_local() && !ip.is_unspecified()
 }
 
 /// The live panel asks for a reading every second or two while it is on screen.
@@ -118,5 +136,7 @@ mod tests {
         let l = super::live();
         assert!(l.memory_total_gb > 1.0 && l.disk_total_gb > 1.0, "{l:?}");
         assert!(l.net_down_kbps >= 0.0 && l.top.len() <= 5);
+        assert!(l.net_total_down_gb >= 0.0 && (l.net_address.is_empty() || l.net_address.parse::<std::net::Ipv4Addr>().is_ok()), "{l:?}");
+        assert!(!super::on_a_network("127.0.0.1".parse().unwrap()) && !super::on_a_network("169.254.3.4".parse().unwrap()) && super::on_a_network("192.168.1.20".parse().unwrap()));
     }
 }

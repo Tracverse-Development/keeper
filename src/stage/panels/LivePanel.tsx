@@ -1,17 +1,17 @@
 /**
- * A live dashboard of this computer: processor and memory gauges, network speed in and out with a
- * short history line, disk space, and the busiest apps. Reads `system_live` every 1.5 s while it
+ * A live dashboard of this computer: processor and memory gauges, the network (what the traffic
+ * means in words, speed in and out each with its own history line, the peak of the last minute,
+ * this computer's address and the totals since it started), disk space, and the busiest apps. Reads `system_live` every 1.5 s while it
  * is on screen (and stops when it isn't); the readings stay on this computer.
  */
 import { useEffect, useRef, useState } from 'react';
 
 import { core, type SystemLive } from '../../kernel/ipc';
+import { amountWords, netReading, peak, speedWords } from '../live-net';
 import type { PanelProps } from './panel-props.ts';
 
 const EVERY_MS = 1500;
 const HISTORY = 40;
-
-const speed = (kbps: number) => (kbps >= 1024 ? `${(kbps / 1024).toFixed(1)} MB/s` : `${Math.round(kbps)} KB/s`);
 
 function Gauge({ label, value, detail }: { label: string; value: number; detail: string }) {
   const v = Math.max(0, Math.min(100, value));
@@ -38,9 +38,52 @@ function Spark({ values }: { values: number[] }) {
   );
 }
 
+/** The network: what the traffic means, then each direction with its history, then the facts. */
+function Network({ now, down, up }: { now: SystemLive; down: number[]; up: number[] }) {
+  const reading = netReading(now.netDownKbps, now.netUpKbps, now.netAddress);
+  return (
+    <div className={`live-net is-${reading.level}`}>
+      <p className="live-net-reading">
+        <strong>{reading.title}.</strong> <span className="muted">{reading.meaning}</span>
+      </p>
+      {reading.level !== 'offline' && (
+        <>
+          <div className="live-net-flows">
+            <div className="live-flow">
+              <span className="live-label">Coming in</span>
+              <span className="live-flow-num">{speedWords(now.netDownKbps)}</span>
+              <Spark values={down} />
+              <span className="muted small">Peak in the last minute: {speedWords(peak(down))}</span>
+            </div>
+            <div className="live-flow">
+              <span className="live-label">Going out</span>
+              <span className="live-flow-num">{speedWords(now.netUpKbps)}</span>
+              <Spark values={up} />
+              <span className="muted small">Peak in the last minute: {speedWords(peak(up))}</span>
+            </div>
+          </div>
+          <dl className="live-net-facts">
+            <div>
+              <dt>This Mac's address</dt>
+              <dd className="selectable">{now.netAddress}</dd>
+            </div>
+            <div>
+              <dt>Since it started</dt>
+              <dd>
+                {amountWords(now.netTotalDownGb)} in, {amountWords(now.netTotalUpGb)} out
+              </dd>
+            </div>
+          </dl>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function LivePanel({ panel }: PanelProps<'live'>) {
   const [now, setNow] = useState<SystemLive | null>(null);
   const down = useRef<number[]>([]);
+  const up = useRef<number[]>([]);
   const show = (m: string) => panel.metrics.length === 0 || panel.metrics.includes(m as never);
 
   useEffect(() => {
@@ -51,6 +94,7 @@ export function LivePanel({ panel }: PanelProps<'live'>) {
         .then((r) => {
           if (!alive) return;
           down.current = [...down.current, r.netDownKbps].slice(-HISTORY);
+          up.current = [...up.current, r.netUpKbps].slice(-HISTORY);
           setNow(r);
         })
         .catch(() => undefined);
@@ -70,13 +114,7 @@ export function LivePanel({ panel }: PanelProps<'live'>) {
         {show('memory') && <Gauge label="Memory" value={now.memory} detail={`${now.memoryUsedGb.toFixed(1)} of ${now.memoryTotalGb.toFixed(0)} GB`} />}
         {show('disk') && <Gauge label="Disk" value={now.diskTotalGb ? (now.diskUsedGb / now.diskTotalGb) * 100 : 0} detail={`${(now.diskTotalGb - now.diskUsedGb).toFixed(0)} GB free`} />}
       </div>
-      {show('network') && (
-        <div className="live-net">
-          <span>↓ {speed(now.netDownKbps)}</span>
-          <span>↑ {speed(now.netUpKbps)}</span>
-          <Spark values={down.current} />
-        </div>
-      )}
+      {show('network') && <Network now={now} down={down.current} up={up.current} />}
       {show('apps') && now.top.length > 0 && (
         <ol className="live-apps">
           {now.top.map(([name, cpu]) => (

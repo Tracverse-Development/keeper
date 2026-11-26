@@ -107,7 +107,14 @@ pub(super) fn live_panel_for(said: &str) -> Option<Panel> {
     if whole {
         metrics.clear();
     }
-    Some(Panel::Live { id: "live".into(), title: "Your computer, live".into(), metrics })
+    // A dashboard of one thing is named for it.
+    let title = match metrics.as_slice() {
+        [only] if only == "network" => "Your network, right now",
+        [only] if only == "disk" => "Your storage, right now",
+        [only] if only == "memory" => "Your memory, right now",
+        _ => "Your computer, live",
+    };
+    Some(Panel::Live { id: "live".into(), title: title.into(), metrics })
 }
 
 fn only_looks(steps: &[PlanStep]) -> bool {

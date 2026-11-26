@@ -117,6 +117,11 @@ export interface SystemLive {
   memoryTotalGb: number;
   netDownKbps: number;
   netUpKbps: number;
+  /** This computer's own address on its network ('' when it is on none). */
+  netAddress: string;
+  /** Gigabytes received and sent since the computer started. */
+  netTotalDownGb: number;
+  netTotalUpGb: number;
   diskUsedGb: number;
   diskTotalGb: number;
   top: [string, number][];
