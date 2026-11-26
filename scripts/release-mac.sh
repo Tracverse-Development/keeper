@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # The in-house half of a release: builds Keeper for macOS (Apple silicon and Intel) on THIS Mac,
-# never on GitHub's runners (founder 2026-11-25: "all in-house"). CI (.github/workflows/release.yml)
-# builds Windows and Linux into a DRAFT release for the tag; this script adds both Mac builds and
-# their updater entries to that draft's latest.json, checks every platform is present, and only
-# then publishes, so installed copies never see half a release.
+# never on GitHub's runners (founder 2026-11-25: "all in-house"). It makes the tag's DRAFT release,
+# adds both Mac builds and their updater entries to the draft's latest.json, checks every platform
+# in REQUIRE is signed, and only then publishes, so installed copies never see half a release.
 #
 #   bash scripts/release-mac.sh            # the version in tauri.conf.json, tag vX.Y.Z
 #   SKIP_BUILD=1 bash scripts/release-mac.sh   # publish builds already in src-tauri/target/<target>
@@ -45,8 +44,11 @@ for target in aarch64-apple-darwin x86_64-apple-darwin; do
   echo "darwin-$arch $label" >> "$out/platforms.txt"
 done
 
-# The draft CI made (Windows + Linux). Wait for it if CI is still creating it.
-for i in $(seq 1 40); do gh release view "$tag" -R "$repo" >/dev/null 2>&1 && break; echo "waiting for the $tag draft"; sleep 15; done
+# The draft for this tag: this script makes it (nothing is built on GitHub's runners any more).
+if ! gh release view "$tag" -R "$repo" >/dev/null 2>&1; then
+  gh release create "$tag" -R "$repo" --draft --verify-tag --title "Keeper $version" --notes "Keeper $version" >/dev/null
+  echo "created the $tag draft"
+fi
 gh release download "$tag" -R "$repo" -p latest.json -D "$out" --clobber 2>/dev/null || echo '{"platforms":{}}' > "$out/latest.json"
 
 python3 - "$out" "$version" "$repo" <<'PY'
