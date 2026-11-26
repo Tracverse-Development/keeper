@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { DkgTrail } from './DkgTrail';
 import { KnownFacts } from './KnownFacts';
+import { Receipt } from './Receipt';
 import { forgottenWords } from './known-facts';
 import { speedWords } from './speed-words';
 import type { Exchange } from './useAssistant';
@@ -75,6 +76,7 @@ export function ConversationDock(p: Props) {
                   </ul>
                 )}
                 {x.note && <p className="bubble-note">✦ {x.note}</p>}
+                {x.result.steps.length > 0 && <Receipt steps={x.result.steps} busy={p.busy} onUndo={p.onSend} />}
                 {(x.result.used?.length ?? 0) > 0 && <KnownFacts facts={x.result.used ?? []} keeper={x.result.keeper} />}
                 {x.result.timings && <p className="turn-speed muted small">{speedWords(x.result.timings)}</p>}
                 {x.result.traces.length + x.result.writes.length > 0 && <DkgTrail result={x.result} />}

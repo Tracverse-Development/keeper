@@ -45,6 +45,8 @@
 .known-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .known-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius-sm); background: rgba(7, 10, 22, 0.6); border: 1px solid var(--border); font-size: var(--text-sm); }
 .known-list li > span { min-width: 0; overflow-wrap: anywhere; }
+.receipt-list { margin: var(--space-2) 0 0; padding: 0 0 0 var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.receipt-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
 .trail { margin-top: var(--space-2); }
 .trail-chip { display: inline-flex; align-items: center; gap: var(--space-2); border: 1px solid var(--border); background: rgba(7, 10, 22, 0.55); color: var(--text-muted);
   border-radius: 999px; padding: var(--space-1) var(--space-3); font-size: var(--text-xs); cursor: pointer; }
