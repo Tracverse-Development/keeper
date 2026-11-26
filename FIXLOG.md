@@ -130,3 +130,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** more read commands (ps, pgrep, lsof, uptime, whoami, which, sw_vers, uname, system_profiler, basename, dirname, realpath); verdicts name a place by its name, never a path or command; the stopped reply says what to do next in words; the acting instructions forbid commands, flags, code and long paths in the spoken reply.
 - **Guard:** guard test `the_founders_look_was_a_read_and_verdicts_are_words_not_commands` (the exact command passes; verdicts contain no "/", "~" or command text).
 - **Evidence:** cargo test --lib guard 5/5.
+
+### FIX-0017 — Reading the disk was stopped: quoted patterns and system report tools were taken for changes (2026-11-26)
+- **Area:** `brain::guard` (read-only checks)
+- **Symptom:** "How much free space is on my disk?" in System Administrator mode ended "I stopped. I was only going to look…".
+- **Root cause:** the engine ran `df -H …; diskutil info / | grep -iE "Container (Total|Free)|Volume …"`: the guard split the chain on the `|` INSIDE the quoted grep pattern, so `Free)` looked like an unknown command; and `diskutil` (and other report tools) were not known reads at all.
+- **Fix:** quoted strings are blanked before a chain is split (`unquoted`); report tools read with their reading sub-commands only (`diskutil list/info/apfs list`, `defaults read`, `launchctl list/print`, `networksetup -get…/-list…`, `scutil --get`, `pmset -g`, `sysctl` without `=`, `vm_stat`, `top`); their changing forms stay refused.
+- **Guard:** guard test `disk_and_system_reports_are_reads_and_their_changing_forms_are_not` (the exact command passes; `diskutil eraseDisk`, `apfs deleteVolume`, `defaults write`, `sysctl -w`, `pmset sleep 0`, `launchctl unload`, and a real `rm` after a quoted echo are stopped).
+- **Evidence:** real Keeper (bench): the same question now answers "about 559 gigabytes free out of roughly 995".

@@ -42,6 +42,10 @@ pub(super) const MAX_STEPS: usize = 40;
 pub struct TurnResult {
     /// The keeper that answered and the chat this turn belongs to.
     pub keeper: String,
+    /// The mode that answered (it may have switched from the chat's mode).
+    pub mode: String,
+    /// This turn moved the chat to another mode.
+    pub switched: bool,
     pub chat: String,
     pub reply: String,
     pub mind: MindUsed,

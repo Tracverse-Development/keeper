@@ -91,6 +91,8 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
         setExchanges((list) => list.filter((x) => x.id !== id));
       } else {
         setChatId(result.chat);
+        // A turn that moved to another mode leaves the chat in that mode (the picker follows).
+        if (result.switched && result.mode) setMode(result.mode);
         setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
         replyRef.current(result, said);
       }

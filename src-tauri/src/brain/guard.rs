@@ -24,6 +24,56 @@ enum Harm {
 const READ_TOOLS: [&str; 7] = ["read", "grep", "glob", "ls", "webfetch", "websearch", "todowrite"];
 const READ_COMMANDS: [&str; 32] = ["ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "mdfind", "pwd", "cd", "echo", "sort", "uniq", "du", "df", "date", "mdls", "ps", "pgrep", "lsof", "uptime", "whoami", "which", "sw_vers", "uname", "system_profiler", "basename", "dirname", "realpath"];
 
+/// Tools that read only with certain sub-commands ("diskutil info" reads; "diskutil erase" does not).
+const READ_SUBCOMMANDS: &[(&str, &[&str])] = &[
+    ("diskutil", &["list", "info", "apfs"]),
+    ("defaults", &["read", "domains"]),
+    ("launchctl", &["list", "print"]),
+    ("networksetup", &["-listallnetworkservices", "-getinfo", "-getairportnetwork", "-listallhardwareports"]),
+    ("scutil", &["--get", "--dns", "--proxy"]),
+];
+
+/// Commands that only report on the machine (no arguments can make them change it).
+const REPORT_COMMANDS: [&str; 6] = ["sysctl", "vm_stat", "memory_pressure", "ioreg", "pmset", "top"];
+
+/// The command with every quoted string blanked to `q` (so separators inside quotes don't count).
+fn unquoted(command: &str) -> String {
+    let mut out = String::with_capacity(command.len());
+    let mut quote: Option<char> = None;
+    for c in command.chars() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '"' || c == '\'' => {
+                quote = Some(c);
+                out.push('q');
+            }
+            None => out.push(c),
+        }
+    }
+    out
+}
+
+/// One piece of a shell chain that only reads.
+fn piece_reads(piece: &str) -> bool {
+    let mut w = words(piece);
+    let Some(first) = w.next() else { return true };
+    if READ_COMMANDS.contains(&first) {
+        return true;
+    }
+    if let Some((_, subs)) = READ_SUBCOMMANDS.iter().find(|(c, _)| *c == first) {
+        let second = w.next().unwrap_or("");
+        // "diskutil apfs list" but never "diskutil apfs deleteVolume".
+        return subs.contains(&second) && (second != "apfs" || w.next() == Some("list"));
+    }
+    match first {
+        // pmset and sysctl change settings only with these flags; top only reads.
+        "pmset" => piece.contains("-g"),
+        "sysctl" => !piece.contains('='),
+        _ => REPORT_COMMANDS.contains(&first) && first != "pmset",
+    }
+}
+
 /// A shell command that only reads: every piece of a chain (`&&`, `;`, `|`) starts with a read
 /// command, nothing is redirected into a file, and no find runs an action on what it finds.
 fn reads_only(command: &str) -> bool {
@@ -32,7 +82,8 @@ fn reads_only(command: &str) -> bool {
     if command.contains('>') || command.contains("$(") || command.contains('`') || ["-delete", "-exec", "-execdir", "-ok"].iter().any(|a| words(command).any(|w| w == *a)) {
         return false;
     }
-    command.split(['&', ';', '|', '\n']).map(str::trim).filter(|piece| !piece.is_empty()).all(|piece| words(piece).next().is_some_and(|w| READ_COMMANDS.contains(&w)))
+    // Quoted text is a value (a search pattern can hold | or ;), never a command separator.
+    unquoted(command).split(['&', ';', '|', '\n']).map(str::trim).filter(|piece| !piece.is_empty()).all(piece_reads)
 }
 const DELETE_WORDS: [&str; 7] = ["delete", "remove", "trash", "erase", "wipe", "clear", "clean"];
 const SEND_WORDS: [&str; 5] = ["send", "email", "mail", "post", "pay"];
@@ -218,6 +269,18 @@ mod tests {
         for (guard, call) in [(PlanGuard::read_only(Path::new("/Users/a")), step("Bash", "rm -rf ~/x")), (plan(), step("Write", "/Users/a/Desktop/notes.txt")), (plan(), step("Bash", "rm ~/Downloads/old.pdf"))] {
             let v = guard.check(&call).unwrap();
             assert!(!v.contains('/') && !v.contains("rm ") && !v.contains('~'), "spoken verdicts carry no paths or commands: {v}");
+        }
+    }
+
+    #[test]
+    fn disk_and_system_reports_are_reads_and_their_changing_forms_are_not() {
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        for cmd in ["df -H / /System/Volumes/Data 2>/dev/null; diskutil info / | grep -iE \"Container (Total|Free)|Volume (Total|Free|Available)\"", "df -h /", "diskutil info /", "diskutil apfs list", "vm_stat", "sysctl hw.memsize", "pmset -g batt", "defaults read com.apple.finder", "top -l 1 | head -12"] {
+            assert_eq!(g.check(&step("Bash", cmd)), None, "{cmd} reads");
+        }
+        for cmd in ["echo \"x\"; rm -rf ~/y", "diskutil eraseDisk APFS X disk2", "diskutil apfs deleteVolume disk1s2", "defaults write com.apple.finder X -bool true", "sysctl -w kern.x=1", "pmset sleep 0", "launchctl unload x"] {
+            let g = PlanGuard::read_only(Path::new("/Users/a"));
+            assert!(g.check(&step("Bash", cmd)).is_some(), "{cmd} changes the machine");
         }
     }
 }

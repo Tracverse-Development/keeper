@@ -19,15 +19,38 @@ pub(super) struct Answer {
     pub mind: MindUsed,
     /// Came from the scene cache (do not cache it again).
     pub cached: bool,
+    /// The turn moved to another mode to answer (its id): the chat is in that mode now.
+    pub switched: Option<String>,
 }
 
 fn mind(id: &str, label: &str) -> MindUsed {
     MindUsed { id: id.into(), label: label.into(), local: true, fell_back: None }
 }
 
+/// The answer, in the chat's mode; when the engine says the request belongs to another mode, the
+/// turn moves there once (its brief, skills and tools) and that mode answers. The person hears
+/// "Switching to … mode for this." first (founder 2026-11-26: modes are locked to their scope).
 pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
+    let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, progress).await;
+    let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m)) else { return answer };
+    let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
+    let base = super::turn::base_context(state, &moved, &ctx.said);
+    let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), ..base };
+    // What was said so far ("Switching to Researcher mode for this.") stays; the answer follows it.
+    progress(Progress::ReplyText(" ".into()));
+    let mut next = answer_in(app, state, memory, &moved, &ctx, chat, approved, progress).await;
+    next.thought.switch_mode = None;
+    let title = crate::keepers::kit::roles::get(&target).title;
+    if !next.thought.reply.to_lowercase().contains("switching") {
+        next.thought.reply = format!("Switching to {title} mode for this. {}", next.thought.reply);
+    }
+    next.switched = Some(target);
+    next
+}
+
+async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {
-        return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false };
+        return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false, switched: None };
     }
     if ctx.said.starts_with(FOLLOW_UP) {
         super::prefetch::wait_if_preparing(&ctx.said).await;
@@ -39,7 +62,7 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
                 progress(Progress::Panel(p.clone()));
             }
             let thought = Thought { reply: scene.reply, panels: serde_json::to_value(&scene.panels).unwrap_or_default(), ..Thought::default() };
-            return Answer { thought, mind: mind("cache", "From memory (instant)"), cached: true };
+            return Answer { thought, mind: mind("cache", "From memory (instant)"), cached: true, switched: None };
         }
     }
     let settings = state.settings();
@@ -64,12 +87,12 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
             return approval::plan(state, keeper, &acting, chat, progress).await;
         }
         let (thought, mind) = brain::think(keeper, &acting, progress).await;
-        return Answer { thought, mind, cached: false };
+        return Answer { thought, mind, cached: false, switched: None };
     }
     if quick && mind.id == "claude" {
         mind.label = format!("{} (quick)", mind.label);
     }
-    Answer { thought, mind, cached: false }
+    Answer { thought, mind, cached: false, switched: None }
 }
 
 /// A short conversational turn: not a lesson, a comparison or anything to build. These words

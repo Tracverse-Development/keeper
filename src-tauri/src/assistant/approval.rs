@@ -85,14 +85,14 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     let (thought, mind) = brain::think(keeper, &planning, progress).await;
     let steps = read_plan(&thought.plan);
     if steps.is_empty() {
-        return Answer { thought, mind, cached: false };
+        return Answer { thought, mind, cached: false, switched: None };
     }
     if only_looks(&steps) {
         progress(Progress::ReplyText(" ".into()));
         let home = dirs::home_dir().unwrap_or_default();
         let looking = Context { may_act: true, guard: Some(std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home))), ..ctx.clone() };
         let (thought, mind) = brain::think(keeper, &looking, progress).await;
-        return Answer { thought, mind, cached: false };
+        return Answer { thought, mind, cached: false, switched: None };
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };
     // The person reads the plan for a few seconds: start the acting process now, so Approve
@@ -102,7 +102,7 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     }
     let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), mode: keeper.role.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
     let panel = Panel::Approval { id: format!("plan-{token}"), title: "My plan".into(), summary: summary.clone(), steps, token };
-    Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false }
+    Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false, switched: None }
 }
 
 /// Approve (run the acting turn under the plan) or deny (record it and say so).

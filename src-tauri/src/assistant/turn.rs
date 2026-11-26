@@ -117,6 +117,10 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let thinking = Instant::now();
     let answer = source::find(app, state, memory, keeper, &ctx, &chat, approved.is_some(), &progress).await;
     let (thought, mind) = (answer.thought, answer.mind);
+    // The mode that answered (the chat's, or the one the turn switched to).
+    let switched = answer.switched.is_some();
+    let mode_used = answer.switched.clone().unwrap_or_else(|| keeper.role.clone());
+    let role = crate::keepers::kit::roles::get(&mode_used);
     let think_ms = thinking.elapsed().as_millis();
 
     let mut forgotten = Vec::new();
@@ -160,7 +164,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut learned = Vec::new();
     if !thought.remember.is_empty() {
         for l in thought.remember.iter().take(6) {
-            let fact = Fact::new(&l.text, &l.category, &at).learned_in(&keeper.role);
+            let fact = Fact::new(&l.text, &l.category, &at).learned_in(&mode_used);
             writes.push(later.add(&fact, "fact"));
             learned.push(fact);
         }
@@ -176,7 +180,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     }
     super::prefetch::spawn(app, keeper, identity, recall.facts.clone(), &panels);
     // The scene is kept with the turn, so reopening the chat brings its panels back.
-    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&keeper.role);
+    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&mode_used);
     writes.push(later.add(&turn, "turn"));
     let app_for_writes = app.clone();
     let (level_keeper, level_memory) = (keeper.id.clone(), memory.clone());
@@ -194,7 +198,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     // An answer with no early reply (instant, cache) can be spoken when it is done.
     let speak_first = speak_ms.lock().ok().and_then(|f| *f);
     let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, speak_ms: speak_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
-    Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
+    Ok(TurnResult { keeper: keeper.id.clone(), mode: mode_used, switched, chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
 }
 
 /// The parts of a keeper's context that do not depend on recall: who it is, whether it may act,

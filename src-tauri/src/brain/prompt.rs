@@ -31,7 +31,12 @@ Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person jus
         name = ctx.assistant_name,
         identity = ctx.identity,
         skills = skills::catalogue_for(crate::keepers::kit::roles::get(&ctx.job)),
-        acting = if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
+        // A turn with no mode (a prepared lesson card) has no mode rule.
+        acting = format!(
+            "{} {}",
+            if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
+            if ctx.job.is_empty() { String::new() } else { crate::keepers::kit::roles::mode_rule(crate::keepers::kit::roles::get(&ctx.job)) }
+        ),
         stage = stage_rules(ctx),
     )
 }

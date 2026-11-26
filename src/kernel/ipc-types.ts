@@ -306,6 +306,10 @@ export interface Outcome {
 
 export interface TurnResult {
   keeper: string;
+  /** The mode that answered (it may have switched from the chat's mode). */
+  mode?: string;
+  /** True when this turn moved the chat to another mode. */
+  switched?: boolean;
   chat: string;
   reply: string;
   mind: MindUsed;

@@ -96,4 +96,7 @@ pub struct Thought {
     /// runs the turn again with tools (`assistant::source`).
     #[serde(default, rename = "needsComputer")]
     pub needs_computer: bool,
+    /// The engine says this belongs to another mode (its id); the core switches and answers there.
+    #[serde(default, rename = "switchMode")]
+    pub switch_mode: Option<String>,
 }
