@@ -49,3 +49,8 @@
 - **Context:** Round E2 made each paint zone repaintable live. The robot's torso already wrote `sheen` every frame (it breathes with presence), so a painted "metal" torso would have had its sheen rewritten 60 times a second, and toggling a lobe on and off each frame recompiles the shader each frame.
 - **Lesson:** A look is a REST value; animation rides on it. Paint writes the rest values once per change (`look/zone-paint.ts` `PaintableMaterial.painted`) and any per-frame write scales from that painted rest, never from a constant. Physical-material lobes (sheen, clearcoat, iridescence) may switch on or off only when the look changes, so three.js compiles a variant once, never per frame.
 - **Rule added:** Skins paint only in `Skin.paint` (called on a look change or a new skin); a per-frame material write in a skin reads `PaintableMaterial.painted`. Every species zone has its own material (the puppy's coat was one shared caramel), so a zone repaints exactly its own meshes.
+
+### LES-011 — A check that greps test output can pass a red test (2026-11-26)
+- **Context:** a commit went in with a red window test: the check was `node --test … | grep "ℹ (pass|fail)" && git commit`, and grep succeeds whatever the counts say.
+- **Lesson:** a gate must fail on the runner's exit code, not on finding a summary line.
+- **Rule added:** commits go through `scripts/check.sh` (tsc, window tests, core tests; `set -e`, exits on the first red).
