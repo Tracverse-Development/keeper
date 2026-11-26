@@ -119,3 +119,15 @@ export interface SystemLive {
   diskTotalGb: number;
   top: [string, number][];
 }
+
+/** A tap on the character (asking for its attention) or a stroke over it (affection). */
+export type Touch = 'poke' | 'pat';
+
+/** What a keeper says back to a touch (`assistant::touch::TouchReply`). */
+export interface TouchReply {
+  line: string;
+  /** Its mood word, when it has a mood in this mode. */
+  mood: string | null;
+  /** Written by the helper model for this keeper and mood (false: composed with no model). */
+  written: boolean;
+}

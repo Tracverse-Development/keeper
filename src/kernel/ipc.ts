@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive } from './ipc-studio';
+import type { FeelingsInfo, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -81,6 +81,8 @@ export const core = {
   /** The keeper's simulated feelings, and resetting them. */
   keeperFeelings: (keeper?: string) => invoke<FeelingsInfo>('keeper_feelings', { keeper }),
   feelingsReset: (keeper?: string) => invoke<FeelingsInfo>('feelings_reset', { keeper }),
+  /** The person tapped or stroked the character: what it says back, from its soul and mood. */
+  keeperTouch: (kind: Touch, about: { keeper?: string; mode?: string; you?: string }) => invoke<TouchReply>('keeper_touch', { kind, ...about }),
   modesSave: (mode: RoleInfo) => invoke<RoleInfo[]>('modes_save', { mode }),
   modesReset: (id: string) => invoke<RoleInfo[]>('modes_reset', { id }),
   skillsList: () => invoke<{ name: string; what: string }[]>('skills_list'),

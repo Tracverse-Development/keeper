@@ -44,6 +44,15 @@ pub fn on_outcome(keeper: &str, soul: &Soul, succeeded: bool) {
     with(keeper, soul, |f| f.event(if succeeded { Event::TaskDone } else { Event::TaskFailed }, t, h));
 }
 
+/// The person touched the keeper: the feeling it stirs, then how it feels now.
+pub fn on_touch(keeper: &str, soul: &Soul, pat: bool) -> Option<FeelingsView> {
+    let (t, h) = (now(), hour());
+    with(keeper, soul, |f| {
+        f.event(if pat { Event::Patted } else { Event::Poked }, t, h);
+        f.view(t, h)
+    })
+}
+
 pub fn view(keeper: &str, soul: &Soul) -> Option<FeelingsView> {
     let (t, h) = (now(), hour());
     with(keeper, soul, |f| f.view(t, h))

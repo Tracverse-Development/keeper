@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 
 import { core, EVENTS, on, type Counts, type NodeStatus, type TurnResult } from '../kernel/ipc';
-import { nameFromFacts } from './touch-lines';
+import { nameFromFacts } from './person-name';
 
 /** How long the character celebrates after remembering or doing something. */
 export const HAPPY_MS = 1800;

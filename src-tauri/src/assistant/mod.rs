@@ -17,6 +17,7 @@ mod speech;
 pub mod persona;
 mod prefetch;
 mod source;
+pub mod touch;
 mod turn;
 pub mod warm;
 #[cfg(test)]

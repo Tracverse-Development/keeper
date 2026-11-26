@@ -21,10 +21,13 @@ The model is ALMA's three layers (Gebhard, AAMAS 2005):
 | bad news shared | care (softer and quieter, never miserable) |
 | a task went well | pride |
 | a task didn't work out | disappointment, about its own try |
+| patted (a stroke over the character) | gratitude |
+| tapped (a click on it) | a little joy; never annoyance, however many taps |
 | goodbye | nothing (no guilt, ever) |
 | signs of distress | feelings step aside: neutral and supportive, with a crisis-line hint |
 
 - **Explainable:** every change records its cause ("you thanked it → gratitude"), and the Studio's Feelings tab shows the mood word, three bars against the soul's resting point, the active emotions, the causes, Reset, and the off switch.
+- **Touch:** a tap or a pat is answered in the keeper's own words for its soul and its mood right now. The helper model writes a small batch of lines per keeper, soul and mood in the background (each said once); until they are ready, or with no helper model, the line is composed from the mood and the soul (`feelings/touch.rs`, `assistant/touch.rs`). The same safety rules bind those lines.
 - **Code:** `src-tauri/src/feelings/` (`pad`, `appraise`, `engine`, `store`); the window is `src/studio/FeelingsTab.tsx`.
 
 ## Safety rules (hard constraints in code and in the prompt block)

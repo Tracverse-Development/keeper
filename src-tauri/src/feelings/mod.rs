@@ -16,5 +16,6 @@ pub mod appraise;
 pub mod engine;
 pub mod pad;
 pub mod store;
+pub mod touch;
 
 

@@ -14,6 +14,8 @@ use super::turn::base_context;
 /// Warm the active (or given) keeper's brain and the quick helper model.
 pub fn warm_keeper(state: &AppState, keeper_id: &str) {
     let Ok(keeper) = state.keeper_or_active(keeper_id) else { return };
+    // What it says when touched, written for its mood before the first touch.
+    super::touch::prepare(state, &keeper);
     if keeper.brain != "claude" {
         return;
     }

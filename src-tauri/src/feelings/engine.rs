@@ -27,6 +27,9 @@ pub enum Event {
     Message(Appraisal),
     TaskDone,
     TaskFailed,
+    /// The person stroked the character (affection) or tapped it (asking for its attention).
+    Patted,
+    Poked,
 }
 
 /// An OCC emotion: its kind and where it sits in PAD space.
@@ -198,6 +201,9 @@ impl Feelings {
             Event::Message(Appraisal::Goodbye) | Event::Message(Appraisal::Distress) => {}
             Event::TaskDone => self.feel(Kind::Pride, 0.45, "a task went well"),
             Event::TaskFailed => self.feel(Kind::Disappointment, 0.4, "a task didn't work out"),
+            Event::Patted => self.feel(Kind::Gratitude, 0.4, "you patted it"),
+            // A tap wakes it up a little; it is never taken badly, however many there are.
+            Event::Poked => self.feel(Kind::Joy, 0.12, "you tapped it"),
         }
         self.bound();
     }
@@ -269,6 +275,21 @@ mod tests {
         assert!(!f.stepped_aside);
         let block = f.prompt_block(601.0, 12).unwrap();
         assert!(block.contains("simulated") && block.contains("never pressure, guilt or blame"));
+    }
+
+    #[test]
+    fn a_pat_warms_it_and_no_number_of_taps_sours_it() {
+        let base = baseline(5, 5);
+        let mut f = Feelings::new(base, 0.0);
+        f.event(Event::Patted, 0.0, 14);
+        f.tick(120.0, 14);
+        assert!(f.mood.p > base.p);
+        assert_eq!(f.causes[0].what, "you patted it");
+        for i in 0..40 {
+            f.event(Event::Poked, 200.0 + f64::from(i), 14);
+        }
+        f.tick(400.0, 14);
+        assert!(f.mood.p >= base.p, "taps never lower pleasure");
     }
 
     #[test]

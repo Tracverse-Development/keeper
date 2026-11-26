@@ -3,7 +3,7 @@
  * chats) sits on the left, the conversation dock under the character, the memory drawer and
  * settings open over it. This file only composes; behaviour lives in the hooks (`useKeepers`,
  * `useChats`, `useAssistant`, `useVoice`, `useDashboardEvents`) and the pure rules (`mood.ts`,
- * `touch-lines.ts`).
+ * `person-name.ts`).
  */
 import { useEffect, useRef, useState } from 'react';
 
@@ -28,7 +28,7 @@ import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
 import { moodFor, phaseWords } from './mood';
 import { TopBar } from './TopBar';
-import { touchLine, type Touch } from './touch-lines';
+import type { Touch } from '../kernel/ipc';
 import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
@@ -48,13 +48,12 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
-  const lastTouch = useRef<{ at: number; line: string | null }>({ at: 0, line: null });
+  const lastTouch = useRef(0);
   const speakRef = useRef<(t: string, queue?: boolean) => void>(() => undefined);
 
   const keepers = useKeepers();
   const keeper = keepers.active;
   const kit = useKit();
-  const soul = keeper ? kit.soul(keeper.soul) : undefined;
   const chats = useChats(keeper?.id ?? null);
   const celebrate = () => setHappyUntil(Date.now() + HAPPY_MS);
   // One-shot emotes on real events (each call plays once).
@@ -155,12 +154,17 @@ export function Dashboard({ initial }: { initial: Settings }) {
   /** A poke or a pat on the character: it answers in its own words, out loud. */
   const touched = (kind: Touch) => {
     const now = Date.now();
-    if (now - lastTouch.current.at < TOUCH_GAP_MS || assistant.busy) return;
-    const line = touchLine(kind, { name, you: events.personName, last: lastTouch.current.line, soulLines: kind === 'poke' ? soul?.pokeLines : soul?.patLines });
-    lastTouch.current = { at: now, line };
+    if (now - lastTouch.current < TOUCH_GAP_MS || assistant.busy) return;
+    lastTouch.current = now;
     if (kind === 'pat') celebrate();
-    assistant.announce(line, name);
-    voice.speak(line);
+    // The core answers from the keeper's soul and its mood right now (`assistant::touch`).
+    void core
+      .keeperTouch(kind, { keeper: keeper?.id, mode: assistant.mode || undefined, you: events.personName ?? undefined })
+      .then((reply) => {
+        assistant.announce(reply.line, name);
+        voice.speak(reply.line);
+      })
+      .catch(() => undefined);
   };
 
   /** Edit the active keeper; a new brain comes back with its words about it. */

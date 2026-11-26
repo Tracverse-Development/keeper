@@ -110,9 +110,4 @@ impl AppState {
             }
         }
     }
-
-    /// The active keeper's memory.
-    pub fn memory(&self) -> Result<Memory> {
-        self.memory_for(&self.active_keeper()?)
-    }
 }
