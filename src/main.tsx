@@ -8,6 +8,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { windowLabel } from './kernel/ipc';
 import { TalkWindow } from './talk/TalkWindow';
+import { applyTextSize, readTextSize } from './kernel/text-size';
 import './kernel/app.css';
+
+// The person's text size, before the first frame.
+applyTextSize(readTextSize());
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{windowLabel() === 'talk' ? <TalkWindow /> : <App />}</StrictMode>);

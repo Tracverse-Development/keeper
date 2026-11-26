@@ -171,6 +171,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
 
   /** A poke or a pat on the character: it answers in its own words, out loud. */
   const touched = (kind: Touch) => {
+    // Touching it while it talks is how you interrupt it: it stops, and says nothing more.
+    if (voice.speaking) return void voice.hush();
     const now = Date.now();
     if (now - lastTouch.current < TOUCH_GAP_MS || assistant.busy) return;
     lastTouch.current = now;
@@ -303,6 +305,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         full={sidebarOpen && assistant.chatId !== ''}
         compact={stage.showing}
         onSend={sendMessage}
+        onType={() => voice.speaking && void voice.hush()}
         tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (
           <ModeBar

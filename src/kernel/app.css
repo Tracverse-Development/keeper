@@ -29,6 +29,8 @@ input, textarea, select, button { font: inherit; color: inherit; }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.45; cursor: default; transform: none; }
 .btn:focus-visible { outline: 2px solid var(--gold-400); outline-offset: 3px; }
+/* Every control shows where the keyboard is (not only buttons styled as .btn). */
+:where(button, a, input, select, textarea, summary, [role='tab'], [role='radio'], [tabindex]):focus-visible { outline: 2px solid var(--gold-400); outline-offset: 2px; }
 .btn-primary {
   background: linear-gradient(180deg, var(--gold-400), var(--gold-600));
   color: var(--navy-950); border-color: transparent;

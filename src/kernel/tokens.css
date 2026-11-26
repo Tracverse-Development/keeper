@@ -46,16 +46,18 @@
   --space-8: 32px;
   --space-10: 40px;
   /* Type: ONE scale. Every font size is one of these. */
-  --text-2xs: 11px;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 14px;
-  --text-md: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
-  --text-3xl: 30px;
-  --text-display: 44px;
+  /* The person's text size (Settings, Reading): every size on the scale grows with it. */
+  --text-scale: 1;
+  --text-2xs: calc(11px * var(--text-scale));
+  --text-xs: calc(12px * var(--text-scale));
+  --text-sm: calc(13px * var(--text-scale));
+  --text-base: calc(14px * var(--text-scale));
+  --text-md: calc(15px * var(--text-scale));
+  --text-lg: calc(17px * var(--text-scale));
+  --text-xl: calc(20px * var(--text-scale));
+  --text-2xl: calc(24px * var(--text-scale));
+  --text-3xl: calc(30px * var(--text-scale));
+  --text-display: calc(44px * var(--text-scale));
   /* Controls: the three heights buttons, fields and chips come in. */
   --control-sm: 32px;
   --control: 40px;

@@ -12,6 +12,7 @@ import { ShareSection } from '../keepers/ShareSection';
 import { BackupSection } from './BackupSection';
 import { ChildSection } from './ChildSection';
 import { HealthSection } from './HealthSection';
+import { ReadingSection } from './ReadingSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
 import { SpendingSection } from './SpendingSection';
@@ -137,6 +138,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
             </span>
           </label>
         )}
+
+        {see.has('reading') && <p className="eyebrow">Reading</p>}
+        {see.has('reading') && <ReadingSection />}
 
         {see.has('showing') && <p className="eyebrow">Showing things</p>}
         {see.has('showing') && <ShowingSection settings={settings} save={save} />}

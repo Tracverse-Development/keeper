@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react';
 
 import { core, EVENTS, on, sentence } from '../kernel/ipc';
 import type { PanelAction } from '../kernel/panel-spec';
-import { formMessage, unsaid } from './unsaid';
+import { formMessage, unsaid, spokenPart } from './unsaid';
 
 /** Right answers in a row worth a celebration. */
 const STREAK = 3;
@@ -59,7 +59,8 @@ export function usePanelActions(deps: Deps) {
   /** The final reply: speak only what the early reply did not already say. */
   const speakFinal = (reply: string) => {
     const queued = !!early.current;
-    const rest = unsaid(reply, early.current);
+    // A long reply is spoken as its first two sentences; the rest is on screen.
+    const rest = unsaid(spokenPart(reply), early.current);
     early.current = '';
     if (rest) ref.current.speak(rest, queued);
   };

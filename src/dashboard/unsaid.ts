@@ -15,3 +15,26 @@ export function formMessage(title: string, values: Record<string, string>): stri
   const list = filled.map(([k, v]) => `${k.replace(/[-_]+/g, ' ')}: ${v.trim()}`).join('; ');
   return `My answers for "${title}": ${list || 'nothing filled in'}.`;
 }
+
+/** A reply longer than this is not read out whole. */
+export const SPOKEN_MAX = 280;
+/** What is said after the short version of a long reply. */
+export const REST_ON_SCREEN = 'The rest is on your screen.';
+
+/**
+ * What is said out loud of a reply: all of a short one; of a long one its first two sentences
+ * (never past `SPOKEN_MAX`), then "The rest is on your screen." The whole reply is always shown.
+ */
+export function spokenPart(reply: string): string {
+  const text = reply.trim();
+  if (text.length <= SPOKEN_MAX) return text;
+  const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [];
+  let said = '';
+  for (const s of sentences.slice(0, 2)) {
+    if ((said + s).length > SPOKEN_MAX) break;
+    said += s;
+  }
+  // No sentence end in reach (a list, a long run): cut at a word.
+  if (!said.trim()) said = `${text.slice(0, SPOKEN_MAX).replace(/\s+\S*$/, '')}.`;
+  return `${said.trim()} ${REST_ON_SCREEN}`;
+}

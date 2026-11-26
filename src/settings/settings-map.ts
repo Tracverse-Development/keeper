@@ -13,7 +13,7 @@ export const GROUPS: readonly { id: GroupId; title: string }[] = [
   { id: 'mac', title: 'This Mac' },
 ];
 
-export type SectionId = 'health' | 'name' | 'soul' | 'role' | 'body' | 'studio' | 'brain' | 'showing' | 'spending' | 'voice' | 'button' | 'phone' | 'share' | 'backup' | 'child' | 'updates' | 'remove';
+export type SectionId = 'health' | 'name' | 'soul' | 'role' | 'body' | 'studio' | 'brain' | 'reading' | 'showing' | 'spending' | 'voice' | 'button' | 'phone' | 'share' | 'backup' | 'child' | 'updates' | 'remove';
 
 export const SECTIONS: readonly { id: SectionId; group: GroupId; title: string; words: string }[] = [
   { id: 'health', group: 'health', title: 'Is everything working?', words: 'health check problem error memory node not working fix status' },
@@ -23,6 +23,7 @@ export const SECTIONS: readonly { id: SectionId; group: GroupId; title: string; 
   { id: 'body', group: 'keeper', title: 'Body', words: 'robot puppy species skin character' },
   { id: 'studio', group: 'keeper', title: 'Look, inventory and mods', words: 'studio outfit wardrobe colour color clothes marketplace level' },
   { id: 'brain', group: 'keeper', title: 'Brain', words: 'mind engine model claude codex gemini ollama local act computer plan approve permission' },
+  { id: 'reading', group: 'how', title: 'Reading', words: 'text size font bigger larger small accessibility motion eyes' },
   { id: 'showing', group: 'how', title: 'Showing things', words: 'visual panels stage text prepare scenes quick replies helper model speed' },
   { id: 'spending', group: 'how', title: 'Spending', words: 'cost money limit cap budget dollars month price' },
   { id: 'voice', group: 'how', title: 'Voice', words: 'speak listen microphone always listening wake word elevenlabs sound talk' },

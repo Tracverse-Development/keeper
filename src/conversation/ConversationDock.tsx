@@ -25,6 +25,8 @@ interface Props {
   /** Beside the stage: only the latest exchange, so nothing covers the character. */
   compact?: boolean;
   onSend: (text: string) => void;
+  /** The person started typing (the keeper stops talking so it does not talk over them). */
+  onType?: () => void;
   /** The mode and style controls, shown above the message box. */
   modeBar?: React.ReactNode;
   /** What the person handed over and has not sent yet (a dropped file), above the message box. */
@@ -111,7 +113,10 @@ export function ConversationDock(p: Props) {
           className="dock-field"
           placeholder={`Talk to ${p.assistantName}…`}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            if (text === '' && e.target.value !== '') p.onType?.();
+            setText(e.target.value);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') p.onStop();
           }}
