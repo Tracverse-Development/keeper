@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { Experience, StudioInfo } from '../kernel/ipc-studio.ts';
-import { habitWeight, habitWords, levelProgress, levelUpLine, lockedUntil, rarityOf, setZone } from './studio-view.ts';
+import { habitWeight, habitWords, levelProgress, levelUpLine, lockedUntil, rarityOf, saveWords, setZone } from './studio-view.ts';
 
 const rarities = [
   { id: 'common', name: 'Common', level: 1, color: '#9aa3b5' },
@@ -44,4 +44,10 @@ test('a level up says what opened', () => {
   assert.equal(levelUpLine('Pup', 5, [{ name: 'A pendant with your own photo' }]), 'Pup reached level 5! I can now have a pendant with your own photo.');
   assert.equal(levelUpLine('Pup', 7, []), 'Pup reached level 7!');
   assert.equal(levelUpLine('Pup', 6, [{ name: 'Celebration effects' }, { name: 'Idle effects' }]), 'Pup reached level 6! New for me: celebration effects and idle effects.');
+});
+
+test('studio: the save line says where things stand', () => {
+  assert.equal(saveWords(false, false), 'Everything is saved');
+  assert.equal(saveWords(true, false), 'Saving in a moment…');
+  assert.equal(saveWords(true, true), 'Saving…');
 });

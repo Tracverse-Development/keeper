@@ -68,3 +68,9 @@ export function levelUpLine(name: string, level: number, unlocked: { name: strin
 export function voiceSample(name: string): string {
   return `Hi, I'm ${name}. This is how I'd sound.`;
 }
+
+/** The Studio's save line: everything is kept as it is changed, and this says where it stands. */
+export function saveWords(dirty: boolean, saving: boolean): string {
+  if (saving) return 'Saving…';
+  return dirty ? 'Saving in a moment…' : 'Everything is saved';
+}

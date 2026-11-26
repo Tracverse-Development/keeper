@@ -26,6 +26,7 @@ import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
 import { ModesTab } from './ModesTab';
+import { saveWords } from './studio-view';
 import { useStudio } from './useStudio';
 import { VoiceTab } from './VoiceTab';
 import '../keepers/wardrobe.css';
@@ -63,6 +64,8 @@ const GROUPS: { name: string; tabs: { id: Tab; name: string; about: string }[] }
 const TABS = GROUPS.flatMap((g) => g.tabs);
 /** Tabs that browse many items take the wide side; the keeper stands in a narrower stage. */
 const BROWSE: Tab[] = ['inventory', 'market'];
+/** A look, habit or voice change is saved this long after the last one. */
+const AUTOSAVE_MS = 700;
 
 interface Props {
   open: boolean;
@@ -122,7 +125,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
     return () => window.clearInterval(again);
   }, [moment, outfit?.caption]);
 
-  useEscape(open, onClose);
+  useEscape(open, () => done());
 
   const save = async () => {
     setSaving(true);
@@ -138,6 +141,20 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
     }
   };
 
+  // Everything in the Studio is kept as it is changed: a look, a habit or a voice is saved a
+  // moment after the last change, like an outfit or a soul already was. No Save button to forget.
+  useEffect(() => {
+    if (!open || !dirty || saving) return;
+    const timer = window.setTimeout(() => void save(), AUTOSAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, dirty, saving, look, habits, voice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Leaving keeps whatever was just changed. */
+  const done = () => {
+    if (dirty && !saving) void save();
+    onClose();
+  };
+
   if (!open) return null;
   const level = info ? Math.max(1, info.experience.level) : null;
   return (
@@ -151,12 +168,18 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
           </h1>
         </div>
         <div className="studio-actions">
-          {saveError && <span className="error-line small">{saveError}</span>}
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            {dirty ? 'Cancel' : 'Close'}
-          </button>
-          <button type="button" className="btn btn-primary" disabled={!dirty || saving} onClick={() => void save()}>
-            {saving ? 'Saving…' : 'Save'}
+          {saveError ? (
+            <>
+              <span className="error-line small">{saveError}</span>
+              <button type="button" className="btn btn-small" onClick={() => void save()}>
+                Try again
+              </button>
+            </>
+          ) : (
+            <span className="muted small" role="status">{saveWords(dirty, saving)}</span>
+          )}
+          <button type="button" className="btn btn-primary" onClick={done}>
+            Done
           </button>
         </div>
       </header>
