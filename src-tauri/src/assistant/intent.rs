@@ -15,6 +15,10 @@ const STRONG: [&str; 8] = ["install", "uninstall", "unzip", "zip", "compress", "
 /// work only when they name something on the computer or something of the person's ("my").
 const VERBS: [&str; 15] = ["move", "delete", "copy", "tidy", "organise", "organize", "run", "edit", "save", "sort", "clean", "backup", "archive", "convert", "create"];
 
+/// "Make" is computer work only with a computer thing named ("make a folder"), never because of
+/// "my" ("make a cake for my sister").
+const MAKE: &str = "make";
+
 /// Things on the computer a request is about.
 const THINGS: [&str; 33] = [
     "file", "files", "folder", "folders", "document", "documents", "pdf", "pdfs", "desktop", "downloads", "directory", "disk",
@@ -32,7 +36,10 @@ const LOOKING: [&str; 8] = ["open", "show", "find", "list", "look", "check", "se
 /// "Which app is best for notes?" and "this is a chat to delete" stay conversation.
 pub fn wants_computer(said: &str) -> bool {
     let lower = said.to_lowercase();
-    if lower.contains("~/") || lower.contains("/users/") {
+    // A path on this computer: ~/…, or an absolute one ("/tmp", "/Applications"), but not a
+    // fraction or "and/or".
+    let absolute = lower.split_whitespace().any(|w| w.starts_with('/') && w.chars().nth(1).is_some_and(|c| c.is_ascii_alphabetic()));
+    if lower.contains("~/") || lower.contains("/users/") || absolute {
         return true;
     }
     let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
@@ -41,7 +48,8 @@ pub fn wants_computer(said: &str) -> bool {
     // I have"), but never with a verb alone ("I want to run a marathon").
     let mine = words.iter().any(|w| matches!(*w, "my" | "our" | "mine"));
     let owner = mine || words.contains(&"i");
-    has(&STRONG) || (has(&VERBS) && (has(&THINGS) || mine)) || (has(&THINGS) && (has(&LOOKING) || owner))
+    let make = words.contains(&MAKE) && has(&THINGS);
+    has(&STRONG) || make || (has(&VERBS) && (has(&THINGS) || mine)) || (has(&THINGS) && (has(&LOOKING) || owner))
 }
 
 /// Questions that only ask what IS (no change): these words, or a question word, with no verb
@@ -57,7 +65,7 @@ pub fn only_looks(said: &str) -> bool {
     let lower = said.to_lowercase();
     let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
     let has = |list: &[&str]| words.iter().any(|w| list.contains(w));
-    !has(&STRONG) && !has(&VERBS) && !words.contains(&"open") && has(&ASKING)
+    !has(&STRONG) && !has(&VERBS) && !words.contains(&MAKE) && !words.contains(&"open") && has(&ASKING)
 }
 
 #[cfg(test)]
@@ -66,24 +74,24 @@ mod tests {
 
     #[test]
     fn looking_questions_skip_the_plan_and_changes_never_do() {
-        for said in ["How much storage do I have left?", "Show me my home network.", "Which devices are on my network?", "How is my computer doing?", "What's in my Downloads?", "find the PDF Maya sent", "How much storage is left on my mac?", "check my battery"] {
+        for said in ["what's in /Applications", "How much storage do I have left?", "Show me my home network.", "Which devices are on my network?", "How is my computer doing?", "What's in my Downloads?", "find the PDF Maya sent", "How much storage is left on my mac?", "check my battery"] {
             assert!(only_looks(said), "{said}");
         }
-        for said in ["Move my tax PDFs into a folder", "Delete the screenshots on my desktop", "Open the budget spreadsheet", "install ffmpeg", "clean up my files", "Explain how home networks work", "hello"] {
+        for said in ["Make a folder called keeper-bench-fix in /tmp.", "Move my tax PDFs into a folder", "Delete the screenshots on my desktop", "Open the budget spreadsheet", "install ffmpeg", "clean up my files", "Explain how home networks work", "hello"] {
             assert!(!only_looks(said), "{said}");
         }
     }
 
     #[test]
     fn conversation_and_lessons_are_not_computer_work() {
-        for said in ["hello", "Hi! How are you today?", "What's the capital of Japan?", "My dog is called Rex.", "Explain how a rainbow forms, visually.", "Tell me a joke", "What is my dog called?", "Remind me to call Maya at 5", "hello there, this is a chat to delete", "Which app is best for taking notes?", "I want to run a marathon", "How do I save money on groceries?"] {
+        for said in ["Make a cake for my sister", "half and/or a third", "hello", "Hi! How are you today?", "What's the capital of Japan?", "My dog is called Rex.", "Explain how a rainbow forms, visually.", "Tell me a joke", "What is my dog called?", "Remind me to call Maya at 5", "hello there, this is a chat to delete", "Which app is best for taking notes?", "I want to run a marathon", "How do I save money on groceries?"] {
             assert!(!wants_computer(said), "{said}");
         }
     }
 
     #[test]
     fn computer_work_is_recognised() {
-        for said in ["Move my tax PDFs into a folder", "rename the screenshots on my desktop", "What's in my Downloads?", "Tidy up my desktop", "Delete ~/tmp/old.txt", "install ffmpeg", "Open the budget spreadsheet", "Create a folder called keeper-bench-act inside /tmp", "clean up my files", "find the PDF Maya sent"] {
+        for said in ["Make a folder called keeper-bench-fix in /tmp.", "what's in /Applications", "Move my tax PDFs into a folder", "rename the screenshots on my desktop", "What's in my Downloads?", "Tidy up my desktop", "Delete ~/tmp/old.txt", "install ffmpeg", "Open the budget spreadsheet", "Create a folder called keeper-bench-act inside /tmp", "clean up my files", "find the PDF Maya sent"] {
             assert!(wants_computer(said), "{said}");
         }
     }

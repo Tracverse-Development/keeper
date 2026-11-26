@@ -179,3 +179,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Guard:** the live relocation test and the bench run against `umoja-desk-09ec185b58` (the test copy's home), never the real one.
 - **Evidence:** bench move: 620 assets into `umoja-desk-09ec185b58/keeper-bench`, verified; the real `umoja-desk-176b503b62` untouched (88 assets).
 
+### FIX-0023 — A malformed or cut-off answer lost every panel; "make a folder in /tmp" skipped the plan (2026-11-26)
+- **Area:** `brain/prompt.rs` (`read`, `from_value`, `salvage`), `assistant/intent.rs`, `assistant/approval.rs` (LOOKING)
+- **Symptom:** (scenario bench round 3) a research follow-up showed raw JSON and no panels after 57 s; "Make a folder called keeper-bench-fix in /tmp" went to the quick model, which claimed a skill it lacks and offered no plan (nothing was created); "how much storage do I have left" took 101 s.
+- **Root cause:** the answer was parsed all-or-nothing into `Thought` (one field of the wrong shape, or a cut-off end, discarded everything); "make" was not an action word and absolute paths (`/tmp`) were not seen as computer work; the look rule still allowed du over the whole home folder.
+- **Fix:** answers are read field by field (bad fields dropped), and JSON that does not parse is salvaged (reply + every complete panel via the panel stream); "make" counts with a computer thing named (never "make a cake for my sister"), absolute paths count; free space is `df -h /` alone, du only for named folders when asked.
+- **Guard:** `a_bad_field_or_a_cut_off_answer_keeps_the_reply_and_panels`; intent tests (make-folder and /Applications recognised, the cake and "and/or" not).
+- **Evidence:** bench rerun 9/9 kinds, judge 4.33: research follow-up 4 panels; folder -> approval plan (22 s); storage 31 s (was 101 s); memory turns 2.0 / 2.2 / 5.4 s.
+

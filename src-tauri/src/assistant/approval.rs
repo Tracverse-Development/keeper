@@ -57,7 +57,7 @@ const LOOK_ACTIONS: [&str; 6] = ["look", "list", "read", "search", "find", "chec
 
 /// Said with a look at the computer: show what IS, not a lesson (founder 2026-11-26: "not
 /// everything is an explainer").
-const LOOKING: &str = "\n\n(You are LOOKING at this computer for the person. Show what you found as it is: tables of what you saw (devices, interfaces, folders, apps) and a live panel if it helps. No quiz, no flashcards, no lesson unless they asked you to explain. Use plain read commands joined with ; or | only: no loops (for, while), no $( ) or backticks, no subshells, no writing to files: the safety guard refuses those. Be QUICK: use commands that answer at once (df, not a scan of the whole disk; du only one level deep in the home folder, e.g. du -sh ~/* ; never du on / or ~/Library as a whole) and finish within a few commands.)";
+const LOOKING: &str = "\n\n(You are LOOKING at this computer for the person. Show what you found as it is: tables of what you saw (devices, interfaces, folders, apps) and a live panel if it helps. No quiz, no flashcards, no lesson unless they asked you to explain. Use plain read commands joined with ; or | only: no loops (for, while), no $( ) or backticks, no subshells, no writing to files: the safety guard refuses those. Be QUICK: use commands that answer at once and finish within a few commands. Free space is df -h / alone; measure folder sizes (du) ONLY when asked which folders are big, and then only a few named folders, never the whole home folder, / or ~/Library.)";
 
 /// The instant first words of a look, by what it is about.
 pub(super) fn opening_line(said: &str) -> String {

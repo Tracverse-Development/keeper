@@ -84,13 +84,44 @@ pub fn system(ctx: &Context) -> String {
 pub fn read(answer: &str) -> Thought {
     let trimmed = answer.trim();
     if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}')) {
-        if let Ok(thought) = serde_json::from_str::<Thought>(&trimmed[start..=end]) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&trimmed[start..=end]) {
+            let thought = from_value(&v);
             if !thought.reply.trim().is_empty() || !thought.actions.is_empty() {
                 return thought;
             }
         }
+        // Not valid JSON (cut off, or a stray quote): keep the reply and every complete panel
+        // rather than showing raw JSON (scenario bench 2026-11-26: a research answer lost its panels).
+        if let Some(thought) = salvage(&trimmed[start..]) {
+            return thought;
+        }
     }
     Thought { reply: trimmed.trim_matches('`').to_string(), ..Thought::default() }
+}
+
+/// The answer's fields one by one: a field of the wrong shape is dropped, never the whole answer
+/// (one malformed "remember" item once cost a lesson all its panels).
+fn from_value(v: &serde_json::Value) -> Thought {
+    let list = |key: &str| v[key].as_array().cloned().unwrap_or_default();
+    Thought {
+        reply: v["reply"].as_str().unwrap_or_default().to_string(),
+        remember: list("remember").into_iter().filter_map(|x| serde_json::from_value(x).ok()).collect(),
+        forget: list("forget").into_iter().filter_map(|x| x.as_str().map(str::to_string)).collect(),
+        actions: list("actions").into_iter().filter_map(|x| serde_json::from_value(x).ok()).collect(),
+        panels: v["panels"].clone(),
+        plan: v["plan"].clone(),
+        needs_computer: v["needsComputer"].as_bool().unwrap_or(false),
+        switch_mode: v["switchMode"].as_str().map(str::to_string),
+        ..Thought::default()
+    }
+}
+
+/// From JSON that does not parse: the reply string and the panels that are complete.
+fn salvage(text: &str) -> Option<Thought> {
+    let mut stream = crate::stage::stream::PanelStream::default();
+    let panels = stream.push(text);
+    let reply = stream.take_reply()?;
+    Some(Thought { reply, panels: serde_json::to_value(&panels).unwrap_or_default(), ..Thought::default() })
 }
 
 #[cfg(test)]
@@ -103,5 +134,17 @@ mod tests {
         assert_eq!(t.reply, "Hi Ada");
         assert_eq!(t.remember.len(), 1);
         assert_eq!(read("Just words").reply, "Just words");
+    }
+
+    #[test]
+    fn a_bad_field_or_a_cut_off_answer_keeps_the_reply_and_panels() {
+        // "remember" in the wrong shape: the panels survive.
+        let t = read(r#"{"reply":"Here it is","remember":"oops","panels":[{"kind":"text","title":"A","body":"b"}]}"#);
+        assert_eq!(t.reply, "Here it is");
+        assert_eq!(t.panels.as_array().map(Vec::len), Some(1));
+        // Cut off mid-panel: the reply and the complete first panel survive, never raw JSON.
+        let t = read(r#"{"reply":"Moderate at best.","panels":[{"kind":"text","title":"Why","body":"Eight small trials."},{"kind":"table","title":"Evid"#);
+        assert_eq!(t.reply, "Moderate at best.");
+        assert_eq!(t.panels.as_array().map(Vec::len), Some(1));
     }
 }

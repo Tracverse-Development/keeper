@@ -42,7 +42,9 @@ SCENARIOS = {
         ('Thanks, that helps.', NONE, {'quiz', 'live', 'table'}),
     ]),
     'memory': ('assistant', [
-        ('Remember that my bench test cat is called Biscuit Moon.', NONE | {'facts', 'text'}, {'quiz', 'live'}),
+        ('Remember that my bench test cat is called Biscuit Moon.', NONE, {'quiz', 'live', 'table'}),
+        ("What's my bench test cat called?", NONE, {'quiz', 'live'}),
+        ('Forget my bench test cat.', NONE, {'quiz', 'live'}),
     ]),
     'switch': ('system', [
         ('How do I make banana bread?', TEACH | {'checklist'}, {'live', 'approval'}),
