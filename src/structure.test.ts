@@ -47,6 +47,17 @@ test('boundaries: only kernel/ipc.ts talks to the core', () => {
   }
 });
 
+// FIX-0026: a memory's cache key ("graph/sub") is a label, never an address. Passed to the node
+// as a graph id it reads nothing (or the node answers 503), which broke the level, pins, quiz
+// streaks and scene cache once memory moved into sub-graphs.
+test('memory: the node is always addressed by place(), never by the cache key', () => {
+  for (const f of files(core, /\.rs$/)) {
+    const text = readFileSync(f, 'utf8');
+    assert.ok(!/\.(query|query_terms|discard|write_asset)\(\s*(?:\w+\.)*hot_key\(\)/.test(text), `${relative(root, f)} passes hot_key() to the node`);
+    assert.ok(!/Place::from\(\s*(?:\w+\.)*hot_key\(\)/.test(text), `${relative(root, f)} builds a place from hot_key()`);
+  }
+});
+
 test('boundaries: the character is used only through its entry', () => {
   for (const f of files(web, /\.tsx?$/).filter((f) => !f.includes('/character/'))) {
     assert.ok(!/from '[^']*character\/(?!index|contract)[^']+'/.test(readFileSync(f, 'utf8')), `${relative(root, f)} reaches into character internals`);

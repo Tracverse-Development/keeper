@@ -42,7 +42,7 @@ async fn live_remember_recall_forget() {
     assert!(turns.iter().any(|t| t.id == turn.id), "the turn is on the graph");
 
     let raw = format!("PREFIX schema: <http://schema.org/> SELECT ?s WHERE {{ ?s ?p ?o . FILTER(CONTAINS(STR(?o), \"{stamp}\")) ?s a ?t . FILTER(CONTAINS(STR(?t), \"Fact\")) }} LIMIT 5");
-    let before = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    let before = memory.client().query(memory.place(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
     assert!(!before.is_empty(), "the raw query finds the fact before it is forgotten");
     let forgotten = memory.forget(&format!("sorrel with ginger {stamp}")).await.expect("forget");
     assert!(forgotten.iter().any(|f| f.id == fact.id), "forget found the fact");
@@ -50,7 +50,7 @@ async fn live_remember_recall_forget() {
     assert!(!facts.iter().any(|f| f.id == fact.id), "a forgotten fact is never recalled again");
     // DESK-ERASE-001: forgetting erases. The fact's words are gone from the node itself, not
     // only hidden by a retraction (a raw query for its text finds nothing).
-    let left = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    let left = memory.client().query(memory.place(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
     assert!(left.is_empty(), "the fact's triples are erased from Working Memory: {left:?}");
 
     let counts = memory.counts().await.expect("counts");
@@ -129,7 +129,7 @@ async fn live_deleting_a_chat_erases_its_turns() {
     assert!(memory.chat_turns(&chat.id).await.unwrap().is_empty(), "no turn of the chat is left");
     assert!(!memory.chats().await.unwrap().iter().any(|c| c.id == chat.id), "the chat is no longer listed");
     let raw = format!("SELECT ?s WHERE {{ ?s ?p ?o . FILTER(CONTAINS(STR(?o), \"{stamp}\")) }} LIMIT 5");
-    let left = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    let left = memory.client().query(memory.place(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
     assert!(left.is_empty(), "the person's words are gone from the node: {left:?}");
 }
 
@@ -168,7 +168,7 @@ async fn live_each_mode_recalls_its_own_work_facts() {
 async fn live_modes_save_reload_and_reset_on_the_kit_graph() {
     use crate::keepers::kit::{inventory, roles};
     let memory = live_memory().await;
-    let (client, graph) = (memory.client(), memory.graph());
+    let (client, graph) = (memory.client(), memory.place().graph.as_str());
     let mut tutor = roles::get("tutor");
     tutor.brief = format!("Teach with stories {}", time::now_iso());
     let clean = roles::sanitize(&tutor, &crate::skills::names()).unwrap();

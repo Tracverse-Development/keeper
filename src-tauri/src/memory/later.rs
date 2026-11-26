@@ -23,7 +23,7 @@ impl Later {
     /// receipt as it stands now ("writing").
     pub fn add(&mut self, record: &impl Record, kind: &'static str) -> WriteReceipt {
         if let Some(change) = record.hot() {
-            hot::apply(self.memory.graph(), change);
+            hot::apply(self.memory.hot_key(), change);
         }
         let name = record.asset_name();
         self.jobs.push((name.clone(), kind, record.quads()));

@@ -83,7 +83,7 @@ impl Memory {
     pub async fn cached_scene(&self, question: &str) -> Result<Option<CachedScene>> {
         let k = key(question);
         // Hot memory knows every key kept in this graph: a new question costs no query.
-        match super::hot::scene(self.graph(), &k) {
+        match super::hot::scene(self.hot_key(), &k) {
             super::hot::SceneLookup::Miss => return Ok(None),
             super::hot::SceneLookup::Hit(scene) => return Ok(Some(scene)),
             super::hot::SceneLookup::OnDkg | super::hot::SceneLookup::Unknown => {}
@@ -92,13 +92,13 @@ impl Memory {
             "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX prov: <http://www.w3.org/ns/prov#> \
              SELECT ?replied ?panels ?at WHERE {{ ?s a desk:CachedScene ; desk:key \"{k}\" ; desk:replied ?replied ; desk:panels ?panels ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 1"
         );
-        let rows = self.client().query(self.graph(), &sparql, Layer::Working).await?;
+        let rows = self.client().query(self.place(), &sparql, Layer::Working).await?;
         let scene = rows.into_iter().next().and_then(|r| {
             let panels = serde_json::from_str::<serde_json::Value>(r.get("panels")?).ok().map(|v| crate::stage::read(&v))?;
             (!panels.is_empty()).then(|| CachedScene { key: k.clone(), question: question.to_string(), reply: r.get("replied").cloned().unwrap_or_default(), panels, at: r.get("at").cloned().unwrap_or_default() })
         });
         if let Some(s) = &scene {
-            super::hot::apply(self.graph(), super::hot::HotChange::Scene(s.clone()));
+            super::hot::apply(self.hot_key(), super::hot::HotChange::Scene(s.clone()));
         }
         Ok(scene)
     }
@@ -106,7 +106,7 @@ impl Memory {
     /// The keys of every scene kept in this graph (loaded into hot memory with recall's data).
     pub(super) async fn scene_keys(&self) -> Option<std::collections::HashSet<String>> {
         let sparql = "PREFIX desk: <https://umojaark.com/ns/desk#> SELECT DISTINCT ?k WHERE { ?s a desk:CachedScene ; desk:key ?k } LIMIT 5000";
-        self.client().query(self.graph(), sparql, Layer::Working).await.ok().map(|rows| rows.into_iter().filter_map(|r| r.get("k").cloned()).collect())
+        self.client().query(self.place(), sparql, Layer::Working).await.ok().map(|rows| rows.into_iter().filter_map(|r| r.get("k").cloned()).collect())
     }
 
     /// Keep a scene under its question.

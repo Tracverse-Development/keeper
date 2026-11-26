@@ -97,7 +97,7 @@ pub async fn done(memory: &Memory, season: &Season, kind: QuestKind) -> Option<u
         QuestKind::Lessons => "?s a desk:Turn ; desk:panels ?p ; prov:generatedAtTime ?at . FILTER(STRLEN(?p) > 2)".to_string(),
     };
     let sparql = format!("{PREFIXES}SELECT (COUNT(?s) AS ?n) WHERE {{ {what} FILTER(?at >= \"{since}\"^^xsd:dateTime) }}");
-    memory.client().query(memory.graph(), &sparql, Layer::Working).await.ok().map(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))
+    memory.client().query(memory.place(), &sparql, Layer::Working).await.ok().map(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))
 }
 
 #[cfg(test)]
@@ -153,7 +153,9 @@ mod live_tests {
         let client = DkgClient::new(&loc);
         let graph = format!("umoja-desk-seasontest-{}", chrono::Utc::now().timestamp_millis());
         client.ensure_graph(&graph, "season test").await.unwrap();
-        let memory = Memory::at(client, Place::from(graph.as_str()));
+        // In a SUB-GRAPH, the way a real keeper's memory is kept (FIX-0026).
+        client.ensure_sub_graph(&graph, "keeper-t").await.unwrap();
+        let memory = Memory::at(client, Place::new(&graph, Some("keeper-t")));
         for i in 0..2 {
             let at = crate::kernel::time::iso(crate::kernel::time::now() - chrono::Duration::minutes(i));
             memory.write(&ActionRecord::new("focus", "25 minutes", "Focused for 25 minutes.", true, &at, "")).await;
@@ -164,5 +166,10 @@ mod live_tests {
         assert_eq!(done(&memory, &open, QuestKind::FocusSessions).await, Some(2), "two focus sessions, not the other action");
         assert_eq!(done(&memory, &later, QuestKind::FocusSessions).await, Some(0), "nothing counts before a season opens");
         assert_eq!(done(&memory, &open, QuestKind::QuizRight).await, Some(0));
+        // FIX-0026: the level is read from the keeper's own sub-graph (it could not be read at
+        // all once memory lived in one), and counts only what is in it.
+        let level = crate::keepers::kit::levels::experience(&memory).await.expect("the level reads in a sub-graph");
+        assert_eq!(level.done.actions, 3, "{level:?}");
+        assert!(memory.pinned_scenes().await.is_ok(), "pins read there too");
     }
 }

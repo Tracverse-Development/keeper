@@ -73,7 +73,7 @@ impl Memory {
     pub async fn pinned_scenes(&self) -> Result<Vec<PinnedScene>> {
         let pins = format!("{PREFIXES}SELECT ?id ?title ?panels ?at WHERE {{ ?s a desk:PinnedScene ; desk:pinId ?id ; schema:name ?title ; desk:panels ?panels ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 200");
         let unpins = format!("{PREFIXES}SELECT ?id ?at WHERE {{ ?s a desk:SceneUnpinned ; desk:pinId ?id ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 400");
-        let (pins, unpins) = (self.client().query(self.graph(), &pins, Layer::Working).await?, self.client().query(self.graph(), &unpins, Layer::Working).await?);
+        let (pins, unpins) = (self.client().query(self.place(), &pins, Layer::Working).await?, self.client().query(self.place(), &unpins, Layer::Working).await?);
         let last_unpin = |id: &str| unpins.iter().filter(|u| u.get("id").map(String::as_str) == Some(id)).filter_map(|u| u.get("at").cloned()).max();
         let mut out: Vec<PinnedScene> = Vec::new();
         for row in pins {

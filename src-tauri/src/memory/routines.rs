@@ -61,7 +61,7 @@ impl Memory {
     /// The keeper's routines, by name (one bounded query naming its class).
     pub async fn routines(&self) -> Result<Vec<Routine>> {
         let sparql = format!("{PREFIXES}SELECT ?r ?name ?request ?at WHERE {{ ?r a desk:Routine ; schema:name ?name ; desk:request ?request ; prov:generatedAtTime ?at }} ORDER BY ?name LIMIT {MOST}");
-        let rows = self.client().query(self.graph(), &sparql, Layer::Working).await?;
+        let rows = self.client().query(self.place(), &sparql, Layer::Working).await?;
         Ok(rows
             .iter()
             .filter_map(|r| {
@@ -73,14 +73,14 @@ impl Memory {
 
     /// Save a routine under its name; one already kept under that name is replaced.
     pub async fn save_routine(&self, routine: &Routine) -> Result<()> {
-        let _ = self.client().discard(self.graph(), &routine.asset_name()).await;
-        self.client().write_asset(self.graph(), &routine.asset_name(), &routine.quads()).await?;
+        let _ = self.client().discard(self.place(), &routine.asset_name()).await;
+        self.client().write_asset(self.place(), &routine.asset_name(), &routine.quads()).await?;
         Ok(())
     }
 
     /// Erase a routine from the graph.
     pub async fn forget_routine(&self, id: &str) -> Result<()> {
-        self.client().discard(self.graph(), &format!("desk-routine-{id}")).await
+        self.client().discard(self.place(), &format!("desk-routine-{id}")).await
     }
 }
 
@@ -114,7 +114,9 @@ mod live_tests {
         let client = DkgClient::new(&loc);
         let graph = format!("umoja-desk-routinetest-{}", chrono::Utc::now().timestamp_millis());
         client.ensure_graph(&graph, "routine test").await.unwrap();
-        let memory = Memory::at(client, Place::from(graph.as_str()));
+        // In a SUB-GRAPH, the way a real keeper's memory is kept (FIX-0026).
+        client.ensure_sub_graph(&graph, "keeper-t").await.unwrap();
+        let memory = Memory::at(client, Place::new(&graph, Some("keeper-t")));
         memory.save_routine(&Routine::new("Friday tidy", "Tidy my Downloads folder", "2026-11-26T10:00:00Z").unwrap()).await.unwrap();
         memory.save_routine(&Routine::new("friday TIDY", "Tidy my Downloads and Desktop", "2026-11-26T11:00:00Z").unwrap()).await.unwrap();
         memory.save_routine(&Routine::new("Morning setup", "Open Notes and my calendar", "2026-11-26T11:00:00Z").unwrap()).await.unwrap();

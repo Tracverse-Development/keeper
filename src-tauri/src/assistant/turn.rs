@@ -39,7 +39,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         chat.to_string()
     };
 
-    phase(app, "recalling", &format!("Querying your DKG graph {}", memory.graph()));
+    phase(app, "recalling", &format!("Querying your DKG graph {}", memory.hot_key()));
     let (recall, memory_offline) = match memory.recall(said, &chat, &keeper.role).await {
         Ok(r) => (r, false),
         Err(_) => {

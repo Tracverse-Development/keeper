@@ -133,7 +133,7 @@ async fn count(memory: &Memory, body: &str) -> Option<u64> {
     let sparql = format!("{PREFIXES}SELECT (COUNT(?s) AS ?n) WHERE {{ {body} }}");
     memory
         .client()
-        .query(memory.graph(), &sparql, Layer::Working)
+        .query(memory.place(), &sparql, Layer::Working)
         .await
         .ok()
         .map(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))

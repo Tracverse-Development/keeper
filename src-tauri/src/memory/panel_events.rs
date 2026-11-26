@@ -74,13 +74,13 @@ impl Memory {
     /// The latest events of one kind (a validated literal from a fixed list), newest first.
     async fn events_of(&self, kind: &'static str, limit: usize) -> Result<Vec<(String, String)>> {
         let sparql = format!("{PREFIXES}SELECT ?item ?value ?at WHERE {{ ?e a desk:PanelEvent ; desk:eventKind \"{kind}\" ; desk:item ?item ; desk:value ?value ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT {limit}");
-        let rows = self.client().query(self.graph(), &sparql, Layer::Working).await?;
+        let rows = self.client().query(self.place(), &sparql, Layer::Working).await?;
         Ok(rows.into_iter().map(|r| (r.get("item").cloned().unwrap_or_default(), r.get("value").cloned().unwrap_or_default())).collect())
     }
 
     /// Right quiz answers in a row, counting back from the latest.
     pub async fn streak(&self) -> u32 {
-        if let Some(streak) = super::hot::streak(self.graph()) {
+        if let Some(streak) = super::hot::streak(self.hot_key()) {
             return streak;
         }
         self.streak_from_dkg().await

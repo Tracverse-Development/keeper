@@ -130,9 +130,17 @@ impl Memory {
     }
 
 
-    /// The hot-memory key of this place ("graph/sub"; the graph id alone before the move).
-    pub fn graph(&self) -> &str {
+    /// The hot-memory KEY of this place ("graph/sub"; the graph id alone before the move). A
+    /// label for caches and for showing: never an address. Every read and write of the node
+    /// names `place()` (FIX-0026: the key was once passed as a graph id, and after the move to
+    /// sub-graphs the node refused every such read).
+    pub fn hot_key(&self) -> &str {
         &self.graph
+    }
+
+    /// Where this memory lives on the node: its context graph and sub-graph.
+    pub fn place(&self) -> &crate::dkg::Place {
+        &self.place
     }
 
 

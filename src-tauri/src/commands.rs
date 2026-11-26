@@ -169,7 +169,7 @@ pub async fn memory_overview(state: State<'_, AppState>, keeper: Option<String>)
     let (actions, actions_trace) = memory.actions().await?;
     let (turns, turns_trace) = memory.history().await?;
     Ok(Overview {
-        graph_id: memory.graph().to_string(),
+        graph_id: memory.hot_key().to_string(),
         node,
         counts: memory.counts().await.unwrap_or_default(),
         facts,
