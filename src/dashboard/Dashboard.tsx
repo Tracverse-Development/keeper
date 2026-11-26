@@ -91,7 +91,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     const line = levelUpLine(keeper?.name ?? 'Keeper', level, unlocked);
     celebrate();
     play('celebrate');
-    assistant.announce(line, keeper?.name ?? 'Keeper');
+    assistant.celebrate(line, keeper?.name ?? 'Keeper');
     speakRef.current(line, true);
   });
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });

@@ -32,6 +32,11 @@ use kernel::{events, settings::Settings};
 use skills::reminders::Scheduler;
 use state::AppState;
 
+/// `keeper --look-guard`: answer one Claude Code PreToolUse request and exit (DESK-LOOK-DENY-001).
+pub fn look_guard_hook() {
+    brain::look_hook::run_hook();
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())

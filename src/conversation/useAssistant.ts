@@ -18,6 +18,8 @@ export interface Exchange {
   live?: string;
   /** Sent while the keeper was busy: waiting its turn. */
   queued?: boolean;
+  /** A small celebration under the answer (a level up), never in place of it. */
+  note?: string;
 }
 
 const KEEP = 40;
@@ -142,6 +144,19 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     setExchanges((list) => [...list, { id, said: '', result, error: null }].slice(-KEEP));
   };
 
+  /** A celebration under the latest answer (a level up); a new line only if there is no answer yet. */
+  const celebrate = (text: string, label = 'Keeper') => {
+    setExchanges((list) => {
+      const i = list.length - 1;
+      if (i < 0 || !list[i].result) {
+        const id = nextId.current++;
+        const result: TurnResult = { keeper: keeper ?? '', chat: chatRef.current, reply: text, mind: { id: 'reflex', label, local: true, fellBack: null }, learned: [], forgotten: [], actions: [], panels: [], steps: [], traces: [], writes: [], memoryOffline: false };
+        return [...list, { id, said: '', result, error: null }].slice(-KEEP);
+      }
+      return list.map((x, j) => (j === i ? { ...x, note: text } : x));
+    });
+  };
+
   /** A whole exchange that happened elsewhere (the phone link). */
   const record = (said: string, result: TurnResult) => {
     const id = nextId.current++;
@@ -161,5 +176,5 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     setMode('');
   };
 
-  return { exchanges, chatId, mode, setMode, phase, detail, busy, send, decide, brief, announce, record, showChat, newChat };
+  return { exchanges, chatId, mode, setMode, phase, detail, busy, send, decide, brief, announce, celebrate, record, showChat, newChat };
 }

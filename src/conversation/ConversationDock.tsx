@@ -67,6 +67,7 @@ export function ConversationDock(p: Props) {
                     ))}
                   </ul>
                 )}
+                {x.note && <p className="bubble-note">✦ {x.note}</p>}
                 {x.result.timings && <p className="turn-speed muted small">{speedWords(x.result.timings)}</p>}
                 {x.result.traces.length + x.result.writes.length > 0 && <DkgTrail result={x.result} />}
               </div>

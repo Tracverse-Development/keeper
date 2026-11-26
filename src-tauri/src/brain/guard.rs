@@ -130,24 +130,17 @@ impl PlanGuard {
         None
     }
 
+    /// True for a look-only guard (`read_only`).
+    pub fn is_read_only(&self) -> bool {
+        self.looking
+    }
+
     /// Check one tool call. Returns why it falls outside the plan (the first such call wins).
     pub fn check(&self, step: &AgentStep) -> Option<String> {
         if let Some(v) = self.stopped() {
             return Some(v);
         }
-        let tool = step.tool.to_lowercase();
-        let is_shell = tool == "bash" || tool == "command" || tool == "shell";
-        if READ_TOOLS.contains(&tool.as_str()) || (is_shell && reads_only(&step.detail)) {
-            return None;
-        }
-        let verdict = if self.looking {
-            Some("I was only going to look, so I stopped before changing anything.".to_string())
-        } else if let Some(h) = Self::harm(step).filter(|h| !self.allows.contains(h)) {
-            Some(format!("{} wasn't in the plan you approved.", if h == Harm::Delete { "Deleting something" } else { "Sending something" }))
-        } else {
-            // Said in words a person can hear: the place's name, never a path or a command line.
-            self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("\u{201c}{}\u{201d} is outside the plan you approved.", p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "that place".into())))
-        };
+        let verdict = self.judge(step);
         if let Some(v) = &verdict {
             // The local log keeps what was stopped (the person never hears the command).
             eprintln!("[guard] stopped {}: {}", step.tool, step.detail);
@@ -156,6 +149,24 @@ impl PlanGuard {
             }
         }
         verdict
+    }
+
+    /// Why this one call falls outside the plan, without recording anything (the look hook asks
+    /// this for each command; `check` records the first verdict and stops the run).
+    pub fn judge(&self, step: &AgentStep) -> Option<String> {
+        let tool = step.tool.to_lowercase();
+        let is_shell = tool == "bash" || tool == "command" || tool == "shell";
+        if READ_TOOLS.contains(&tool.as_str()) || (is_shell && reads_only(&step.detail)) {
+            return None;
+        }
+        if self.looking {
+            Some("I was only going to look, so I stopped before changing anything.".to_string())
+        } else if let Some(h) = Self::harm(step).filter(|h| !self.allows.contains(h)) {
+            Some(format!("{} wasn't in the plan you approved.", if h == Harm::Delete { "Deleting something" } else { "Sending something" }))
+        } else {
+            // Said in words a person can hear: the place's name, never a path or a command line.
+            self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("\u{201c}{}\u{201d} is outside the plan you approved.", p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "that place".into())))
+        }
     }
 
     /// The verdict, once a call fell outside the plan.

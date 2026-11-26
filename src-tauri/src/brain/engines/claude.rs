@@ -34,6 +34,10 @@ pub fn args(ctx: &Context, model: &str) -> Vec<String> {
         // No user or project settings: Keeper's own instructions and permissions are the whole
         // configuration (the person's Claude Code hooks and plugins cost ~0.7 s and are not ours).
         a.extend(["--permission-mode", "bypassPermissions", "--setting-sources", "", "--max-turns", "40"].map(String::from));
+        // A look asks Keeper before every call, so one refused command is denied, not fatal.
+        if let Some(settings) = look_settings(ctx) {
+            a.extend(["--settings".to_string(), settings]);
+        }
     } else if crate::keepers::kit::roles::get(&ctx.job).tools == crate::keepers::kit::roles::Tools::Web {
         // Research: reading the web only (search and fetch), never the computer.
         a.extend(["--system-prompt".to_string(), prompt::system_static(ctx)]);
@@ -46,6 +50,11 @@ pub fn args(ctx: &Context, model: &str) -> Vec<String> {
         a.extend(["--model".to_string(), model.to_string()]);
     }
     a
+}
+
+/// The look hook's settings, for a look-only turn (None for anything else).
+fn look_settings(ctx: &Context) -> Option<String> {
+    ctx.guard.as_ref().filter(|g| g.is_read_only()).and_then(|_| crate::brain::look_hook::settings())
 }
 
 /// The person's turn as one stream-json input line.
@@ -146,6 +155,10 @@ async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn F
     let mut result = None;
     let mut panels = PanelStream::default();
     let timeout = if ctx.may_act { ACT_TIMEOUT } else { CHAT_TIMEOUT };
+    // With the look hook, refused calls are denied and the run goes on; the stream only checks
+    // that each refused call really was denied (the backstop).
+    let hooked = look_settings(ctx).is_some();
+    let mut refused = std::collections::HashSet::new();
     let run = cli::drive(child, Some(message_line(ctx)), timeout, |line| {
         if let Some(text) = text_delta(line) {
             for p in panels.push(&text) {
@@ -159,10 +172,24 @@ async fn run_once(ctx: &Context, child: tokio::process::Child, progress: &(dyn F
             }
             return true;
         }
+        if hooked {
+            if let (Some(guard), Ok(v)) = (&ctx.guard, serde_json::from_str::<Value>(line)) {
+                for (id, step) in crate::brain::look_hook::tool_uses(&v) {
+                    if guard.judge(&step).is_some() {
+                        refused.insert(id);
+                    }
+                }
+                if crate::brain::look_hook::backstop_tripped(&v, &refused) {
+                    let ran = steps.last().map(|s: &AgentStep| s.detail.clone()).unwrap_or_default();
+                    let _ = guard.check(&AgentStep { tool: "Bash".into(), detail: format!("(the look hook let this run) {ran}") });
+                    return false;
+                }
+            }
+        }
         if let Some(step) = read_line(line, &mut steps, &mut result) {
             progress(Progress::Step(&step));
             // Under an approved plan, the first tool call outside it stops Claude here.
-            if let (Some(guard), Some(last)) = (&ctx.guard, steps.last()) {
+            if let (false, Some(guard), Some(last)) = (hooked, &ctx.guard, steps.last()) {
                 return guard.check(last).is_none();
             }
         }

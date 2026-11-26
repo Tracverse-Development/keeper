@@ -65,8 +65,44 @@ function flag(piece: string, name: string): string | null {
 const quoted = (s: string) => `“${s}”`;
 
 /** One shell piece in words, or null when it says nothing worth showing (a pipe's grep, head…). */
+/** Network and system tools, by what they find out (founder 2026-11-26: every step said "Working on your computer"). */
+const LOOKS: Record<string, Narration> = {
+  ping: { words: 'Checking how fast your router and the internet answer', kind: 'measure' },
+  arp: { words: 'Listing the devices your Mac has seen nearby', kind: 'search' },
+  ndp: { words: 'Listing the devices your Mac has seen nearby', kind: 'search' },
+  networksetup: { words: 'Checking your Wi-Fi settings', kind: 'read' },
+  ipconfig: { words: 'Reading your network address', kind: 'read' },
+  ifconfig: { words: 'Reading your network connections', kind: 'read' },
+  route: { words: 'Finding your router', kind: 'search' },
+  netstat: { words: 'Finding your router and open connections', kind: 'search' },
+  scutil: { words: 'Reading your network settings', kind: 'read' },
+  dig: { words: 'Looking up a web address', kind: 'web' },
+  nslookup: { words: 'Looking up a web address', kind: 'web' },
+  host: { words: 'Looking up a web address', kind: 'web' },
+  traceroute: { words: 'Tracing the path to the internet', kind: 'web' },
+  tailscale: { words: 'Checking your private network', kind: 'read' },
+  dscacheutil: { words: 'Looking up device names', kind: 'search' },
+  'dns-sd': { words: 'Looking for devices that announce themselves', kind: 'search' },
+  system_profiler: { words: "Reading this Mac's hardware report", kind: 'read' },
+  sysctl: { words: 'Reading how this Mac is set up', kind: 'measure' },
+  vm_stat: { words: 'Measuring memory use', kind: 'measure' },
+  memory_pressure: { words: 'Measuring memory use', kind: 'measure' },
+  top: { words: 'Seeing which apps are busiest', kind: 'process' },
+  diskutil: { words: 'Reading your disks', kind: 'measure' },
+  pmset: { words: 'Checking your battery and power', kind: 'measure' },
+  uptime: { words: 'Checking how long this Mac has been on', kind: 'measure' },
+  sw_vers: { words: 'Checking your macOS version', kind: 'read' },
+  defaults: { words: 'Reading a setting', kind: 'read' },
+  launchctl: { words: 'Checking background services', kind: 'process' },
+};
+
 function shellWords(piece: string): Narration | null {
-  const [cmd = ''] = piece.trim().split(/\s+/);
+  // A full path counts by its name; "sudo" is not what the step does.
+  const words = piece.trim().split(/\s+/).filter((w, i) => !(i === 0 && w === 'sudo'));
+  const cmd = (words[0] ?? '').split('/').pop() ?? '';
+  piece = [cmd, ...words.slice(1)].join(' ');
+  const look = LOOKS[cmd.toLowerCase()];
+  if (look) return look;
   const a = args(piece);
   switch (cmd) {
     case 'ls':
@@ -122,11 +158,16 @@ export function narrate(tool: string, detail: string): Narration {
   const t = tool.trim().toLowerCase();
   const d = detail.trim();
   if (/^(bash|command|shell|terminal|exec|run)/.test(t)) {
+    // A chain is said by what its parts find out: the first two different things, joined.
+    const found: Narration[] = [];
     for (const piece of d.split(/&&|;|\|/)) {
       const n = shellWords(piece);
-      if (n) return n;
+      if (n && !found.some((f) => f.words === n.words)) found.push(n);
     }
-    return { words: 'Working on your computer', kind: 'work' };
+    if (found.length === 0) return { words: 'Working on your computer', kind: 'work' };
+    if (found.length === 1) return found[0];
+    const second = found[1].words;
+    return { words: `${found[0].words} and ${second.charAt(0).toLowerCase()}${second.slice(1)}`, kind: found[0].kind };
   }
   if (/^read/.test(t)) return { words: `Reading ${placeName(d)}`, kind: 'read' };
   if (/^(write|create|notebookedit)/.test(t)) return { words: `Writing ${placeName(d)}`, kind: 'write' };
@@ -137,4 +178,22 @@ export function narrate(tool: string, detail: string): Narration {
   if (/^websearch/.test(t)) return { words: `Searching the web for ${quoted(d)}`, kind: 'web' };
   if (/^web/.test(t)) return { words: `Reading ${urlHost(d)}`, kind: 'web' };
   return { words: 'Working on it', kind: 'work' };
+}
+
+/** The status line for a live step ("Bash: arp -an" → "Listing the devices…"); other text unchanged. */
+export function stepWords(detail: string): string {
+  const m = /^([A-Za-z]+):\s(.*)$/s.exec(detail);
+  return m ? `${narrate(m[1], m[2]).words}…` : detail;
+}
+
+/** Steps in words, with neighbours that say the same thing grouped ("× 3"). */
+export function groupSteps(steps: { tool: string; detail: string }[]): (Narration & { times: number; step: { tool: string; detail: string } })[] {
+  const out: (Narration & { times: number; step: { tool: string; detail: string } })[] = [];
+  for (const step of steps) {
+    const n = narrate(step.tool, step.detail);
+    const last = out[out.length - 1];
+    if (last && last.words === n.words) last.times += 1;
+    else out.push({ ...n, times: 1, step });
+  }
+  return out;
 }

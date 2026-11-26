@@ -5,6 +5,7 @@
 
 pub mod context;
 pub mod guard;
+pub mod look_hook;
 pub mod styles;
 pub mod engines;
 pub mod prompt;

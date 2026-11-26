@@ -5,6 +5,7 @@
  */
 import type { Mood } from '../character/contract';
 import type { Phase } from '../kernel/ipc';
+import { stepWords } from '../stage/activity.ts';
 
 export interface MoodInputs {
   speaking: boolean;
@@ -31,7 +32,8 @@ export function phaseWords(phase: Phase | null, graphId: string, detail = ''): s
     case 'thinking':
       return detail ? `Thinking with ${detail}…` : 'Thinking…';
     case 'acting':
-      return detail ? `${detail}` : 'Doing it…';
+      // Never a command line: a step is said in words ("Listing the devices…").
+      return detail ? stepWords(detail) : 'Doing it…';
     case 'remembering':
       return 'Writing to your memory graph…';
     default:

@@ -6,7 +6,7 @@
  * don't read out commands.
  */
 import { ActArt } from './ActArt.tsx';
-import { narrate } from './activity.ts';
+import { groupSteps, narrate } from './activity.ts';
 
 /** The feed shows the latest few; older ones fold into a count. */
 const SHOWN = 6;
@@ -43,8 +43,10 @@ function Pipeline({ phase, mind }: { phase: string; mind: string }) {
 }
 
 export function ActivityPanel({ activity, working, keeperName, phase, mind = '' }: Props) {
-  const start = Math.max(0, activity.length - SHOWN);
-  const shown = activity.slice(start);
+  // Neighbouring steps that say the same thing are one line ("× 3"), so the list reads as a story.
+  const groups = groupSteps(activity);
+  const start = Math.max(0, groups.length - SHOWN);
+  const shown = groups.slice(start);
   return (
     <section className={working ? 'activity glass is-working' : 'activity glass'} aria-label="What the keeper is doing">
       <header className="activity-head">
@@ -65,17 +67,16 @@ export function ActivityPanel({ activity, working, keeperName, phase, mind = '' 
       })()}
       {start > 0 && <p className="activity-earlier">+ {start} earlier</p>}
       <ol className="activity-list">
-        {shown.map((item, i) => {
-          const n = narrate(item.tool, item.detail);
+        {shown.map((n, i) => {
           const latest = working && i === shown.length - 1;
           return (
             <li key={start + i} className={latest ? 'act is-latest' : 'act'}>
               <span className="act-icon"><ActArt kind={n.kind} size={22} /></span>
-              <span className="act-verb">{n.words}</span>
-              {item.detail && (
+              <span className="act-verb">{n.words}{n.times > 1 && <span className="muted small"> × {n.times}</span>}</span>
+              {n.step.detail && (
                 <details className="act-raw">
                   <summary>what ran</summary>
-                  <code>{item.detail}</code>
+                  <code>{n.step.detail}</code>
                 </details>
               )}
             </li>

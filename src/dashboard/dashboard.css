@@ -161,3 +161,8 @@
   background-position: calc(100% - 9px) 55%, calc(100% - 5px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
 .mode-pick select:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; border-radius: 6px; }
 .mode-pick option { background: var(--navy-800); color: var(--text); }
+
+/* A level up, under the answer it came with */
+.bubble-note { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; color: var(--gold-300); animation: note-in .5s var(--ease) both; }
+@keyframes note-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bubble-note { animation: none; } }

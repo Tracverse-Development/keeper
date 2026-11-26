@@ -91,6 +91,9 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     };
     let progress = |p: brain::Progress| match p {
         brain::Progress::Step(step) => phase(app, "acting", step),
+        // Work on the computer shows its steps live; its panels wait for the finished answer
+        // and arrive together (founder 2026-11-26: panels with no data yet felt wrong).
+        brain::Progress::Panel(_) if ctx.may_act => {}
         brain::Progress::Panel(panel) => {
             seen();
             if let Ok(mut f) = panel_ms.lock() {

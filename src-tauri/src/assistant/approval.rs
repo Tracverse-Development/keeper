@@ -125,7 +125,10 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
         return Answer { thought, mind, cached: false, switched: None };
     }
     if only_looks(&steps) {
-        progress(Progress::ReplyText(" ".into()));
+        // The plan's opening line ("I'll take a look…") stays on screen; the look's own words
+        // come with the finished answer, so the chat never repeats itself mid-way.
+        let quiet = |p: Progress| if matches!(p, Progress::Step(_)) { progress(p) };
+        let progress: &(dyn Fn(Progress) + Sync) = &quiet;
         let home = dirs::home_dir().unwrap_or_default();
         let said = format!("{}{LOOKING}", ctx.said);
         let guard = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
