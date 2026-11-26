@@ -21,7 +21,7 @@
  * render causes nothing.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, Habits, HitRegion, Look, Mood, TouchKind, WornPart, Emote } from './contract';
+import type { Character, Feeling, Habits, HitRegion, Look, Mood, TouchKind, WornPart, Emote } from './contract';
 import { createCharacter } from './create-character';
 import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
@@ -49,6 +49,8 @@ export interface CharacterStageProps {
   habits?: Habits;
   /** A paint zone to frame with the camera (`Character.focusZone`); null or absent = the whole character. */
   focusZone?: string | null;
+  /** Its simulated mood for the body (`Feeling`); null or absent = none. Compared by content. */
+  feeling?: Feeling | null;
   /** Called once per touch gesture on the character, after its reaction started. */
   onTouch?: (kind: TouchKind, region: HitRegion) => void;
   className?: string;
@@ -65,13 +67,14 @@ export function CharacterStage(props: CharacterStageProps) {
   const wearKey = JSON.stringify(wearables);
   const lookKey = JSON.stringify(look);
   const habitsKey = JSON.stringify(habits);
+  const feelingKey = JSON.stringify(props.feeling ?? null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const characterRef = useRef<Character | null>(null);
   const lastPulse = useRef(memoryPulse);
   const lastEmote = useRef(props.emote?.n ?? 0);
   // The latest props, read once at mount so the new character starts in the right state.
-  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone });
-  initial.current = { skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone };
+  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null });
+  initial.current = { skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null };
   const onTouchRef = useRef(onTouch);
   onTouchRef.current = onTouch;
 
@@ -93,6 +96,7 @@ export function CharacterStage(props: CharacterStageProps) {
     character.setMouth(initial.current.mouth);
     character.setWork(initial.current.work);
     character.focusZone(initial.current.focusZone);
+    character.setFeeling(initial.current.feeling);
 
     const onPointerMove = (event: PointerEvent): void => {
       const x = (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
@@ -115,6 +119,7 @@ export function CharacterStage(props: CharacterStageProps) {
   useEffect(() => characterRef.current?.setLook(JSON.parse(lookKey) as Look), [lookKey]);
   useEffect(() => characterRef.current?.setHabits(JSON.parse(habitsKey) as Habits), [habitsKey]);
   useEffect(() => characterRef.current?.focusZone(focusZone), [focusZone]);
+  useEffect(() => characterRef.current?.setFeeling(JSON.parse(feelingKey) as Feeling | null), [feelingKey]);
   useEffect(() => characterRef.current?.setMood(mood), [mood]);
   useEffect(() => characterRef.current?.setVoiceLevel(voiceLevel), [voiceLevel]);
   useEffect(() => characterRef.current?.setMouth(mouth), [mouth]);

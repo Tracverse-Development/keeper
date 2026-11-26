@@ -34,6 +34,7 @@ import type { EffectLayer } from './effects/effect-layer';
 import { EmoteDirector } from './emote-director';
 import { PRIORITY } from './expression';
 import { foldExpression } from './expression-frame';
+import { blinkPace, easeFeeling, foldFeeling, readFeeling, type FeelingDials } from './feeling';
 import { GazeFollower, POINTER_IDLE_SECONDS } from './gaze';
 import type { ZoneFocus } from './look/zone-focus';
 import { lookKey, resolveLook } from './look/zones';
@@ -91,6 +92,9 @@ export class Animator {
   private mouth = 0;
   private workInput = 0;
   private work = 0;
+  /** The keeper's simulated mood: as given, and eased (what the body shows this frame). */
+  private feelingInput: FeelingDials = readFeeling(null);
+  private readonly feeling: FeelingDials = readFeeling(null);
   /** When the last "got it" beat started (a reply arriving after thinking). */
   private gotItAt = -Infinity;
   /** The worn skin's head centre in world space, refreshed every frame for the parts. */
@@ -169,6 +173,11 @@ export class Animator {
     this.mouthInput = clampUnit(openness);
   }
 
+  /** The keeper's simulated mood for the body (untrusted: clamped; null = none). */
+  setFeeling(feeling: unknown): void {
+    this.feelingInput = readFeeling(feeling);
+  }
+
   setWork(level: number): void {
     this.workInput = clampWork(level);
   }
@@ -230,6 +239,8 @@ export class Animator {
     this.touch.poke = reactionEnvelope('poke', this.time - this.touchStartedAt.poke, timing.poke);
     this.touch.pat = reactionEnvelope('pat', this.time - this.touchStartedAt.pat, timing.pat);
     const expression = foldTouch(Object.assign(this.expression, p), this.touch);
+    // Its mood colours the resting body; asleep (setup, muted) it shows none.
+    foldFeeling(expression, easeFeeling(this.feeling, this.feelingInput, dt), 1 - this.weights.asleep);
     const gotIt = gotItEnvelope(this.time - this.gotItAt) * (0.55 + 0.45 * this.motion.amplitude);
 
     const emote = this.director.step({
@@ -244,7 +255,7 @@ export class Animator {
     });
     foldExpression(expression, emote);
     if (this.director.takeWake()) this.blinks.blinkNow(this.time);
-    const blink = this.blinks.step(this.time, dt, expression.eyeOpen);
+    const blink = this.blinks.step(this.time, dt * blinkPace(this.feeling), expression.eyeOpen);
     this.gaze.step(dt, this.time, p, this.motion, this.headOnScreen(), this.touch, emote);
 
     const { stage, skins, wardrobe, touchSparkles, backdrop } = this.parts;

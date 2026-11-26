@@ -105,6 +105,8 @@ export interface FeelingsInfo {
   } | null;
   off: boolean;
   modesWithMood: string[];
+  /** It shows a mood right now in the mode asked about (the character's body follows it). */
+  shows: boolean;
 }
 
 /** A live reading of this computer (`system::live`). */

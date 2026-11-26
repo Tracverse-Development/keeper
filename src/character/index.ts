@@ -11,7 +11,7 @@
  *   PARTS                (the wearables: id, name, slot, species, effects schema)
  *   DEFAULT_WEARABLES    (the shipped look: Memory Halo + Ark Hull)
  */
-export type { Character, Emote, Habits, HitRegion, Look, Mood, TouchKind, WornPart, ZoneFocus } from './contract';
+export type { Character, Emote, Feeling, Habits, HitRegion, Look, Mood, TouchKind, WornPart, ZoneFocus } from './contract';
 export { LOOK_ZONES, MATERIALS, type MaterialId } from './look/zones';
 export { HABITS, SPECIES_HABITS, type HabitInfo } from './habits';
 export { EMOTE_NAMES } from './emotes';

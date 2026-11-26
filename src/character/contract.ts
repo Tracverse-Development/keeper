@@ -170,6 +170,23 @@ export interface Character {
   focusZone(zone: string | null): void;
 }
 
+/**
+ * The keeper's simulated mood as the body shows it (the core's `feelings` PAD point): `pleasure`
+ * and `arousal`, each -1..1. Glad lifts the smile and the light; low pleasure only quiets them
+ * (never a frown at the person). High arousal breathes and blinks faster; low arousal slows the
+ * breath and lowers the lids. `null` (or 0, 0) = exactly the look it has with no mood.
+ */
+export interface Feeling {
+  readonly pleasure: number;
+  readonly arousal: number;
+}
+
+// The mood in the body (appended by declaration merging).
+export interface Character {
+  /** Show this mood in the body, eased over a couple of seconds; null = no mood. */
+  setFeeling(feeling: Feeling | null): void;
+}
+
 /*
  * Moment effects (thinking, celebrate) arrive as WEARABLES, like any part: a `WornPart` whose part
  * is a moment effect (`PARTS` rows in slot `thinking` or `celebrate`: think-classic, think-pulse,

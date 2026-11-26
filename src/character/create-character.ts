@@ -128,6 +128,9 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       if (!disposed) animator.focusZone(typeof zone === 'string' ? zone : null);
     },
     setWork: (level) => animator.setWork(level),
+    setFeeling(feeling) {
+      if (!disposed) animator.setFeeling(feeling);
+    },
     hitTest,
     react(kind: TouchKind) {
       if (TOUCH_KINDS.includes(kind)) animator.react(kind);

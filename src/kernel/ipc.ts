@@ -79,7 +79,7 @@ export const core = {
   /** Open what a panel shows: a web page in the browser, or a file in your home (open, or show in the Finder). */
   stageOpen: (target: string, how: 'open' | 'reveal' = 'open') => invoke<void>('stage_open', { target, how }),
   /** The keeper's simulated feelings, and resetting them. */
-  keeperFeelings: (keeper?: string) => invoke<FeelingsInfo>('keeper_feelings', { keeper }),
+  keeperFeelings: (keeper?: string, mode?: string) => invoke<FeelingsInfo>('keeper_feelings', { keeper, mode }),
   feelingsReset: (keeper?: string) => invoke<FeelingsInfo>('feelings_reset', { keeper }),
   /** The person tapped or stroked the character: what it says back, from its soul and mood. */
   keeperTouch: (kind: Touch, about: { keeper?: string; mode?: string; you?: string }) => invoke<TouchReply>('keeper_touch', { kind, ...about }),

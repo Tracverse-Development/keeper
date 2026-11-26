@@ -28,6 +28,7 @@ The model is ALMA's three layers (Gebhard, AAMAS 2005):
 
 - **Explainable:** every change records its cause ("you thanked it → gratitude"), and the Studio's Feelings tab shows the mood word, three bars against the soul's resting point, the active emotions, the causes, Reset, and the off switch.
 - **Touch:** a tap or a pat is answered in the keeper's own words for its soul and its mood right now. The helper model writes a small batch of lines per keeper, soul and mood in the background (each said once); until they are ready, or with no helper model, the line is composed from the mood and the soul (`feelings/touch.rs`, `assistant/touch.rs`). The same safety rules bind those lines.
+- **Body:** the mood shows in the character: pleasure lifts the smile and the light (a low mood only quiets them, never a frown), arousal sets the pace of breathing and blinking and how heavy the lids are (`src/character/feeling.ts`). It eases over a couple of seconds and is absent wherever the keeper shows no mood.
 - **Code:** `src-tauri/src/feelings/` (`pad`, `appraise`, `engine`, `store`); the window is `src/studio/FeelingsTab.tsx`.
 
 ## Safety rules (hard constraints in code and in the prompt block)
@@ -43,7 +44,6 @@ Sources: OpenAI/MIT Media Lab affective-use study (Mar 2025), APA health advisor
 8. Nothing is tuned to increase time spent.
 
 ## Not built yet
-- The mood driving the character's animation: pleasure to posture and smile, arousal to speed and blinks.
 - An optional daily mood summary on the DKG.
 - Appraisal of tone by the quick model (rules only for now).
 - An age gate: mood off for minors.

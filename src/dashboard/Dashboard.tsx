@@ -32,6 +32,7 @@ import type { Touch } from '../kernel/ipc';
 import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
 import { usePinnedScenes } from './usePinnedScenes';
 import { useStageState } from './useStageState';
@@ -72,6 +73,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       play('surprised');
     }
     actions.speakFinal(r.reply);
+    body.refresh();
     events.refreshHealth();
     chats.refresh();
   });
@@ -143,6 +145,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
 
   const mood = moodFor({ speaking: voice.speaking, listening: voice.listening, phase: assistant.phase, happyUntil, now: events.now });
   const name = keeper?.name ?? 'Keeper';
+  // Its simulated mood shows in its body (where this chat's mode has one).
+  const body = useFeeling(keeper?.id ?? null, assistant.mode);
 
   /** Stop: the microphone, the voice, and the turn in progress (its engine is killed). */
   const stop = () => {
@@ -161,6 +165,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     void core
       .keeperTouch(kind, { keeper: keeper?.id, mode: assistant.mode || undefined, you: events.personName ?? undefined })
       .then((reply) => {
+        body.refresh();
         assistant.announce(reply.line, name);
         voice.speak(reply.line);
       })
@@ -203,7 +208,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   return (
     <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage

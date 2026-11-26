@@ -102,14 +102,21 @@ pub struct FeelingsInfo {
     pub view: Option<crate::feelings::engine::FeelingsView>,
     pub off: bool,
     pub modes_with_mood: Vec<String>,
+    /// The keeper shows a mood right now in the mode asked about: feelings are on, that mode
+    /// allows a mood, and they are not set aside. The character's body follows it only then.
+    pub shows: bool,
 }
 
 #[tauri::command]
-pub fn keeper_feelings(state: State<'_, AppState>, keeper: Option<String>) -> Result<FeelingsInfo> {
+pub fn keeper_feelings(state: State<'_, AppState>, keeper: Option<String>, mode: Option<String>) -> Result<FeelingsInfo> {
     let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
     let soul = state.soul(&profile.soul);
+    let view = crate::feelings::store::view(&profile.id, &soul);
+    // The mode asked about (none or unknown: the keeper's own).
+    let mode = mode.filter(|m| super::kit::roles::exists(m)).unwrap_or_else(|| profile.role.clone());
     Ok(FeelingsInfo {
-        view: crate::feelings::store::view(&profile.id, &soul),
+        shows: !profile.feelings_off && super::kit::roles::get(&mode).mood && view.as_ref().is_some_and(|v| !v.stepped_aside),
+        view,
         off: profile.feelings_off,
         modes_with_mood: super::kit::roles::all().into_iter().filter(|m| m.mood).map(|m| m.title).collect(),
     })
@@ -120,5 +127,5 @@ pub fn keeper_feelings(state: State<'_, AppState>, keeper: Option<String>) -> Re
 pub fn feelings_reset(state: State<'_, AppState>, keeper: Option<String>) -> Result<FeelingsInfo> {
     let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
     crate::feelings::store::reset(&profile.id);
-    keeper_feelings(state, Some(profile.id))
+    keeper_feelings(state, Some(profile.id), None)
 }
