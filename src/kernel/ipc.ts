@@ -7,7 +7,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus } from './ipc-types';
+import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
+import type { StudioInfo } from './ipc-studio';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -28,6 +29,7 @@ export const EVENTS = {
 
 export type * from './ipc-types';
 export type * from './ipc-wardrobe';
+export type * from './ipc-studio';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -60,6 +62,10 @@ export const core = {
   engines: () => invoke<EngineStatus[]>('engines_list'),
   elevenSetKey: (key: string) => invoke<ElevenVoice[]>('eleven_set_key', { key }),
   elevenVoices: () => invoke<ElevenVoice[]>('eleven_voices'),
+  /** Speak `text` with a voice without saving it (the Studio's Test button). */
+  voiceTry: (engine: VoiceEngine, id: string, text: string) => invoke<void>('voice_try', { engine, id, text }),
+  /** The Studio's data: level and unlocks, paint zones, materials, habits, rarities. */
+  keeperStudio: (keeper?: string) => invoke<StudioInfo>('keeper_studio', { keeper }),
   phoneStatus: () => invoke<PhoneStatus>('phone_status'),
   phoneStart: () => invoke<PhoneStatus>('phone_start'),
   phoneStop: () => invoke<PhoneStatus>('phone_stop'),

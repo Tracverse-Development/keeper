@@ -11,6 +11,8 @@ interface Props {
   openMic: boolean;
   onMemory: () => void;
   onSettings: () => void;
+  /** Open the Studio (make this keeper your own). */
+  onStudio: () => void;
 }
 
 export function TopBar(p: Props) {
@@ -41,6 +43,12 @@ export function TopBar(p: Props) {
             <path d="M6 7 18 6 12 17Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
           </svg>
           Memory{p.counts ? ` · ${p.counts.facts}` : ''}
+        </button>
+        <button type="button" className="pill pill-button" onClick={p.onStudio}>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+            <path fill="currentColor" d="M12 2.5 14.6 8l6 .9-4.3 4.2 1 6-5.3-2.8L6.7 19.1l1-6L3.4 8.9l6-.9Z" />
+          </svg>
+          Studio
         </button>
         <button type="button" className="pill pill-button" onClick={p.onSettings} aria-label="Settings">
           <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>

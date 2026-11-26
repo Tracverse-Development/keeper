@@ -20,6 +20,7 @@ import { MemoryDrawer } from '../memory/MemoryDrawer';
 import { CommandPalette } from '../palette/CommandPalette';
 import { paletteCommands } from '../palette/palette-commands';
 import { SettingsSheet } from '../settings/SettingsSheet';
+import { StudioPage } from '../studio/StudioPage';
 import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
 import { moodFor, phaseWords } from './mood';
@@ -40,6 +41,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
@@ -218,6 +220,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         openMic={!settings.wakeWord}
         onMemory={() => setMemoryOpen((o) => !o)}
         onSettings={() => setSettingsOpen(true)}
+        onStudio={() => setStudioOpen(true)}
       />
       <KeeperSidebar
         keepers={keepers.list?.keepers ?? []}
@@ -272,12 +275,14 @@ export function Dashboard({ initial }: { initial: Settings }) {
           brief: () => void assistant.send('Brief me'),
           stop,
           openSettings: () => setSettingsOpen(true),
+          openStudio: () => setStudioOpen(true),
           openMemory: () => setMemoryOpen(true),
           openScenes: stage.reopen,
           openPinned: pins.open,
         })}
       />
       {keeper && <MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} />}
+      {keeper && <StudioPage open={studioOpen} keeper={keeper} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} />}
       {keeper && (
         <SettingsSheet
           open={settingsOpen}

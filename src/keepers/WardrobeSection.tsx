@@ -5,10 +5,11 @@
  * and given to another keeper. Wearing is decided by the core (`kit/wardrobe.rs`), which saves
  * the keeper's outfit; the stage behind the sheet is redressed through `onChanged`.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { CharacterStage, PARTS } from '../character';
-import type { KeeperProfile } from '../kernel/ipc';
+import type { KeeperProfile, StudioInfo } from '../kernel/ipc';
+import { lockedUntil, rarityOf } from '../studio/studio-view';
 import { useWardrobe } from './useWardrobe';
 import { WardrobeItemCard } from './WardrobeItemCard';
 import { WardrobeMaker } from './WardrobeMaker';
@@ -20,13 +21,17 @@ interface Props {
   keeper: KeeperProfile;
   /** An outfit changed: reload the keepers (the stage redresses). */
   onChanged: () => void;
+  /** In the Studio: rarity frames and level locks on every item. */
+  studio?: StudioInfo;
+  /** In the Studio: the outfit to show on its big stage (this section then draws no preview). */
+  onPreview?: (wearables: KeeperProfile['wearables'], caption: string) => void;
 }
 
 const DEFAULTS: Record<string, Record<string, number | string>> = Object.fromEntries(
   PARTS.map((p) => [p.id, Object.fromEntries(Object.entries(p.effects).map(([key, spec]) => [key, spec.default]))]),
 );
 
-export function WardrobeSection({ open, keeper, onChanged }: Props) {
+export function WardrobeSection({ open, keeper, onChanged, studio, onPreview }: Props) {
   const { wardrobe, error, busy, wear, takeOff, give, add } = useWardrobe(open, onChanged);
   const [slotId, setSlotId] = useState('torso');
   const [picked, setPicked] = useState<string | null>(null);
@@ -36,14 +41,21 @@ export function WardrobeSection({ open, keeper, onChanged }: Props) {
   const trying = pickedView && !pickedView.wornHere && group?.offered ? pickedView.item : null;
   const preview = wardrobe ? tryOn(keeper.wearables, trying, wardrobe) : keeper.wearables;
   const body = wardrobe?.keepers.find((k) => k.id === keeper.id);
+  const caption = trying ? `Trying on the ${trying.name}` : `${keeper.name}, as dressed`;
+  const previewKey = JSON.stringify(preview);
+  useEffect(() => {
+    onPreview?.(preview, caption);
+  }, [previewKey, caption]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="wardrobe">
-      <div className="wardrobe-top">
-        <div className="wardrobe-preview">
-          {open && <CharacterStage className="wardrobe-stage" skin={keeper.skin} wearables={preview} mood="idle" voiceLevel={0} mouth={0} memoryPulse={0} />}
-          <span className="wardrobe-caption">{trying ? `Trying on the ${trying.name}` : `${keeper.name}, as dressed`}</span>
-        </div>
+      <div className={`wardrobe-top ${onPreview ? 'is-wide' : ''}`}>
+        {!onPreview && (
+          <div className="wardrobe-preview">
+            {open && <CharacterStage className="wardrobe-stage" skin={keeper.skin} wearables={preview} mood="idle" voiceLevel={0} mouth={0} memoryPulse={0} />}
+            <span className="wardrobe-caption">{caption}</span>
+          </div>
+        )}
         <div className="wardrobe-side">
           <div className="wardrobe-slots" role="tablist" aria-label="Slots">
             {groups.map((g) => (
@@ -76,6 +88,8 @@ export function WardrobeSection({ open, keeper, onChanged }: Props) {
             onWear={() => void wear(keeper.id, view.item.id)}
             onTakeOff={() => void takeOff(keeper.id, view.item.id)}
             onGive={(to, mode) => void give(view.item.id, keeper.id, to, mode)}
+            rarity={studio ? rarityOf(studio, view.item.part) : undefined}
+            lockedUntil={studio ? lockedUntil(rarityOf(studio, view.item.part), studio.experience.level) : null}
           />
         ))}
       </div>

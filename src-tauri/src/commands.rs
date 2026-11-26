@@ -240,6 +240,23 @@ pub async fn voice_speak(app: AppHandle, state: State<'_, AppState>, text: Strin
     state.voice.speak(&app, &text, &state.settings().speaking_as_active(), queue.unwrap_or(false)).await
 }
 
+/// Try a voice without saving it (the Studio's Test button): speak `text` with this engine
+/// and voice id.
+#[tauri::command]
+pub async fn voice_try(app: AppHandle, state: State<'_, AppState>, engine: crate::kernel::settings::VoiceEngine, id: String, text: String) -> Result<()> {
+    if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || " ()-_.".contains(c)) {
+        return Err(DeskError::Invalid("That isn't a voice.".into()));
+    }
+    let mut settings = state.settings();
+    match engine {
+        crate::kernel::settings::VoiceEngine::Elevenlabs => settings.eleven_voice_id = id,
+        _ => settings.voice = id,
+    }
+    settings.voice_engine = engine;
+    let text: String = text.chars().take(300).collect();
+    state.voice.speak(&app, &text, &settings, false).await
+}
+
 #[tauri::command]
 pub async fn voice_hush(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     state.voice.hush(&app).await

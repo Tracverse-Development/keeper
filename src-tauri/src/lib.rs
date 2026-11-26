@@ -131,6 +131,7 @@ pub fn run() {
             commands::voice_listen_once,
             commands::voice_stop,
             commands::voice_speak,
+            commands::voice_try,
             commands::voice_hush,
             commands::voice_list,
             commands::engines_list,

@@ -15,6 +15,8 @@ export interface PaletteDeps {
   brief: () => void;
   stop: () => void;
   openSettings: () => void;
+  /** Optional so older callers and tests keep working. */
+  openStudio?: () => void;
   openMemory: () => void;
   openScenes: () => void;
   openPinned: (id: string) => void;
@@ -32,7 +34,8 @@ export function paletteCommands(d: PaletteDeps): Command[] {
   out.push(
     { id: 'scenes', title: 'Show scenes', keywords: ['stage', 'panels', 'lesson'], run: d.openScenes },
     { id: 'memory', title: 'Open memory', keywords: ['dkg', 'graph', 'facts', 'knowledge'], run: d.openMemory },
-    { id: 'settings', title: 'Open settings', keywords: ['preferences', 'voice', 'brain', 'wardrobe', 'outfit'], run: d.openSettings },
+    { id: 'settings', title: 'Open settings', keywords: ['preferences', 'voice', 'brain'], run: d.openSettings },
+    ...(d.openStudio ? [{ id: 'studio', title: 'Open the Studio', keywords: ['customise', 'customize', 'look', 'colour', 'color', 'wardrobe', 'outfit', 'level', 'habits', 'voice', 'rarity'], hint: 'Make your keeper your own', run: d.openStudio }] : []),
   );
   for (const p of d.pinned) out.push({ id: `pin-${p.id}`, title: `Open ${p.title}`, keywords: ['pinned', 'scene'], hint: 'Pinned scene', run: () => d.openPinned(p.id) });
   return out;

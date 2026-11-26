@@ -2,6 +2,7 @@
  * The shapes the Rust core sends and takes (serde camelCase), one source for the window. Re-exported
  * by `ipc.ts`, so callers import from there; split out to keep the bridge file small.
  */
+import type { KeeperVoice, ZoneLook } from './ipc-studio';
 import type { Panel } from './panel-spec';
 
 /** An engine id from the core's catalogue (`brain/engines/mod.rs`): claude, codex, gemini, hermes, ollama, reflex. */
@@ -29,6 +30,12 @@ export interface KeeperProfile {
   graphId: string;
   brain: EngineId;
   model: string;
+  /** Colour and material per paint zone (`kit/look.rs`); absent = the species' own colours. */
+  look?: Record<string, ZoneLook>;
+  /** Idle habits, 0 (never) to 3 (often); absent = the species' defaults. */
+  habits?: Record<string, number>;
+  /** Its own voice; absent = the app-wide voice in Settings. */
+  voice?: KeeperVoice;
 }
 
 export interface RoleInfo {
@@ -101,7 +108,10 @@ export interface KeeperSaved {
   announcement: string | null;
 }
 
-export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model' | 'role' | 'soul' | 'wearables'>>;
+export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model' | 'role' | 'soul' | 'wearables' | 'look' | 'habits' | 'voice'>> & {
+  /** True: go back to the app-wide voice. */
+  appVoice?: boolean;
+};
 
 export interface Settings {
   setupComplete: boolean;
