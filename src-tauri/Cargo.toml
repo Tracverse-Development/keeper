@@ -1,6 +1,6 @@
 [package]
 name = "keeper"
-version = "0.8.0"
+version = "0.9.0"
 description = "Keeper: a personal assistant whose memory lives on your own OriginTrail DKG node"
 edition = "2021"
 rust-version = "1.80"
