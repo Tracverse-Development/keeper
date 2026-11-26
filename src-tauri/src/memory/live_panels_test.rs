@@ -11,7 +11,9 @@ async fn live_memory() -> Memory {
     let home = dirs::home_dir().unwrap().join(".dkg");
     let client = DkgClient::new(&node::locate(&home).expect("a DKG node in ~/.dkg"));
     client.ensure_graph("umoja-desk-livetest", "Keeper live test").await.expect("graph");
-    Memory::new(client, "umoja-desk-livetest")
+    // In a SUB-GRAPH, the way a real keeper's memory is kept (LES-013, FIX-0026).
+    client.ensure_sub_graph("umoja-desk-livetest", "keeper-live").await.expect("sub-graph");
+    Memory::at(client, crate::dkg::Place::new("umoja-desk-livetest", Some("keeper-live")))
 }
 
 #[tokio::test]

@@ -34,7 +34,9 @@ if [ "${LOCAL:-}" != "1" ]; then
   # A release is made from code already on main, so the tag never carries an unreviewed commit.
   git fetch -q origin main
   git merge-base --is-ancestor HEAD origin/main || { echo "HEAD $(git rev-parse --short HEAD) is not on origin/main; push it to main first"; exit 1; }
-  echo "Tagging Keeper $version at $(git rev-parse --short HEAD) and pushing $tag (CI builds and publishes it)"
+  # Proven against real-shaped memory on this Mac's node before anything is tagged (FIX-0026).
+  bash scripts/proof.sh
+  echo "Tagging Keeper $version at $(git rev-parse --short HEAD) and pushing $tag (scripts/release-mac.sh builds and publishes it)"
   git tag -a "$tag" -m "Keeper $tag"
   git push origin "$tag"
   echo "Building: https://github.com/$repo/actions/workflows/release.yml"
