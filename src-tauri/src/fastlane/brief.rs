@@ -28,6 +28,18 @@ fn file_entries(files: &[crate::pim::FileHit]) -> Vec<serde_json::Value> {
     entries
 }
 
+/// "What was I working on yesterday?": the files changed in the last `days` days, at once.
+pub async fn recent_work(days: u32, when: &str) -> Thought {
+    let files = crate::pim::recent_files(days, 30).await.unwrap_or_default();
+    if files.is_empty() {
+        return Thought { reply: format!("I don't see any files you changed {when}."), ..Thought::default() };
+    }
+    let entries = file_entries(&files);
+    let first = files.iter().find(|f| !f.name.starts_with("Screen")).map(|f| f.name.clone()).unwrap_or_else(|| files[0].name.clone());
+    let reply = format!("{} {when}, newest first. The latest is {first}.", if entries.len() == 1 { "Here's the file you changed".to_string() } else { format!("Here are the {} files you changed", entries.len()) });
+    Thought { reply, panels: json!([{ "kind": "folder", "title": format!("Files you changed {when}"), "path": "~", "entries": entries }]), ..Thought::default() }
+}
+
 pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProfile) -> Thought {
     let now = time::now();
     let tomorrow = now + chrono::Duration::hours(30);

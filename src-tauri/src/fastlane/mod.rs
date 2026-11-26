@@ -37,6 +37,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     static SYSTEM: OnceLock<Regex> = OnceLock::new();
     static BRIEF: OnceLock<Regex> = OnceLock::new();
     static FACTS: OnceLock<Regex> = OnceLock::new();
+    static RECENT: OnceLock<Regex> = OnceLock::new();
 
     static FOLDER: OnceLock<Regex> = OnceLock::new();
     if let Some(c) = re(&FOLDER, r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$").captures(s) {
@@ -73,6 +74,12 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(brief::compose(app, memory, keeper).await);
     }
 
+    if let Some(c) = re(&RECENT, RECENT_WORK).captures(s) {
+        let rest = c.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_default();
+        let (days, when) = if rest.contains("today") { (1, "today") } else if rest.contains("yesterday") { (2, "since yesterday") } else if rest.contains("week") { (7, "this week") } else { (3, "lately") };
+        return Some(brief::recent_work(days, when).await);
+    }
+
     if re(&FACTS, r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)").is_match(s) {
         let (facts, _) = memory.facts().await.ok()?;
         if facts.is_empty() {
@@ -85,9 +92,22 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     None
 }
 
+/// "What was I working on yesterday?", "what files did I change today", "my recent files".
+const RECENT_WORK: &str = r"(?i)^(?:please\s+)?(?:can you (?:see|tell me|show me)\s+)?(?:what (?:was i|were i|have i been|i was|i have been|i(?:.ve)? been) (?:working on|doing on (?:my|the) (?:computer|mac))|what (?:files )?did i (?:work on|change|edit)|(?:show (?:me )?)?(?:my )?recent (?:files|work))\b([^?]*)\??$";
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recent_work_phrasings() {
+        static R: OnceLock<Regex> = OnceLock::new();
+        let r = re(&R, RECENT_WORK);
+        assert_eq!(r.captures("Can you see what I was working on yesterday?").unwrap()[1].trim(), "yesterday");
+        assert!(r.is_match("what files did I change today"));
+        assert!(r.is_match("show me my recent files"));
+        assert!(!r.is_match("what was I saying about the embolism?"), "conversation goes to the brain");
+    }
 
     #[test]
     fn only_clear_phrasings_skip_the_brain() {

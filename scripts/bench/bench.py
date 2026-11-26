@@ -11,6 +11,7 @@ from pathlib import Path
 
 TURNS = [
     ("hello", "Hi! How are you today?"),
+    ("name", "what is your name?"),
     ("fact-in", "My favourite colour is green and my dog is called Rex."),
     ("recall", "What is my dog called?"),
     ("quick-q", "What's the capital of Japan?"),
