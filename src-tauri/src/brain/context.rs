@@ -24,6 +24,8 @@ pub struct Context {
     /// taken as conversation (`assistant::intent`) has `may_act` off but this on, so the engine
     /// is told to ask for the computer (`needs_computer`) rather than say acting is switched off.
     pub can_act: bool,
+    /// How this keeper answers (`modes::MODES` id; "" = Balanced).
+    pub mode: String,
     /// Show this answer visually on the Stage (panels), or in words?
     pub visual: bool,
     /// When the person approved a plan: the guard every tool call is checked against; the

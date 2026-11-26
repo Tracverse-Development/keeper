@@ -20,6 +20,13 @@ fn cell_text(v: &serde_json::Value) -> String {
     }
 }
 
+/// A source worth showing: a plain http(s) web address (no spaces, no other schemes), a title.
+fn web_source(s: &Source) -> Option<Source> {
+    let url = s.url.trim();
+    let ok = (url.starts_with("https://") || url.starts_with("http://")) && url.len() <= 500 && url.len() > 10 && !url.chars().any(|c| c.is_whitespace() || c == '"' || c == '<' || c == '>');
+    (ok && !s.title.trim().is_empty()).then(|| Source { title: clip(&s.title, 200), url: url.to_string(), note: clip_opt(&s.note, 300) })
+}
+
 impl Panel {
     /// The same panel with every field capped and its id set; None when it is unusable.
     pub(super) fn cap(self, index: usize) -> Option<Panel> {
@@ -130,6 +137,13 @@ impl Panel {
                 }
                 Panel::Form { id: id(&i), title: clip(&title, MAX_SHORT), fields, submit: if submit.trim().is_empty() { "Send".into() } else { clip(&submit, 30) } }
             }
+            Panel::Sources { id: i, title, items } => {
+                let items: Vec<Source> = items.into_iter().filter_map(|s| web_source(&s)).take(12).collect();
+                if items.is_empty() {
+                    return None;
+                }
+                Panel::Sources { id: id(&i), title: if title.trim().is_empty() { "Sources".into() } else { clip(&title, MAX_SHORT) }, items }
+            }
             // The plan to approve and the person's facts come only from the core, never an engine.
             Panel::Approval { .. } | Panel::Facts { .. } => return None,
         };
@@ -157,6 +171,7 @@ impl Panel {
         | Panel::Agenda { id, .. }
         | Panel::Checklist { id, .. }
         | Panel::Form { id, .. }
+        | Panel::Sources { id, .. }
         | Panel::Approval { id, .. }
         | Panel::Facts { id, .. }) = self;
         *id = new.to_string();

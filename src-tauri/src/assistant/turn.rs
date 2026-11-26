@@ -163,7 +163,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut panels = crate::stage::read(&thought.panels);
     panels.extend(thought.core_panels.iter().cloned());
     // A fresh visual answer is kept under its question; a lesson's cards are prepared next.
-    if !answer.cached && ctx.visual && !ctx.may_act && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
+    if !answer.cached && ctx.visual && !ctx.may_act && crate::brain::modes::get(&ctx.mode).id == crate::brain::modes::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
         if let Some(scene) = CachedScene::new(said, &reply, &panels) {
             later.add(&scene, "scene");
         }
@@ -208,6 +208,7 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         // then a turn gets tools only when its words ask for computer work (`intent`).
         may_act: can_act && super::intent::wants_computer(said),
         can_act,
+        mode: keeper.mode.clone(),
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
     }

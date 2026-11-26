@@ -5,6 +5,7 @@
 
 pub mod context;
 pub mod guard;
+pub mod modes;
 pub mod engines;
 pub mod prompt;
 pub mod reflex;

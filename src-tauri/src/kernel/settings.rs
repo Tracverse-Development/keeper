@@ -88,11 +88,14 @@ pub struct KeeperProfile {
     /// Its own voice; None = the app-wide voice.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voice: Option<KeeperVoice>,
+    /// How it answers (`brain::modes`: balanced, explainer, brief, research, tutor, chat); "" = balanced.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub mode: String,
 }
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, mode: String::new() }
     }
 }
 
@@ -220,7 +223,7 @@ impl Settings {
             wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
-            model, look: Default::default(), habits: Default::default(), voice: None
+            model, look: Default::default(), habits: Default::default(), voice: None, mode: String::new()
         });
         self.active_keeper = "keeper-1".into();
     }

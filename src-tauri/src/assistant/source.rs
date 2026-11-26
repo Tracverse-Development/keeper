@@ -32,7 +32,8 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     if ctx.said.starts_with(FOLLOW_UP) {
         super::prefetch::wait_if_preparing(&ctx.said).await;
     }
-    if ctx.visual && !ctx.may_act && crate::memory::scene_cache::cacheable(&ctx.said) {
+    let mode = brain::modes::get(&ctx.mode);
+    if ctx.visual && !ctx.may_act && mode.id == brain::modes::DEFAULT && crate::memory::scene_cache::cacheable(&ctx.said) {
         if let Ok(Some(scene)) = memory.cached_scene(&ctx.said).await {
             for p in &scene.panels {
                 progress(Progress::Panel(p.clone()));
@@ -49,7 +50,7 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     // Pointing at a panel, or a short conversational turn, goes to the quick helper model when
     // one is set: about 1 s to the first words against about 2 s (measured 2026-11-25).
     let quick_turn = ctx.said.starts_with(FOLLOW_UP) || (settings.quick_replies && conversational(&ctx.said));
-    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act;
+    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && mode.quick;
     let thinker = if quick { KeeperProfile { model: settings.fast_model.clone(), ..keeper.clone() } } else { keeper.clone() };
     let (thought, mut mind) = brain::think(&thinker, ctx, progress).await;
     // Taken as conversation, but the engine says it is computer work: run it again with tools

@@ -31,6 +31,10 @@ pub fn args(ctx: &Context, model: &str) -> Vec<String> {
         // No user or project settings: Keeper's own instructions and permissions are the whole
         // configuration (the person's Claude Code hooks and plugins cost ~0.7 s and are not ours).
         a.extend(["--permission-mode", "bypassPermissions", "--setting-sources", "", "--max-turns", "40"].map(String::from));
+    } else if crate::brain::modes::get(&ctx.mode).research {
+        // Research: reading the web only (search and fetch), never the computer.
+        a.extend(["--system-prompt".to_string(), prompt::system_static(ctx)]);
+        a.extend(["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch WebFetch", "--disable-slash-commands", "--setting-sources", "", "--max-turns", "12"].map(String::from));
     } else {
         a.extend(["--system-prompt".to_string(), prompt::system_static(ctx)]);
         a.extend(["--tools", "", "--disable-slash-commands", "--setting-sources", "", "--disallowedTools", ACTING_TOOLS, "--max-turns", "2"].map(String::from));
@@ -187,7 +191,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_claude_answers_in_the_contract() {
-        let ctx = Context { said: "My name is Ada and I love sorrel. What is 2 plus 2?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false };
+        let ctx = Context { said: "My name is Ada and I love sorrel. What is 2 plus 2?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
         let t = think(&ctx, "", &|_: Progress| {}).await.expect("claude answered");
         assert!(t.reply.contains('4') || t.reply.to_lowercase().contains("four"), "reply: {}", t.reply);
         assert!(t.remember.iter().any(|l| l.text.contains("Ada")), "learned: {:?}", t.remember);
@@ -198,7 +202,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_claude_acting_turn_records_steps() {
-        let ctx = Context { said: "List the files in /tmp with a shell command and tell me how many there are.".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: true, visual: true, guard: None, can_act: false };
+        let ctx = Context { said: "List the files in /tmp with a shell command and tell me how many there are.".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: true, visual: true, guard: None, can_act: false, mode: String::new() };
         let t = think(&ctx, "", &|_: Progress| {}).await.expect("claude answered");
         assert!(!t.steps.is_empty(), "the tool call was captured");
         assert!(t.steps.iter().any(|s| s.tool == "Bash"), "steps: {:?}", t.steps);
@@ -208,7 +212,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_claude_teaches_with_panels() {
-        let ctx = Context { said: "I need to understand math. Can you pull up some tables and show me how multiplication works?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false };
+        let ctx = Context { said: "I need to understand math. Can you pull up some tables and show me how multiplication works?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
         let t = think(&ctx, "", &|_: Progress| {}).await.expect("claude answered");
         let panels = crate::stage::read(&t.panels);
         println!("reply: {}\npanels: {:?}", t.reply, panels.iter().map(|p| serde_json::to_value(p).unwrap()["kind"].clone()).collect::<Vec<_>>());
@@ -221,7 +225,7 @@ mod tests {
     #[ignore]
     async fn live_claude_streams_panels() {
         use std::sync::Mutex;
-        let ctx = Context { said: "Explain addition step by step, with a quiz.".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false };
+        let ctx = Context { said: "Explain addition step by step, with a quiz.".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
         let started = std::time::Instant::now();
         let arrivals: Mutex<Vec<u128>> = Mutex::new(vec![]);
         let t = think(&ctx, "", &|p: Progress| {
@@ -238,9 +242,22 @@ mod tests {
         assert!(arrivals[0] < total, "the first panel arrived before the answer finished");
     }
 
+    #[tokio::test]
+    #[ignore]
+    async fn live_research_mode_cites_real_sources() {
+        let ctx = Context { said: "What blood test is used first to rule out a pulmonary embolism?".into(), assistant_name: "Kofi".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "Tuesday".into(), may_act: false, visual: true, guard: None, can_act: false, mode: "research".into() };
+        let started = std::time::Instant::now();
+        let t = think(&ctx, "", &|_: Progress| {}).await.expect("claude answered");
+        let panels = crate::stage::read(&t.panels);
+        let sources: Vec<_> = panels.iter().filter_map(|p| match p { crate::stage::Panel::Sources { items, .. } => Some(items.clone()), _ => None }).flatten().collect();
+        println!("{} ms; reply: {}; sources: {:?}", started.elapsed().as_millis(), t.reply, sources.iter().map(|s| &s.url).collect::<Vec<_>>());
+        assert!(!sources.is_empty(), "a research answer ends with real sources");
+        assert!(sources.iter().all(|s| s.url.starts_with("http")));
+    }
+
     #[test]
     fn chat_turns_cannot_act() {
-        let ctx = Context { said: "hi".into(), assistant_name: "U".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: String::new(), may_act: false, visual: true, guard: None, can_act: false };
+        let ctx = Context { said: "hi".into(), assistant_name: "U".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: String::new(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
         let a = args(&ctx, "claude-haiku-5-5");
         assert!(a.windows(2).any(|w| w[0] == "--model" && w[1] == "claude-haiku-5-5"));
         assert!(a.contains(&"--disallowedTools".to_string()) && a.contains(&"--system-prompt".to_string()));

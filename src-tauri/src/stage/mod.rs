@@ -66,6 +66,22 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn sources_keep_only_real_web_links() {
+        let raw = json!([{"kind": "sources", "title": "", "items": [
+            {"title": "WHO fact sheet", "url": "https://www.who.int/news-room/fact-sheets", "note": "symptoms"},
+            {"title": "Bad", "url": "javascript:alert(1)"},
+            {"title": "Spaces", "url": "https://x.org/a b"},
+            {"title": "", "url": "https://untitled.org/page"}
+        ]}, {"kind": "sources", "title": "None left", "items": [{"title": "x", "url": "file:///etc/passwd"}]}]);
+        let panels = read(&raw);
+        assert_eq!(panels.len(), 1, "a sources panel with no real link is dropped");
+        let Panel::Sources { title, items, .. } = &panels[0] else { panic!() };
+        assert_eq!(title, "Sources");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].url, "https://www.who.int/news-room/fact-sheets");
+    }
+
+    #[test]
     fn keeps_valid_panels_and_drops_the_rest() {
         let raw = json!([
             {"kind": "table", "title": "Times table", "columns": ["×", "1", "2"], "rows": [["1", 1, 2], ["2", 2, 4]], "highlight": [{"row": 1, "col": 2}, {"row": 9, "col": 9}]},

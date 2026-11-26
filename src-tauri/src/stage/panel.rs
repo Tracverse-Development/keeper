@@ -181,6 +181,15 @@ pub struct PlanStep {
     pub detail: Option<String>,
 }
 
+/// One source a research answer cites (Research mode): a title, its web address, what it supports.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Source {
+    pub title: String,
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FactRow {
     pub id: String,
@@ -208,6 +217,8 @@ pub enum Panel {
     Agenda { #[serde(default)] id: String, title: String, items: Vec<AgendaItem> },
     Checklist { #[serde(default)] id: String, title: String, items: Vec<CheckItem> },
     Form { #[serde(default)] id: String, title: String, fields: Vec<Field>, #[serde(default)] submit: String },
+    /// The sources a research answer cites, numbered in order ([1], [2]…).
+    Sources { #[serde(default)] id: String, title: String, items: Vec<Source> },
     /// Only the core writes these (the plan before acting); engines' approval panels are dropped.
     Approval { #[serde(default)] id: String, title: String, summary: String, steps: Vec<PlanStep>, token: String },
     /// Only the core writes these (from the graph); engines' facts panels are dropped.

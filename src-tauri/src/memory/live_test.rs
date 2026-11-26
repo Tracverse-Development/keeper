@@ -22,7 +22,7 @@ async fn live_remember_recall_forget() {
     let memory = live_memory().await;
     let stamp = time::now_iso();
     let said = format!("I love sorrel with ginger {stamp}");
-    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false, visual: true, guard: None, can_act: false };
+    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
     let thought = reflex::think(&ctx);
     assert_eq!(thought.remember.len(), 1, "the reflex mind learns the statement");
 

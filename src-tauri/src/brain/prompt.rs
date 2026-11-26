@@ -31,8 +31,19 @@ Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person jus
         identity = ctx.identity,
         skills = skills::catalogue(),
         acting = if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
-        stage = if ctx.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES },
+        stage = stage_rules(ctx),
     )
+}
+
+/// How to show things in this keeper's mode: the Stage rules (or words only), then the mode's own.
+fn stage_rules(ctx: &Context) -> String {
+    let mode = super::modes::get(&ctx.mode);
+    let stage = if ctx.visual && mode.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES };
+    if mode.rules.is_empty() {
+        stage.to_string()
+    } else {
+        format!("{stage} {}", mode.rules)
+    }
 }
 
 /// This turn's context and words: the time, the facts recalled for it, the recent conversation,
