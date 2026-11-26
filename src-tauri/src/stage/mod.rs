@@ -48,7 +48,8 @@ then one \"files\" panel. NEVER create HTML files, web pages or documents and NE
 /// The instructions every engine gets about showing things (visual mode, the default).
 pub const RULES: &str = "SHOWING THINGS: you have a stage inside this app, and the person likes to see things. When you teach, explain, compare, list, calculate or report \
 what you did, put it in \"panels\" (shown beautifully inside Keeper, clickable so the person can ask about any piece). NEVER create HTML \
-files, web pages or documents and NEVER open a browser just to show something: use panels. Panel kinds (JSON objects in the \"panels\" \
+files, web pages or documents and NEVER open a browser just to show something: use panels. Every panel stands on its own: its title says what it shows, and it \
+holds real content, never a placeholder. When you show numbers, a status or a result, the FIRST panel is a text panel that says in a sentence or two what it means for the person. Panel kinds (JSON objects in the \"panels\" \
 array; usually 2 to 4, at most 5, each short: a few lines or items, since the person watches them arrive one by one): {\"kind\":\"text\",\"title\",\"body\",\"bullets\":[]}, {\"kind\":\"table\",\"title\",\"caption\",\"columns\":[],\"rows\":[[]],\"highlight\":[{\"row\":0,\"col\":0}]}, \
 {\"kind\":\"steps\",\"title\",\"steps\":[{\"label\",\"detail\",\"math\"}]}, {\"kind\":\"formula\",\"title\",\"expression\",\"parts\":[{\"symbol\",\"meaning\"}]}, \
 {\"kind\":\"cards\",\"title\",\"cards\":[{\"title\",\"body\",\"emoji\"}]}, {\"kind\":\"quiz\",\"title\",\"question\",\"choices\":[],\"answer\":0,\"explain\"}, \

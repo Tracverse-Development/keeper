@@ -1,5 +1,6 @@
 /**
- * One panel on its glass card: a kind label, the title, a close button, the renderer, and a
+ * One panel on its glass card: a kind label, the title, one line on what you can do with it
+ * (`panel-help.ts`), a close button, the renderer, and a
  * short "Asking about …" line after the person points at a piece. Closing plays the exit
  * animation first, then tells the Stage.
  */
@@ -7,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { Icon } from './icons.tsx';
 import type { Panel, PanelAction, PanelFocus, PanelKind } from './panel-spec.ts';
+import { PANEL_HELP } from './panel-help.ts';
 import { PanelBody } from './panels/PanelBody.tsx';
 import { stagger } from './stagger.ts';
 
@@ -57,6 +59,7 @@ export function PanelCard({ panel, index, wide, onFocus, onAction, onClose }: Pr
         <div>
           <p className="eyebrow panel-kind">{KIND_LABELS[panel.kind]}</p>
           <h2 className="panel-title">{panel.title}</h2>
+          <p className="panel-help muted small">{PANEL_HELP[panel.kind]}</p>
         </div>
         <button type="button" className="panel-close" aria-label={`Close ${panel.title}`} onClick={() => setLeaving(true)}>
           <Icon name="close" size={15} />

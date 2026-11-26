@@ -174,3 +174,4 @@
 .scene-chip.is-follow { margin-left: var(--space-3); }
 .scene-chip-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--surface-strong); font-size: var(--text-2xs); }
 .scene-chip-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel-help { margin: var(--space-1) 0 0; }
