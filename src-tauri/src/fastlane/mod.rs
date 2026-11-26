@@ -10,6 +10,7 @@
 //! - "week in review", "how was my week"          the week from memory (`week`)
 
 pub mod brief;
+pub mod clip;
 pub mod folders;
 pub mod week;
 
@@ -79,6 +80,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
     if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
         return Some(shown(reply, json!([])));
+    }
+
+    // "shorten what I copied": the clipboard's text is worked on and put back.
+    if let Some(thought) = clip::answer(app, keeper, s).await {
+        return Some(thought);
     }
 
     static WEEK: OnceLock<Regex> = OnceLock::new();

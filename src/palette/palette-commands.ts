@@ -15,6 +15,8 @@ export interface PaletteDeps {
   brief: () => void;
   /** The week in review, from memory. */
   week: () => void;
+  /** Work on the text on the clipboard (`say` is the request, e.g. 'Shorten what I copied'). */
+  clip: (say: string) => void;
   /** Start a focus session (25 minutes; reminders are held until it ends). */
   focus: () => void;
   stop: () => void;
@@ -35,6 +37,7 @@ export function paletteCommands(d: PaletteDeps): Command[] {
     { id: 'brief', title: 'Brief me', keywords: ['morning', 'day', 'agenda', 'today'], hint: 'Your day: calendar, reminders, files', run: d.brief },
     { id: 'week', title: 'Week in review', keywords: ['weekly', 'review', 'summary', 'recap'], hint: 'What we talked about, what I learned and did', run: d.week },
     { id: 'focus', title: 'Start a focus session', keywords: ['pomodoro', 'timer', 'concentrate', 'quiet'], hint: '25 minutes; reminders wait until it ends', run: d.focus },
+    ...(['Fix', 'Shorten', 'Rewrite', 'Explain'] as const).map((verb) => ({ id: `clip-${verb.toLowerCase()}`, title: `${verb} what I copied`, keywords: ['clipboard', 'text', 'paste', 'selection'], hint: verb === 'Explain' ? 'Explains the text on your clipboard' : 'The result goes back on your clipboard', run: () => d.clip(`${verb} what I copied`) })),
   ];
   if (d.busy) out.unshift({ id: 'stop', title: 'Stop', keywords: ['cancel', 'halt', 'quiet'], hint: 'End the answer in progress', run: d.stop });
   for (const k of d.keepers) {

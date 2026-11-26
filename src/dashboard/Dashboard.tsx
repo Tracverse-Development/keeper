@@ -330,6 +330,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           brief: () => void assistant.send('Brief me'),
           week: () => void assistant.send('Week in review'),
           focus: () => void assistant.send('Start a focus session'),
+          clip: (say) => void assistant.send(say),
           stop,
           openSettings: () => setSettingsOpen(true),
           openStudio: () => setStudioOpen(true),

@@ -51,6 +51,27 @@ pub async fn document_text(path: &std::path::Path) -> Result<String> {
     }
 }
 
+/// The text on the clipboard (`pbpaste`; empty when it holds no text).
+pub async fn clipboard_read() -> Result<String> {
+    let out = tokio::process::Command::new("/usr/bin/pbpaste").env("LC_CTYPE", "UTF-8").output().await.map_err(|_| DeskError::Io("I couldn't read the clipboard.".into()))?;
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Put `text` on the clipboard (`pbcopy`, the text on its standard input; never an argument).
+pub async fn clipboard_write(text: &str) -> Result<()> {
+    use tokio::io::AsyncWriteExt;
+    let failed = || DeskError::Io("I couldn't put that on the clipboard.".into());
+    let mut child = tokio::process::Command::new("/usr/bin/pbcopy").env("LC_CTYPE", "UTF-8").stdin(std::process::Stdio::piped()).spawn().map_err(|_| failed())?;
+    let mut stdin = child.stdin.take().ok_or_else(failed)?;
+    stdin.write_all(text.as_bytes()).await.map_err(|_| failed())?;
+    drop(stdin);
+    if child.wait().await.map_err(|_| failed())?.success() {
+        Ok(())
+    } else {
+        Err(failed())
+    }
+}
+
 pub fn computer_name() -> String {
     Command::new("/usr/sbin/scutil")
         .args(["--get", "ComputerName"])

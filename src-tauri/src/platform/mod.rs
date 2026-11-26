@@ -57,6 +57,16 @@ pub async fn document_text(path: &std::path::Path) -> Result<String> {
     os::document_text(path).await
 }
 
+/// The text on the system clipboard (empty when it holds none), and putting text on it. Read
+/// only when the person asks the keeper to work on what they copied (`fastlane::clip`).
+pub async fn clipboard_read() -> Result<String> {
+    os::clipboard_read().await
+}
+
+pub async fn clipboard_write(text: &str) -> Result<()> {
+    os::clipboard_write(text).await
+}
+
 /// The voice helper next to the app's executable (a Tauri sidecar), or the dev build's copy.
 pub fn voice_helper() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;

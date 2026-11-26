@@ -15,6 +15,12 @@ pub fn computer_name() -> String {
     "Keeper".into()
 }
 pub fn reveal(_: &std::path::Path) {}
+pub async fn clipboard_read() -> Result<String> {
+    Err(DeskError::Invalid("Reading the clipboard is not supported on this system yet.".into()))
+}
+pub async fn clipboard_write(_: &str) -> Result<()> {
+    Err(DeskError::Invalid("Writing the clipboard is not supported on this system yet.".into()))
+}
 pub async fn document_text(_: &std::path::Path) -> Result<String> {
     Err(DeskError::Invalid("Reading that kind of document is not supported on this system yet.".into()))
 }
