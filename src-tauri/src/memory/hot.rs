@@ -15,8 +15,9 @@ use super::records::{Fact, Turn};
 use super::scene_cache::CachedScene;
 
 const MAX_AGE: Duration = Duration::from_secs(30 * 60);
-/// The same windows as the recall queries (`queries::RECENT_TURNS`, `Memory::practice`).
-pub const RECENT: usize = 6;
+/// The same windows as the recall queries (`queries::RECENT_TURNS`, `Memory::practice`): recent
+/// turns of every chat, which recall splits into this chat's thread and the others.
+pub const RECENT: usize = 40;
 const PRACTICE: usize = 12;
 
 /// What a write changes in the mirror.

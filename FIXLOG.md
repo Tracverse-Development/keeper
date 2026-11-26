@@ -114,3 +114,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** `warm::prune()` drops every spare that is too old or has exited (spares are `kill_on_drop`, so dropping ends the process); `warm::spawn_sweeper()` runs it every minute from app start.
 - **Guard:** unit test `the_sweep_ends_spares_that_are_too_old_or_gone` (an old spare retired, a fresh one kept).
 - **Evidence:** `ps` on the founder's Mac before the fix (PIDs 53019, 71594); cargo test --lib warm 2/2.
+
+### FIX-0015 — Every chat saw every other chat's last messages as its own (2026-11-25)
+- **Area:** recall (`memory::recall`, `memory::thread`, `queries::RECENT_TURNS`, hot memory), the turn prompt (`brain::prompt::turn_message`)
+- **Symptom:** founder: in the chat "Hey how are you?", "what did I ask you here?" was answered with a question from another chat ("what is going on with your foreman application").
+- **Root cause:** the turn's "recent conversation" was the keeper's last 6 turns across ALL chats, given to the engine as one conversation.
+- **Fix:** recent turns now carry their chat; recall gives the engine the CURRENT chat's last 6 exchanges ("This chat so far (its own train of thought)") and, separately, one labelled line per other recent chat ("Other chats going on (SEPARATE topics…)"), so it knows about them without mixing them in; hot memory keeps 40 recent turns to split. Facts stay one shared memory (design: docs/design/keeper-modes.md).
+- **Guard:** unit test `thread_tests::a_chat_sees_its_own_thread_and_only_names_the_others`; live memory tests pass.
+- **Evidence:** real Keeper (bench), two chats: in chat B "What did I ask you in this chat?" -> "you asked, 'Hey how are you?' That is the only message so far."; "what was the other chat about?" -> "planning your trip to Tobago".
+
+### FIX-0016 — Looking at the computer was stopped by `ps`, and the stop message read a command line aloud (2026-11-25)
+- **Area:** `brain::guard` (read commands, verdict wording), `brain::engines::stopped_by_plan`, the acting instructions (`brain::prompt::ACTING`)
+- **Symptom:** founder: "Foreman looks blank" ended "I stopped… (ls /Applications … | grep -i fore; mdfind … ps aux | grep …)", and the voice read the command ("dash grep…").
+- **Root cause:** `ps` (and pgrep, lsof, which…) were not known read commands, so the read-only guard stopped a harmless look; the verdict and the reply embedded `step.detail` (the raw command) and paths.
+- **Fix:** more read commands (ps, pgrep, lsof, uptime, whoami, which, sw_vers, uname, system_profiler, basename, dirname, realpath); verdicts name a place by its name, never a path or command; the stopped reply says what to do next in words; the acting instructions forbid commands, flags, code and long paths in the spoken reply.
+- **Guard:** guard test `the_founders_look_was_a_read_and_verdicts_are_words_not_commands` (the exact command passes; verdicts contain no "/", "~" or command text).
+- **Evidence:** cargo test --lib guard 5/5.

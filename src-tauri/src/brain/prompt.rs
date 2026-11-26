@@ -6,7 +6,8 @@ use crate::skills;
 
 /// Agent engines with tools, allowed to act: what is expected of them.
 const ACTING: &str = "You may use your tools to act on this computer when the person asks (open, find, organise, write, run). \
-Do the task, then report what you did in one or two sentences. Never do anything destructive or irreversible (deleting files, \
+Do the task, then report what you did in one or two plain sentences a person would say out loud: never write commands, \
+flags, code or long paths in \"reply\" (it is spoken); name files and folders by their names, and put the details in a panel. Never do anything destructive or irreversible (deleting files, \
 sending messages or email, payments, changing system settings) unless the person asked for exactly that; otherwise ask in your reply first. \
 Everything you do is recorded in the person's DKG memory.";
 const NOT_ACTING: &str = "Acting on this computer is switched off: do not use tools. If the person asks you to do something on the computer, \
@@ -55,8 +56,16 @@ pub fn turn_message(ctx: &Context) -> String {
         ctx.facts.iter().map(|f| format!("- {}", f.text)).collect::<Vec<_>>().join("\n")
     };
     let recent = ctx.recent.iter().rev().map(|t| format!("Person: {}\nYou: {}", t.said, t.replied)).collect::<Vec<_>>().join("\n");
-    let recent = if recent.is_empty() { "(this is the start)".to_string() } else { recent };
-    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nRecent conversation:\n{recent}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
+    let recent = if recent.is_empty() { "(this chat is just starting)".to_string() } else { recent };
+    let elsewhere = if ctx.elsewhere.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n\nOther chats going on (SEPARATE topics: never treat them as this chat; mention them only if the person asks about another chat):\n{}",
+            ctx.elsewhere.iter().map(|l| format!("- {l}")).collect::<Vec<_>>().join("\n")
+        )
+    };
+    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
 }
 
 /// Everything in one text, for engines that take a single prompt.

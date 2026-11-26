@@ -14,8 +14,10 @@ pub struct Context {
     pub identity: String,
     /// Facts recalled from the DKG for this turn (already ranked).
     pub facts: Vec<Fact>,
-    /// The last exchanges, newest first (from the DKG).
+    /// The last exchanges of THIS chat, newest first (from the DKG).
     pub recent: Vec<Turn>,
+    /// One line per other recent chat: separate topics the keeper knows about but does not mix in.
+    pub elsewhere: Vec<String>,
     /// Local time, written out ("Tuesday 25 November 2026, 10:42").
     pub now_local: String,
     /// May an agent engine act on this computer this turn (tools on)?

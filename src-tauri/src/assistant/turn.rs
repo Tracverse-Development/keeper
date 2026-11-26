@@ -36,7 +36,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     };
 
     phase(app, "recalling", &format!("Querying your DKG graph {}", memory.graph()));
-    let (recall, memory_offline) = match memory.recall(said).await {
+    let (recall, memory_offline) = match memory.recall(said, &chat).await {
         Ok(r) => (r, false),
         Err(_) => {
             // Keeper's own node went down mid-session: start it again in the background (the
@@ -45,7 +45,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
             tauri::async_runtime::spawn(async move {
                 let _ = crate::dkg::own_node::ensure_running(&node_home).await;
             });
-            (Recall { facts: vec![], recent: vec![], traces: vec![] }, true)
+            (Recall { facts: vec![], recent: vec![], elsewhere: vec![], traces: vec![] }, true)
         }
     };
     let recall_ms = started.elapsed().as_millis();
@@ -57,6 +57,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         may_act: base.may_act || (approved.is_some() && base.can_act),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
+        elsewhere: recall.elsewhere.clone(),
         // An approved plan binds this turn: each tool call is checked against it.
         guard: approved.map(|steps| std::sync::Arc::new(crate::brain::guard::PlanGuard::new(steps, &dirs::home_dir().unwrap_or_default()))),
         ..base
@@ -203,6 +204,7 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         identity: format!("{} {}", crate::keepers::kit::souls::brief(&state.soul(&keeper.soul)), role.brief),
         facts: vec![],
         recent: vec![],
+        elsewhere: vec![],
         now_local: chrono::Local::now().format("%A %-d %B %Y, %-I:%M %p").to_string(),
         // Acting needs both: the person allows it, and the keeper's role is one that acts. Even
         // then a turn gets tools only when its words ask for computer work (`intent`).

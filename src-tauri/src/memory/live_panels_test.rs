@@ -80,14 +80,14 @@ async fn live_pin_and_unpin_a_scene() {
 async fn live_bench_memory() {
     let memory = live_memory().await;
     let t = std::time::Instant::now();
-    let r = memory.recall("what is my sister's name").await.unwrap();
+    let r = memory.recall("what is my sister's name", "").await.unwrap();
     let recall = t.elapsed();
     let t = std::time::Instant::now();
-    let _ = memory.recall("what is my sister's name").await.unwrap();
+    let _ = memory.recall("what is my sister's name", "").await.unwrap();
     let hot_recall = t.elapsed();
     let marker = format!("Your bench cousin is {}", crate::kernel::time::now_iso());
     memory.write(&Fact::new(&marker, "person", &crate::kernel::time::now_iso())).await;
-    let again = memory.recall("bench cousin").await.unwrap();
+    let again = memory.recall("bench cousin", "").await.unwrap();
     assert!(again.facts.iter().any(|f| f.text == marker), "a new fact is recalled at once");
     println!("BENCH cold recall {recall:?}; hot recall {hot_recall:?}");
     let t = std::time::Instant::now();
@@ -119,10 +119,10 @@ async fn live_scale_thousand_facts() {
     }
     super::hot::clear();
     let t = std::time::Instant::now();
-    let r = memory.recall("what is thing-3 called").await.unwrap();
+    let r = memory.recall("what is thing-3 called", "").await.unwrap();
     let cold = t.elapsed();
     let t = std::time::Instant::now();
-    let r2 = memory.recall("what is thing-3 called").await.unwrap();
+    let r2 = memory.recall("what is thing-3 called", "").await.unwrap();
     let hot = t.elapsed();
     let loaded = super::hot::get("umoja-desk-scale").unwrap();
     let oldest_loaded = loaded.facts.iter().any(|f| f.text.starts_with("Scale fact number 0:"));

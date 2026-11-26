@@ -139,8 +139,14 @@ async fn codex_problem() -> Option<String> {
 /// with the steps it took before stopping (they are still recorded on the DKG).
 pub fn stopped_by_plan(verdict: &str, steps: Vec<crate::brain::context::AgentStep>) -> crate::brain::Thought {
     let done = steps.len().saturating_sub(1);
+    let before = match done {
+        0 => String::new(),
+        1 => " I'd finished one step before that.".to_string(),
+        n => format!(" I'd finished {n} steps before that."),
+    };
+    let next = if verdict.starts_with("I was only going to look") { " Ask me to make the change, and I'll show you a plan first." } else { " Tell me if you want it included, and I'll show you a new plan." };
     crate::brain::Thought {
-        reply: format!("I stopped. {verdict} I'd done {done} step{} before that. Tell me if you want me to include it, and I'll show you a new plan.", if done == 1 { "" } else { "s" }),
+        reply: format!("I stopped. {verdict}{before}{next}"),
         steps,
         ..crate::brain::Thought::default()
     }

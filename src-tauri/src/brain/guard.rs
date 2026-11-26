@@ -22,7 +22,7 @@ enum Harm {
 }
 
 const READ_TOOLS: [&str; 7] = ["read", "grep", "glob", "ls", "webfetch", "websearch", "todowrite"];
-const READ_COMMANDS: [&str; 20] = ["ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "mdfind", "pwd", "cd", "echo", "sort", "uniq", "du", "df", "date", "mdls"];
+const READ_COMMANDS: [&str; 32] = ["ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "mdfind", "pwd", "cd", "echo", "sort", "uniq", "du", "df", "date", "mdls", "ps", "pgrep", "lsof", "uptime", "whoami", "which", "sw_vers", "uname", "system_profiler", "basename", "dirname", "realpath"];
 
 /// A shell command that only reads: every piece of a chain (`&&`, `;`, `|`) starts with a read
 /// command, nothing is redirected into a file, and no find runs an action on what it finds.
@@ -122,11 +122,12 @@ impl PlanGuard {
             return None;
         }
         let verdict = if self.looking {
-            Some(format!("I was only going to look, so I stopped before changing anything ({}).", step.detail))
+            Some("I was only going to look, so I stopped before changing anything.".to_string())
         } else if let Some(h) = Self::harm(step).filter(|h| !self.allows.contains(h)) {
-            Some(format!("{} wasn't in the plan you approved ({}).", if h == Harm::Delete { "Deleting" } else { "Sending" }, step.detail))
+            Some(format!("{} wasn't in the plan you approved.", if h == Harm::Delete { "Deleting something" } else { "Sending something" }))
         } else {
-            self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("{} is outside the plan you approved.", p.display()))
+            // Said in words a person can hear: the place's name, never a path or a command line.
+            self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("\u{201c}{}\u{201d} is outside the plan you approved.", p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "that place".into())))
         };
         if let Some(v) = &verdict {
             if let Ok(mut slot) = self.verdict.lock() {
@@ -206,5 +207,17 @@ mod tests {
         assert!(g.check(&step("Bash", "find ~/Desktop -name '*.tmp' -delete")).is_some(), "find can delete");
         let g = PlanGuard::read_only(Path::new("/Users/a"));
         assert!(g.check(&step("Bash", "echo $(rm -rf ~/x)")).is_some(), "a substituted command is not a read");
+    }
+
+    #[test]
+    fn the_founders_look_was_a_read_and_verdicts_are_words_not_commands() {
+        // The command that stopped "why does Foreman look blank" on 2026-11-25.
+        let g = PlanGuard::read_only(Path::new("/Users/a"));
+        let cmd = "ls /Applications ~/Applications 2>/dev/null | grep -i fore; mdfind -name foreman 2>/dev/null | grep -v Library | head -20; ps aux | grep -i foreman | grep -v grep";
+        assert_eq!(g.check(&step("Bash", cmd)), None, "looking at apps and processes is a read");
+        for (guard, call) in [(PlanGuard::read_only(Path::new("/Users/a")), step("Bash", "rm -rf ~/x")), (plan(), step("Write", "/Users/a/Desktop/notes.txt")), (plan(), step("Bash", "rm ~/Downloads/old.pdf"))] {
+            let v = guard.check(&call).unwrap();
+            assert!(!v.contains('/') && !v.contains("rm ") && !v.contains('~'), "spoken verdicts carry no paths or commands: {v}");
+        }
     }
 }

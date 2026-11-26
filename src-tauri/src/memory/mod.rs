@@ -54,8 +54,33 @@ pub struct WriteReceipt {
 #[serde(rename_all = "camelCase")]
 pub struct Recall {
     pub facts: Vec<Fact>,
+    /// The last exchanges of THIS chat (its own train of thought), newest first.
     pub recent: Vec<Turn>,
+    /// One line per other recent chat ("“Foreman looks blank” at 7:35 PM"): known, not mixed in.
+    pub elsewhere: Vec<String>,
     pub traces: Vec<QueryTrace>,
+}
+
+/// Exchanges of this chat that a turn sees.
+const THREAD_TURNS: usize = 6;
+/// Other chats named in the "elsewhere" line.
+const ELSEWHERE: usize = 3;
+
+/// Split recent turns (newest first, every chat) into this chat's own and a line per other chat.
+pub fn thread(recent: &[Turn], chat: &str) -> (Vec<Turn>, Vec<String>) {
+    let own: Vec<Turn> = recent.iter().filter(|t| !chat.is_empty() && t.chat == chat).take(THREAD_TURNS).cloned().collect();
+    let mut seen = std::collections::HashSet::new();
+    let elsewhere = recent
+        .iter()
+        .filter(|t| t.chat != chat && seen.insert(t.chat.clone()))
+        .take(ELSEWHERE)
+        .map(|t| {
+            let said: String = t.said.chars().take(80).collect();
+            let when = time::parse_iso(&t.at).map(|d| d.with_timezone(&chrono::Local).format(" at %-I:%M %p").to_string()).unwrap_or_default();
+            format!("\u{201c}{said}\u{201d}{when}")
+        })
+        .collect();
+    (own, elsewhere)
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -169,7 +194,7 @@ impl Memory {
         let (rows, trace) = self.run(q).await?;
         let turns = rows
             .iter()
-            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: String::new(), panels: vec![] })
+            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: get(r, "c").rsplit(':').next().unwrap_or_default().into(), panels: vec![] })
             .collect();
         Ok((turns, trace))
     }
@@ -258,7 +283,7 @@ impl Memory {
     }
 
     /// Everything a brain needs for one turn: the relevant facts and the last few exchanges.
-    pub async fn recall(&self, said: &str) -> Result<Recall> {
+    pub async fn recall(&self, said: &str, chat: &str) -> Result<Recall> {
         let started = Instant::now();
         let snap = match hot::get(&self.graph) {
             Some(snap) => snap,
@@ -277,7 +302,8 @@ impl Memory {
         // What the person practised lately shapes the next lesson.
         ranked.extend(snap.practice.into_iter().take(6));
         let trace = QueryTrace { label: "hot memory (kept in step with your DKG graph)".into(), sparql: String::new(), rows: ranked.len() + snap.recent.len(), ms: started.elapsed().as_millis(), layer: LAYER_NAME };
-        Ok(Recall { facts: ranked, recent: snap.recent, traces: vec![trace] })
+        let (recent, elsewhere) = thread(&snap.recent, chat);
+        Ok(Recall { facts: ranked, recent, elsewhere, traces: vec![trace] })
     }
 
     /// What recall needs, read from the DKG (fills hot memory).
@@ -338,4 +364,30 @@ fn get(row: &Row, key: &str) -> String {
 fn overlaps(fact: &str, what: &str) -> bool {
     let fact = fact.to_lowercase();
     what.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| w.len() >= 4).any(|w| fact.contains(w))
+}
+
+#[cfg(test)]
+mod thread_tests {
+    use super::*;
+
+    fn t(said: &str, chat: &str, at: &str) -> Turn {
+        Turn { id: said.into(), said: said.into(), replied: "ok".into(), mind: String::new(), at: at.into(), chat: chat.into(), panels: vec![] }
+    }
+
+    #[test]
+    fn a_chat_sees_its_own_thread_and_only_names_the_others() {
+        let recent = vec![
+            t("what did I ask you here?", "a", "2026-11-25T22:00:00Z"),
+            t("Foreman looks blank", "b", "2026-11-25T21:59:00Z"),
+            t("Hey how are you?", "a", "2026-11-25T19:35:00Z"),
+            t("teach me math", "c", "2026-11-25T11:32:00Z"),
+            t("more math", "c", "2026-11-25T11:33:00Z"),
+        ];
+        let (own, elsewhere) = thread(&recent, "a");
+        assert_eq!(own.iter().map(|x| x.said.as_str()).collect::<Vec<_>>(), ["what did I ask you here?", "Hey how are you?"]);
+        assert_eq!(elsewhere.len(), 2, "one line per other chat: {elsewhere:?}");
+        assert!(elsewhere[0].contains("Foreman looks blank"));
+        let (own, _) = thread(&recent, "");
+        assert!(own.is_empty(), "a new chat starts with no thread");
+    }
 }

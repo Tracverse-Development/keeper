@@ -22,7 +22,7 @@ async fn live_remember_recall_forget() {
     let memory = live_memory().await;
     let stamp = time::now_iso();
     let said = format!("I love sorrel with ginger {stamp}");
-    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], now_local: "now".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
+    let ctx = Context { said: said.clone(), assistant_name: "Keeper".into(), identity: String::new(), facts: vec![], recent: vec![], elsewhere: vec![], now_local: "now".into(), may_act: false, visual: true, guard: None, can_act: false, mode: String::new() };
     let thought = reflex::think(&ctx);
     assert_eq!(thought.remember.len(), 1, "the reflex mind learns the statement");
 
@@ -31,7 +31,7 @@ async fn live_remember_recall_forget() {
     assert!(!receipt.queued, "the node took the write");
     assert!(receipt.ual.starts_with("did:dkg:"), "a UAL came back: {}", receipt.ual);
 
-    let recall = memory.recall("what drink with ginger do I love?").await.expect("recall");
+    let recall = memory.recall("what drink with ginger do I love?", "").await.expect("recall");
     assert!(recall.facts.iter().any(|f| f.id == fact.id), "the new fact is recalled");
     // Recall reads hot memory (loaded from the DKG once, kept in step with every write).
     assert!(recall.traces.iter().any(|t| t.label.starts_with("hot memory")), "{:?}", recall.traces);

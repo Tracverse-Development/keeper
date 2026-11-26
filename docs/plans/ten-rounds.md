@@ -64,3 +64,9 @@ acting on, ask before acting, ElevenLabs voice), measure with `PROFILE=admin`, f
 - Linux and Windows build host (DESK-BUILD-LINUX-WIN-001): Mac releases only until one exists.
 - Home Core testing: its ssh needs this Mac's key.
 - Lessons and acting run on the keeper's model (Claude Code's default, Opus); Sonnet would roughly halve a lesson's 10 s, at some cost in depth. Keep Opus, or use Sonnet for lessons?
+
+## Modes, styles, memory and threads (founder 2026-11-25; plan: docs/design/keeper-modes.md)
+
+| Round | Theme | Result |
+|---|---|---|
+| M1 | Threads (FIX-0015) and the guard's words (FIX-0016) | two chats on a real Keeper stay separate and know of each other; the founder's "look" command passes the guard; no commands in spoken text |

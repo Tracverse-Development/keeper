@@ -34,7 +34,9 @@ pub const RETRACTIONS: Query = Query {
 
 pub const RECENT_TURNS: Query = Query {
     label: "What did we just talk about?",
-    body: "SELECT ?t ?said ?replied ?mind ?at WHERE { ?t a desk:Turn ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } } ORDER BY DESC(?at) LIMIT 6",
+    // Enough recent turns, from every chat, to give this chat its own last exchanges and to
+    // name the other chats going on (`Memory::recall` splits them).
+    body: "SELECT ?t ?said ?replied ?mind ?at ?c WHERE { ?t a desk:Turn ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } OPTIONAL { ?t desk:inChat ?c } } ORDER BY DESC(?at) LIMIT 40",
 };
 
 pub const HISTORY: Query = Query {
