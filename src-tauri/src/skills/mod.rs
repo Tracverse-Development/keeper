@@ -44,7 +44,7 @@ const CATALOGUE: &[(&str, &str)] = &[
     ("add-event", "{\"title\": \"Dentist\", \"start\": \"2026-12-01T15:00:00-05:00\", \"end\": \"2026-12-01T16:00:00-05:00\"} puts an event on the person's calendar (RFC 3339 times with offset)"),
     ("find-contact", "{\"name\": \"Hannah\"} looks someone up in the person's contacts (phone numbers, emails)"),
     ("recall-actions", "{} lists what you have done for the person recently (from the DKG)"),
-    ("ask-memory", "{\"question\": \"actions-recent\", \"days\": \"1\"} asks your DKG memory one catalog question (facts-all, facts-by-category+category, facts-recent+days, turns-recent+days, actions-recent+days, agent-steps, actions-failed, skills-used, reminders-upcoming, minds-used, memory-size)"),
+    ("ask-memory", "{\"question\": \"actions-recent\", \"days\": \"1\"} asks your DKG memory one catalog question (facts-all, facts-by-category+category, facts-by-mode+mode (what you learned while in a mode: assistant, system, researcher, tutor, companion), facts-recent+days, turns-recent+days, actions-recent+days, agent-steps, actions-failed, skills-used, reminders-upcoming, minds-used, memory-size)"),
     ("switch-engine", "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex"),
 ];
 
@@ -91,7 +91,7 @@ pub async fn run(req: &ActionRequest, env: &SkillEnv<'_>) -> Outcome {
 /// One catalog question, answered in a sentence from its rows (at most eight shown).
 async fn ask_memory(input: &serde_json::Value, env: &SkillEnv<'_>) -> Result<String> {
     let id = str_field(input, "question")?;
-    let args: std::collections::HashMap<String, String> = ["days", "category", "chat", "skill"]
+    let args: std::collections::HashMap<String, String> = ["days", "category", "chat", "skill", "mode"]
         .iter()
         .filter_map(|k| input[*k].as_str().map(|v| (k.to_string(), v.to_string())).or_else(|| input[*k].as_i64().map(|v| (k.to_string(), v.to_string()))))
         .collect();

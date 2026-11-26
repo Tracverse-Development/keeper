@@ -36,7 +36,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     };
 
     phase(app, "recalling", &format!("Querying your DKG graph {}", memory.graph()));
-    let (recall, memory_offline) = match memory.recall(said, &chat).await {
+    let (recall, memory_offline) = match memory.recall(said, &chat, &keeper.role).await {
         Ok(r) => (r, false),
         Err(_) => {
             // Keeper's own node went down mid-session: start it again in the background (the
@@ -160,7 +160,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut learned = Vec::new();
     if !thought.remember.is_empty() {
         for l in thought.remember.iter().take(6) {
-            let fact = Fact::new(&l.text, &l.category, &at);
+            let fact = Fact::new(&l.text, &l.category, &at).learned_in(&keeper.role);
             writes.push(later.add(&fact, "fact"));
             learned.push(fact);
         }

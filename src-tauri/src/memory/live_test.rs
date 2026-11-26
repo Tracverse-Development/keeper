@@ -31,7 +31,7 @@ async fn live_remember_recall_forget() {
     assert!(!receipt.queued, "the node took the write");
     assert!(receipt.ual.starts_with("did:dkg:"), "a UAL came back: {}", receipt.ual);
 
-    let recall = memory.recall("what drink with ginger do I love?", "").await.expect("recall");
+    let recall = memory.recall("what drink with ginger do I love?", "", "").await.expect("recall");
     assert!(recall.facts.iter().any(|f| f.id == fact.id), "the new fact is recalled");
     // Recall reads hot memory (loaded from the DKG once, kept in step with every write).
     assert!(recall.traces.iter().any(|t| t.label.starts_with("hot memory")), "{:?}", recall.traces);
@@ -82,7 +82,7 @@ async fn live_every_catalog_question_runs_and_chats_link() {
     assert!(turns.iter().any(|t| t.id == turn.id), "the turn is found through its chat");
 
     let args: std::collections::HashMap<String, String> =
-        [("days", "30"), ("category", "preference"), ("chat", chat.id.as_str()), ("skill", "switch-engine")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        [("days", "30"), ("category", "preference"), ("chat", chat.id.as_str()), ("skill", "switch-engine"), ("mode", "researcher")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
     for q in catalog::QUESTIONS {
         let result = memory.ask(q.id, &args).await;
         assert!(result.is_ok(), "{} failed on the real node: {:?}", q.id, result.err());
@@ -144,4 +144,21 @@ async fn live_experience_grows_with_use() {
     assert_eq!(after.done.turns, before.done.turns + 1, "the turn counts");
     assert_eq!(after.xp, before.xp + crate::keepers::kit::levels::XP_TURN, "10 XP for a turn");
     println!("live graph: level {} with {} XP ({:?})", after.level, after.xp, after.done);
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_each_mode_recalls_its_own_work_facts() {
+    let memory = live_memory().await;
+    let stamp = time::now_iso();
+    let work = Fact::new(&format!("The lighthouse lens is a Fresnel lens {stamp}"), "work", &stamp).learned_in("researcher");
+    let personal = Fact::new(&format!("Your nephew is called Kemi {stamp}"), "person", &stamp).learned_in("researcher");
+    assert!(!memory.write(&work).await.queued && !memory.write(&personal).await.queued);
+    let in_research = memory.recall(&format!("lighthouse lens nephew Kemi {stamp}"), "", "researcher").await.unwrap();
+    let in_admin = memory.recall(&format!("lighthouse lens nephew Kemi {stamp}"), "", "system").await.unwrap();
+    assert!(in_research.facts.iter().any(|f| f.id == work.id) && in_research.facts.iter().any(|f| f.id == personal.id));
+    assert!(!in_admin.facts.iter().any(|f| f.id == work.id), "another mode does not see the researcher's notes");
+    assert!(in_admin.facts.iter().any(|f| f.id == personal.id), "every mode knows the person");
+    let (rows, _) = memory.ask("facts-by-mode", &[("mode".to_string(), "researcher".to_string())].into_iter().collect()).await.unwrap();
+    assert!(rows.iter().any(|r| r.get("text").is_some_and(|t| t.contains(&stamp))), "the researcher's notes can be asked for");
 }

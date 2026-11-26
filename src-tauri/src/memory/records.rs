@@ -31,11 +31,31 @@ pub struct Fact {
     pub text: String,
     pub category: String,
     pub at: String,
+    /// The mode whose working memory it belongs to ("" = personal: every mode recalls it).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub mode: String,
 }
+
+/// Categories about the PERSON: shared by every mode (docs/design/keeper-modes.md). Everything
+/// else is a mode's working note, recalled in that mode.
+pub const PERSONAL: [&str; 7] = ["identity", "person", "preference", "place", "health", "schedule", "practice"];
 
 impl Fact {
     pub fn new(text: &str, category: &str, at: &str) -> Fact {
-        Fact { id: short_hash(&normalise(text), 16), text: text.trim().to_string(), category: category.to_string(), at: at.to_string() }
+        Fact { id: short_hash(&normalise(text), 16), text: text.trim().to_string(), category: category.to_string(), at: at.to_string(), mode: String::new() }
+    }
+
+    /// Learned in `mode`: a work fact is filed under that mode; a personal one stays shared.
+    pub fn learned_in(mut self, mode: &str) -> Fact {
+        if !PERSONAL.contains(&self.category.as_str()) {
+            self.mode = mode.to_string();
+        }
+        self
+    }
+
+    /// Recalled in `mode`: personal facts and older facts with no mode always; work facts only in their mode.
+    pub fn belongs_in(&self, mode: &str) -> bool {
+        self.mode.is_empty() || self.mode == mode
     }
     pub fn iri(&self) -> String {
         entity("fact", &self.id)
@@ -55,14 +75,15 @@ impl Record for Fact {
         fact_asset_name(&self.id)
     }
     fn quads(&self) -> Vec<Quad> {
-        AssetBuilder::new(&self.iri())
+        let b = AssetBuilder::new(&self.iri())
             .a(class::FACT)
             .text(pred::TEXT, &self.text)
             .text(pred::CATEGORY, &self.category)
             .link(pred::ABOUT, OWNER)
             .link(pred::BY, ASSISTANT)
-            .time(pred::AT, &self.at)
-            .build()
+            .time(pred::AT, &self.at);
+        let b = if self.mode.is_empty() { b } else { b.text("desk:mode", &self.mode) };
+        b.build()
     }
 }
 
@@ -276,5 +297,21 @@ mod tests {
     fn an_action_links_back_to_its_turn() {
         let a = ActionRecord::new("open-app", "Notes", "Opened Notes", true, "2026-11-25T10:00:00Z", "abc");
         assert!(a.quads().iter().any(|q| q.predicate.ends_with("wasDerivedFrom") && q.object == "urn:umoja:desk:turn:abc"));
+    }
+}
+
+#[cfg(test)]
+mod mode_memory_tests {
+    use super::*;
+
+    #[test]
+    fn personal_facts_are_shared_and_work_facts_stay_on_their_desk() {
+        let personal = Fact::new("Your sister is Maya", "person", "t").learned_in("researcher");
+        let work = Fact::new("The D-dimer rules out PE in low-risk patients", "work", "t").learned_in("researcher");
+        let old = Fact::new("You like tea", "general", "t");
+        assert!(personal.mode.is_empty() && personal.belongs_in("system"), "who you are is known in every mode");
+        assert_eq!(work.mode, "researcher");
+        assert!(work.belongs_in("researcher") && !work.belongs_in("system"), "the researcher's note stays in research");
+        assert!(old.belongs_in("tutor"), "facts from before modes stay shared");
     }
 }

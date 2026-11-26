@@ -31,6 +31,8 @@ pub enum Param {
     Chat,
     /// A skill name (`open-app`, `agent:Bash`, …).
     Skill,
+    /// A mode id (`keepers::kit::roles`).
+    Mode,
 }
 
 pub struct Question {
@@ -48,6 +50,8 @@ pub const QUESTIONS: &[Question] = &[
         body: "SELECT ?f ?text ?category ?at WHERE { ?f a desk:Fact ; schema:text ?text ; prov:generatedAtTime ?at . OPTIONAL { ?f desk:category ?category } } ORDER BY DESC(?at) LIMIT 200" },
     Question { id: "facts-by-category", title: "What I know in one area", group: "Knowledge", params: &[Param::Category],
         body: "SELECT ?f ?text ?at WHERE { ?f a desk:Fact ; schema:text ?text ; desk:category \"{category}\" ; prov:generatedAtTime ?at } ORDER BY DESC(?at) LIMIT 100" },
+    Question { id: "facts-by-mode", title: "What I learned in one mode", group: "Knowledge", params: &[Param::Mode],
+        body: "SELECT ?f ?text ?category ?at WHERE { ?f a desk:Fact ; schema:text ?text ; desk:mode \"{mode}\" ; prov:generatedAtTime ?at . OPTIONAL { ?f desk:category ?category } } ORDER BY DESC(?at) LIMIT 100" },
     Question { id: "facts-recent", title: "What I learned recently", group: "Knowledge", params: &[Param::Days],
         body: "SELECT ?f ?text ?category ?at WHERE { ?f a desk:Fact ; schema:text ?text ; prov:generatedAtTime ?at . OPTIONAL { ?f desk:category ?category } FILTER(?at >= \"{since}\"^^xsd:dateTime) } ORDER BY DESC(?at) LIMIT 100" },
     Question { id: "facts-per-category", title: "How much I know in each area", group: "Knowledge", params: &[],
@@ -107,6 +111,7 @@ pub fn build(q: &Question, args: &HashMap<String, String>) -> Result<String> {
             Param::Category => "category",
             Param::Chat => "chat",
             Param::Skill => "skill",
+            Param::Mode => "mode",
         });
         let value = raw.map(|s| s.trim()).unwrap_or_default();
         match p {
@@ -123,6 +128,10 @@ pub fn build(q: &Question, args: &HashMap<String, String>) -> Result<String> {
                     return Err(invalid("chat"));
                 }
                 body = body.replace("{chat}", value);
+            }
+            Param::Mode => {
+                let m = crate::keepers::kit::roles::ROLES.iter().find(|r| r.id == value).ok_or_else(|| invalid("mode"))?;
+                body = body.replace("{mode}", m.id);
             }
             Param::Skill => {
                 if value.is_empty() || value.len() > 40 || !value.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase() || ":-".contains(c)) {
@@ -158,7 +167,7 @@ mod tests {
 
     #[test]
     fn every_question_is_bounded_typed_and_single_asset() {
-        let filled = args(&[("days", "7"), ("category", "preference"), ("chat", "0123456789abcdef"), ("skill", "agent:Bash")]);
+        let filled = args(&[("days", "7"), ("category", "preference"), ("chat", "0123456789abcdef"), ("skill", "agent:Bash"), ("mode", "researcher")]);
         let mut ids = std::collections::HashSet::new();
         for q in QUESTIONS {
             assert!(ids.insert(q.id), "{} is listed twice", q.id);

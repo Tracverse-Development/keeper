@@ -173,7 +173,7 @@ impl Memory {
             .filter(|r| !gone.contains(&get(r, "f")))
             .map(|r| {
                 let iri = get(r, "f");
-                Fact { id: iri.rsplit(':').next().unwrap_or_default().to_string(), text: get(r, "text"), category: get(r, "category"), at: get(r, "at") }
+                Fact { id: iri.rsplit(':').next().unwrap_or_default().to_string(), text: get(r, "text"), category: get(r, "category"), at: get(r, "at"), mode: get(r, "mode") }
             })
             .collect::<Vec<_>>();
         let trace = QueryTrace { rows: facts.len(), ..trace };
@@ -284,7 +284,8 @@ impl Memory {
     }
 
     /// Everything a brain needs for one turn: the relevant facts and the last few exchanges.
-    pub async fn recall(&self, said: &str, chat: &str) -> Result<Recall> {
+    /// `mode`: the mode this turn is in; work facts of other modes are left out (their desks).
+    pub async fn recall(&self, said: &str, chat: &str, mode: &str) -> Result<Recall> {
         let started = Instant::now();
         let snap = match hot::get(&self.graph) {
             Some(snap) => snap,
@@ -294,7 +295,7 @@ impl Memory {
                 snap
             }
         };
-        let mut facts = snap.facts;
+        let mut facts: Vec<Fact> = snap.facts.into_iter().filter(|f| f.belongs_in(mode)).collect();
         // Pinned facts always come along, as if they were identity.
         for f in facts.iter_mut().filter(|f| snap.pinned.contains(&f.id)) {
             f.category = "identity".into();
