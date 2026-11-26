@@ -24,7 +24,7 @@ interface Props {
   /** In the Studio: rarity frames and level locks on every item. */
   studio?: StudioInfo;
   /** In the Studio: the outfit to show on its big stage (this section then draws no preview). */
-  onPreview?: (wearables: KeeperProfile['wearables'], caption: string) => void;
+  onPreview?: (wearables: KeeperProfile['wearables'], caption: string, slot: string | null) => void;
 }
 
 const DEFAULTS: Record<string, Record<string, number | string>> = Object.fromEntries(
@@ -44,7 +44,7 @@ export function WardrobeSection({ open, keeper, onChanged, studio, onPreview }: 
   const caption = trying ? `Trying on the ${trying.name}` : `${keeper.name}, as dressed`;
   const previewKey = JSON.stringify(preview);
   useEffect(() => {
-    onPreview?.(preview, caption);
+    onPreview?.(preview, caption, trying ? trying.slot : null);
   }, [previewKey, caption]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

@@ -190,7 +190,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   return (
     <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage

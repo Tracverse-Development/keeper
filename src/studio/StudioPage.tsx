@@ -57,14 +57,13 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
   const [saveError, setSaveError] = useState<string | null>(null);
   // The Outfit tab's try-on, shown on the big stage.
   const [wardrobeKey, setWardrobeKey] = useState(0);
+  // Trying on a thinking or celebration effect plays that moment on the stage.
+  const [celebrateN, setCelebrateN] = useState(0);
   const market = useWardrobe(open && tab === 'market', () => {
     onSaved();
     reload();
   });
-  const [outfit, setOutfit] = useState<{
-    wearables: KeeperProfile['wearables'];
-    caption: string;
-  } | null>(null);
+  const [outfit, setOutfit] = useState<{ wearables: KeeperProfile['wearables']; caption: string; slot?: string | null } | null>(null);
 
   // A fresh draft whenever the Studio opens or the keeper changes.
   useEffect(() => {
@@ -80,6 +79,14 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
     () => JSON.stringify(look) !== JSON.stringify(keeper.look ?? {}) || JSON.stringify(habits) !== JSON.stringify(keeper.habits ?? {}) || JSON.stringify(voice) !== JSON.stringify(keeper.voice ?? null),
     [look, habits, voice, keeper],
   );
+
+  const moment = (tab === 'outfit' || tab === 'market') && outfit?.slot && (outfit.slot === 'thinking' || outfit.slot === 'celebrate') ? outfit.slot : null;
+  useEffect(() => {
+    if (moment !== 'celebrate') return;
+    setCelebrateN((n) => n + 1);
+    const again = window.setInterval(() => setCelebrateN((n) => n + 1), 2600);
+    return () => window.clearInterval(again);
+  }, [moment, outfit?.caption]);
 
   useEscape(open, onClose);
 
@@ -125,7 +132,11 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
             className="studio-character"
             skin={keeper.skin}
             wearables={(tab === 'outfit' || tab === 'market') && outfit ? outfit.wearables : keeper.wearables}
-            mood="idle"
+            look={look}
+            habits={habits}
+            focusZone={tab === 'look' ? zone : null}
+            mood={moment === 'thinking' ? 'thinking' : 'idle'}
+            emote={moment === 'celebrate' ? { name: 'celebrate', n: celebrateN } : undefined}
             voiceLevel={0}
             mouth={0}
             memoryPulse={0}
@@ -166,7 +177,7 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
                   reload();
                 }}
                 studio={info ?? undefined}
-                onPreview={(wearables, caption) => setOutfit({ wearables, caption })}
+                onPreview={(wearables, caption, slot) => setOutfit({ wearables, caption, slot })}
               />
             )}
             {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
