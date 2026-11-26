@@ -13,6 +13,8 @@ interface Props {
   onSettings: () => void;
   /** Open the Studio (make this keeper your own). */
   onStudio: () => void;
+  /** Shown first on the right (the focus timer while a session runs). */
+  extra?: React.ReactNode;
 }
 
 export function TopBar(p: Props) {
@@ -26,6 +28,7 @@ export function TopBar(p: Props) {
         </span>
       </div>
       <div className="topbar-right">
+        {p.extra}
         {p.alwaysListening && (
           <span className="pill">
             <span className="dot ok" /> {p.openMic ? 'Open mic: listening' : `Listening for “${p.assistantName}”`}

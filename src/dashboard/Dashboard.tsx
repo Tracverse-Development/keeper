@@ -34,6 +34,7 @@ import type { Touch } from '../kernel/ipc';
 import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
 import { usePinnedScenes } from './usePinnedScenes';
@@ -264,6 +265,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMemory={() => setMemoryOpen((o) => !o)}
         onSettings={() => setSettingsOpen(true)}
         onStudio={() => setStudioOpen(true)}
+        extra={<FocusChip refreshKey={assistant.exchanges.length} />}
       />
       <KeeperSidebar
         keepers={keepers.list?.keepers ?? []}
@@ -327,6 +329,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           },
           brief: () => void assistant.send('Brief me'),
           week: () => void assistant.send('Week in review'),
+          focus: () => void assistant.send('Start a focus session'),
           stop,
           openSettings: () => setSettingsOpen(true),
           openStudio: () => setStudioOpen(true),

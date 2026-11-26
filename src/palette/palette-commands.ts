@@ -15,6 +15,8 @@ export interface PaletteDeps {
   brief: () => void;
   /** The week in review, from memory. */
   week: () => void;
+  /** Start a focus session (25 minutes; reminders are held until it ends). */
+  focus: () => void;
   stop: () => void;
   openSettings: () => void;
   /** Optional so older callers and tests keep working. */
@@ -32,6 +34,7 @@ export function paletteCommands(d: PaletteDeps): Command[] {
     { id: 'new-chat', title: 'New chat', keywords: ['start', 'fresh', 'clear'], run: d.newChat },
     { id: 'brief', title: 'Brief me', keywords: ['morning', 'day', 'agenda', 'today'], hint: 'Your day: calendar, reminders, files', run: d.brief },
     { id: 'week', title: 'Week in review', keywords: ['weekly', 'review', 'summary', 'recap'], hint: 'What we talked about, what I learned and did', run: d.week },
+    { id: 'focus', title: 'Start a focus session', keywords: ['pomodoro', 'timer', 'concentrate', 'quiet'], hint: '25 minutes; reminders wait until it ends', run: d.focus },
   ];
   if (d.busy) out.unshift({ id: 'stop', title: 'Stop', keywords: ['cancel', 'halt', 'quiet'], hint: 'End the answer in progress', run: d.stop });
   for (const k of d.keepers) {

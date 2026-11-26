@@ -9,6 +9,7 @@ mod commands;
 mod dkg;
 mod fastlane;
 mod feelings;
+mod focus;
 mod hotkey;
 mod keepers;
 mod kernel;
@@ -128,6 +129,8 @@ pub fn run() {
             assistant::assistant_cancel,
             assistant::touch::keeper_touch,
             assistant::attach::attach_peek,
+            focus::focus_state,
+            focus::focus_stop,
             backup::backup_save,
             backup::backup_restore,
             setup::remove::setup_remove,

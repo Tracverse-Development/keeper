@@ -133,3 +133,11 @@ export interface TouchReply {
   /** Written by the helper model for this keeper and mood (false: composed with no model). */
   written: boolean;
 }
+
+/** A focus session (`focus::Session`): reminders are held until `endsAt`. */
+export interface FocusSession {
+  keeper: string;
+  minutes: number;
+  startedAt: string;
+  endsAt: string;
+}

@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
+import type { FeelingsInfo, FocusSession, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -101,6 +101,9 @@ export const core = {
   finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
   /** `mode`: the chat's mode (a role id; absent = the keeper's default). */
   turn: (text: string, keeper?: string, chat?: string, mode?: string, attach?: Handed) => invoke<TurnResult>('assistant_turn', { text, keeper, chat, mode, attach }),
+  /** The focus session running now (null: none), and ending it early. */
+  focusState: () => invoke<FocusSession | null>('focus_state'),
+  focusStop: () => invoke<FocusSession | null>('focus_stop'),
   /** Save every keeper, its memory and the kit as one sealed file in Downloads. */
   backupSave: (passphrase: string) => invoke<{ path: string; keepers: number; records: number }>('backup_save', { passphrase }),
   /** Bring a backup in (`data`: the file's bytes in base64): adds and merges, never removes. */

@@ -76,6 +76,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(brief::compose(app, memory, keeper).await);
     }
 
+    // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
+    if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
+        return Some(shown(reply, json!([])));
+    }
+
     static WEEK: OnceLock<Regex> = OnceLock::new();
     if re(&WEEK, week::ASKS).is_match(s) {
         return Some(week::compose(memory, keeper).await);

@@ -35,11 +35,29 @@ type OnDue = Arc<dyn Fn(Reminder) + Send + Sync>;
 pub struct Scheduler {
     on_due: OnDue,
     scheduled: Arc<Mutex<HashSet<String>>>,
+    /// Reminders that come due before this moment wait for it (a focus session is running).
+    held_until: Arc<Mutex<Option<DateTime<Utc>>>>,
+}
+
+/// How often a held reminder looks whether the hold was lifted early.
+const HOLD_CHECK: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// How long a reminder due now still has to wait under a hold (None: deliver it).
+fn held_for(held_until: Option<DateTime<Utc>>, now: DateTime<Utc>) -> Option<std::time::Duration> {
+    held_until.filter(|until| *until > now).map(|until| (until - now).to_std().unwrap_or_default().min(HOLD_CHECK))
 }
 
 impl Scheduler {
     pub fn new(on_due: impl Fn(Reminder) + Send + Sync + 'static) -> Scheduler {
-        Scheduler { on_due: Arc::new(on_due), scheduled: Arc::new(Mutex::new(HashSet::new())) }
+        Scheduler { on_due: Arc::new(on_due), scheduled: Arc::new(Mutex::new(HashSet::new())), held_until: Arc::new(Mutex::new(None)) }
+    }
+
+    /// Hold reminders until `until` (a focus session), or lift the hold with None: anything
+    /// that came due meanwhile is delivered within a few seconds. Never longer than asked.
+    pub fn hold(&self, until: Option<DateTime<Utc>>) {
+        if let Ok(mut held) = self.held_until.lock() {
+            *held = until;
+        }
     }
 
     /// Schedule once; scheduling the same reminder again (a reload) is a no-op.
@@ -49,9 +67,12 @@ impl Scheduler {
             return;
         }
         let wait = (due - time::now()).to_std().unwrap_or_default();
-        let on_due = self.on_due.clone();
+        let (on_due, held_until) = (self.on_due.clone(), self.held_until.clone());
         tauri::async_runtime::spawn(async move {
             tokio::time::sleep(wait).await;
+            while let Some(more) = held_for(held_until.lock().ok().and_then(|h| *h), time::now()) {
+                tokio::time::sleep(more).await;
+            }
             on_due(reminder);
         });
     }
@@ -61,6 +82,15 @@ impl Scheduler {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_hold_delays_a_due_reminder_only_until_it_ends() {
+        let now = Utc.with_ymd_and_hms(2026, 11, 25, 15, 0, 0).unwrap();
+        assert_eq!(held_for(None, now), None, "no hold: delivered");
+        assert_eq!(held_for(Some(now - Duration::seconds(1)), now), None, "a hold that ended: delivered");
+        assert_eq!(held_for(Some(now + Duration::minutes(20)), now), Some(HOLD_CHECK), "waits in short steps, so a hold lifted early is noticed");
+        assert_eq!(held_for(Some(now + Duration::seconds(2)), now), Some(std::time::Duration::from_secs(2)));
+    }
 
     #[test]
     fn relative_and_clock_times() {
