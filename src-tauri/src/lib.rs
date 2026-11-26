@@ -60,6 +60,8 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 state.refresh_souls().await;
+                // Idle engine spares past their age are ended, not left holding memory.
+                crate::brain::engines::warm::spawn_sweeper();
                 // Keep watching it: restart it if it stops, send what waited in the outbox.
                 let watched = app_handle.clone();
                 crate::dkg::own_node::watch(move || watched.state::<AppState>().settings().node_home);

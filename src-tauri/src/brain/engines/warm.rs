@@ -55,6 +55,28 @@ pub fn fill(key: String, program: PathBuf, cwd: PathBuf, args: Vec<String>) {
     }
 }
 
+/// Retire spares that are too old or have exited. A spare is started with `kill_on_drop`, so
+/// dropping it from the pool ends the process (an idle Claude Code holds ~265 MB; before this
+/// sweep, unused spares lived until Keeper quit: two were found an hour old, 2026-11-25).
+pub fn prune() -> usize {
+    let Ok(mut pool) = POOL.lock() else { return 0 };
+    let Some(map) = pool.as_mut() else { return 0 };
+    let before = map.len();
+    map.retain(|_, spare| alive(spare));
+    before - map.len()
+}
+
+/// Sweep the pool every minute for as long as Keeper runs.
+pub fn spawn_sweeper() {
+    tauri::async_runtime::spawn(async {
+        let mut tick = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            tick.tick().await;
+            prune();
+        }
+    });
+}
+
 /// How many spares are waiting (for the speed panel and tests).
 pub fn waiting() -> usize {
     let Ok(mut pool) = POOL.lock() else { return 0 };
@@ -63,6 +85,23 @@ pub fn waiting() -> usize {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn the_sweep_ends_spares_that_are_too_old_or_gone() {
+        use super::*;
+        let spawn = |secs: &str| tokio::process::Command::new("sleep").arg(secs).kill_on_drop(true).spawn().unwrap();
+        let old = Instant::now().checked_sub(MAX_AGE + Duration::from_secs(1)).unwrap();
+        {
+            let mut pool = POOL.lock().unwrap();
+            let map = pool.get_or_insert_with(HashMap::new);
+            map.insert("sweep-old".into(), Spare { child: spawn("30"), born: old });
+            map.insert("sweep-fresh".into(), Spare { child: spawn("30"), born: Instant::now() });
+        }
+        assert!(prune() >= 1, "the old spare is retired");
+        let pool = POOL.lock().unwrap();
+        let map = pool.as_ref().unwrap();
+        assert!(!map.contains_key("sweep-old") && map.contains_key("sweep-fresh"), "only the old one goes");
+    }
+
     #[test]
     fn the_key_follows_every_argument() {
         let (p, c) = (std::path::Path::new("/bin/claude"), std::path::Path::new("/tmp"));

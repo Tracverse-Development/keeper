@@ -113,11 +113,15 @@ async fn live_scenes_come_back_with_their_chat() {
 #[ignore]
 async fn live_deleting_a_chat_erases_its_turns() {
     let memory = live_memory().await;
-    let stamp = time::now_iso();
-    let chat = Chat::start(&format!("My doctor's notes {stamp}"), &stamp);
+    // A marker no other test writes (a timestamp alone collides with tests in the same second).
+    let mut bytes = [0u8; 8];
+    let _ = getrandom::getrandom(&mut bytes);
+    let stamp = format!("erase-{}", hex::encode(bytes));
+    let at = time::now_iso();
+    let chat = Chat::start(&format!("My doctor's notes {stamp}"), &at);
     assert!(!memory.write(&chat).await.queued);
     for said in ["My blood pressure is 140 over 90", "I take lisinopril"] {
-        assert!(!memory.write(&Turn::new(&format!("{said} {stamp}"), "Noted.", "reflex", &stamp, &chat.id)).await.queued);
+        assert!(!memory.write(&Turn::new(&format!("{said} {stamp}"), "Noted.", "reflex", &at, &chat.id)).await.queued);
     }
     assert_eq!(memory.chat_turns(&chat.id).await.unwrap().len(), 2, "both turns are on the graph");
 

@@ -106,3 +106,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** one erase path, `Memory::erase_fact`: discard the fact's asset (`desk-fact-<id>`, one asset per fact), update hot memory; write a retraction only when the node cannot discard (offline, still in the outbox). All three forget paths call it.
 - **Guard:** live test `live_remember_recall_forget` runs a raw query for the fact's text before (finds it) and after forgetting (finds nothing); `discard` refuses names that are not Keeper's own (`desk-…`).
 - **Evidence:** probe on the bench graph: an asset written (`wm-sealed`), queried (found), discarded (`{"discarded": true}`), queried (empty); memory live tests 10/10.
+
+### FIX-0014 — Unused engine spares lived until Keeper quit, ~265 MB each (2026-11-25)
+- **Area:** warm spares (`brain/engines/warm.rs`), app start (`lib.rs`)
+- **Symptom:** the founder's Keeper held two idle Claude Code spares 58 and 73 minutes old (265 MB and 268 MB resident) though spares are meant to retire after 20 minutes.
+- **Root cause:** a spare's age was only checked when a turn tried to TAKE it (or `fill` looked at its key); a spare nobody asked for again (another mode or model) was never looked at, so it never retired.
+- **Fix:** `warm::prune()` drops every spare that is too old or has exited (spares are `kill_on_drop`, so dropping ends the process); `warm::spawn_sweeper()` runs it every minute from app start.
+- **Guard:** unit test `the_sweep_ends_spares_that_are_too_old_or_gone` (an old spare retired, a fresh one kept).
+- **Evidence:** `ps` on the founder's Mac before the fix (PIDs 53019, 71594); cargo test --lib warm 2/2.
