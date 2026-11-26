@@ -23,7 +23,7 @@ STEPS = [
     ('Focus for 25 minutes', ('Focus session started: 25 minutes',), 'a focus session starts'),
     ('Stop the focus session', ('ended early',), 'and stops, releasing reminders'),
     ('What routines do I have?', ('no routines yet', 'routine'), 'routines are read from the keeper\'s own place'),
-    ('Save that as my smoke test', ('do this again: Stop the focus session',), 'a routine is written there, from the request just before'),
+    ('Save that as my smoke test routine', ('do this again: Stop the focus session',), 'a routine is written there, from the request just before'),
     ('What routines do I have?', ('smoke test',), 'and read back'),
     ('Forget my smoke test routine', ('forgotten the smoke test routine',), 'and erased'),
     ('What routines do I have?', ('no routines yet', 'routine'), 'the list still reads after erasing'),

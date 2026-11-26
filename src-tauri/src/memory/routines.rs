@@ -74,7 +74,8 @@ impl Memory {
     /// Save a routine under its name; one already kept under that name is replaced.
     pub async fn save_routine(&self, routine: &Routine) -> Result<()> {
         let _ = self.client().discard(self.place(), &routine.asset_name()).await;
-        self.client().write_asset(self.place(), &routine.asset_name(), &routine.quads()).await?;
+        // Through the outbox: if the node cannot take it right now it waits, never lost.
+        self.write(routine).await;
         Ok(())
     }
 

@@ -70,7 +70,7 @@ export const CAN_DO: readonly Group[] = [
     examples: [
       { title: "How's my computer?", hint: 'Processor, memory, disk and network, live.', say: "How's my computer?" },
       { title: 'What is going on with my network?', hint: 'Your connection right now, then a closer look.', say: 'What is going on with my network?' },
-      { title: 'What routines do I have?', hint: 'Things you asked me to do that you saved by name.', say: 'What routines do I have?' },
+      { title: 'What routines do I have?', hint: 'Things you asked me to do, saved by name ("save that as my Friday tidy routine").', say: 'What routines do I have?' },
     ],
   },
   {

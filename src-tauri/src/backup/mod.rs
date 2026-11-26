@@ -54,7 +54,7 @@ pub async fn backup_save(state: State<'_, AppState>, passphrase: String) -> Resu
     let mut keepers = Vec::new();
     for profile in state.settings().keepers {
         let memory = relocate::export(&client, &crate::keepers::place_of(&profile)).await?;
-        keepers.push(KeeperBundle { profile, memory });
+        keepers.push(KeeperBundle { profile, memory, from_graph: String::new() });
     }
     let kit = relocate::export(&client, &state.kit_place()).await?;
     let bundle = Bundle { format: bundle::FORMAT.into(), made_at: time::now_iso(), app: env!("CARGO_PKG_VERSION").into(), keepers, kit };
@@ -105,8 +105,8 @@ pub async fn backup_restore(state: State<'_, AppState>, passphrase: String, data
     state.refresh_souls().await;
 
     let mut names = Vec::new();
-    for KeeperBundle { profile, memory } in bundle.keepers {
-        let profile = placed(profile, &home, &state);
+    for KeeperBundle { profile, memory, from_graph } in bundle.keepers {
+        let profile = placed(profile, &from_graph, &bundle.made_at, &home, &state);
         let report = relocate::import(&client, &crate::keepers::place_of(&profile), &memory).await?;
         must_verify(&report, &profile.name)?;
         totals.copied += report.copied;
@@ -131,15 +131,44 @@ fn must_verify(report: &relocate::MoveReport, what: &str) -> Result<()> {
     }
 }
 
-/// Where a restored keeper lives on THIS computer: a keeper already here (the same id) keeps
-/// its own place and its own profile; a new one gets its sub-graph of this install's home
-/// graph, and a soul this computer does not have falls back to the default.
-fn placed(profile: KeeperProfile, home: &str, state: &AppState) -> KeeperProfile {
-    if let Some(existing) = state.settings().keeper(&profile.id).cloned() {
-        return existing;
-    }
+/// Where a restored keeper lives on THIS computer. The SAME keeper coming back (same id, and the
+/// backup was made from this computer's own home graph) keeps its place and profile, and its
+/// memory is merged back in. A keeper from another computer whose id is taken here (every
+/// install's first keeper is keeper-1) becomes a NEW keeper, under an id made from the backup and
+/// its old id, so it never merges into a different keeper and restoring the same file twice still
+/// lands in the same place (review finding). A soul this computer does not have becomes the default.
+fn placed(profile: KeeperProfile, from_graph: &str, made_at: &str, home: &str, state: &AppState) -> KeeperProfile {
+    let settings = state.settings();
+    let profile = match settings.keeper(&profile.id).cloned() {
+        Some(existing) if same_keeper(from_graph, home) => return existing,
+        Some(_) => {
+            let id = moved_id(&profile.id, made_at);
+            if let Some(already) = settings.keeper(&id).cloned() {
+                return already;
+            }
+            let name = if settings.keepers.iter().any(|k| k.name.eq_ignore_ascii_case(&profile.name)) { restored_name(&profile.name) } else { profile.name.clone() };
+            KeeperProfile { id, name, ..profile }
+        }
+        None => profile,
+    };
     let soul = if state.soul_known(&profile.soul).is_some() { profile.soul.clone() } else { KeeperProfile::default().soul };
     KeeperProfile { graph_id: home.to_string(), memory_sub: Some(relocate::keeper_sub(&profile.id)), legacy_graph: None, soul, ..profile }
+}
+
+/// The backup's keeper was kept in this computer's own home graph.
+fn same_keeper(from_graph: &str, home: &str) -> bool {
+    !from_graph.is_empty() && from_graph == home
+}
+
+/// The id a keeper from another computer gets here when its own id is taken.
+fn moved_id(id: &str, made_at: &str) -> String {
+    format!("keeper-{}", crate::kernel::slug::short_hash(&format!("{made_at}\u{0}{id}"), 10))
+}
+
+/// "Trini Boi" → "Trini Boi 2", kept to the 24 characters a keeper name may have.
+fn restored_name(name: &str) -> String {
+    let base: String = name.chars().take(22).collect();
+    format!("{} 2", base.trim())
 }
 
 #[cfg(test)]
@@ -166,7 +195,7 @@ mod live_tests {
         let memory = relocate::export(&client, &Place::from(src.as_str())).await.unwrap();
         assert_eq!(memory.len(), 3);
         let profile = KeeperProfile { id: "keeper-bk".into(), name: "Backup Test".into(), ..KeeperProfile::default() };
-        let saved = Bundle { format: bundle::FORMAT.into(), made_at: time::now_iso(), app: "test".into(), keepers: vec![KeeperBundle { profile, memory }], kit: vec![] };
+        let saved = Bundle { format: bundle::FORMAT.into(), made_at: time::now_iso(), app: "test".into(), keepers: vec![KeeperBundle { profile, memory, from_graph: String::new() }], kit: vec![] };
         let sealed = seal::seal("a passphrase for the test", &serde_json::to_vec(&saved).unwrap()).unwrap();
         let back = bundle::read(&seal::open("a passphrase for the test", &sealed).unwrap()).unwrap();
         let to = Place::new(&home, Some("keeper-bk"));
@@ -186,6 +215,19 @@ mod live_tests {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_keeper_from_another_computer_never_merges_into_this_ones() {
+        assert!(super::same_keeper("umoja-desk-abc", "umoja-desk-abc"));
+        assert!(!super::same_keeper("umoja-desk-other", "umoja-desk-abc"));
+        assert!(!super::same_keeper("", "umoja-desk-abc"), "unknown origin is never taken as the same keeper");
+        let a = super::moved_id("keeper-1", "2026-11-26T10:00:00Z");
+        assert_ne!(a, "keeper-1");
+        assert_eq!(a, super::moved_id("keeper-1", "2026-11-26T10:00:00Z"), "the same backup lands in the same place twice");
+        assert_eq!(crate::memory::relocate::keeper_sub(&a), a, "a valid sub-graph name");
+        assert_eq!(super::restored_name("Trini Boi"), "Trini Boi 2");
+        assert!(crate::keepers::valid_name(&super::restored_name(&"x".repeat(24))));
+    }
+
     #[test]
     fn a_backup_is_named_for_its_day() {
         let path = super::file_path("2026-11-26T10:00:00Z");

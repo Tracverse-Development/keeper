@@ -71,6 +71,10 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
                 // One home context graph with sub-graphs: move what is still in the old graphs.
+                // Writes still waiting from before go to their old place first, so the move takes them along.
+                if let Ok(client) = state.client() {
+                    crate::memory::outbox::flush(&client).await;
+                }
                 crate::memory::relocate::settle(&state).await;
                 state.refresh_souls().await;
                 // Each keeper's level as Keeper opens, so the first message that crosses a level celebrates.
@@ -105,10 +109,9 @@ pub fn run() {
                 // What came due while Keeper was closed is said once (and finished) before the
                 // reminders still ahead are scheduled.
                 let mut missed = Vec::new();
-                if let Some(closed_at) = skills::reminder_actions::last_alive() {
-                    for keeper in state.settings().keepers {
-                        missed.extend(skills::reminder_actions::settle_missed(&state, &keeper.id, closed_at).await);
-                    }
+                let closed_at = skills::reminder_actions::last_alive();
+                for keeper in state.settings().keepers {
+                    missed.extend(skills::reminder_actions::settle_missed(&state, &keeper.id, closed_at).await);
                 }
                 // From here on Keeper notes once a minute that it is running.
                 tauri::async_runtime::spawn(async {

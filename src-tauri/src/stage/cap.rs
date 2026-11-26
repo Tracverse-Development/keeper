@@ -36,6 +36,32 @@ fn web_source(s: &Source) -> Option<Source> {
     (ok && !s.title.trim().is_empty()).then(|| Source { title: clip(&s.title, 200), url: url.to_string(), note: clip_opt(&s.note, 300) })
 }
 
+/// Does a capped panel show anything? A table with no rows, steps with no step, a chart with no
+/// numbers or a text panel with no words is an empty card on the Stage: it is dropped.
+fn has_content(p: &Panel) -> bool {
+    let words = |s: &str| !s.trim().is_empty();
+    match p {
+        Panel::Text { body, bullets, .. } => words(body) || bullets.iter().any(|b| words(b)),
+        Panel::Table { rows, .. } => rows.iter().any(|r| r.iter().any(|c| c.as_str().is_some_and(words))),
+        Panel::Steps { steps, .. } => steps.iter().any(|s| words(&s.label)),
+        Panel::Formula { expression, .. } => words(expression),
+        Panel::Cards { cards, .. } => !cards.is_empty(),
+        Panel::Quiz { choices, .. } => choices.len() >= 2,
+        Panel::Chart { values, .. } => !values.is_empty(),
+        Panel::Files { items, .. } => !items.is_empty(),
+        Panel::Diagram { nodes, .. } => !nodes.is_empty(),
+        Panel::Timeline { events, .. } => !events.is_empty(),
+        Panel::Folder { entries, .. } => !entries.is_empty(),
+        Panel::Sliders { variables, .. } => !variables.is_empty(),
+        Panel::Flashcards { cards, .. } => !cards.is_empty(),
+        Panel::Agenda { items, .. } => !items.is_empty(),
+        Panel::Checklist { items, .. } => !items.is_empty(),
+        Panel::Form { fields, .. } => !fields.is_empty(),
+        Panel::Sources { items, .. } => !items.is_empty(),
+        Panel::Live { .. } | Panel::Media { .. } | Panel::Web { .. } | Panel::File { .. } | Panel::Approval { .. } | Panel::Facts { .. } => true,
+    }
+}
+
 impl Panel {
     /// The same panel with every field capped and its id set; None when it is unusable.
     pub(super) fn cap(self, index: usize) -> Option<Panel> {
@@ -179,7 +205,7 @@ impl Panel {
             // The plan to approve and the person's facts come only from the core, never an engine.
             Panel::Approval { .. } | Panel::Facts { .. } => return None,
         };
-        Some(p)
+        has_content(&p).then_some(p)
     }
 }
 
@@ -211,5 +237,22 @@ impl Panel {
         | Panel::Approval { id, .. }
         | Panel::Facts { id, .. }) = self;
         *id = new.to_string();
+    }
+}
+
+#[cfg(test)]
+mod empty_tests {
+    use super::*;
+
+    #[test]
+    fn a_panel_with_nothing_in_it_is_dropped() {
+        let table = Panel::Table { id: String::new(), title: "Devices".into(), caption: None, columns: vec!["Name".into()], rows: vec![], highlight: vec![] };
+        assert!(table.cap(0).is_none(), "a table with no rows");
+        let blank_rows = Panel::Table { id: String::new(), title: "Devices".into(), caption: None, columns: vec!["Name".into()], rows: vec![vec![serde_json::json!("")]], highlight: vec![] };
+        assert!(blank_rows.cap(0).is_none(), "rows with only empty cells");
+        assert!(Panel::Text { id: String::new(), title: "Note".into(), body: "  ".into(), bullets: vec![] }.cap(0).is_none());
+        assert!(Panel::Steps { id: String::new(), title: "How".into(), steps: vec![] }.cap(0).is_none());
+        assert!(Panel::Text { id: String::new(), title: "Note".into(), body: "Real words.".into(), bullets: vec![] }.cap(0).is_some());
+        assert!(Panel::Live { id: String::new(), title: "Live".into(), metrics: vec![] }.cap(0).is_some(), "a live panel fills itself");
     }
 }

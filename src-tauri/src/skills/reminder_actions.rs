@@ -79,10 +79,10 @@ pub fn was_missed(due: chrono::DateTime<chrono::Utc>, closed_at: chrono::DateTim
     due > closed_at && due <= now && now - due <= Duration::hours(MISSED_HOURS)
 }
 
-/// At start: this keeper's reminders that came due while Keeper was closed (since `closed_at`).
-/// Their words are returned to be said, and a repeating one comes round for its next time.
-/// Nothing is erased: past reminders stay in the graph as history.
-pub async fn settle_missed(state: &AppState, keeper_id: &str, closed_at: chrono::DateTime<chrono::Utc>) -> Vec<String> {
+/// At start: this keeper's past-due reminders. Those that came due while Keeper was closed
+/// (since `closed_at`, within a day) are returned to be said; every repeating one comes round for
+/// its next time. Nothing is erased: past reminders stay in the graph as history.
+pub async fn settle_missed(state: &AppState, keeper_id: &str, closed_at: Option<chrono::DateTime<chrono::Utc>>) -> Vec<String> {
     let Ok(keeper) = state.keeper_or_active(keeper_id) else { return vec![] };
     let Ok(memory) = state.memory_for(&keeper) else { return vec![] };
     let sparql = format!("{PREFIXES}SELECT ?r ?text ?due ?at ?repeat WHERE {{ ?r a desk:Reminder ; schema:text ?text ; desk:dueAt ?due ; prov:generatedAtTime ?at . OPTIONAL {{ ?r desk:repeat ?repeat }} }} ORDER BY DESC(?due) LIMIT 200");
@@ -92,12 +92,20 @@ pub async fn settle_missed(state: &AppState, keeper_id: &str, closed_at: chrono:
     let mut said = Vec::new();
     for r in &rows {
         let Some(due) = time::parse_iso(&cell(r, "due")) else { continue };
-        if !was_missed(due, closed_at, now) {
+        if due > now {
             continue;
         }
         let past = Reminder { id: cell(r, "r").rsplit(':').next().unwrap_or_default().to_string(), text: cell(r, "text"), due_at: cell(r, "due"), at: cell(r, "at"), repeat: cell(r, "repeat"), keeper: keeper.id.clone() };
-        said.push(past.text.clone());
-        come_round(state, &past).await;
+        // Said only when it came due while Keeper was closed, within the last day.
+        if closed_at.is_some_and(|c| was_missed(due, c, now)) {
+            said.push(past.text.clone());
+        }
+        // A repeating one always comes round, however long Keeper was closed (review finding:
+        // after more than a day closed it never fired again). Its next record has the same id
+        // whichever past occurrence it comes from, so writing it again changes nothing.
+        if !past.repeat.is_empty() {
+            come_round(state, &past).await;
+        }
     }
     said
 }

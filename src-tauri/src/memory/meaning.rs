@@ -73,41 +73,70 @@ pub fn concepts_of_category(category: &str) -> &'static [&'static str] {
     }
 }
 
-/// Single-valued things a person has ("your <thing> is …"): a new one replaces the old one.
-const ONE_OF: &[&str] = &[
-    "name", "full name", "first name", "last name", "surname", "nickname", "address", "home address", "home", "city", "town", "country", "job", "job title", "title", "occupation", "profession", "employer", "company", "workplace",
-    "boss", "manager", "wife", "husband", "spouse", "partner", "birthday", "age", "phone number", "phone", "mobile number", "number", "email", "email address", "time zone", "timezone", "doctor", "dentist", "landlord", "school",
-    "car", "blood type", "height", "weight", "shoe size", "anniversary",
-];
+/// Things a person has exactly one of, and that a newer statement truly replaces: what Keeper
+/// replaces BY ITSELF (`slot`). Kept narrow on purpose (review finding: a broad list erased
+/// "Your car is a blue Corolla" when told "Your car is in the shop").
+const ONLY_ONE: &[&str] = &["name", "full name", "first name", "last name", "surname", "address", "home address", "phone number", "mobile number", "cell number", "email", "email address", "birthday", "date of birth", "time zone", "timezone", "blood type"];
 
-/// The slot a fact fills, if it is a single-valued one: "you live in", "you work at",
-/// "your phone number", "your favourite colour". Two facts with the same slot are about the
-/// same thing; None means the fact can stand beside any other.
+/// Things a person USUALLY has one of: a newer one is only SUGGESTED as replacing an older one
+/// ("tidy my memory", `likely_slot`), never erased without the person saying so.
+const USUALLY_ONE: &[&str] = &["nickname", "home", "city", "town", "country", "job", "job title", "title", "occupation", "profession", "employer", "company", "workplace", "boss", "manager", "wife", "husband", "spouse", "partner", "age", "phone", "number", "doctor", "dentist", "landlord", "school", "car", "height", "weight", "shoe size", "anniversary"];
+
+/// The rest of a "your X is …" fact: the thing and its value.
+fn your_thing(t: &str) -> Option<(&str, &str)> {
+    let rest = t.strip_prefix("your ")?;
+    let (thing, value) = rest.split_once(" is ")?;
+    Some((thing.trim(), value.trim()))
+}
+
+/// The slot a fact fills when a newer fact in the same slot certainly REPLACES it, so Keeper
+/// may erase the older one by itself: "Your phone number is …", "Your favourite colour is …",
+/// or "You live in <Place>" naming a place (a capitalised name, a few words: "You live in fear"
+/// or "You live in a small flat" are not addresses). None: the fact stands beside any other.
 pub fn slot(text: &str) -> Option<String> {
+    let original = text.trim().trim_end_matches('.');
+    let t = original.to_lowercase();
+    for start in ["you live in ", "you live at "] {
+        if let Some(rest) = original.get(start.len()..).filter(|_| t.starts_with(start)) {
+            let place = rest.trim();
+            let named = place.chars().next().is_some_and(char::is_uppercase) && place.split_whitespace().count() <= 4;
+            return named.then(|| "you live in".to_string());
+        }
+    }
+    let (thing, value) = your_thing(&t)?;
+    if value.is_empty() {
+        return None;
+    }
+    if let Some(what) = thing.strip_prefix("favourite ").or_else(|| thing.strip_prefix("favorite ")) {
+        return (!what.is_empty() && what.split_whitespace().count() <= 3).then(|| format!("your favourite {what}"));
+    }
+    ONLY_ONE.contains(&thing).then(|| format!("your {thing}"))
+}
+
+/// A broader guess at the slot, for SUGGESTING what may be out of date (never for erasing): the
+/// certain slots, plus moving, work, and things people usually have one of.
+pub fn likely_slot(text: &str) -> Option<String> {
+    if let Some(s) = slot(text) {
+        return Some(s);
+    }
     let t = text.trim().to_lowercase();
-    for (start, name) in [("you live in ", "you live in"), ("you live at ", "you live in"), ("you live on ", "you live in"), ("you moved to ", "you live in"), ("you work at ", "you work at"), ("you work for ", "you work at"), ("you work as ", "you work as")] {
+    for (start, name) in [("you live in ", "you live in"), ("you live at ", "you live in"), ("you moved to ", "you live in"), ("you work at ", "you work at"), ("you work for ", "you work at"), ("you work as ", "you work as")] {
         if t.starts_with(start) {
             return Some(name.to_string());
         }
     }
-    let rest = t.strip_prefix("your ")?;
-    let (thing, _) = rest.split_once(" is ")?;
-    let thing = thing.trim();
-    if let Some(what) = thing.strip_prefix("favourite ").or_else(|| thing.strip_prefix("favorite ")) {
-        // One favourite per kind of thing.
-        return (!what.is_empty() && what.split_whitespace().count() <= 3).then(|| format!("your favourite {what}"));
-    }
-    ONE_OF.contains(&thing).then(|| format!("your {thing}"))
+    let (thing, _) = your_thing(&t)?;
+    USUALLY_ONE.contains(&thing).then(|| format!("your {thing}"))
 }
 
 /// The facts a newer fact has made out of date: for each slot holding more than one fact (in
 /// the same mode's memory), every one but the newest. `facts` are newest first, as memory
-/// returns them. For tidying memory kept before facts replaced each other.
+/// returns them. Only SUGGESTED to the person ("tidy my memory"), so it uses the broad guess.
 pub fn outdated(facts: &[super::records::Fact]) -> Vec<&super::records::Fact> {
     let mut newest: Vec<(String, &str)> = Vec::new();
     let mut out = Vec::new();
     for f in facts {
-        let Some(s) = slot(&f.text) else { continue };
+        let Some(s) = likely_slot(&f.text) else { continue };
         if newest.iter().any(|(seen, mode)| *seen == s && *mode == f.mode) {
             out.push(f);
         } else {
@@ -145,17 +174,28 @@ mod tests {
     }
 
     #[test]
-    fn only_single_valued_things_are_slots() {
+    fn only_certain_replacements_are_automatic() {
         assert_eq!(slot("You live in Port of Spain").as_deref(), Some("you live in"));
-        assert_eq!(slot("You moved to Boston").as_deref(), Some("you live in"), "moving says where you live now");
         assert_eq!(slot("Your phone number is 555-0100").as_deref(), Some("your phone number"));
         assert_eq!(slot("Your favourite colour is green").as_deref(), Some("your favourite colour"));
         assert_eq!(slot("Your favorite colour is blue"), slot("Your favourite colour is green"), "either spelling is one slot");
-        assert_eq!(slot("You work at Tracverse").as_deref(), Some("you work at"));
-        assert_eq!(slot("You work as a nurse").as_deref(), Some("you work as"));
-        assert_eq!(slot("You are a vegetarian"), None, "what a person is has no single slot");
-        assert_eq!(slot("Your friend is Sam"), None, "a person has many friends");
-        assert_eq!(slot("Your sister is Maya"), None, "and may have more than one sister");
+        // Review finding: these erased unrelated facts when the rule was broad.
+        assert_eq!(slot("You moved to the night shift"), None);
+        assert_eq!(slot("You work at home on Fridays"), None);
+        assert_eq!(slot("Your car is in the shop"), None);
+        assert_eq!(slot("Your doctor is on holiday"), None);
+        assert_eq!(slot("You live in fear of spiders"), None, "not a place");
+        assert_eq!(slot("You live in a small flat"), None);
+        assert_eq!(slot("Your friend is Sam"), None);
+        assert_eq!(slot("Your sister is Maya"), None);
         assert_eq!(slot("You like sorrel"), None);
+    }
+
+    #[test]
+    fn the_broad_guess_only_suggests() {
+        assert_eq!(likely_slot("You moved to Boston").as_deref(), Some("you live in"));
+        assert_eq!(likely_slot("You work at Tracverse").as_deref(), Some("you work at"));
+        assert_eq!(likely_slot("Your car is a blue Corolla").as_deref(), Some("your car"));
+        assert_eq!(likely_slot("Your sister is Maya"), None);
     }
 }

@@ -140,7 +140,13 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let think_ms = thinking.elapsed().as_millis();
 
     let mut forgotten = Vec::new();
-    if !thought.forget.is_empty() {
+    // A turn about material the person handed over (a file, a picture) only reads and answers:
+    // it forgets nothing and runs no skill, whatever the material asked for (review finding).
+    let reading = ctx.attached.is_some();
+    if reading && (!thought.forget.is_empty() || !thought.actions.is_empty()) {
+        eprintln!("[attach] ignored {} forget and {} actions on a turn about handed-over material", thought.forget.len(), thought.actions.len());
+    }
+    if !reading && !thought.forget.is_empty() {
         phase(app, "remembering", "Retracting from your graph");
         for what in &thought.forget {
             forgotten.extend(memory.forget(what).await.unwrap_or_default());
@@ -148,7 +154,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     }
 
     let mut outcomes = Vec::new();
-    if !thought.actions.is_empty() {
+    if !reading && !thought.actions.is_empty() {
         phase(app, "acting", "");
         let env = SkillEnv { app, memory, reminders: &state.reminders, keeper: &keeper.id };
         for request in thought.actions.iter().take(4) {

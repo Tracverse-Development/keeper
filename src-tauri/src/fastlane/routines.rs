@@ -1,5 +1,5 @@
 //! Routines by word (`memory::routines`): after the keeper did something, "save that as my
-//! Friday tidy" keeps the request under a name; "run my Friday tidy" gives the keeper that
+//! Friday tidy routine" keeps the request under a name; "run my Friday tidy" gives the keeper that
 //! request again (through the usual plan and approval); "what routines do I have" lists them;
 //! "forget my Friday tidy routine" erases one.
 //!
@@ -17,7 +17,10 @@ use crate::kernel::time;
 use crate::memory::routines::{clean_name, id_of, Routine, MOST};
 use crate::memory::Memory;
 
-const SAVE: &str = r"(?i)^(?:please\s+)?(?:save|keep|remember)\s+(?:that|this|it)\s+as\s+(?:a\s+routine\s+(?:called|named)\s+|(?:my|the|a)\s+)?(.{2,60}?)(?:\s+routine)?\s*[.!]?$";
+/// Saving needs the word "routine" ("save that as my Friday tidy routine", "save this as a
+/// routine called Friday tidy"): without it, "save that as a PDF" or "remember that as my
+/// password" would be taken (review finding).
+const SAVE: &str = r"(?i)^(?:please\s+)?(?:save|keep|remember)\s+(?:that|this|it)\s+as\s+(?:a\s+routine\s+(?:called|named)\s+(.{2,60}?)|(?:my|a|the)\s+(.{2,60}?)\s+routine)\s*[.!]?$";
 const RUN: &str = r"(?i)^(?:please\s+)?(?:run|do|start)\s+(?:my\s+|the\s+)?(.{2,60}?)(?:\s+routine)?\s*[.!]?$";
 const LIST: &str = r"(?i)^(?:please\s+)?(?:what routines do i have|(?:show|list)(?: me)? my routines|my routines)\s*[?.!]?$";
 const FORGET: &str = r"(?i)^(?:please\s+)?(?:forget|delete|remove)\s+(?:my\s+|the\s+)?(.{2,60}?)\s+routine\s*[.!]?$";
@@ -28,7 +31,7 @@ fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
 
 /// The routine name a phrase captures, cleaned (None: not usable as a name).
 fn named(pattern: &'static OnceLock<Regex>, source: &str, said: &str) -> Option<String> {
-    re(pattern, source).captures(said.trim()).and_then(|c| clean_name(&c[1]))
+    re(pattern, source).captures(said.trim()).and_then(|c| c.get(1).or_else(|| c.get(2))).and_then(|m| clean_name(m.as_str()))
 }
 
 fn words(reply: String) -> Thought {
@@ -54,7 +57,7 @@ pub async fn answer(memory: &Memory, said: &str) -> Option<Thought> {
     if re(&L, LIST).is_match(s) {
         let Ok(list) = memory.routines().await else { return Some(words("I couldn't read your routines just now.".into())) };
         if list.is_empty() {
-            return Some(words("You have no routines yet. After I do something for you, say: save that as my Friday tidy.".into()));
+            return Some(words("You have no routines yet. After I do something for you, say: save that as my Friday tidy routine.".into()));
         }
         let rows: Vec<_> = list.iter().map(|r| json!([r.name, r.request])).collect();
         return Some(Thought { reply: format!("You have {} routine{}. Say \"run my {}\" to use one.", list.len(), if list.len() == 1 { "" } else { "s" }, list[0].name), panels: json!([{ "kind": "table", "title": "Your routines", "columns": ["Name", "What it asks me to do"], "rows": rows }]), ..Thought::default() });
@@ -108,9 +111,12 @@ mod tests {
         static S: OnceLock<Regex> = OnceLock::new();
         static R: OnceLock<Regex> = OnceLock::new();
         static F: OnceLock<Regex> = OnceLock::new();
-        assert_eq!(named(&S, SAVE, "Save that as my Friday tidy").as_deref(), Some("Friday tidy"));
+        assert_eq!(named(&S, SAVE, "Save that as my Friday tidy routine").as_deref(), Some("Friday tidy"));
         assert_eq!(named(&S, SAVE, "save this as a routine called Morning Setup.").as_deref(), Some("Morning Setup"));
         assert_eq!(named(&S, SAVE, "remember that as my backup routine").as_deref(), Some("backup"));
+        assert_eq!(named(&S, SAVE, "save that as a PDF"), None, "an ordinary request goes to the mind");
+        assert_eq!(named(&S, SAVE, "remember that as my password"), None);
+        assert_eq!(named(&S, SAVE, "keep this as a draft"), None);
         assert_eq!(named(&R, RUN, "run my Friday tidy").as_deref(), Some("Friday tidy"));
         assert_eq!(named(&R, RUN, "do the backup routine").as_deref(), Some("backup"));
         assert_eq!(named(&F, FORGET, "forget my Friday tidy routine").as_deref(), Some("Friday tidy"));
@@ -121,7 +127,7 @@ mod tests {
     #[test]
     fn only_a_real_request_can_be_saved() {
         assert!(savable("Tidy my Downloads folder"));
-        assert!(!savable("save that as my Friday tidy"));
+        assert!(!savable("save that as my Friday tidy routine"));
         assert!(!savable("Approved. Go ahead."));
         assert!(!savable("what routines do I have"));
         assert!(!savable("  "));

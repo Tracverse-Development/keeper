@@ -2,7 +2,7 @@
  * One keeper's chats, read from its graph (`desk:Chat` assets, newest first). `refresh` after a
  * turn starts a new chat; `open` loads a chat's turns (oldest first) for the conversation view.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { core, sentence, type Chat, type Turn } from '../kernel/ipc';
 
@@ -10,15 +10,20 @@ export function useChats(keeper: string | null) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // The keeper on screen now: a list that arrives for one switched away from is dropped.
+  const current = useRef(keeper);
+  current.current = keeper;
+
   const refresh = useCallback(() => {
     if (!keeper) return;
     core
       .chats(keeper)
       .then((c) => {
+        if (current.current !== keeper) return;
         setChats(c);
         setError(null);
       })
-      .catch((e) => setError(sentence(e)));
+      .catch((e) => current.current === keeper && setError(sentence(e)));
   }, [keeper]);
 
   useEffect(() => {

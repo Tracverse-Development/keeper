@@ -127,14 +127,31 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
 
   useEscape(open, () => done());
 
+  /** The draft as it would be saved (also what a failed save is remembered by). */
+  const change = voice ? { look, habits, voice } : { look, habits, appVoice: true as const };
+  const draftKey = JSON.stringify(change);
+  // A draft whose save failed is not tried again by itself (only by Try again or a new change),
+  // so a failing save never repeats every moment (review finding).
+  const failedDraft = useRef('');
+
   const save = async () => {
     setSaving(true);
     setSaveError(null);
     try {
-      await core.updateKeeper(keeper.id, voice ? { look, habits, voice } : { look, habits, appVoice: true });
+      const saved = await core.updateKeeper(keeper.id, change);
+      // The core keeps colours in its own form (sorted, lower case, in range): the draft takes
+      // what was kept, so it matches and is not saved again and again (review finding).
+      const kept = saved.list.keepers.find((k) => k.id === keeper.id);
+      if (kept) {
+        setLook(kept.look ?? {});
+        setHabits(kept.habits ?? {});
+        setVoice(kept.voice ?? null);
+      }
+      failedDraft.current = '';
       onSaved();
       reload();
     } catch (e) {
+      failedDraft.current = draftKey;
       setSaveError(sentence(e));
     } finally {
       setSaving(false);
@@ -144,14 +161,16 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
   // Everything in the Studio is kept as it is changed: a look, a habit or a voice is saved a
   // moment after the last change, like an outfit or a soul already was. No Save button to forget.
   useEffect(() => {
-    if (!open || !dirty || saving) return;
+    if (!open || !dirty || saving || failedDraft.current === draftKey) return;
     const timer = window.setTimeout(() => void save(), AUTOSAVE_MS);
     return () => window.clearTimeout(timer);
   }, [open, dirty, saving, look, habits, voice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Leaving keeps whatever was just changed. */
+  /** Leaving keeps whatever was just changed, even mid-save: the latest draft is sent once more
+   * (saving the same values twice changes nothing; review finding: a change made while a save
+   * was running was lost). */
   const done = () => {
-    if (dirty && !saving) void save();
+    if (dirty) void core.updateKeeper(keeper.id, change).then(onSaved).catch(() => undefined);
     onClose();
   };
 
@@ -171,7 +190,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
           {saveError ? (
             <>
               <span className="error-line small">{saveError}</span>
-              <button type="button" className="btn btn-small" onClick={() => void save()}>
+              <button type="button" className="btn btn-small" onClick={() => { failedDraft.current = ''; void save(); }}>
                 Try again
               </button>
             </>

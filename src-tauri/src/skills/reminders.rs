@@ -114,10 +114,9 @@ impl Scheduler {
         if !self.scheduled.lock().map(|mut s| s.insert(reminder.id.clone())).unwrap_or(false) {
             return;
         }
-        let wait = (due - time::now()).to_std().unwrap_or_default();
         let (on_due, held_until, cancelled, last) = (self.on_due.clone(), self.held_until.clone(), self.cancelled.clone(), self.last.clone());
         tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(wait).await;
+            time::sleep_until(due).await;
             while let Some(more) = held_for(held_until.lock().ok().and_then(|h| *h), time::now()) {
                 tokio::time::sleep(more).await;
             }

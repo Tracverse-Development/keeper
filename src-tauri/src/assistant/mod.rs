@@ -120,11 +120,19 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
     run_turn_with(app, state, keeper_id, chat, text, mode, None).await
 }
 
-/// The mode a chat runs in: its own, or on a child profile (when its own has tools) the Tutor.
+/// The mode a chat runs in. On a child profile: always the BUILT-IN Tutor (with no tools, never an
+/// edited copy that someone gave the web or a skill: review finding), unless the chat's mode is a
+/// built-in one with no tools at all.
 pub(crate) fn child_mode(mode: &str, child: bool) -> String {
-    let has_tools = crate::keepers::kit::roles::get(mode).tools != crate::keepers::kit::roles::Tools::None;
-    if child && has_tools { "tutor".to_string() } else { mode.to_string() }
+    if !child {
+        return mode.to_string();
+    }
+    let builtin_no_tools = crate::keepers::kit::roles::builtins().into_iter().any(|r| r.id == mode && r.tools == crate::keepers::kit::roles::Tools::None && r.skills.iter().all(|s| SAFE_FOR_A_CHILD.contains(&s.as_str())));
+    if builtin_no_tools { mode.to_string() } else { "tutor".to_string() }
 }
+
+/// The skills a child may have a keeper use (nothing that opens apps or pages).
+const SAFE_FOR_A_CHILD: [&str; 2] = ["remind", "ask-memory"];
 
 /// `run_turn` with material the person handed over (`attach`).
 async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str, attached: Option<attach::Attached>) -> Result<TurnResult> {
@@ -202,7 +210,8 @@ mod child_tests {
             assert_eq!(super::child_mode(mode, true), "tutor", "{mode} has tools");
             assert_eq!(super::child_mode(mode, false), mode);
         }
-        assert_eq!(super::child_mode("companion", true), "companion");
+        // The Companion can read contacts and add calendar events: not for a child.
+        assert_eq!(super::child_mode("companion", true), "tutor");
         assert_eq!(super::child_mode("tutor", true), "tutor");
     }
 }

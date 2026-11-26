@@ -34,5 +34,5 @@
 - [ ] **DESK-MEANING-EN-001** — Recall by meaning uses English concept lists (`memory::meaning`); in other languages only shared words and the mind's topic words match. (2026-11-26, Low)
 - [ ] **DESK-PACK-SIGN-001** — A pack's maker is a label on the file, not a proof: packs are not signed. (2026-11-26, Low)
 - [ ] **DESK-CHILD-001** — The child profile is on while its lock exists in Keeper's private store; a person with access to this computer's account can delete that file. It guards a child using Keeper, not a determined user of the Mac. (2026-11-26, Low)
-- [ ] **DESK-RESTORE-PROOF-001** — Bringing a backup in on a SECOND Mac has not been done; the round trip is proven on one node between scratch graphs. (2026-11-26, Medium)
+- [x] **DESK-RESTORE-PROOF-001** — Bringing a backup in on a SECOND Mac has not been done; the round trip is proven on one node between scratch graphs. Not to be pursued: the founder declined a second-Mac restore test and automatic backups on 2026-11-26. (2026-11-26, recorded limit)
 - [ ] **DESK-A11Y-001** — Text size and keyboard focus rings are done; a full screen-reader pass (VoiceOver through every screen) has not been made. (2026-11-26, Low)

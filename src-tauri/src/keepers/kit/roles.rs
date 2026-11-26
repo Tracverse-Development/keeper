@@ -155,6 +155,11 @@ static PERSONAL: RwLock<Vec<Role>> = RwLock::new(Vec::new());
 /// Every mode in effect: the built-ins (an edited one replaced by the person's version), then the
 /// person's own modes.
 pub fn all() -> Vec<Role> {
+    // On a child profile only the modes Keeper ships exist: an edited or added mode (which could
+    // carry the web or a skill) is not used (review finding).
+    if crate::kernel::child_lock::on() {
+        return builtins();
+    }
     let personal = PERSONAL.read().map(|p| p.clone()).unwrap_or_default();
     let mut out: Vec<Role> = builtins().into_iter().map(|b| personal.iter().find(|p| p.id == b.id).cloned().unwrap_or(b)).collect();
     out.extend(personal.into_iter().filter(|p| !BUILTIN.iter().any(|b| b.id == p.id)));

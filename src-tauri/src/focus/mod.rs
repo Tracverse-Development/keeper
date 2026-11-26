@@ -68,7 +68,7 @@ pub fn start(app: &AppHandle, keeper: &str, minutes: u32) -> Result<Session> {
     app.state::<AppState>().reminders.hold(Some(ends));
     let (app, ours) = (app.clone(), session.clone());
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep((ends - time::now()).to_std().unwrap_or_default()).await;
+        time::sleep_until(ends).await;
         complete(&app, &ours).await;
     });
     Ok(session)

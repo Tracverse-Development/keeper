@@ -308,8 +308,11 @@ pub fn child_profile() -> bool {
 
 /// Turn the child profile on (setting its passcode) or off (with that passcode).
 #[tauri::command]
-pub fn child_profile_set(on: bool, passcode: String) -> Result<bool> {
+pub fn child_profile_set(state: State<'_, AppState>, on: bool, passcode: String) -> Result<bool> {
     crate::kernel::child_lock::set(on, &passcode)?;
-    // The mood pools and any prepared lines were written for the other profile.
+    // A phone link left running would reach the keeper without the grown-up (review finding).
+    if crate::kernel::child_lock::on() {
+        state.phone.stop();
+    }
     Ok(crate::kernel::child_lock::on())
 }

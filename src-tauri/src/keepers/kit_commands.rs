@@ -36,6 +36,9 @@ pub async fn kit_catalog(state: State<'_, AppState>) -> Result<Catalog> {
 /// Save (create or update) one of the person's own souls in their kit graph.
 #[tauri::command]
 pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result<souls::Soul> {
+    if crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("Souls can't be changed on a child profile.".into()));
+    }
     let clean = souls::sanitize(&soul).map_err(DeskError::Invalid)?;
     let client = state.client()?;
     inventory::save_soul(&client, &inventory::kit(&client, &state.kit_place()).await?, &clean).await?;
@@ -47,6 +50,9 @@ pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result
 /// list, known skills, http(s) links). The keeper uses it from the next message.
 #[tauri::command]
 pub async fn modes_save(state: State<'_, AppState>, mode: roles::Role) -> Result<Vec<roles::Role>> {
+    if crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("Modes can't be changed on a child profile.".into()));
+    }
     let clean = roles::sanitize(&mode, &crate::skills::names()).map_err(DeskError::Invalid)?;
     let client = state.client()?;
     inventory::save_mode(&client, &inventory::kit(&client, &state.kit_place()).await?, &clean, false).await?;

@@ -97,7 +97,7 @@ mod stale_tests {
     #[test]
     fn a_new_address_replaces_the_old_one_and_nothing_else() {
         let facts = vec![fact("You live in Port of Spain"), fact("Your sister is Maya"), fact("Your favourite colour is green"), fact("Your phone number is 555-0100")];
-        let moved = fact("You moved to Boston");
+        let moved = fact("You live in Boston");
         let slot = super::super::meaning::slot(&moved.text).unwrap();
         assert_eq!(stale_in(&facts, &moved, &slot).iter().map(|f| f.text.as_str()).collect::<Vec<_>>(), vec!["You live in Port of Spain"]);
         let colour = fact("Your favorite colour is blue");
@@ -130,7 +130,7 @@ mod live_tests {
         for text in ["You live in Port of Spain", "Your parents live in Arima", "Your sister is Maya"] {
             memory.write(&Fact::new(text, "general", at)).await;
         }
-        let moved = Fact::new("You moved to Boston", "place", "2026-11-26T10:00:00Z").about(&["home".into(), "city".into(), "address".into()]);
+        let moved = Fact::new("You live in Boston", "place", "2026-11-26T10:00:00Z").about(&["home".into(), "city".into(), "address".into()]);
         let replaced = memory.replace_stale(&moved).await;
         assert_eq!(replaced.iter().map(|f| f.text.as_str()).collect::<Vec<_>>(), vec!["You live in Port of Spain"]);
         memory.write(&moved).await;
@@ -138,9 +138,9 @@ mod live_tests {
         let (facts, _) = memory.facts().await.unwrap();
         let texts: Vec<&str> = facts.iter().map(|f| f.text.as_str()).collect();
         println!("{texts:?}");
-        assert!(texts.contains(&"You moved to Boston") && !texts.contains(&"You live in Port of Spain"), "the old address is gone from the node");
+        assert!(texts.contains(&"You live in Boston") && !texts.contains(&"You live in Port of Spain"), "the old address is gone from the node");
         assert!(texts.contains(&"Your parents live in Arima") && texts.contains(&"Your sister is Maya"), "nothing else was touched");
-        assert_eq!(facts.iter().find(|f| f.text == "You moved to Boston").unwrap().topics, vec!["home", "city", "address"], "topic words come back from the node");
+        assert_eq!(facts.iter().find(|f| f.text == "You live in Boston").unwrap().topics, vec!["home", "city", "address"], "topic words come back from the node");
         let gone = memory.forget("Your parents live in Arima").await.unwrap();
         assert_eq!(gone.len(), 1, "named by its own words: that fact alone");
         assert!(crate::memory::rank::relevant(&facts, "where is home these days?", 1)[0].text.contains("Boston"), "found by meaning");

@@ -92,7 +92,9 @@ fn copied(text: String) -> Result<String> {
 /// Ask the keeper's mind for the result. A Claude keeper uses the quick helper model; any other
 /// engine is asked through the ordinary contract (its reply is the result).
 async fn transform(helper: &str, keeper: &KeeperProfile, task: &Task, text: &str) -> Result<String> {
-    let question = format!("{}\n\nThe copied text:\n=====\n{}\n=====", task.instruction(), text.replace("=====", "===="));
+    // The person's text inside a fence it cannot close; on a child profile, the child rules too.
+    let child = if crate::kernel::child_lock::on() { format!("\n\n{}", crate::kernel::child_lock::RULES) } else { String::new() };
+    let question = format!("{}{child}\n\nThe copied text:\n{}", task.instruction(), crate::assistant::attach::fenced(text));
     if keeper.brain == "claude" {
         let answer = crate::brain::engines::claude::ask_json(SYSTEM, &question, if helper.is_empty() { "haiku" } else { helper }).await?;
         return answer["text"].as_str().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).ok_or_else(|| DeskError::Brain("I couldn't work on that text.".into()));
@@ -103,6 +105,12 @@ async fn transform(helper: &str, keeper: &KeeperProfile, task: &Task, text: &str
         return Err(DeskError::Brain("My mind isn't available for that right now.".into()));
     }
     Ok(thought.reply.trim().to_string())
+}
+
+/// Is this a request to work on the clipboard (whatever the task)?
+pub fn asks_for_clipboard(said: &str) -> bool {
+    static ASK: OnceLock<Regex> = OnceLock::new();
+    ASK.get_or_init(|| Regex::new(ASKS).expect("pattern")).is_match(said.trim())
 }
 
 /// The instant answer to a request about what was copied, or None when the words are about

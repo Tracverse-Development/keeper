@@ -23,19 +23,36 @@ safety, money, or anything that worries them, answer gently and tell them to tal
 /// The name the lock is kept under in the private store (`kernel::secrets`).
 const KEPT_AS: &str = "child-lock";
 
-/// Is the child profile on? It is on exactly while a lock is kept: there is no separate switch
-/// to flip in a settings file.
+/// A second copy of the lock, in its own file, so removing one file does not turn the profile
+/// off: it is on while EITHER copy exists (review finding: one deleted entry turned it off).
+fn second_copy() -> std::path::PathBuf {
+    super::paths::app_home().join("child.lock")
+}
+
+fn kept() -> Option<String> {
+    super::secrets::get(KEPT_AS).filter(|l| !l.is_empty()).or_else(|| std::fs::read_to_string(second_copy()).ok().map(|s| s.trim().to_string()).filter(|l| !l.is_empty()))
+}
+
+/// Is the child profile on? It is on while its lock is kept in either place: there is no
+/// separate switch to flip in a settings file.
 pub fn on() -> bool {
-    super::secrets::get(KEPT_AS).is_some_and(|l| !l.is_empty())
+    kept().is_some()
 }
 
 /// Turn the child profile on with a new passcode, or off with the passcode that set it.
 pub fn set(turn_on: bool, passcode: &str) -> Result<()> {
-    match (turn_on, super::secrets::get(KEPT_AS).filter(|l| !l.is_empty())) {
+    match (turn_on, kept()) {
         (true, Some(_)) => Err(DeskError::Invalid("The child profile is already on.".into())),
-        (true, None) => super::secrets::set(KEPT_AS, &lock(passcode)?),
+        (true, None) => {
+            let lock = lock(passcode)?;
+            super::paths::write_private(&second_copy(), lock.as_bytes())?;
+            super::secrets::set(KEPT_AS, &lock)
+        }
         (false, None) => Ok(()),
-        (false, Some(kept)) if opens(&kept, passcode) => super::secrets::set(KEPT_AS, ""),
+        (false, Some(kept)) if opens(&kept, passcode) => {
+            let _ = std::fs::remove_file(second_copy());
+            super::secrets::set(KEPT_AS, "")
+        }
         (false, Some(_)) => Err(DeskError::Invalid("That isn't the passcode.".into())),
     }
 }

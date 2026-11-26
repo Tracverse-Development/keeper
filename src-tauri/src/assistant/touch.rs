@@ -130,7 +130,9 @@ pub fn prepare(state: &AppState, keeper: &KeeperProfile) {
 }
 
 fn pool_key(keeper: &str, soul: &Soul, mood: Option<&str>) -> String {
-    format!("{keeper}|{}|{}", short_hash(&souls::brief(soul), 12), mood.unwrap_or("-"))
+    // Lines written for an adult are never spoken on a child profile, and the other way round.
+    let profile = if crate::kernel::child_lock::on() { "child" } else { "adult" };
+    format!("{keeper}|{}|{}|{profile}", short_hash(&souls::brief(soul), 12), mood.unwrap_or("-"))
 }
 
 /// Write this keeper's next lines in the background with the helper model (only for a keeper
@@ -138,6 +140,11 @@ fn pool_key(keeper: &str, soul: &Soul, mood: Option<&str>) -> String {
 fn refill(state: &AppState, keeper: &KeeperProfile, soul: &Soul, key: String, felt: Option<&crate::feelings::engine::FeelingsView>) {
     // One refill of a pool at a time, and no more than one try every few minutes (a helper
     // model that is signed out must not be asked again on every touch).
+    // No helper model to ask (another mind, or this month's limit reached): nothing to start, and
+    // nothing marked as being written (review finding: the mark stayed and blocked every refill).
+    if keeper.brain != "claude" || crate::kernel::usage::over(state.settings().monthly_cap_usd) {
+        return;
+    }
     let may_start = with(|t| {
         if t.tried.get(&key).is_some_and(|at| at.elapsed().as_secs() < RETRY_SECONDS) || !t.filling.insert(key.clone()) {
             return false;
@@ -146,7 +153,7 @@ fn refill(state: &AppState, keeper: &KeeperProfile, soul: &Soul, key: String, fe
         true
     });
     // Nor when this month's spending limit is reached (the composed lines cost nothing).
-    if keeper.brain != "claude" || crate::kernel::usage::over(state.settings().monthly_cap_usd) || may_start != Some(true) {
+    if may_start != Some(true) {
         return;
     }
     let helper = state.settings().fast_model;

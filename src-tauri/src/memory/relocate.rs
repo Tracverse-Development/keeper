@@ -44,12 +44,17 @@ fn data_prefix(place: &Place) -> String {
 
 /// Live Working Memory assets at a place: (name, data graph).
 async fn assets(client: &DkgClient, place: &Place) -> Result<Vec<(String, String)>> {
+    let prefix = data_prefix(place);
+    // Only this place's assets are listed (the meta graph lists every sub-graph's), and a list
+    // that reaches the limit is refused rather than read as complete (review finding).
     let sparql = format!(
-        "SELECT ?name ?ag WHERE {{ GRAPH <{meta}> {{ ?a <{DKG}assertionName> ?name ; <{DKG}assertionGraph> ?ag ; <{DKG}memoryLayer> \"WM\" . }} }} LIMIT {MAX_ASSETS}",
+        "SELECT ?name ?ag WHERE {{ GRAPH <{meta}> {{ ?a <{DKG}assertionName> ?name ; <{DKG}assertionGraph> ?ag ; <{DKG}memoryLayer> \"WM\" . FILTER(STRSTARTS(STR(?ag), \"{prefix}\")) }} }} LIMIT {MAX_ASSETS}",
         meta = meta_graph(place)
     );
     let rows = client.query_terms(Place::from(place.graph.as_str()), &sparql, None).await?;
-    let prefix = data_prefix(place);
+    if rows.len() >= MAX_ASSETS {
+        return Err(crate::kernel::DeskError::Io(format!("This memory holds more than {MAX_ASSETS} records, more than Keeper can move or back up in one go.")));
+    }
     Ok(rows.into_iter().filter_map(|r| Some((unquote(r.get("name")?), r.get("ag")?.clone()))).filter(|(n, g)| !n.is_empty() && g.starts_with(&prefix)).collect())
 }
 

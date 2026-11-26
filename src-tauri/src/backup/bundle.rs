@@ -32,6 +32,10 @@ pub struct Bundle {
 pub struct KeeperBundle {
     pub profile: KeeperProfile,
     pub memory: Vec<Asset>,
+    /// The home graph the keeper lived in on the computer that made the backup (read before the
+    /// profile is cleaned): the same as this computer's means it is the SAME keeper coming back.
+    #[serde(skip)]
+    pub from_graph: String,
 }
 
 impl Bundle {
@@ -102,7 +106,7 @@ pub fn read(bytes: &[u8]) -> Result<Bundle> {
         if keepers.iter().any(|x: &KeeperBundle| x.profile.id == profile.id) {
             return Err(bad("it names the same keeper twice"));
         }
-        keepers.push(KeeperBundle { profile, memory: k.memory.clone() });
+        keepers.push(KeeperBundle { profile, memory: k.memory.clone(), from_graph: k.profile.graph_id.clone() });
     }
     Ok(Bundle { keepers, ..bundle })
 }
@@ -117,7 +121,7 @@ mod tests {
     }
 
     fn bundle(profile: KeeperProfile) -> Bundle {
-        Bundle { format: FORMAT.into(), made_at: "2026-11-26T00:00:00Z".into(), app: "0.9.1".into(), keepers: vec![KeeperBundle { profile, memory: vec![asset("desk-fact-1")] }], kit: vec![asset("kit-soul-1")] }
+        Bundle { format: FORMAT.into(), made_at: "2026-11-26T00:00:00Z".into(), app: "0.9.1".into(), keepers: vec![KeeperBundle { profile, memory: vec![asset("desk-fact-1")], from_graph: String::new() }], kit: vec![asset("kit-soul-1")] }
     }
 
     fn keeper(id: &str) -> KeeperProfile {
