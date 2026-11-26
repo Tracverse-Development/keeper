@@ -55,6 +55,12 @@ pub struct KeeperBlueprint {
     pub soul: Soul,
     #[serde(default)]
     pub wearables: Vec<WornPart>,
+    /// Colour and material per paint zone (validated against the species on import).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub look: std::collections::BTreeMap<String, super::look::ZoneLook>,
+    /// Idle habits (validated against the species on import).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub habits: std::collections::BTreeMap<String, f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -96,7 +102,8 @@ pub fn read(text: &str) -> Result<Pack, String> {
                 return Err("The keeper in this pack has an unusable name.".into());
             }
             let soul = if keeper.soul.builtin && souls::builtin().iter().any(|b| b.id == keeper.soul.id) { keeper.soul } else { souls::sanitize(&keeper.soul)? };
-            Ok(Pack::Keeper { format, keeper: KeeperBlueprint { name, wearables: data_only(&parts::check_outfit(&keeper.wearables, &keeper.species)?), species: keeper.species, role: keeper.role, soul } })
+            let (look, habits) = (super::look::check_look(&keeper.look, &keeper.species), super::look::check_habits(&keeper.habits, &keeper.species));
+            Ok(Pack::Keeper { format, keeper: KeeperBlueprint { name, wearables: data_only(&parts::check_outfit(&keeper.wearables, &keeper.species)?), species: keeper.species, role: keeper.role, soul, look, habits } })
         }
     }
 }
@@ -118,6 +125,22 @@ mod tests {
         let Pack::Keeper { keeper, .. } = read(&text).unwrap() else { panic!() };
         assert_eq!((keeper.name.as_str(), keeper.species.as_str(), keeper.wearables[0].part.as_str()), ("Halo Dog", "puppy", "memory-halo"));
         assert!(read(&write(&Pack::Keeper { format: FORMAT.into(), keeper })).is_ok());
+    }
+
+    #[test]
+    fn a_keeper_pack_carries_its_look_and_habits_checked_for_its_body() {
+        let text = json!({"kind": "keeper", "format": FORMAT, "keeper": {"name": "Red Ears", "species": "puppy", "role": "companion",
+            "soul": {"id": "sunny-pup", "name": "Sunny Pup", "builtin": true},
+            "look": {"ears": {"color": "#e2425f", "material": "fur"}, "antenna": {"color": "#ffffff"}},
+            "habits": {"chase-tail": 3, "hum": 2, "sleep": 99}}}).to_string();
+        let Pack::Keeper { keeper, .. } = read(&text).unwrap() else { panic!() };
+        assert_eq!(keeper.look.len(), 1, "a dog has no antenna");
+        assert_eq!(keeper.look["ears"].color.as_deref(), Some("#e2425f"));
+        assert_eq!(keeper.habits.get("chase-tail"), Some(&3.0));
+        assert_eq!(keeper.habits.get("sleep"), Some(&3.0), "clamped");
+        assert!(!keeper.habits.contains_key("hum"), "humming is the robot's");
+        let again = read(&write(&Pack::Keeper { format: FORMAT.into(), keeper: keeper.clone() })).unwrap();
+        assert_eq!(again, Pack::Keeper { format: FORMAT.into(), keeper });
     }
 
     #[test]

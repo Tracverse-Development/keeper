@@ -56,7 +56,7 @@ pub fn pack_export(state: State<'_, AppState>, kind: String, id: String) -> Resu
     let (pack, name) = match kind.as_str() {
         "keeper" => {
             let k = state.settings().keeper(&id).cloned().ok_or_else(|| DeskError::Invalid("There is no such keeper.".into()))?;
-            let bp = KeeperBlueprint { name: k.name.clone(), species: k.skin.clone(), role: k.role.clone(), soul: state.soul(&k.soul), wearables: packs::data_only(&k.wearables) };
+            let bp = KeeperBlueprint { name: k.name.clone(), species: k.skin.clone(), role: k.role.clone(), soul: state.soul(&k.soul), wearables: packs::data_only(&k.wearables), look: k.look.clone(), habits: k.habits.clone() };
             (Pack::Keeper { format: packs::FORMAT.into(), keeper: bp }, k.name)
         }
         "soul" => {
@@ -114,7 +114,10 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
                 wearables: bp.wearables.clone(),
                 graph_id: super::graph_id_for(&seed, false),
                 brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-                model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None
+                model: settings.active().map(|k| k.model.clone()).unwrap_or_default(),
+                look: bp.look.clone(),
+                habits: bp.habits.clone(),
+                voice: None,
             };
             super::write_profile(&client, &profile, &bp.soul).await?;
             let id = profile.id.clone();
