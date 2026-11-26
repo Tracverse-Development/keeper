@@ -15,6 +15,7 @@
  * Pattern: Mediator between the pure state (machine, idle life, timelines) and the scene
  * (effect layer, the worn skin's anchors).
  */
+import { addCarry, type Carry } from './carry';
 import { Vector3 } from 'three';
 import type { Emote, Mood, TouchKind } from './contract';
 import type { EffectLayer } from './effects/effect-layer';
@@ -46,6 +47,8 @@ const FACE_FRONT = new Vector3(0, 0, 1.1);
 const WINK_EYE = new Vector3(0.3, 0.12, 1);
 
 export interface DirectorInputs {
+  /** The character is being carried (picked up and moved); absent or at rest = not. */
+  carry?: Readonly<Carry>;
   readonly time: number;
   readonly dt: number;
   readonly mood: Mood;
@@ -150,6 +153,7 @@ export class EmoteDirector {
     const napping = this.machine.napping(time);
     this.nap = damp(this.nap, napping ? 1 : 0, napping ? NAP_IN : NAP_OUT, dt);
     addNap(this.frame, this.nap < 1e-3 ? 0 : this.nap);
+    if (input.carry) addCarry(this.frame, input.carry);
     this.zzzClock = this.drowsy > 0.6 ? this.zzzClock + dt : ZZZ_SECONDS * 0.6;
     if (this.zzzClock >= ZZZ_SECONDS) {
       this.zzzClock = 0;

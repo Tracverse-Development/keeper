@@ -131,6 +131,9 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     setFeeling(feeling) {
       if (!disposed) animator.setFeeling(feeling);
     },
+    carry(offset) {
+      if (!disposed) animator.carry(offset);
+    },
     snapshot() {
       if (disposed) return null;
       try {

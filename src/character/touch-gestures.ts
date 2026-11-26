@@ -3,7 +3,8 @@
  *
  * Every pointer reading is hit-tested against the worn skin (`Character.hitTest`, in the
  * canvas's normalised device coordinates) and fed to the pure `GestureTracker`; a poke
- * or pat it reports is played (`Character.react`) and announced through `notify`. The
+ * or pat it reports is played (`Character.react`) and announced through `notify`; a still
+ * press on the character followed by a move picks it up (`Character.carry`). The
  * cursor shows a pointer over the character and a grabbing hand while stroking. Gaze is
  * NOT handled here: the stage follows the pointer over the whole window separately, so
  * looking works everywhere, touched or not.
@@ -41,19 +42,36 @@ export function attachTouchGestures(canvas: HTMLCanvasElement, character: Charac
     if (reading.region) canvas.setPointerCapture?.(event.pointerId);
     showCursor(reading.region);
   };
+  /** While it is picked up, the character follows the pointer; let go, it is put down. */
+  let carrying = false;
+  const followCarry = (): void => {
+    const held = tracker.carry();
+    if (held) {
+      const rect = canvas.getBoundingClientRect();
+      character.carry({ x: (held.dx / Math.max(rect.width, 1)) * 2, y: (-held.dy / Math.max(rect.height, 1)) * 2 });
+      carrying = true;
+    } else if (carrying) {
+      character.carry(null);
+      carrying = false;
+    }
+  };
+
   const onMove = (event: PointerEvent): void => {
     const reading = sample(event);
     fire(tracker.move(reading));
+    followCarry();
     showCursor(reading.region);
   };
   const onUp = (event: PointerEvent): void => {
     const reading = sample(event);
     fire(tracker.up(reading));
+    followCarry();
     if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     showCursor(reading.region);
   };
   const onCancel = (): void => {
     tracker.cancel();
+    followCarry();
     showCursor(null);
   };
   const onLeave = (): void => {

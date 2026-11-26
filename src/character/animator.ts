@@ -32,6 +32,7 @@ import type { Emote, Mood, TouchKind } from './contract';
 import { BlinkScheduler } from './blink';
 import type { EffectLayer } from './effects/effect-layer';
 import { EmoteDirector } from './emote-director';
+import { easeCarry, readCarry, restingCarry, type Carry, type CarryOffset } from './carry';
 import { PRIORITY } from './expression';
 import { foldExpression } from './expression-frame';
 import { blinkPace, easeFeeling, foldFeeling, readFeeling, type FeelingDials } from './feeling';
@@ -92,6 +93,9 @@ export class Animator {
   private mouth = 0;
   private workInput = 0;
   private work = 0;
+  /** Where the person holds it while it is picked up (null: not held), and the eased carry. */
+  private carryInput: CarryOffset | null = null;
+  private readonly carried: Carry = restingCarry();
   /** The keeper's simulated mood: as given, and eased (what the body shows this frame). */
   private feelingInput: FeelingDials = readFeeling(null);
   private readonly feeling: FeelingDials = readFeeling(null);
@@ -173,6 +177,12 @@ export class Animator {
     this.mouthInput = clampUnit(openness);
   }
 
+  /** The person picked it up and holds it at `offset` (untrusted: clamped), or let go (null). */
+  carry(offset: unknown): void {
+    this.carryInput = readCarry(offset);
+    if (this.carryInput) this.director.activity();
+  }
+
   /** The keeper's simulated mood for the body (untrusted: clamped; null = none). */
   setFeeling(feeling: unknown): void {
     this.feelingInput = readFeeling(feeling);
@@ -252,6 +262,7 @@ export class Animator {
       drama: thinkDrama(this.weights.thinking, this.work, this.director.dramaFloor),
       work: this.work,
       skin: this.parts.skins.active,
+      carry: easeCarry(this.carried, this.carryInput, dt),
     });
     foldExpression(expression, emote);
     if (this.director.takeWake()) this.blinks.blinkNow(this.time);

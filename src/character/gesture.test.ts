@@ -115,3 +115,27 @@ test('cursor: pointer over the character, grab while stroking, default elsewhere
   assert.equal(tracker.pressed, false);
   assert.equal(tracker.cursor(null), 'default');
 });
+
+test('a still hold on the character, then a move, picks it up: no pat, no poke', () => {
+  const tracker = new GestureTracker();
+  tracker.down({ x: 100, y: 100, t: 0, region: 'body' });
+  assert.equal(tracker.carry(), null, 'not yet');
+  // Moving back and forth a long way would be a pat, were it not being carried.
+  for (let i = 1; i <= 20; i++) assert.equal(tracker.move({ x: 100 + (i % 2 ? 80 : -80), y: 100 + i * 4, t: 400 + i * 30, region: 'body' }), null);
+  assert.deepEqual(tracker.carry(), { dx: -80, dy: 80 });
+  assert.equal(tracker.cursor('body'), 'grab');
+  assert.equal(tracker.up({ x: 20, y: 180, t: 1100, region: null }), null);
+  assert.equal(tracker.carry(), null, 'let go');
+});
+
+test('moving straight away is still a stroke, and a press off the character never carries', () => {
+  const stroke = new GestureTracker();
+  stroke.down({ x: 100, y: 100, t: 0, region: 'head' });
+  stroke.move({ x: 140, y: 100, t: 50, region: 'head' });
+  stroke.move({ x: 100, y: 100, t: 500, region: 'head' });
+  assert.equal(stroke.carry(), null, 'it moved before the hold was up');
+  const off = new GestureTracker();
+  off.down({ x: 5, y: 5, t: 0, region: null });
+  off.move({ x: 60, y: 60, t: 900, region: null });
+  assert.equal(off.carry(), null);
+});

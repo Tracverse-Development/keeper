@@ -181,6 +181,17 @@ export interface Feeling {
   readonly arousal: number;
 }
 
+// Being picked up (appended by declaration merging).
+export interface Character {
+  /**
+   * The person picked the character up and holds it `offset` away from where they grabbed it
+   * (-1..1 of the stage each way, y up), or let it go (null). Carried, it lifts, dangles against
+   * the pull and looks surprised; let go, it settles back by itself. The stage's own gestures
+   * call this (a still press on the character, then a move).
+   */
+  carry(offset: { x: number; y: number } | null): void;
+}
+
 // A picture of the character (appended by declaration merging).
 export interface Character {
   /**
