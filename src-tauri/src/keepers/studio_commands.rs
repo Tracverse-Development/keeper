@@ -93,3 +93,32 @@ pub fn personal_remove(state: State<'_, AppState>, keeper: String, kind: String)
 pub fn personal_list(state: State<'_, AppState>, keeper: String) -> Result<Vec<super::kit::personal::Picture>> {
     Ok(super::kit::personal::list(&state.keeper_or_active(&keeper)?.id))
 }
+
+/// A keeper's feelings as the Studio shows them: its current (simulated) mood and why, whether the
+/// person turned feelings off, and which modes allow a mood.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeelingsInfo {
+    pub view: Option<crate::feelings::engine::FeelingsView>,
+    pub off: bool,
+    pub modes_with_mood: Vec<String>,
+}
+
+#[tauri::command]
+pub fn keeper_feelings(state: State<'_, AppState>, keeper: Option<String>) -> Result<FeelingsInfo> {
+    let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
+    let soul = state.soul(&profile.soul);
+    Ok(FeelingsInfo {
+        view: crate::feelings::store::view(&profile.id, &soul),
+        off: profile.feelings_off,
+        modes_with_mood: super::kit::roles::all().into_iter().filter(|m| m.mood).map(|m| m.title).collect(),
+    })
+}
+
+/// Back to the soul's own calm: no emotions, no causes.
+#[tauri::command]
+pub fn feelings_reset(state: State<'_, AppState>, keeper: Option<String>) -> Result<FeelingsInfo> {
+    let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
+    crate::feelings::store::reset(&profile.id);
+    keeper_feelings(state, Some(profile.id))
+}

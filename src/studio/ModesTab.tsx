@@ -16,7 +16,7 @@ const TOOLS: { id: RoleInfo['tools']; name: string; words: string }[] = [
   { id: 'act', name: 'Act', words: 'changes your computer, after you approve a plan' },
 ];
 
-const BLANK: RoleInfo = { id: '', title: '', blurb: '', brief: '', scope: '', tools: 'none', skills: ['ask-memory'], resources: [], builtin: false, edited: false };
+const BLANK: RoleInfo = { id: '', title: '', blurb: '', brief: '', scope: '', tools: 'none', skills: ['ask-memory'], resources: [], builtin: false, edited: false, mood: false };
 
 export function ModesTab({ onChanged }: { onChanged: () => void }) {
   const [modes, setModes] = useState<RoleInfo[]>([]);
@@ -87,6 +87,10 @@ export function ModesTab({ onChanged }: { onChanged: () => void }) {
           ))}
         </div>
         <p className="muted small">{TOOLS.find((t) => t.id === draft.tools)?.words}. Instructions can never give a mode more than this.</p>
+        <label className="toggle">
+          <input type="checkbox" checked={draft.mood && draft.tools !== 'look' && draft.tools !== 'act'} disabled={draft.tools === 'look' || draft.tools === 'act'} onChange={(e) => set({ mood: e.target.checked })} />
+          <span>A simulated mood in this mode <span className="muted small">{draft.tools === 'look' || draft.tools === 'act' ? '(never in modes that use your computer)' : '(warmth, never pressure)'}</span></span>
+        </label>
         <p className="eyebrow">Skills</p>
         <ul className="mode-skills">
           {skills.map((s) => (

@@ -136,7 +136,7 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
         wearables: crate::kernel::settings::default_wearables(),
         graph_id: graph_id_for(&seed, first),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new()
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
@@ -178,6 +178,8 @@ pub struct KeeperChange {
     pub app_voice: Option<bool>,
     /// How it shows its answers (`brain::styles`).
     pub style: Option<String>,
+    /// Turn its (simulated) mood off in every mode, or back on.
+    pub feelings_off: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -265,6 +267,9 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
             }
             if let Some(m) = change.style {
                 k.style = m;
+            }
+            if let Some(off) = change.feelings_off {
+                k.feelings_off = off;
             }
             if change.app_voice == Some(true) {
                 k.voice = None;

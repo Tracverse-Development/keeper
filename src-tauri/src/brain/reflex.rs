@@ -278,7 +278,7 @@ mod tests {
     use super::*;
 
     fn ctx(said: &str, facts: Vec<Fact>) -> Context {
-        Context { said: said.into(), assistant_name: "Keeper".into(), identity: String::new(), facts, recent: vec![], elsewhere: vec![], now_local: "Tuesday 25 November 2026, 10:42".into(), may_act: false, visual: true, guard: None, can_act: false, job: String::new(), style: String::new() }
+        Context { said: said.into(), assistant_name: "Keeper".into(), identity: String::new(), facts, recent: vec![], elsewhere: vec![], now_local: "Tuesday 25 November 2026, 10:42".into(), may_act: false, visual: true, guard: None, can_act: false, job: String::new(), feelings: None, style: String::new() }
     }
 
     #[test]

@@ -82,4 +82,27 @@ export interface RoleInfo {
   resources: { title: string; url: string }[];
   builtin: boolean;
   edited: boolean;
+  /** The keeper may have a simulated mood in this mode (never in Look or Act modes). */
+  mood: boolean;
+}
+
+/** A point in PAD space: pleasure, arousal (energy), dominance (confidence), each -1..1. */
+export interface Pad {
+  p: number;
+  a: number;
+  d: number;
+}
+
+/** A keeper's simulated feelings (`feelings::engine`): mood, active emotions, and why. */
+export interface FeelingsInfo {
+  view: {
+    label: string;
+    mood: Pad;
+    baseline: Pad;
+    emotions: { kind: string; intensity: number }[];
+    causes: { what: string; emotion: string | null }[];
+    steppedAside: boolean;
+  } | null;
+  off: boolean;
+  modesWithMood: string[];
 }

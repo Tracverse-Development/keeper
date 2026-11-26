@@ -16,6 +16,7 @@ import { useEscape } from '../kernel/use-escape';
 import { tryOn } from '../keepers/wardrobe-view';
 import { SoulSection } from '../keepers/SoulSection';
 import { useWardrobe } from '../keepers/useWardrobe';
+import { FeelingsTab } from './FeelingsTab';
 import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
 import { InventoryTab } from './InventoryTab';
@@ -28,11 +29,11 @@ import { VoiceTab } from './VoiceTab';
 import '../keepers/wardrobe.css';
 import './studio.css';
 
-type Tab = 'look' | 'inventory' | 'forge' | 'soul' | 'modes' | 'habits' | 'voice' | 'level' | 'market';
+type Tab = 'look' | 'inventory' | 'forge' | 'soul' | 'feelings' | 'modes' | 'habits' | 'voice' | 'level' | 'market';
 /** The tabs in three groups: how it looks, how it thinks, how it grows. */
 const GROUPS: { name: string; tabs: { id: Tab; name: string }[] }[] = [
   { name: 'Appearance', tabs: [{ id: 'look', name: 'Look' }, { id: 'inventory', name: 'Inventory' }, { id: 'forge', name: 'Forge' }] },
-  { name: 'Mind', tabs: [{ id: 'soul', name: 'Soul' }, { id: 'modes', name: 'Modes' }, { id: 'habits', name: 'Habits' }, { id: 'voice', name: 'Voice' }] },
+  { name: 'Mind', tabs: [{ id: 'soul', name: 'Soul' }, { id: 'feelings', name: 'Feelings' }, { id: 'modes', name: 'Modes' }, { id: 'habits', name: 'Habits' }, { id: 'voice', name: 'Voice' }] },
   { name: 'Progress', tabs: [{ id: 'level', name: 'Level' }, { id: 'market', name: 'Marketplace' }] },
 ];
 
@@ -191,6 +192,14 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
               />
             )}
             {tab === 'soul' && <SoulSection value={keeper.soul} souls={souls} onPick={onSoul} onSaved={(saved) => { onSaved(); onSoul(saved.id); }} />}
+            {tab === 'feelings' && (
+              <FeelingsTab
+                keeper={keeper}
+                onToggle={(off) => {
+                  void core.updateKeeper(keeper.id, { feelingsOff: off }).then(onSaved).catch((e) => setSaveError(sentence(e)));
+                }}
+              />
+            )}
             {tab === 'modes' && <ModesTab onChanged={onSaved} />}
             {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
             {tab === 'voice' && <VoiceTab name={keeper.name} voice={voice} onVoice={setVoice} />}

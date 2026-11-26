@@ -38,6 +38,8 @@ export interface KeeperProfile {
   voice?: KeeperVoice;
   /** How it shows answers: balanced, explainer, brief, chat (absent = balanced). */
   style?: string;
+  /** The person turned its simulated mood off. */
+  feelingsOff?: boolean;
 }
 
 export interface KeeperList {
@@ -103,6 +105,9 @@ export interface KeeperSaved {
 }
 
 export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model' | 'role' | 'soul' | 'wearables' | 'look' | 'habits' | 'voice' | 'style'>> & {
+  /** Turn the keeper's simulated mood off (or back on), in every mode. */
+  feelingsOff?: boolean;
+} & {
   /** True: go back to the app-wide voice. */
   appVoice?: boolean;
 };

@@ -7,6 +7,7 @@ mod brain;
 mod commands;
 mod dkg;
 mod fastlane;
+mod feelings;
 mod hotkey;
 mod keepers;
 mod kernel;
@@ -165,6 +166,8 @@ pub fn run() {
             keepers::wardrobe_commands::wardrobe_design,
             keepers::wardrobe_commands::wardrobe_share,
             keepers::studio_commands::keeper_studio,
+            keepers::studio_commands::keeper_feelings,
+            keepers::studio_commands::feelings_reset,
             keepers::studio_commands::personal_set,
             keepers::studio_commands::personal_remove,
             keepers::studio_commands::personal_list,

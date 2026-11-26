@@ -54,6 +54,10 @@ pub struct Role {
     /// A built-in the person changed.
     #[serde(default)]
     pub edited: bool,
+    /// The keeper may have a (simulated) mood in this mode (`feelings`); never in modes that
+    /// look at or act on the computer.
+    #[serde(default)]
+    pub mood: bool,
 }
 
 /// The built-in modes as data rows (id, title, blurb, scope, tools, skills, brief).
@@ -65,6 +69,7 @@ struct Builtin {
     brief: &'static str,
     tools: Tools,
     skills: &'static [&'static str],
+    mood: bool,
 }
 
 const BUILTIN: &[Builtin] = &[
@@ -78,6 +83,7 @@ renaming and tidying files and folders, editing documents, opening apps and webs
 say plainly what you did and where things are now, and show it as a \"files\" panel.",
         tools: Tools::Act,
         skills: &["*"],
+        mood: false,
     },
     Builtin {
         id: "assistant",
@@ -89,6 +95,7 @@ finding things on their computer (you can look, never change), opening apps and 
 files changed, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
         skills: &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine"],
+        mood: false,
     },
     Builtin {
         id: "researcher",
@@ -103,6 +110,7 @@ is weak, and give dates for anything that changes over time. ALWAYS end with a s
 and one line on what it supports. Never invent a source or a URL. You do not operate the computer.",
         tools: Tools::Web,
         skills: &["recall-actions", "ask-memory"],
+        mood: false,
     },
     Builtin {
         id: "tutor",
@@ -114,6 +122,7 @@ the person already knows, give one small step or hint at a time, and ask a quest
 praise effort. Give the full answer only when the person asks for it or has tried. You do not operate the computer.",
         tools: Tools::None,
         skills: &["remind", "ask-memory"],
+        mood: false,
     },
     Builtin {
         id: "companion",
@@ -124,11 +133,12 @@ praise effort. Give the full answer only when the person asks for it or has trie
 routines and wellbeing. You do not operate the computer.",
         tools: Tools::None,
         skills: &["remind", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact"],
+        mood: true,
     },
 ];
 
 fn builtin_mode(b: &Builtin) -> Role {
-    Role { id: b.id.into(), title: b.title.into(), blurb: b.blurb.into(), brief: b.brief.into(), tools: b.tools, scope: b.scope.into(), skills: b.skills.iter().map(|s| s.to_string()).collect(), resources: vec![], builtin: true, edited: false }
+    Role { id: b.id.into(), title: b.title.into(), blurb: b.blurb.into(), brief: b.brief.into(), tools: b.tools, scope: b.scope.into(), skills: b.skills.iter().map(|s| s.to_string()).collect(), resources: vec![], builtin: true, edited: false, mood: b.mood }
 }
 
 /// The built-in modes, as shipped.
@@ -189,7 +199,9 @@ pub fn sanitize(mode: &Role, known_skills: &[&str]) -> Result<Role, String> {
         .map(|r| Resource { title: clip(&r.title, 120), url: r.url.trim().to_string() })
         .collect();
     let builtin = BUILTIN.iter().any(|b| b.id == id);
-    Ok(Role { id, title, blurb: clip(&mode.blurb, 200), brief: clip(&mode.brief, 12_000), tools: mode.tools, scope, skills, resources, builtin, edited: builtin })
+    // Work modes stay plain: no mood where the keeper looks at or changes the computer.
+    let mood = mode.mood && !matches!(mode.tools, Tools::Look | Tools::Act);
+    Ok(Role { id, title, blurb: clip(&mode.blurb, 200), brief: clip(&mode.brief, 12_000), tools: mode.tools, scope, skills, resources, builtin, edited: builtin, mood })
 }
 
 /// The engine's rule for staying in its mode (added to its fixed instructions): what it handles,
@@ -260,6 +272,10 @@ mod tests {
         assert_eq!(clean.skills, ["ask-memory"]);
         assert_eq!(clean.resources.len(), 1);
         assert!(!clean.builtin);
+        let mut admin = super::get("system");
+        admin.mood = true;
+        assert!(!super::sanitize(&admin, &[]).unwrap().mood, "a mode that acts on the computer never has a mood");
+        assert!(super::get("companion").mood && !super::get("assistant").mood);
         m.scope = "  ".into();
         assert!(super::sanitize(&m, &[]).is_err(), "a mode must say what it handles");
     }

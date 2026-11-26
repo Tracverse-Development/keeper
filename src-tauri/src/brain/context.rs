@@ -28,6 +28,9 @@ pub struct Context {
     pub can_act: bool,
     /// The mode (job) this turn is in (`keepers::kit::roles` id): which skills and tools it knows.
     pub job: String,
+    /// The keeper's simulated mood for this turn (`feelings`), when its mode allows one and the
+    /// person has not turned it off; added to the turn's message, never the fixed instructions.
+    pub feelings: Option<String>,
     /// How this keeper shows its answer (`styles::STYLES` id; "" = Balanced).
     pub style: String,
     /// Show this answer visually on the Stage (panels), or in words?

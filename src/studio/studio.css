@@ -115,3 +115,17 @@
 .mode-tools { display: flex; flex-wrap: wrap; gap: 6px; }
 .mode-skills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .mode-skills label { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+
+/* Feelings */
+.feel-now { display: flex; align-items: baseline; gap: 12px; }
+.feel-word { font-family: var(--font-serif); font-size: 32px; color: var(--text); text-transform: capitalize; }
+.feel-axes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.feel-axes li { display: grid; grid-template-columns: 90px 1fr 120px; align-items: center; gap: 12px; }
+.feel-axis-name { font-size: 13px; color: var(--text-muted); }
+.feel-bar { position: relative; height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--navy-600), var(--gold-600)); }
+.feel-dot, .feel-rest { position: absolute; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; transition: left .8s var(--ease); }
+.feel-dot { width: 16px; height: 16px; background: var(--cream-100); box-shadow: 0 0 10px rgba(244, 238, 226, .6); }
+.feel-rest { width: 4px; height: 16px; border-radius: 2px; background: var(--gold-300); opacity: .7; }
+.feel-ends { text-align: right; }
+.feel-causes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .feel-dot, .feel-rest { transition: none; } }

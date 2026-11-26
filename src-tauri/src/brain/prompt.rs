@@ -70,7 +70,8 @@ pub fn turn_message(ctx: &Context) -> String {
             ctx.elsewhere.iter().map(|l| format!("- {l}")).collect::<Vec<_>>().join("\n")
         )
     };
-    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
+    let feelings = ctx.feelings.as_deref().map(|f| format!("\n\n{f}")).unwrap_or_default();
+    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}{feelings}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
 }
 
 /// Everything in one text, for engines that take a single prompt.

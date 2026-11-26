@@ -52,7 +52,11 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 
     let role = crate::keepers::kit::roles::get(&keeper.role);
     let base = base_context(state, keeper, said);
+    // The keeper's mood, when its mode allows one and the person has not turned it off.
+    let soul = state.soul(&keeper.soul);
+    let feelings = (role.mood && !keeper.feelings_off).then(|| crate::feelings::store::on_message(&keeper.id, &soul, said)).flatten();
     let ctx = Context {
+        feelings,
         // An approved plan is computer work whatever its words were.
         may_act: base.may_act || (approved.is_some() && base.can_act),
         facts: recall.facts.clone(),
@@ -159,6 +163,10 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         writes.push(later.add(&record, "action"));
     }
 
+    // How it went shapes the keeper's mood (only where it has one).
+    if role.mood && !keeper.feelings_off && (!outcomes.is_empty() || !thought.steps.is_empty()) {
+        crate::feelings::store::on_outcome(&keeper.id, &soul, outcomes.iter().all(|o| o.succeeded));
+    }
     let reply = compose_reply(&thought.reply, &outcomes, &forgotten, !thought.forget.is_empty());
 
     let mut learned = Vec::new();
@@ -221,6 +229,7 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         may_act: can_act && super::intent::wants_computer(said),
         can_act,
         job: role.id.to_string(),
+        feelings: None,
         style: keeper.style.clone(),
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
