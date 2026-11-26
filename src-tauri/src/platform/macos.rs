@@ -41,6 +41,16 @@ pub fn notify(title: &str, body: &str) {
     let _ = Command::new("/usr/bin/osascript").arg("-e").arg(script).output();
 }
 
+/// `textutil` turns a document into plain text on standard output (the path is one argv entry
+/// after `--`-free fixed flags; a document that takes too long is given up on).
+pub async fn document_text(path: &std::path::Path) -> Result<String> {
+    let convert = tokio::process::Command::new("/usr/bin/textutil").args(["-convert", "txt", "-stdout"]).arg(path).kill_on_drop(true).output();
+    match tokio::time::timeout(std::time::Duration::from_secs(15), convert).await {
+        Ok(Ok(out)) if out.status.success() => Ok(String::from_utf8_lossy(&out.stdout).into_owned()),
+        _ => Err(DeskError::Invalid("I couldn't read that document.".into())),
+    }
+}
+
 pub fn computer_name() -> String {
     Command::new("/usr/sbin/scutil")
         .args(["--get", "ComputerName"])

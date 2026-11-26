@@ -100,7 +100,9 @@ export const core = {
   createGraph: (nodeHome: string, assistantName: string) => invoke<GraphReady>('setup_create_graph', { nodeHome, assistantName }),
   finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
   /** `mode`: the chat's mode (a role id; absent = the keeper's default). */
-  turn: (text: string, keeper?: string, chat?: string, mode?: string) => invoke<TurnResult>('assistant_turn', { text, keeper, chat, mode }),
+  turn: (text: string, keeper?: string, chat?: string, mode?: string, attach?: Handed) => invoke<TurnResult>('assistant_turn', { text, keeper, chat, mode, attach }),
+  /** Look at something handed over (a dropped file, dragged text): its name and size; rejects in plain words when it cannot be read. */
+  attachPeek: (attach: Handed) => invoke<HandedPeek>('attach_peek', { attach }),
   stageAction: (action: PanelAction, keeper?: string) => invoke<ActionDone>('stage_action', { keeper, action }),
   planDecide: (token: string, approve: boolean) => invoke<TurnResult>('plan_decide', { token, approve }),
   briefToday: () => invoke<TurnResult | null>('brief_today'),
@@ -155,6 +157,37 @@ export function on<T>(event: (typeof EVENTS)[keyof typeof EVENTS], handler: (pay
 }
 
 /** The core's error sentence, whatever shape the rejection took. */
+/** Something handed to a keeper with a message: a dropped file's path, or dragged text. */
+export type Handed = { path: string } | { text: string };
+
+/** What the core says about it before anything is sent (`assistant::attach::Peek`). */
+export interface HandedPeek {
+  name: string;
+  chars: number;
+  truncated: boolean;
+}
+
+/**
+ * Files dragged over the window (`over`), let go on it (`drop`, with their paths) or taken away
+ * (`leave`): the system's own drag events, which carry real paths (a web page's never do).
+ */
+export function onFileDrop(handler: (e: { kind: 'over' | 'drop' | 'leave'; paths: string[] }) => void): () => void {
+  const hear = (event: string, kind: 'over' | 'drop' | 'leave') => {
+    let off: UnlistenFn | null = null;
+    let cancelled = false;
+    listen<{ paths?: string[] }>(event, (e) => handler({ kind, paths: e.payload?.paths ?? [] })).then((fn) => {
+      if (cancelled) fn();
+      else off = fn;
+    });
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  };
+  const offs = [hear('tauri://drag-enter', 'over'), hear('tauri://drag-drop', 'drop'), hear('tauri://drag-leave', 'leave')];
+  return () => offs.forEach((off) => off());
+}
+
 export function sentence(error: unknown): string {
   if (typeof error === 'string') return error;
   if (error instanceof Error) return error.message;

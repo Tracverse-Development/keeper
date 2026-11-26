@@ -35,7 +35,7 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m)) else { return answer };
     let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
     let base = super::turn::base_context(state, &moved, &ctx.said);
-    let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), ..base };
+    let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), attached: ctx.attached.clone(), may_act: base.may_act && ctx.attached.is_none(), ..base };
     // What was said so far ("Switching to Researcher mode for this.") stays; the answer follows it.
     progress(Progress::ReplyText(" ".into()));
     let mut next = answer_in(app, state, memory, &moved, &ctx, chat, approved, progress).await;
@@ -49,14 +49,19 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
 }
 
 async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
-    if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {
-        return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false, switched: None };
+    // A message that came with material (a dropped file) is about that material: the mind reads
+    // it. No instant answer, no cached scene (the same words about another file differ).
+    let fresh = ctx.attached.is_some();
+    if !fresh {
+        if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {
+            return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false, switched: None };
+        }
     }
     if ctx.said.starts_with(FOLLOW_UP) {
         super::prefetch::wait_if_preparing(&ctx.said).await;
     }
     let style = brain::styles::get(&ctx.style);
-    if ctx.visual && !ctx.may_act && style.id == brain::styles::DEFAULT && crate::memory::scene_cache::cacheable(&ctx.said) {
+    if !fresh && ctx.visual && !ctx.may_act && style.id == brain::styles::DEFAULT && crate::memory::scene_cache::cacheable(&ctx.said) {
         if let Ok(Some(scene)) = memory.cached_scene(&ctx.said).await {
             for p in &scene.panels {
                 progress(Progress::Panel(p.clone()));
@@ -94,7 +99,7 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
     let (thought, mut mind) = brain::think(&thinker, ctx, progress).await;
     // Taken as conversation, but the engine says it is computer work: run it again with tools
     // (through the plan when the person wants to approve first).
-    if thought.needs_computer && ctx.can_act && !ctx.may_act && can_act {
+    if thought.needs_computer && !fresh && ctx.can_act && !ctx.may_act && can_act {
         let acting = Context { may_act: true, ..ctx.clone() };
         // The live text so far ("Let me take a look.") stays; the real answer follows it.
         progress(Progress::ReplyText(" ".into()));

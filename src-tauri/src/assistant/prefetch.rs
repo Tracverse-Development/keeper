@@ -74,7 +74,7 @@ pub fn spawn(app: &AppHandle, keeper: &KeeperProfile, identity: String, facts: V
             }
             let (memory, keeper, identity, facts, model) = (memory.clone(), keeper.clone(), identity.clone(), facts.clone(), model.clone());
             runs.push(tauri::async_runtime::spawn(async move {
-                let ctx = Context { said: question.clone(), assistant_name: keeper.name.clone(), identity, facts, recent: vec![], elsewhere: vec![], now_local: chrono::Local::now().format("%A %-d %B %Y").to_string(), may_act: false, visual: true, guard: None, can_act: false, job: String::new(), feelings: None, style: String::new() };
+                let ctx = Context { said: question.clone(), assistant_name: keeper.name.clone(), identity, facts, recent: vec![], elsewhere: vec![], now_local: chrono::Local::now().format("%A %-d %B %Y").to_string(), may_act: false, visual: true, guard: None, can_act: false, job: String::new(), feelings: None, style: String::new(), attached: None };
                 if let Ok(thought) = claude::think(&ctx, &model, &|_: Progress| {}).await {
                     memory.cache_scene(&question, &thought.reply, &crate::stage::read(&thought.panels)).await;
                 }

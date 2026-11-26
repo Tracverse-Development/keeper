@@ -30,6 +30,15 @@
 .learned li { font-size: var(--text-sm); color: var(--gold-300); }
 .learned li::before { content: '◆ '; font-size: var(--text-2xs); vertical-align: 1px; }
 
+/* Something handed over (a dropped file): its card above the message box, and the hint while dragging. */
+.handed { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2); border-radius: var(--radius); }
+.handed-head { display: flex; align-items: center; gap: var(--space-3); }
+.handed-mark { color: var(--gold-300); font-size: var(--text-lg); }
+.handed-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.handed-what strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); }
+.handed-asks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.drop-hint { position: absolute; inset: var(--space-3); z-index: 6; display: grid; place-items: center; border: 2px dashed var(--gold-300); border-radius: var(--radius); background: rgba(7, 10, 22, 0.55); pointer-events: none; }
+.drop-hint span { padding: var(--space-3) var(--space-6); border-radius: 999px; background: rgba(7, 10, 22, 0.85); border: 1px solid var(--border-strong); font-family: var(--font-serif); font-size: var(--text-xl); color: var(--gold-300); }
 .known { margin-top: var(--space-2); }
 .known-mark { color: var(--gold-300); font-size: var(--text-2xs); }
 .known-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }

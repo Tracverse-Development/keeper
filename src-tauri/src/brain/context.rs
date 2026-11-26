@@ -38,6 +38,9 @@ pub struct Context {
     /// When the person approved a plan: the guard every tool call is checked against; the
     /// engine stops at the first call outside it (`brain::guard`).
     pub guard: Option<std::sync::Arc<super::guard::PlanGuard>>,
+    /// Material the person handed over with this message (a dropped file's text), already
+    /// written as a block for the turn's message (`assistant::attach::Attached::block`).
+    pub attached: Option<String>,
 }
 
 /// What an engine reports while it works: a tool step it took, or a Stage panel it finished

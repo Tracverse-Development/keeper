@@ -126,6 +126,7 @@ pub fn run() {
             assistant::warm::assistant_warm,
             assistant::assistant_cancel,
             assistant::touch::keeper_touch,
+            assistant::attach::attach_peek,
             setup::remove::setup_remove,
             brain::engines::setup::engine_setup,
             brain::engines::setup::engine_sign_in,

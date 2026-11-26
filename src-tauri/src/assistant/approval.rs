@@ -197,11 +197,11 @@ pub async fn decide(app: &AppHandle, state: &AppState, token: &str, approve: boo
     let keeper = crate::kernel::settings::KeeperProfile { role: plan.mode.clone(), ..keeper };
     if approve {
         let said = format!("{}{}", plan.said, mandate(&plan.steps));
-        return turn::turn(app, &memory, state, &keeper, &plan.chat, &said, Some(&plan.steps)).await;
+        return turn::turn(app, &memory, state, &keeper, &plan.chat, &said, Some(&plan.steps), None).await;
     }
     let record = ActionRecord::new("plan-denied", &plan.said, "You said no to my plan, so I didn't act.", true, &time::now_iso(), "");
     memory.write(&record).await;
-    turn::turn(app, &memory, state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", None).await
+    turn::turn(app, &memory, state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", None, None).await
 }
 
 #[cfg(test)]

@@ -6,7 +6,8 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { core, EVENTS, on, sentence, type Phase, type Turn, type TurnResult } from '../kernel/ipc';
+import { core, EVENTS, on, sentence, type Handed, type Phase, type Turn, type TurnResult } from '../kernel/ipc';
+import { saidWith } from './handed';
 import { chatMode } from './styles';
 
 export interface Exchange {
@@ -125,10 +126,11 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   };
 
   /** Send to `toKeeper` (default: the keeper on screen) in the current chat. */
-  const send = async (text: string, toKeeper?: string) => {
+  const send = async (text: string, toKeeper?: string, handed?: { what: Handed; name: string }) => {
     const said = text.trim();
     if (!said) return;
-    await run(said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined, modeRef.current || undefined));
+    // A message about something handed over (a dropped file) is shown with its name.
+    await run(handed ? saidWith(said, handed.name) : said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined, modeRef.current || undefined, handed?.what));
   };
 
   /** Approve or refuse the plan the keeper showed before acting. */

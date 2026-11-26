@@ -15,6 +15,9 @@ pub fn computer_name() -> String {
     "Keeper".into()
 }
 pub fn reveal(_: &std::path::Path) {}
+pub async fn document_text(_: &std::path::Path) -> Result<String> {
+    Err(DeskError::Invalid("Reading that kind of document is not supported on this system yet.".into()))
+}
 pub async fn spotlight(_: &str, _: &[std::path::PathBuf], _: usize, _: std::time::Duration) -> Result<Vec<std::path::PathBuf>> {
     Err(DeskError::Invalid("Searching files is not supported on this system yet.".into()))
 }

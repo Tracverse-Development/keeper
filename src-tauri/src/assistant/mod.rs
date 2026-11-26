@@ -12,6 +12,7 @@
 
 pub mod actions;
 pub mod approval;
+pub mod attach;
 mod intent;
 mod speech;
 pub mod persona;
@@ -100,13 +101,24 @@ pub(super) fn wrote(app: &AppHandle, receipt: &WriteReceipt, kind: &str) {
 /// One turn. `keeper` = which keeper (empty: the active one); `chat` = continue that chat
 /// (empty: start a new one, named after this message).
 #[tauri::command]
-pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: String, keeper: Option<String>, chat: Option<String>, mode: Option<String>) -> Result<TurnResult> {
-    run_turn(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or("")).await
+pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: String, keeper: Option<String>, chat: Option<String>, mode: Option<String>, attach: Option<attach::AttachInput>) -> Result<TurnResult> {
+    // Material handed over with the message (a dropped file) is read first: a file that cannot
+    // be read fails the turn in plain words before anything is asked of the mind.
+    let attached = match attach {
+        Some(input) => Some(attach::read(&input).await?),
+        None => None,
+    };
+    run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached).await
 }
 
 /// One turn, from the window, the talk window or the phone link.
 /// `mode`: the mode this chat is in (a `keepers::kit::roles` id; "" = the keeper's default).
 pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str) -> Result<TurnResult> {
+    run_turn_with(app, state, keeper_id, chat, text, mode, None).await
+}
+
+/// `run_turn` with material the person handed over (`attach`).
+async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str, attached: Option<attach::Attached>) -> Result<TurnResult> {
     let said = text.trim();
     if said.is_empty() {
         return Err(DeskError::Invalid("Say something first.".into()));
@@ -124,7 +136,7 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
         return Err(DeskError::Invalid("That mode does not exist.".into()));
     }
     let keeper = if mode.is_empty() { keeper } else { crate::kernel::settings::KeeperProfile { role: mode.to_string(), ..keeper } };
-    let result = turn::turn(app, &memory, state, &keeper, chat, said, None).await?;
+    let result = turn::turn(app, &memory, state, &keeper, chat, said, None, attached).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
 }

@@ -71,7 +71,7 @@ pub fn turn_message(ctx: &Context) -> String {
         )
     };
     let feelings = ctx.feelings.as_deref().map(|f| format!("\n\n{f}")).unwrap_or_default();
-    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}{feelings}\n\nThe person says: {said}", now = ctx.now_local, said = ctx.said)
+    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}{feelings}\n\nThe person says: {said}{attached}", now = ctx.now_local, said = ctx.said, attached = ctx.attached.as_deref().unwrap_or(""))
 }
 
 /// Everything in one text, for engines that take a single prompt.

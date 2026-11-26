@@ -18,8 +18,12 @@ use crate::memory::{ActionRecord, Chat, Fact, Memory, Recall, Turn};
 use crate::skills::{self, Effect, Outcome, SkillEnv};
 use crate::state::AppState;
 
-pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>) -> Result<TurnResult> {
+pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>, attached: Option<super::attach::Attached>) -> Result<TurnResult> {
     let started = Instant::now();
+    // What the record keeps of a message that came with material: its words and the file's
+    // name, never the material itself.
+    let told = attached.as_ref().map(|a| format!("{said} ({})", a.name));
+    let told = told.as_deref().unwrap_or(said);
     let at = time::now_iso();
     let turn_id = short_hash(&format!("{at}\u{0}{said}"), 16);
     let mut writes = Vec::new();
@@ -28,7 +32,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 
     // A new chat is named after its first message, so the turn can link to it.
     let chat = if chat.is_empty() {
-        let new_chat = Chat::start(said, &at);
+        let new_chat = Chat::start(told, &at);
         writes.push(later.add(&new_chat, "chat"));
         new_chat.id
     } else {
@@ -57,8 +61,10 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let feelings = (role.mood && !keeper.feelings_off).then(|| crate::feelings::store::on_message(&keeper.id, &soul, said)).flatten();
     let ctx = Context {
         feelings,
-        // An approved plan is computer work whatever its words were.
-        may_act: base.may_act || (approved.is_some() && base.can_act),
+        // An approved plan is computer work whatever its words were. A message that came with
+        // material is about reading it: no tools on that turn.
+        may_act: attached.is_none() && (base.may_act || (approved.is_some() && base.can_act)),
+        attached: attached.as_ref().map(super::attach::Attached::block),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         elsewhere: recall.elsewhere.clone(),
@@ -185,14 +191,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut panels = crate::stage::read(&thought.panels);
     panels.extend(thought.core_panels.iter().cloned());
     // A fresh visual answer is kept under its question; a lesson's cards are prepared next.
-    if !answer.cached && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
+    if !answer.cached && ctx.attached.is_none() && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
         if let Some(scene) = CachedScene::new(said, &reply, &panels) {
             later.add(&scene, "scene");
         }
     }
     super::prefetch::spawn(app, keeper, identity, recall.facts.clone(), &panels);
     // The scene is kept with the turn, so reopening the chat brings its panels back.
-    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&mode_used);
+    let turn = Turn::new(told, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&mode_used);
     writes.push(later.add(&turn, "turn"));
     let app_for_writes = app.clone();
     let (level_keeper, level_memory) = (keeper.id.clone(), memory.clone());
@@ -238,6 +244,7 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         style: keeper.style.clone(),
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
+        attached: None,
     }
 }
 

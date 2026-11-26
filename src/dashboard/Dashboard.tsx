@@ -9,7 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
+import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
+import { useHanded } from '../conversation/useHanded';
 import { useAssistant } from '../conversation/useAssistant';
 import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
@@ -148,6 +150,15 @@ export function Dashboard({ initial }: { initial: Settings }) {
   // Its simulated mood shows in its body (where this chat's mode has one).
   const body = useFeeling(keeper?.id ?? null, assistant.mode);
 
+  // A file dropped on the window (or text dragged in) is held until the next message, which
+  // is then about it.
+  const handed = useHanded();
+  const sendMessage = (text: string) => {
+    const held = handed.held;
+    handed.clear();
+    void assistant.send(text, undefined, held ? { what: held.what, name: held.peek.name } : undefined);
+  };
+
   /** Stop: the microphone, the voice, and the turn in progress (its engine is killed). */
   const stop = () => {
     voice.stop();
@@ -206,7 +217,12 @@ export function Dashboard({ initial }: { initial: Settings }) {
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
-    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''}`}>
+    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${handed.over ? 'is-dropping' : ''}`}>
+      {handed.over && (
+        <div className="drop-hint" aria-live="polite">
+          <span>Drop it on {name}</span>
+        </div>
+      )}
       <div className="stage-frame">
         <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
@@ -281,7 +297,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
         assistantName={name}
         full={sidebarOpen && assistant.chatId !== ''}
         compact={stage.showing}
-        onSend={(t) => assistant.send(t)}
+        onSend={sendMessage}
+        tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (
           <ModeBar
             modes={keepers.list?.roles ?? []}

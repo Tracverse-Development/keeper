@@ -25,6 +25,8 @@ interface Props {
   onSend: (text: string) => void;
   /** The mode and style controls, shown above the message box. */
   modeBar?: React.ReactNode;
+  /** What the person handed over and has not sent yet (a dropped file), above the message box. */
+  tray?: React.ReactNode;
   onMic: () => void;
   onStop: () => void;
 }
@@ -89,6 +91,7 @@ export function ConversationDock(p: Props) {
       <div className="dock-status" aria-live="polite">
         {p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
       </div>
+      {p.tray}
       {p.modeBar}
       <form
         className="dock-input glass"

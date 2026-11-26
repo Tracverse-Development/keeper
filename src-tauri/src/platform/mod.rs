@@ -51,6 +51,12 @@ pub async fn spotlight(query: &str, only_in: &[PathBuf], max: usize, within: Dur
     os::spotlight(query, only_in, max, within).await
 }
 
+/// The text of a word-processor or web document (rtf, doc, docx, odt, html, webarchive), read by
+/// the system's own converter. Systems without one answer with a plain-words error.
+pub async fn document_text(path: &std::path::Path) -> Result<String> {
+    os::document_text(path).await
+}
+
 /// The voice helper next to the app's executable (a Tauri sidecar), or the dev build's copy.
 pub fn voice_helper() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
