@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, FocusSession, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
+import type { FeelingsInfo, FocusSession, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
@@ -109,6 +109,9 @@ export const core = {
   /** Is the child profile on, and turning it on (with a new passcode) or off (with that passcode); resolves to whether it is on now. */
   childProfile: () => invoke<boolean>('child_profile'),
   childProfileSet: (on: boolean, passcode: string) => invoke<boolean>('child_profile_set', { on, passcode }),
+  /** The season open today with this keeper's quest progress (null: none open), and claiming an item whose quest is finished. */
+  seasonNow: (keeper?: string) => invoke<SeasonNow | null>('season_now', { keeper }),
+  seasonClaim: (keeper: string, item: string) => invoke<SeasonNow>('season_claim', { keeper, item }),
   /** This month's spending on cloud minds and the limit set for it. */
   usageMonth: () => invoke<Spending>('usage_month'),
   /** Save a keeper card the Studio drew (PNG bytes in base64) to Downloads; resolves to its path. */

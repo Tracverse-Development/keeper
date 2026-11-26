@@ -180,6 +180,8 @@ pub fn run() {
             keepers::kit_commands::souls_save,
             keepers::kit_commands::pack_export,
             keepers::kit_commands::pack_import,
+            keepers::season_commands::season_now,
+            keepers::season_commands::season_claim,
             keepers::wardrobe_commands::wardrobe_list,
             keepers::wardrobe_commands::wardrobe_design,
             keepers::wardrobe_commands::wardrobe_share,

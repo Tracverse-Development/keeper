@@ -9,6 +9,7 @@
 
 pub mod kit;
 pub mod kit_commands;
+pub mod season_commands;
 pub mod studio_commands;
 pub mod wardrobe_commands;
 

@@ -17,6 +17,7 @@ import { tryOn } from '../keepers/wardrobe-view';
 import { SoulSection } from '../keepers/SoulSection';
 import { useWardrobe } from '../keepers/useWardrobe';
 import { FeelingsTab } from './FeelingsTab';
+import { wearDesigned } from './DesignBox';
 import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
 import { InventoryTab } from './InventoryTab';
@@ -265,6 +266,8 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
                   onSaved();
                   void market.reload();
                 }}
+                onSeasonTry={(item, name) => setOutfit(item ? { wearables: wearDesigned(keeper.wearables, { name, part: item.part, effects: item.effects ?? {} }), caption: `Trying on the ${name}` } : null)}
+                onClaimed={() => void market.reload()}
               />
             )}
             {market.error && usesWardrobe && <p className="error-line">{market.error}</p>}

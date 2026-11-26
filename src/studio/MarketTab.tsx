@@ -3,15 +3,17 @@
  * each item is worn once the keeper's level reaches its rarity (earned, never bought). COMMUNITY:
  * keepers, souls and items people share as `.keeper.json` packs: receive one (described before it
  * is added) or share this keeper. Packs are data only, checked by the core on the way in, and
- * never carry memories or personal photos. The rules live in `market-view.ts`.
+ * never carry memories or personal photos. THIS SEASON: a small set open for a few weeks, each
+ * item earned by a quest (`SeasonShelf`). The rules live in `market-view.ts`.
  */
 import { useMemo, useState } from 'react';
 
-import { core, sentence, type Imported, type KeeperProfile, type StudioInfo, type Wardrobe } from '../kernel/ipc';
+import { core, sentence, type Imported, type KeeperProfile, type StudioInfo, type Wardrobe, type WornPart } from '../kernel/ipc';
 import { ItemCard } from './ItemCard';
 import { earningOrder, filtered, listingAction, listings, MARKET_FILTERS, standing, type MarketFilter } from './market-view';
 import { MakerFields } from './MakerFields';
 import { PackDrop } from './PackDrop';
+import { SeasonShelf } from './SeasonShelf';
 
 interface Props {
   info: StudioInfo;
@@ -22,11 +24,14 @@ interface Props {
   onWear: (item: string) => void;
   onTry: (item: string | null) => void;
   onImported: (i: Imported) => void;
+  /** Try a season item on the stage (null: stop), and reload the wardrobe after one was claimed. */
+  onSeasonTry: (item: WornPart | null, name: string) => void;
+  onClaimed: () => void;
 }
 
-type Side = 'official' | 'community';
+type Side = 'official' | 'season' | 'community';
 
-export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported }: Props) {
+export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed }: Props) {
   const [side, setSide] = useState<Side>('official');
   const [filter, setFilter] = useState<MarketFilter>('all');
   const [search, setSearch] = useState('');
@@ -51,8 +56,11 @@ export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTr
 
       <div className="segmented market-sides" role="tablist" aria-label="Marketplace">
         <button type="button" role="tab" aria-selected={side === 'official'} className={side === 'official' ? 'is-on' : ''} onClick={() => setSide('official')}>Official collection</button>
+        <button type="button" role="tab" aria-selected={side === 'season'} className={side === 'season' ? 'is-on' : ''} onClick={() => setSide('season')}>This season</button>
         <button type="button" role="tab" aria-selected={side === 'community'} className={side === 'community' ? 'is-on' : ''} onClick={() => setSide('community')}>Community packs</button>
       </div>
+
+      {side === 'season' && <SeasonShelf info={info} keeper={keeper} onTry={onSeasonTry} onClaimed={onClaimed} />}
 
       {side === 'official' && (
         <>

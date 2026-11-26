@@ -141,3 +141,30 @@ export interface FocusSession {
   startedAt: string;
   endsAt: string;
 }
+
+/** One season item with this keeper's progress on its quest (`keepers::season_commands`). */
+export interface SeasonQuest {
+  id: string;
+  name: string;
+  part: string;
+  slot: string;
+  effects: Record<string, number | string>;
+  blurb: string;
+  /** What to do ("Finish 3 focus sessions"), how far along, and the goal. */
+  quest: string;
+  done: number;
+  goal: number;
+  earned: boolean;
+  /** Already in the person's inventory. */
+  claimed: boolean;
+}
+
+/** The season open today (`null` from the core when none is). */
+export interface SeasonNow {
+  id: string;
+  name: string;
+  closes: string;
+  /** Days left, today included. */
+  daysLeft: number;
+  items: SeasonQuest[];
+}
