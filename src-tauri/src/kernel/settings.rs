@@ -104,17 +104,6 @@ pub struct KeeperProfile {
     pub legacy_graph: Option<String>,
 }
 
-impl KeeperProfile {
-    /// Where this keeper's memory lives (its sub-graph of the home graph, after the move).
-    pub fn place(&self) -> crate::dkg::Place {
-        crate::dkg::Place::new(&self.graph_id, self.memory_sub.as_deref())
-    }
-
-    /// The backup of its memory from before the move (the old graph, its root).
-    pub fn legacy_place(&self) -> Option<crate::dkg::Place> {
-        self.legacy_graph.as_deref().map(crate::dkg::Place::from)
-    }
-}
 
 impl Default for KeeperProfile {
     fn default() -> Self {

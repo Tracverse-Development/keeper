@@ -33,6 +33,16 @@ pub fn valid_name(name: &str) -> bool {
     !n.is_empty() && n.chars().count() <= 24 && n.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == '-')
 }
 
+/// Where a keeper's memory lives (its sub-graph of the home graph, after the move).
+pub fn place_of(keeper: &KeeperProfile) -> crate::dkg::Place {
+    crate::dkg::Place::new(&keeper.graph_id, keeper.memory_sub.as_deref())
+}
+
+/// The backup of a keeper's memory from before the move (the old graph, its root).
+pub fn legacy_place_of(keeper: &KeeperProfile) -> Option<crate::dkg::Place> {
+    keeper.legacy_graph.as_deref().map(crate::dkg::Place::from)
+}
+
 /// This install's short id (names no person): the computer account, or a test copy's own folder
 /// (`KEEPER_HOME`), so a test copy never writes into the real home graph.
 pub fn install_base() -> String {
@@ -77,7 +87,7 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
         .time(pred::AT, &time::now_iso())
         .build();
     quads.extend(AssetBuilder::new(OWNER).a(class::PERSON).time(pred::AT, &time::now_iso()).build());
-    let written = client.write_asset(keeper.place(), "desk-profile", &quads).await?;
+    let written = client.write_asset(place_of(keeper), "desk-profile", &quads).await?;
     // The soul the keeper was born with, in its own graph: who it is travels with what it remembers.
     let soul_quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
         .a("desk:Soul")
@@ -85,9 +95,9 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
         .text("desk:definition", &serde_json::to_string(soul).unwrap_or_default())
         .time(pred::AT, &time::now_iso())
         .build();
-    client.write_asset(keeper.place(), "desk-soul", &soul_quads).await?;
+    client.write_asset(place_of(keeper), "desk-soul", &soul_quads).await?;
     let sparql = "PREFIX schema: <http://schema.org/> PREFIX prov: <http://www.w3.org/ns/prov#> SELECT ?name WHERE { <urn:umoja:desk:agent:assistant> a prov:SoftwareAgent ; schema:name ?name } LIMIT 5";
-    let rows = client.query(keeper.place(), sparql, Layer::Working).await?;
+    let rows = client.query(place_of(keeper), sparql, Layer::Working).await?;
     let verified = rows.iter().any(|r| r.get("name").is_some_and(|n| n == &keeper.name));
     Ok((written.ka_ual, verified))
 }

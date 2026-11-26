@@ -59,7 +59,7 @@ impl AppState {
     /// A keeper's memory: its sub-graph of the home context graph (its old graph before the move),
     /// erasing from the backup of its old place too.
     pub fn memory_for(&self, keeper: &KeeperProfile) -> Result<Memory> {
-        Ok(Memory::at(self.client()?, keeper.place()).with_legacy(keeper.legacy_place()))
+        Ok(Memory::at(self.client()?, crate::keepers::place_of(keeper)).with_legacy(crate::keepers::legacy_place_of(keeper)))
     }
 
     /// Where the kit lives: the home graph's `kit` sub-graph once moved (its own graph before).

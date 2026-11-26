@@ -54,3 +54,9 @@
 - **Context:** a commit went in with a red window test: the check was `node --test … | grep "ℹ (pass|fail)" && git commit`, and grep succeeds whatever the counts say.
 - **Lesson:** a gate must fail on the runner's exit code, not on finding a summary line.
 - **Rule added:** commits go through `scripts/check.sh` (tsc, window tests, core tests; `set -e`, exits on the first red).
+
+### LES-012 — A check chained with ";" is no check (2026-11-26)
+- **Context:** the one-graph memory commit (9ec18a7) ran `scripts/check.sh | tail; git add …; git commit`: the window structure guard failed (the kernel imported the DKG module; memory/mod.rs over 400 lines) and the commit went in anyway. The second time after LES-011.
+- **Lesson:** a pipe to `tail` and a `;` both throw away the check's exit code.
+- **Rule added:** commit only as `scripts/check.sh && git commit …` (never piped, never after `;`); read the check's last lines AFTER it has gated the commit.
+
