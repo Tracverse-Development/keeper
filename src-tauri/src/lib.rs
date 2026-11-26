@@ -157,6 +157,7 @@ pub fn run() {
             keepers::kit_commands::modes_save,
             keepers::kit_commands::modes_reset,
             keepers::kit_commands::modes_list,
+            keepers::kit_commands::skills_list,
             keepers::kit_commands::souls_save,
             keepers::kit_commands::pack_export,
             keepers::kit_commands::pack_import,

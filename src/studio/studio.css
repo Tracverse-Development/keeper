@@ -11,7 +11,7 @@
 .studio-caption { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; background: rgba(7, 10, 22, .7); border: 1px solid var(--border); font-size: 13px; animation: studio-in .2s var(--ease) both; }
 .studio-panel { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
 .studio-scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
-.studio-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--navy-900); border: 1px solid var(--border); flex: none; }
+.studio-tabs { display: flex; flex-wrap: wrap; row-gap: 6px; gap: 4px; padding: 4px; border-radius: 24px; background: var(--navy-900); border: 1px solid var(--border); flex: none; }
 .studio-tabbtn { flex: 1; border: 0; background: transparent; color: var(--text-muted); padding: 8px 10px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; transition: background .15s var(--ease), color .15s var(--ease); }
 .studio-tabbtn.is-on { background: var(--accent-soft); color: var(--text); }
 .studio-tab { display: flex; flex-direction: column; gap: 12px; animation: studio-in .2s var(--ease) both; }
@@ -97,3 +97,21 @@
 .inv-give { max-width: 110px; padding: 4px 8px; font-size: 12px; }
 .inv-default { background: conic-gradient(var(--gold-500), var(--navy-500), var(--gold-500)); }
 @media (prefers-reduced-motion: reduce) { .inv-item { transition: none; } .inv-item.rarity-legendary::after, .inv-item.rarity-mythical::after { animation: none; } }
+
+/* Tab groups: Appearance, Mind, Progress */
+.studio-tabgroup { display: inline-flex; align-items: center; gap: 2px; padding-right: 8px; margin-right: 4px; border-right: 1px solid var(--border); }
+.studio-tabgroup:last-child { border-right: 0; }
+.studio-tabgroup-name { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-300); padding: 0 6px 0 8px; }
+.studio-tabgroup .studio-tabbtn { flex: none; padding: 7px 10px; font-size: 13px; }
+
+/* Modes */
+.mode-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mode-list li { display: flex; align-items: center; gap: 10px; }
+.mode-card { flex: 1; text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); color: var(--text); font: inherit; cursor: pointer; }
+.mode-card:hover { border-color: var(--border-strong); }
+.mode-edit .field-label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.mode-edit-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.mode-brief { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; min-height: 180px; }
+.mode-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.mode-skills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mode-skills label { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }

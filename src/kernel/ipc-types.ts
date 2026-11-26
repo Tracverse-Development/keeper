@@ -2,7 +2,7 @@
  * The shapes the Rust core sends and takes (serde camelCase), one source for the window. Re-exported
  * by `ipc.ts`, so callers import from there; split out to keep the bridge file small.
  */
-import type { KeeperVoice, ZoneLook } from './ipc-studio';
+import type { KeeperVoice, RoleInfo, ZoneLook } from './ipc-studio';
 import type { Panel } from './panel-spec';
 
 /** An engine id from the core's catalogue (`brain/engines/mod.rs`): claude, codex, gemini, hermes, ollama, reflex. */
@@ -38,15 +38,6 @@ export interface KeeperProfile {
   voice?: KeeperVoice;
   /** How it shows answers: balanced, explainer, brief, chat (absent = balanced). */
   style?: string;
-}
-
-export interface RoleInfo {
-  id: string;
-  title: string;
-  blurb: string;
-  /** What the mode may touch: talk only, the web, look at the computer, or change it. */
-  tools: 'none' | 'web' | 'look' | 'act';
-  skills: string[];
 }
 
 export interface KeeperList {

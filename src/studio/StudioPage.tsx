@@ -11,9 +11,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { CharacterStage } from '../character';
-import { core, sentence, type KeeperProfile, type KeeperVoice, type ZoneLook } from '../kernel/ipc';
+import { core, sentence, type KeeperProfile, type KeeperVoice, type Soul, type ZoneLook } from '../kernel/ipc';
 import { useEscape } from '../kernel/use-escape';
 import { tryOn } from '../keepers/wardrobe-view';
+import { SoulSection } from '../keepers/SoulSection';
 import { useWardrobe } from '../keepers/useWardrobe';
 import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
@@ -21,20 +22,18 @@ import { InventoryTab } from './InventoryTab';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
+import { ModesTab } from './ModesTab';
 import { useStudio } from './useStudio';
 import { VoiceTab } from './VoiceTab';
 import '../keepers/wardrobe.css';
 import './studio.css';
 
-type Tab = 'look' | 'inventory' | 'forge' | 'habits' | 'voice' | 'level' | 'market';
-const TABS: { id: Tab; name: string }[] = [
-  { id: 'look', name: 'Look' },
-  { id: 'inventory', name: 'Inventory' },
-  { id: 'forge', name: 'Forge' },
-  { id: 'habits', name: 'Habits' },
-  { id: 'voice', name: 'Voice' },
-  { id: 'level', name: 'Level' },
-  { id: 'market', name: 'Marketplace' },
+type Tab = 'look' | 'inventory' | 'forge' | 'soul' | 'modes' | 'habits' | 'voice' | 'level' | 'market';
+/** The tabs in three groups: how it looks, how it thinks, how it grows. */
+const GROUPS: { name: string; tabs: { id: Tab; name: string }[] }[] = [
+  { name: 'Appearance', tabs: [{ id: 'look', name: 'Look' }, { id: 'inventory', name: 'Inventory' }, { id: 'forge', name: 'Forge' }] },
+  { name: 'Mind', tabs: [{ id: 'soul', name: 'Soul' }, { id: 'modes', name: 'Modes' }, { id: 'habits', name: 'Habits' }, { id: 'voice', name: 'Voice' }] },
+  { name: 'Progress', tabs: [{ id: 'level', name: 'Level' }, { id: 'market', name: 'Marketplace' }] },
 ];
 
 interface Props {
@@ -42,12 +41,15 @@ interface Props {
   keeper: KeeperProfile;
   /** The keeper's soul, by name (for sharing it as a pack). */
   soulName: string;
+  /** The souls to choose from (Keeper's and the person's own), and choosing one. */
+  souls: Soul[];
+  onSoul: (id: string) => void;
   onClose: () => void;
   /** Something was saved (keepers reload; the dashboard's stage redresses). */
   onSaved: () => void;
 }
 
-export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) {
+export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved }: Props) {
   const { info, error, reload } = useStudio(keeper.id, open);
   const [tab, setTab] = useState<Tab>('look');
   const [zone, setZone] = useState<string | null>(null);
@@ -148,10 +150,15 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
         </section>
         <section className="studio-panel">
           <div className="studio-tabs" role="tablist" aria-label="Studio">
-            {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>
-                {t.name}
-              </button>
+            {GROUPS.map((g) => (
+              <span key={g.name} className="studio-tabgroup" aria-label={g.name}>
+                <span className="studio-tabgroup-name">{g.name}</span>
+                {g.tabs.map((t) => (
+                  <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>
+                    {t.name}
+                  </button>
+                ))}
+              </span>
             ))}
           </div>
           <div className="studio-scroll">
@@ -183,6 +190,8 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
                 onMake={market.add}
               />
             )}
+            {tab === 'soul' && <SoulSection value={keeper.soul} souls={souls} onPick={onSoul} onSaved={(saved) => { onSaved(); onSoul(saved.id); }} />}
+            {tab === 'modes' && <ModesTab onChanged={onSaved} />}
             {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
             {tab === 'voice' && <VoiceTab name={keeper.name} voice={voice} onVoice={setVoice} />}
             {info && tab === 'level' && <LevelTab info={info} name={keeper.name} />}

@@ -67,6 +67,19 @@ pub async fn modes_reset(state: State<'_, AppState>, id: String) -> Result<Vec<r
     Ok(roles::all())
 }
 
+/// One skill a mode can be given: its name and what it does.
+#[derive(Serialize)]
+pub struct SkillInfo {
+    pub name: &'static str,
+    pub what: &'static str,
+}
+
+/// Every skill a mode can be given (the Studio's Modes tab).
+#[tauri::command]
+pub fn skills_list() -> Vec<SkillInfo> {
+    crate::skills::catalogue().into_iter().map(|(name, what)| SkillInfo { name, what }).collect()
+}
+
 /// Every mode in effect (built-ins, edited built-ins, the person's own).
 #[tauri::command]
 pub fn modes_list() -> Vec<roles::Role> {

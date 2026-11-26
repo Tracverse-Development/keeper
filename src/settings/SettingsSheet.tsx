@@ -9,7 +9,6 @@ import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, t
 import { ShareSection } from '../keepers/ShareSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
-import { SoulSection } from '../keepers/SoulSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
@@ -65,7 +64,7 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
         </p>
 
         <p className="eyebrow">Soul: who {keeper.name} is</p>
-        {kit && <SoulSection value={keeper.soul} souls={kit.souls} onPick={(soul) => onKeeperChange({ soul })} onSaved={(s) => { onKitChanged(); onKeeperChange({ soul: s.id }); }} />}
+        <button type="button" className="btn btn-ghost" onClick={onOpenStudio}>Soul and modes are in the Studio</button>
 
         <p className="eyebrow">Role: what {keeper.name} can do</p>
         {kit && (

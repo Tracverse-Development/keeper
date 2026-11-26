@@ -48,6 +48,11 @@ const CATALOGUE: &[(&str, &str)] = &[
     ("switch-engine", "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex"),
 ];
 
+/// Every skill with what it does.
+pub fn catalogue() -> Vec<(&'static str, &'static str)> {
+    CATALOGUE.to_vec()
+}
+
 /// Every skill's name (what a mode may list).
 pub fn names() -> Vec<&'static str> {
     CATALOGUE.iter().map(|(name, _)| *name).collect()

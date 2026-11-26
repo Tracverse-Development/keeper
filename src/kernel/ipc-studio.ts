@@ -66,3 +66,20 @@ export interface PersonalPicture {
   /** A data URL (the picture never leaves the computer). */
   dataUrl: string;
 }
+
+/** A mode (stored as a keeper's `role`): Keeper's built-in, an edited built-in, or the person's own. */
+export interface RoleInfo {
+  id: string;
+  title: string;
+  blurb: string;
+  /** Its instructions to the engine (Markdown; editable). */
+  brief: string;
+  /** What it handles, in one line (anything else switches mode). */
+  scope: string;
+  /** What the mode may touch: talk only, the web, look at the computer, or change it. */
+  tools: 'none' | 'web' | 'look' | 'act';
+  skills: string[];
+  resources: { title: string; url: string }[];
+  builtin: boolean;
+  edited: boolean;
+}
