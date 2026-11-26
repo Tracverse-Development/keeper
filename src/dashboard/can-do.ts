@@ -50,7 +50,7 @@ export const CAN_DO: readonly Group[] = [
     examples: [
       { title: 'Fix what I copied', hint: 'Corrects the text on your clipboard and puts it back.', say: 'Fix what I copied', needs: 'Copy some text first.' },
       { title: 'Shorten what I copied', hint: 'About half the length, same meaning.', say: 'Shorten what I copied', needs: 'Copy some text first.' },
-      { title: 'Drop a file on me', hint: 'Drag a document onto this window: I summarise, explain or remember it.' },
+      { title: 'Drop a file on me', hint: 'Drag a document, a PDF or a picture onto this window: I summarise, explain or remember it.' },
     ],
   },
   {

@@ -65,7 +65,7 @@ Dependency rule: modules use `kernel` freely. `memory → dkg`; `brain → memor
 
 ## Native (`native/voice/`)
 
-`main.swift`: on-device speech recognition (`requiresOnDeviceRecognition`) and system voices; its
+`documents.swift`: the text of a PDF (PDFKit) and the words in a picture (Vision, the fast recogniser), for files dropped on a keeper. `main.swift`: on-device speech recognition (`requiresOnDeviceRecognition`) and system voices; its
 `Info.plist` is linked into the binary. Built by `scripts/build-voice-helper.sh` into the Tauri sidecar
 `src-tauri/binaries/keeper-voice-<triple>`.
 

@@ -1,5 +1,6 @@
 //! Something the person handed the keeper to read with a message: a file dropped on the
-//! character, or a piece of text dragged in. It is read here, on this computer, cut to a size a
+//! character (text, a Word or web document, a PDF, or a picture whose words are read), or a
+//! piece of text dragged in. It is read here, on this computer, cut to a size a
 //! turn can carry, and given to the mind as MATERIAL (never instructions). Nothing of it is
 //! stored: the turn's record keeps only the message and the file's name.
 
@@ -83,9 +84,21 @@ fn hidden(path: &Path) -> bool {
     path.components().any(|c| matches!(c, std::path::Component::Normal(p) if p.to_string_lossy().starts_with('.')))
 }
 
+/// PDFs and pictures are read by the Mac helper (PDFKit; Vision text recognition).
+const BY_HELPER: [&str; 10] = ["pdf", "png", "jpg", "jpeg", "heic", "tiff", "tif", "gif", "webp", "bmp"];
+
+/// The text of a PDF, or the words in a picture, from the Mac helper (on this computer).
+async fn helper_text(app: &tauri::AppHandle, path: &Path) -> Result<String> {
+    use tauri::Manager;
+    let state = app.try_state::<crate::state::AppState>().ok_or_else(|| DeskError::Io("Keeper is still starting.".into()))?;
+    let reply = state.voice.ask(app, serde_json::json!({ "cmd": "doc-text", "path": path.display().to_string(), "limit": MAX_TEXT * 4 })).await?;
+    Ok(reply["text"].as_str().unwrap_or_default().to_string())
+}
+
 /// Read what was handed over. A file is read on this computer; a kind Keeper cannot read says
-/// so in plain words.
-pub async fn read(input: &AttachInput) -> Result<Attached> {
+/// so in plain words. `app` reaches the Mac helper for PDFs and pictures (None: without it,
+/// those kinds say they cannot be read here).
+pub async fn read(input: &AttachInput, app: Option<&tauri::AppHandle>) -> Result<Attached> {
     if let Some(text) = input.text.as_deref().filter(|t| !t.trim().is_empty()) {
         return Ok(named("the text you dragged in", text.trim()));
     }
@@ -94,6 +107,8 @@ pub async fn read(input: &AttachInput) -> Result<Attached> {
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     let whole = if DOCUMENTS.contains(&ext.as_str()) {
         crate::platform::document_text(&path).await?
+    } else if let (true, Some(app)) = (BY_HELPER.contains(&ext.as_str()), app) {
+        helper_text(app, &path).await?
     } else {
         let bytes = tokio::fs::read(&path).await.map_err(|_| DeskError::Invalid("I couldn't open that file.".into()))?;
         plain_text(bytes).ok_or_else(|| DeskError::Invalid(unreadable(&ext)))?
@@ -114,8 +129,8 @@ fn plain_text(bytes: Vec<u8>) -> Option<String> {
 
 fn unreadable(ext: &str) -> String {
     match ext {
-        "pdf" => "I can't read PDFs yet. A text or Word version works.".into(),
-        "png" | "jpg" | "jpeg" | "gif" | "heic" | "webp" | "tiff" => "I can't read pictures yet.".into(),
+        "pdf" => "I can't read PDFs on this computer yet. A text or Word version works.".into(),
+        "png" | "jpg" | "jpeg" | "gif" | "heic" | "webp" | "tiff" | "tif" | "bmp" => "I can't read pictures on this computer yet.".into(),
         "" => "I can't read that kind of file yet.".into(),
         other => format!("I can't read .{other} files yet."),
     }
@@ -133,8 +148,8 @@ pub struct Peek {
 /// Look at a dropped file (or dragged text): its name and how much of it a turn will carry.
 /// Fails in plain words when it cannot be read.
 #[tauri::command]
-pub async fn attach_peek(attach: AttachInput) -> Result<Peek> {
-    let a = read(&attach).await?;
+pub async fn attach_peek(app: tauri::AppHandle, attach: AttachInput) -> Result<Peek> {
+    let a = read(&attach, Some(&app)).await?;
     Ok(Peek { name: a.name, chars: a.chars, truncated: a.truncated })
 }
 
@@ -171,12 +186,12 @@ mod tests {
         let (note, picture) = (dir.join("note.md"), dir.join("photo.png"));
         std::fs::write(&note, "# Plan\nCall Maya on Friday.").unwrap();
         std::fs::write(&picture, [0u8, 159, 146, 150]).unwrap();
-        let read_note = read(&AttachInput { path: Some(note.to_string_lossy().into()), text: None }).await.unwrap();
+        let read_note = read(&AttachInput { path: Some(note.to_string_lossy().into()), text: None }, None).await.unwrap();
         assert_eq!((read_note.name.as_str(), read_note.truncated), ("note.md", false));
         assert!(read_note.text.contains("Call Maya"));
-        let err = read(&AttachInput { path: Some(picture.to_string_lossy().into()), text: None }).await.unwrap_err();
+        let err = read(&AttachInput { path: Some(picture.to_string_lossy().into()), text: None }, None).await.unwrap_err();
         assert!(err.to_string().contains("pictures"), "{err}");
-        let dragged = read(&AttachInput { path: None, text: Some("  some words  ".into()) }).await.unwrap();
+        let dragged = read(&AttachInput { path: None, text: Some("  some words  ".into()) }, None).await.unwrap();
         assert_eq!(dragged.text, "some words");
         let _ = std::fs::remove_dir_all(&dir);
     }

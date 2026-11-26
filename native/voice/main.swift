@@ -14,6 +14,7 @@
 //          {"type":"word","length":5} {"type":"mouth","value":0.6} {"type":"speech-end"} {"type":"authorized","speech":"…","mic":true}
 //          {"type":"voices","voices":[…]} {"type":"error","message":"…"}
 // PIM (calendar and contacts, request/response by "id"): see pim.swift.
+// Documents (the text of a PDF, the words in a picture, by "id"): see documents.swift.
 
 import AVFoundation
 import Foundation
@@ -252,6 +253,7 @@ final class Helper {
     let speaker = Speaker()
     let player = Player()
     let pim = Pim()
+    let documents = Documents()
     /// The mode to go back to after speaking.
     var resumeMode = "off"
 
@@ -267,6 +269,7 @@ final class Helper {
     func handle(_ command: [String: Any]) {
         let cmd = command["cmd"] as? String ?? ""
         if Pim.commands.contains(cmd) { return pim.handle(command) }
+        if Documents.commands.contains(cmd) { return documents.handle(command) }
         switch cmd {
         case "listen":
             let mode = (command["mode"] as? String) == "always" ? "always" : "once"

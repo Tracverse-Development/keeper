@@ -108,7 +108,7 @@ pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: St
     // Material handed over with the message (a dropped file) is read first: a file that cannot
     // be read fails the turn in plain words before anything is asked of the mind.
     let attached = match attach {
-        Some(input) => Some(attach::read(&input).await?),
+        Some(input) => Some(attach::read(&input, Some(&app)).await?),
         None => None,
     };
     run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached).await
