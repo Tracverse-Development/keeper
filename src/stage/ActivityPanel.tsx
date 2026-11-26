@@ -1,11 +1,12 @@
 /**
- * The agent's live tool calls as a friendly feed: an icon and a plain verb per tool ("Reading",
- * "Running a command"), the detail as a chip (paths as breadcrumbs, web addresses as their host),
- * new items sliding in and a shimmer on the newest while the keeper is still working.
+ * What the keeper is doing on the computer, live, in words a person would say ("Looking in
+ * Applications", "Moving report.pdf to Documents"), never as commands: the step being done now
+ * plays large with an animation for its kind (`ActArt`), earlier steps list below, and what actually
+ * ran is folded away under each step for anyone who wants it. Founder 2026-11-25: show it working,
+ * don't read out commands.
  */
-import { detailKind, toolLook, urlHost } from './activity.ts';
-import { Breadcrumbs } from './Breadcrumbs.tsx';
-import { Icon } from './icons.tsx';
+import { ActArt } from './ActArt.tsx';
+import { narrate } from './activity.ts';
 
 /** The feed shows the latest few; older ones fold into a count. */
 const SHOWN = 6;
@@ -41,13 +42,6 @@ function Pipeline({ phase, mind }: { phase: string; mind: string }) {
   );
 }
 
-function Detail({ detail }: { detail: string }) {
-  const kind = detailKind(detail);
-  if (kind === 'path') return <Breadcrumbs path={detail} max={4} />;
-  if (kind === 'url') return <span className="act-chip" title={detail}>{urlHost(detail)}</span>;
-  return detail ? <span className="act-chip mono" title={detail}>{detail}</span> : null;
-}
-
 export function ActivityPanel({ activity, working, keeperName, phase, mind = '' }: Props) {
   const start = Math.max(0, activity.length - SHOWN);
   const shown = activity.slice(start);
@@ -59,16 +53,31 @@ export function ActivityPanel({ activity, working, keeperName, phase, mind = '' 
         {activity.length > 0 && <span className="activity-count">{activity.length} {activity.length === 1 ? 'step' : 'steps'}</span>}
       </header>
       {working && activity.length === 0 && <Pipeline phase={phase ?? 'thinking'} mind={mind} />}
+      {working && activity.length > 0 && (() => {
+        const now = activity[activity.length - 1];
+        const n = narrate(now.tool, now.detail);
+        return (
+          <div className="act-now" key={activity.length}>
+            <ActArt kind={n.kind} />
+            <span className="act-now-words">{n.words}…</span>
+          </div>
+        );
+      })()}
       {start > 0 && <p className="activity-earlier">+ {start} earlier</p>}
       <ol className="activity-list">
         {shown.map((item, i) => {
-          const look = toolLook(item.tool);
+          const n = narrate(item.tool, item.detail);
           const latest = working && i === shown.length - 1;
           return (
             <li key={start + i} className={latest ? 'act is-latest' : 'act'}>
-              <span className={`act-icon is-${look.icon}`}><Icon name={look.icon} size={16} /></span>
-              <span className="act-verb">{look.verb}</span>
-              <span className="act-detail"><Detail detail={item.detail} /></span>
+              <span className="act-icon"><ActArt kind={n.kind} size={22} /></span>
+              <span className="act-verb">{n.words}</span>
+              {item.detail && (
+                <details className="act-raw">
+                  <summary>what ran</summary>
+                  <code>{item.detail}</code>
+                </details>
+              )}
             </li>
           );
         })}
