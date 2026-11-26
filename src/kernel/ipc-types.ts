@@ -311,6 +311,8 @@ export interface TurnResult {
   mind: MindUsed;
   learned: Fact[];
   forgotten: Fact[];
+  /** What the keeper knew about the person when it answered (absent on turns rebuilt from history). */
+  used?: Fact[];
   actions: Outcome[];
   /** What to show on the Stage (validated by the core). */
   panels: Panel[];

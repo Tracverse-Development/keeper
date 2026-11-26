@@ -118,7 +118,8 @@ export const core = {
   unpinScene: (id: string, keeper?: string) => invoke<void>('scene_unpin', { keeper, id }),
   pimRequestAccess: () => invoke<PimAccess>('pim_request_access'),
   overview: (keeper?: string) => invoke<Overview>('memory_overview', { keeper }),
-  forgetFact: (id: string) => invoke<void>('memory_forget_fact', { id }),
+  /** Erase one fact from a keeper's graph (the active keeper when none is named). */
+  forgetFact: (id: string, keeper?: string) => invoke<void>('memory_forget_fact', { id, keeper }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),
   listenOnce: () => invoke<void>('voice_listen_once'),
   stopListening: () => invoke<void>('voice_stop'),

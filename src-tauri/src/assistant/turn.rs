@@ -210,7 +210,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     // An answer with no early reply (instant, cache) can be spoken when it is done.
     let speak_first = speak_ms.lock().ok().and_then(|f| *f);
     let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, speak_ms: speak_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
-    Ok(TurnResult { keeper: keeper.id.clone(), mode: mode_used, switched, chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
+    let used = if answer.cached { vec![] } else { known_for_answer(&recall.facts, &forgotten) };
+    Ok(TurnResult { keeper: keeper.id.clone(), mode: mode_used, switched, chat, reply, mind, learned, forgotten, used, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
 }
 
 /// The parts of a keeper's context that do not depend on recall: who it is, whether it may act,
@@ -281,6 +282,12 @@ mod tests {
 }
 
 
+/// The facts shown under an answer as "what I knew": the ones recall handed the mind, without
+/// any the turn itself just forgot (a forgotten fact is never shown again).
+fn known_for_answer(recalled: &[Fact], forgotten: &[Fact]) -> Vec<Fact> {
+    recalled.iter().filter(|f| !forgotten.iter().any(|g| g.id == f.id)).cloned().collect()
+}
+
 /// What an action's record keeps of its outcome. A memory question keeps only its heading
 /// ("What I learned recently (6 found)"): its answer quotes facts, and a copy in the action log
 /// would survive the person forgetting them (memory bench 2026-11-26).
@@ -293,6 +300,13 @@ fn stored_outcome(skill: &str, summary: &str) -> String {
 
 #[cfg(test)]
 mod stored_outcome_tests {
+    #[test]
+    fn a_fact_forgotten_this_turn_is_not_shown_as_known() {
+        let (cat, dog) = (super::Fact::new("Your cat is Biscuit", "family", "2026-11-26T00:00:00Z"), super::Fact::new("Your dog is Rex", "family", "2026-11-26T00:00:00Z"));
+        let known = super::known_for_answer(&[cat.clone(), dog.clone()], &[dog]);
+        assert_eq!(known.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(), vec![cat.id.as_str()]);
+    }
+
     #[test]
     fn memory_answers_are_not_copied_into_the_action_log() {
         assert_eq!(super::stored_outcome("ask-memory", "What I learned recently (6 found): Your cat is called Biscuit."), "What I learned recently (6 found)");

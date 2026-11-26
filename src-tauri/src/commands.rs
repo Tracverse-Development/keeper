@@ -206,11 +206,11 @@ pub async fn catalog_run(state: State<'_, AppState>, keeper: Option<String>, que
 }
 
 #[tauri::command]
-pub async fn memory_forget_fact(state: State<'_, AppState>, id: String) -> Result<()> {
+pub async fn memory_forget_fact(state: State<'_, AppState>, id: String, keeper: Option<String>) -> Result<()> {
     if id.len() != 16 || !id.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(crate::kernel::DeskError::Invalid("That isn't a fact id.".into()));
     }
-    state.memory()?.erase_fact(&id).await;
+    state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?.erase_fact(&id).await;
     Ok(())
 }
 

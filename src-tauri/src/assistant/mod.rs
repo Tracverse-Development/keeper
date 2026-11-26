@@ -51,6 +51,10 @@ pub struct TurnResult {
     pub mind: MindUsed,
     pub learned: Vec<Fact>,
     pub forgotten: Vec<Fact>,
+    /// What the keeper knew about the person when it answered: the facts recall handed the
+    /// mind for this turn (empty for an answer reopened from the scene cache). Shown under
+    /// the answer with a Forget button each ("Why did you say that?").
+    pub used: Vec<Fact>,
     pub actions: Vec<Outcome>,
     /// What an agent engine did on the computer this turn.
     pub steps: Vec<crate::brain::AgentStep>,
