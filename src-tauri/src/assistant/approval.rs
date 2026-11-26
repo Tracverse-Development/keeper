@@ -93,6 +93,11 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
         return Answer { thought, mind, cached: false };
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };
+    // The person reads the plan for a few seconds: start the acting process now, so Approve
+    // does not wait for Claude Code to start.
+    if keeper.brain == "claude" {
+        crate::brain::engines::claude::warm_up(&Context { may_act: true, guard: None, ..ctx.clone() }, &keeper.model);
+    }
     let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
     let panel = Panel::Approval { id: format!("plan-{token}"), title: "My plan".into(), summary: summary.clone(), steps, token };
     Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false }
@@ -101,16 +106,21 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
 /// Approve (run the acting turn under the plan) or deny (record it and say so).
 #[tauri::command]
 pub async fn plan_decide(app: AppHandle, state: State<'_, AppState>, token: String, approve: bool) -> Result<TurnResult> {
-    let plan = state.plans.take(&token).ok_or_else(|| DeskError::Invalid("That plan has expired. Ask me again.".into()))?;
+    decide(&app, &state, &token, approve).await
+}
+
+/// The decision itself, for the window (`plan_decide`) and the phone link alike.
+pub async fn decide(app: &AppHandle, state: &AppState, token: &str, approve: bool) -> Result<TurnResult> {
+    let plan = state.plans.take(token).ok_or_else(|| DeskError::Invalid("That plan has expired. Ask me again.".into()))?;
     let keeper = state.keeper_or_active(&plan.keeper)?;
     let memory = state.memory_for(&keeper)?;
     if approve {
         let said = format!("{}{}", plan.said, mandate(&plan.steps));
-        return turn::turn(&app, &memory, &state, &keeper, &plan.chat, &said, Some(&plan.steps)).await;
+        return turn::turn(app, &memory, state, &keeper, &plan.chat, &said, Some(&plan.steps)).await;
     }
     let record = ActionRecord::new("plan-denied", &plan.said, "You said no to my plan, so I didn't act.", true, &time::now_iso(), "");
     memory.write(&record).await;
-    turn::turn(&app, &memory, &state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", None).await
+    turn::turn(app, &memory, state, &keeper, &plan.chat, "I said no to that plan. Acknowledge briefly and don't do it.", None).await
 }
 
 #[cfg(test)]

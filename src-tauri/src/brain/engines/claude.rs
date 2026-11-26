@@ -28,7 +28,9 @@ pub fn args(ctx: &Context, model: &str) -> Vec<String> {
         .collect();
     if ctx.may_act {
         a.extend(["--append-system-prompt".to_string(), prompt::system_static(ctx)]);
-        a.extend(["--permission-mode", "bypassPermissions", "--max-turns", "40"].map(String::from));
+        // No user or project settings: Keeper's own instructions and permissions are the whole
+        // configuration (the person's Claude Code hooks and plugins cost ~0.7 s and are not ours).
+        a.extend(["--permission-mode", "bypassPermissions", "--setting-sources", "", "--max-turns", "40"].map(String::from));
     } else {
         a.extend(["--system-prompt".to_string(), prompt::system_static(ctx)]);
         a.extend(["--tools", "", "--disable-slash-commands", "--setting-sources", "", "--disallowedTools", ACTING_TOOLS, "--max-turns", "2"].map(String::from));

@@ -26,6 +26,8 @@ TURNS = [
     # Computer work (an admin keeper plans it; a companion says it does not operate the computer).
     ("computer", "Tidy up my desktop"),
     ("computer-miss", "Can you see what I was working on yesterday?"),
+    # Approve and do: a harmless change in /tmp, approved through the phone link's /api/plan.
+    ("act", "Create a folder called keeper-bench-act inside /tmp"),
     ("facts", "What do you know about me?"),
 ]
 
@@ -34,9 +36,9 @@ def link(home):
     base, token = url.split("/#t=")
     return base, token
 
-def turn(base, token, text, chat):
-    body = json.dumps({"text": text, "chat": chat}).encode()
-    req = urllib.request.Request(f"{base}/api/turn", data=body, headers={"content-type": "application/json", "authorization": f"Bearer {token}"})
+def turn(base, token, text, chat, path="/api/turn", body=None):
+    body = json.dumps(body or {"text": text, "chat": chat}).encode()
+    req = urllib.request.Request(f"{base}{path}", data=body, headers={"content-type": "application/json", "authorization": f"Bearer {token}"})
     t = time.time()
     with urllib.request.urlopen(req, timeout=240) as r:
         out = json.load(r)
@@ -59,6 +61,16 @@ def main():
             first = t.get("firstMs") if t.get("firstMs") is not None else t.get("totalMs")
             rows.append({"label": label, "first": first, "done": t.get("totalMs"), "wall": out["wall_ms"], "source": t.get("source"), "recall": t.get("recallMs"), "panels": out.get("panels"), "reply": out.get("reply", "")[:90]})
             print(f"{label:>13}  first {first:>6} ms  panel {str(t.get('panelMs') if t.get('panelMs') is not None else '-'):>6}  done {t.get('totalMs'):>6} ms  recall {t.get('recallMs'):>4} ms  {t.get('source'):<10} panels {out.get('panels')}  | {out.get('reply','')[:150]}")
+            plan = out.get("plan")
+            if label == "act" and plan:
+                done = turn(base, token, "", chat, "/api/plan", {"token": plan["token"], "approve": True})
+                made = Path("/tmp/keeper-bench-act").is_dir() or Path("/private/tmp/keeper-bench-act").is_dir()
+                rows.append({"label": "act-approved", "first": done["wall_ms"], "done": done["wall_ms"], "source": (done.get("timings") or {}).get("source"), "reply": done.get("reply", "")[:90], "made": made})
+                print(f"{'act-approved':>13}  done {done['wall_ms']:>6} ms  folder made: {made}  | {done.get('reply','')[:120]}")
+                if made:
+                    Path("/tmp/keeper-bench-act").rmdir()
+            elif label == "act":
+                print(f"{'':>13}  (no plan came back to approve)")
             time.sleep(3.2)  # stay under the link's 20 turns a minute
     ok = [r for r in rows if "error" not in r]
     if ok:

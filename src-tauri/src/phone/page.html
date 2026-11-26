@@ -33,13 +33,17 @@
   button { height: 48px; padding: 0 20px; border: 0; border-radius: 24px; font-weight: 600; font-size: 15px; color: #070a16;
     background: linear-gradient(180deg, #e3b06a, #b57b2c); }
   button:disabled { opacity: .5; }
+  .plan { display: flex; gap: 8px; margin-top: 10px; }
+  .plan button { height: 38px; padding: 0 16px; font-size: 14px; }
+  .plan button.no { background: transparent; color: var(--cream); border: 1px solid var(--line); }
+  ol.steps { margin: 8px 0 0 18px; padding: 0; font-size: 14px; }
   label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-left: auto; }
 </style>
 </head>
 <body>
 <header>
   <div class="orb" id="orb"></div>
-  <div><h1 id="name">Umoja</h1><div class="sub">Memory on your own DKG node</div></div>
+  <div><h1 id="name">Keeper</h1><div class="sub">Memory on your own DKG node</div></div>
   <label><input type="checkbox" id="speak" checked style="height:auto;width:auto"> Read aloud</label>
 </header>
 <main id="feed"></main>
@@ -56,6 +60,7 @@
     const el = document.createElement('div'); el.className = 'b ' + cls; el.textContent = words;
     if (note) { const n = document.createElement('div'); n.className = 'note'; n.textContent = note; el.appendChild(n); }
     feed.appendChild(el); feed.scrollTop = feed.scrollHeight;
+    return el;
   }
   function say(words) {
     if (!document.getElementById('speak').checked || !('speechSynthesis' in window)) return;
@@ -63,6 +68,28 @@
   }
   api('/api/hello').then((h) => { document.getElementById('name').textContent = h.name; bubble('them', 'Hello, I’m ' + h.name + '. What can I do for you?'); })
     .catch((e) => bubble('err', e.message));
+  // A plan to approve: its steps, then Approve / Don't (the keeper acts only after Approve).
+  function planButtons(el, plan) {
+    const list = document.createElement('ol'); list.className = 'steps';
+    for (const s of plan.steps) { const li = document.createElement('li'); li.textContent = s.action + ' ' + s.target; list.appendChild(li); }
+    const row = document.createElement('div'); row.className = 'plan';
+    const yes = document.createElement('button'); yes.textContent = 'Approve and do it';
+    const no = document.createElement('button'); no.textContent = 'Don\u2019t'; no.className = 'no';
+    const decide = async (approve) => {
+      yes.disabled = no.disabled = true; orb.classList.add('busy');
+      try { show(await api('/api/plan', { token: plan.token, approve })); }
+      catch (e) { bubble('err', e.message); }
+      finally { orb.classList.remove('busy'); }
+    };
+    yes.onclick = () => decide(true); no.onclick = () => decide(false);
+    row.append(yes, no); el.append(list, row);
+  }
+  function show(r) {
+    if (r.chat) chat = r.chat;
+    const el = bubble('them', r.reply, r.learned && r.learned.length ? 'Remembered: ' + r.learned.join('; ') : r.mind);
+    if (r.plan && r.plan.steps && r.plan.steps.length) planButtons(el, r.plan);
+    say(r.reply);
+  }
   // One phone session is one chat on the keeper (its id comes back with each reply).
   let chat = '';
   form.addEventListener('submit', async (ev) => {
@@ -70,10 +97,7 @@
     const words = text.value.trim(); if (!words) return;
     text.value = ''; bubble('you', words); send.disabled = true; orb.classList.add('busy');
     try {
-      const r = await api('/api/turn', { text: words, chat });
-      if (r.chat) chat = r.chat;
-      bubble('them', r.reply, r.learned && r.learned.length ? 'Remembered: ' + r.learned.join('; ') : r.mind);
-      say(r.reply);
+      show(await api('/api/turn', { text: words, chat }));
     } catch (e) { bubble('err', e.message); }
     finally { send.disabled = false; orb.classList.remove('busy'); text.focus(); }
   });

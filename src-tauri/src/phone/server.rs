@@ -80,18 +80,42 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                     // Continue a chat the phone started (its id came back with the last reply).
                     let chat: String = body["chat"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_hexdigit()).take(32).collect();
                     let state = app.state::<AppState>();
-                    match tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", &chat, &text)) {
-                        Ok(result) => {
-                            let _ = app.emit(events::PHONE_TURN, json!({ "said": text, "result": &result }));
-                            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "chat": result.chat, "panels": result.panels.len(), "timings": result.timings, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
-                        }
-                        Err(e) => json_reply(req, 400, json!({ "error": e.to_string() })),
+                    let result = tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", &chat, &text));
+                    reply_turn(req, &app, &text, result);
+                }
+                // Approve or refuse a plan the keeper showed (the phone sees its steps and token).
+                (Method::Post, "/api/plan") => {
+                    let mut body = String::new();
+                    if req.as_reader().take(MAX_BODY).read_to_string(&mut body).is_err() {
+                        json_reply(req, 400, json!({ "error": "That answer could not be read." }));
+                        continue;
                     }
+                    let body: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+                    let plan: String = body["token"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_hexdigit()).take(64).collect();
+                    let approve = body["approve"].as_bool().unwrap_or(false);
+                    let state = app.state::<AppState>();
+                    let result = tauri::async_runtime::block_on(crate::assistant::approval::decide(&app, &state, &plan, approve));
+                    reply_turn(req, &app, if approve { "Approve and do it" } else { "Don't" }, result);
                 }
                 _ => json_reply(req, 404, json!({ "error": "not found" })),
             }
         }
     });
+}
+
+/// A turn's answer for the phone: the reply, who answered, timings, and any plan to approve.
+fn reply_turn(req: Request, app: &AppHandle, said: &str, result: crate::kernel::Result<crate::assistant::TurnResult>) {
+    match result {
+        Ok(result) => {
+            let _ = app.emit(events::PHONE_TURN, json!({ "said": said, "result": &result }));
+            let plan = result.panels.iter().find_map(|p| match p {
+                crate::stage::Panel::Approval { token, steps, .. } => Some(json!({ "token": token, "steps": steps })),
+                _ => None,
+            });
+            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "chat": result.chat, "panels": result.panels.len(), "timings": result.timings, "plan": plan, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
+        }
+        Err(e) => json_reply(req, 400, json!({ "error": e.to_string() })),
+    }
 }
 
 #[cfg(test)]
