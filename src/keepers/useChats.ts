@@ -42,7 +42,22 @@ export function useChats(keeper: string | null) {
     [keeper, refresh],
   );
 
+  /** Rename and/or pin a chat, then re-read the list. */
+  const change = useCallback(
+    async (chat: string, what: { title?: string; pinned?: boolean }) => {
+      if (!keeper) return;
+      try {
+        const saved = await core.chatChange(chat, what, keeper);
+        setChats((list) => list.map((c) => (c.id === chat ? saved : c)));
+        setError(null);
+      } catch (e) {
+        setError(sentence(e));
+      }
+    },
+    [keeper],
+  );
+
   const open = useCallback((chat: string): Promise<Turn[]> => (keeper ? core.chatTurns(chat, keeper) : Promise.resolve([])), [keeper]);
 
-  return { chats, error, refresh, open, remove };
+  return { chats, error, refresh, open, remove, change };
 }

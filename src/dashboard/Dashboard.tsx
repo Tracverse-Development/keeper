@@ -283,6 +283,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onActivate={(id) => keepers.activate(id).catch(() => undefined)}
         onNewChat={() => { assistant.newChat(); stage.reset(); }}
         onOpenChat={openChat}
+        onChangeChat={(id, change) => void chats.change(id, change)}
         onDeleteChat={(id) => {
           // Deleting the chat on screen starts a fresh one, so nothing shows erased words.
           if (id === assistant.chatId) { assistant.newChat(); stage.reset(); }

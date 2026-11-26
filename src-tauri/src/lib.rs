@@ -137,6 +137,8 @@ pub fn run() {
             commands::child_profile,
             commands::child_profile_set,
             skills::reminder_actions::reminder_cancel,
+            memory::chats::chat_change,
+            memory::chats::chats_search,
             health::health_check,
             health::health_fix,
             focus::focus_state,

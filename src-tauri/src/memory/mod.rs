@@ -5,6 +5,7 @@
 //! the assistant knows what the graph says, and every answer can show the queries behind it.
 
 pub mod catalog;
+pub mod chats;
 pub mod hot;
 pub mod later;
 pub mod meaning;
@@ -246,7 +247,7 @@ impl Memory {
     /// The keeper's chats, newest first.
     pub async fn chats(&self) -> Result<Vec<Chat>> {
         let (rows, _) = self.ask("chats", &Default::default()).await?;
-        Ok(rows.iter().map(|r| Chat { id: get(r, "c").rsplit(':').next().unwrap_or_default().into(), title: get(r, "title"), at: get(r, "at") }).collect())
+        Ok(rows.iter().map(|r| Chat { id: get(r, "c").rsplit(':').next().unwrap_or_default().into(), title: get(r, "title"), at: get(r, "at"), pinned: get(r, "pinned") == "yes" }).collect())
     }
 
     /// One chat's turns, oldest first.

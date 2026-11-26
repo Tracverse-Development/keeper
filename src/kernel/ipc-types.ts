@@ -148,12 +148,6 @@ export interface ModelOption {
   name: string;
 }
 
-export interface Chat {
-  id: string;
-  title: string;
-  at: string;
-}
-
 export type QuestionParam = 'days' | 'category' | 'chat' | 'skill';
 
 export interface QuestionInfo {

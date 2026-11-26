@@ -7,7 +7,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
+import type { Chat, ChatFound } from './ipc-chats';
+import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
 import type { FeelingsInfo, FocusSession, HealthCheck, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
@@ -34,6 +35,7 @@ export type * from './ipc-types';
 export type * from './ipc-wardrobe';
 export type * from './ipc-studio';
 export type * from './ipc-usage';
+export type * from './ipc-chats';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -60,6 +62,9 @@ export const core = {
   removeKeeper: (id: string) => invoke<KeeperList>('keepers_remove', { id }),
   chats: (keeper?: string) => invoke<Chat[]>('chats_list', { keeper }),
   chatTurns: (chat: string, keeper?: string) => invoke<Turn[]>('chat_turns', { keeper, chat }),
+  /** Rename and/or pin a chat (left out = unchanged), and search a keeper's conversations. */
+  chatChange: (chat: string, change: { title?: string; pinned?: boolean }, keeper?: string) => invoke<Chat>('chat_change', { keeper, chat, ...change }),
+  chatsSearch: (query: string, keeper?: string) => invoke<ChatFound[]>('chats_search', { keeper, query }),
   /** Erase a chat and its turns from the keeper's graph; resolves to the number of turns erased. */
   deleteChat: (chat: string, keeper?: string) => invoke<number>('chat_delete', { keeper, chat }),
   catalog: () => invoke<QuestionInfo[]>('catalog_list'),

@@ -133,7 +133,7 @@ mod tests {
             facts: vec![Fact::new("Your cat is Biscuit", "person", &at(1, now))],
             turns: vec![at(0, now), at(0, now), at(2, now)],
             done: vec![Done { at: at(1, now), what: "Opened Notes.".into() }],
-            chats: vec![Chat { id: "c1".into(), title: "Planning the week".into(), at: at(2, now) }],
+            chats: vec![Chat { id: "c1".into(), title: "Planning the week".into(), at: at(2, now), pinned: false }],
             reminders: vec![Reminder::new("Call Maya", &time::iso(now + Duration::days(1)), &at(0, now))],
         };
         let t = review(&week, "Trini Boi", now);

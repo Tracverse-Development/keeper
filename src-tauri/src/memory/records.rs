@@ -180,13 +180,16 @@ pub struct Chat {
     pub id: String,
     pub title: String,
     pub at: String,
+    /// Kept at the top of the list by the person.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
 }
 
 impl Chat {
     /// A new chat named after its first message.
     pub fn start(first_message: &str, at: &str) -> Chat {
         let title: String = first_message.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect();
-        Chat { id: short_hash(&format!("{at}\u{0}chat\u{0}{first_message}"), 16), title, at: at.into() }
+        Chat { id: short_hash(&format!("{at}\u{0}chat\u{0}{first_message}"), 16), title, at: at.into(), pinned: false }
     }
 }
 
@@ -195,13 +198,14 @@ impl Record for Chat {
         format!("desk-chat-{}", self.id)
     }
     fn quads(&self) -> Vec<Quad> {
-        AssetBuilder::new(&entity("chat", &self.id))
+        let b = AssetBuilder::new(&entity("chat", &self.id))
             .a(class::CHAT)
             .a("schema:Conversation")
             .text(pred::NAME, &self.title)
             .link(pred::BY, ASSISTANT)
-            .time(pred::AT, &self.at)
-            .build()
+            .time(pred::AT, &self.at);
+        let b = if self.pinned { b.text("desk:pinned", "yes") } else { b };
+        b.build()
     }
 }
 

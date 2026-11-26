@@ -3,6 +3,7 @@
  * keeper's chats, newest first, all read from the DKG. Collapses to a slim rail of keeper
  * badges; a keeper does not need a chat to work, so the panel can stay closed.
  */
+import { ChatList } from './ChatList';
 import { useState } from 'react';
 
 import type { Chat, KeeperProfile, RoleInfo, Soul } from '../kernel/ipc';
@@ -26,22 +27,15 @@ interface Props {
   onOpenChat: (id: string) => void;
   /** Erase a chat from the keeper's graph (asked twice: Delete, then Delete for good). */
   onDeleteChat: (id: string) => void;
+  /** Rename and/or pin a chat. */
+  onChangeChat: (id: string, change: { title?: string; pinned?: boolean }) => void;
   onCreate: (k: { name: string; skin: string; role: string; soul?: string }) => Promise<unknown>;
 }
 
 const SKIN_GLYPH: Record<string, string> = { robot: '🤖', puppy: '🐶' };
 
-function when(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const today = new Date();
-  return d.toDateString() === today.toDateString() ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
 export function KeeperSidebar(p: Props) {
   const [adding, setAdding] = useState(false);
-  /** The chat whose Delete was pressed once (a second press erases it). */
-  const [confirming, setConfirming] = useState<string | null>(null);
   const roleTitle = (id: string) => p.roles.find((r) => r.id === id)?.title ?? id;
 
   return (
@@ -77,42 +71,7 @@ export function KeeperSidebar(p: Props) {
           </button>
         </li>
       </ul>
-      {p.open && p.active && (
-        <div className="chats">
-          <div className="chats-head">
-            <span className="eyebrow">Chats with {p.active.name}</span>
-            <button type="button" className="link small" onClick={p.onNewChat}>
-              New chat
-            </button>
-          </div>
-          {p.error && <p className="error-line small">{p.error}</p>}
-          {p.chats.length === 0 && !p.error && <p className="muted small">No chats yet. Say hello.</p>}
-          <ul className="chat-list">
-            {p.chats.map((c) => (
-              <li key={c.id} className="chat-row">
-                <button type="button" className={`chat ${c.id === p.chatId ? 'is-on' : ''}`} onClick={() => p.onOpenChat(c.id)}>
-                  <span className="chat-title">{c.title || 'Untitled chat'}</span>
-                  <span className="muted small">{when(c.at)}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`chat-delete ${confirming === c.id ? 'is-confirming' : ''}`}
-                  aria-label={confirming === c.id ? `Delete "${c.title || 'Untitled chat'}" for good` : `Delete "${c.title || 'Untitled chat'}"`}
-                  onClick={() => {
-                    if (confirming === c.id) {
-                      setConfirming(null);
-                      p.onDeleteChat(c.id);
-                    } else setConfirming(c.id);
-                  }}
-                  onBlur={() => setConfirming((x) => (x === c.id ? null : x))}
-                >
-                  {confirming === c.id ? 'Delete for good' : '×'}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {p.open && p.active && <ChatList keeper={p.active.id} keeperName={p.active.name} chats={p.chats} chatId={p.chatId} error={p.error} onNew={p.onNewChat} onOpen={p.onOpenChat} onDelete={p.onDeleteChat} onChange={p.onChangeChat} />}
       {adding && <NewKeeperDialog roles={p.roles} souls={p.souls} onClose={() => setAdding(false)} onCreate={p.onCreate} onImported={p.onImported} />}
     </aside>
   );
