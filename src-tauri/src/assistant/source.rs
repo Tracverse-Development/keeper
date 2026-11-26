@@ -32,7 +32,7 @@ fn mind(id: &str, label: &str) -> MindUsed {
 /// "Switching to … mode for this." first (founder 2026-11-26: modes are locked to their scope).
 pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, progress).await;
-    let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m)) else { return answer };
+    let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m) && super::child_mode(m, crate::kernel::child_lock::on()) == *m) else { return answer };
     let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
     let base = super::turn::base_context(state, &moved, &ctx.said);
     let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), attached: ctx.attached.clone(), may_act: base.may_act && ctx.attached.is_none(), ..base };

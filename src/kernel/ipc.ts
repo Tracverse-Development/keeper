@@ -106,6 +106,9 @@ export const core = {
   /** The focus session running now (null: none), and ending it early. */
   focusState: () => invoke<FocusSession | null>('focus_state'),
   focusStop: () => invoke<FocusSession | null>('focus_stop'),
+  /** Is the child profile on, and turning it on (with a new passcode) or off (with that passcode); resolves to whether it is on now. */
+  childProfile: () => invoke<boolean>('child_profile'),
+  childProfileSet: (on: boolean, passcode: string) => invoke<boolean>('child_profile_set', { on, passcode }),
   /** This month's spending on cloud minds and the limit set for it. */
   usageMonth: () => invoke<Spending>('usage_month'),
   /** Save a keeper card the Studio drew (PNG bytes in base64) to Downloads; resolves to its path. */

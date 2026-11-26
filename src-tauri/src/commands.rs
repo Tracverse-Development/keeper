@@ -49,6 +49,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
     if let Some(shortcut) = &change.talk_shortcut {
         crate::hotkey::apply(&app, shortcut)?;
     }
+    if change.agent_actions == Some(true) && crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("Acting on this computer stays off on a child profile.".into()));
+    }
     let saved = state.update_settings(|s| {
         if let Some(a) = change.agent_actions {
             s.agent_actions = a;
@@ -287,4 +290,18 @@ pub struct Spending {
 pub fn usage_month(state: State<'_, AppState>) -> Spending {
     let (month, cap_usd) = (crate::kernel::usage::this_month(), state.settings().monthly_cap_usd);
     Spending { usd: month.usd, calls: month.calls, cap_usd, reached: crate::kernel::usage::reached(cap_usd, month.usd) }
+}
+
+/// Is the child profile on (`kernel::child_lock`)?
+#[tauri::command]
+pub fn child_profile() -> bool {
+    crate::kernel::child_lock::on()
+}
+
+/// Turn the child profile on (setting its passcode) or off (with that passcode).
+#[tauri::command]
+pub fn child_profile_set(on: bool, passcode: String) -> Result<bool> {
+    crate::kernel::child_lock::set(on, &passcode)?;
+    // The mood pools and any prepared lines were written for the other profile.
+    Ok(crate::kernel::child_lock::on())
 }

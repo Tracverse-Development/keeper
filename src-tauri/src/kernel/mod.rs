@@ -1,6 +1,7 @@
 //! The kernel: shared infrastructure every module may use, owned by none of them.
 //! Dependencies point one way: modules → kernel, never kernel → module.
 
+pub mod child_lock;
 pub mod error;
 pub mod events;
 pub mod paths;

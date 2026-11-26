@@ -83,7 +83,7 @@ pub async fn keeper_touch(state: State<'_, AppState>, keeper: Option<String>, ki
     let soul = state.soul(&keeper.soul);
     let you = clean_name(you.as_deref().unwrap_or(""));
     // The mood, where this mode has one and the person has not turned feelings off.
-    let felt = (crate::keepers::kit::roles::get(&mode).mood && !keeper.feelings_off).then(|| crate::feelings::store::on_touch(&keeper.id, &soul, touch == Touch::Pat)).flatten();
+    let felt = (crate::keepers::kit::roles::get(&mode).mood && !keeper.feelings_off && !crate::kernel::child_lock::on()).then(|| crate::feelings::store::on_touch(&keeper.id, &soul, touch == Touch::Pat)).flatten();
     // Feelings set aside (the person may be in distress): a plain, calm keeper.
     let mood = felt.as_ref().filter(|v| !v.stepped_aside).map(|v| v.label);
     let key = pool_key(&keeper.id, &soul, mood);
@@ -122,7 +122,7 @@ pub async fn keeper_touch(state: State<'_, AppState>, keeper: Option<String>, ki
 /// switch and when the person comes back to the window).
 pub fn prepare(state: &AppState, keeper: &KeeperProfile) {
     let soul = state.soul(&keeper.soul);
-    let felt = (crate::keepers::kit::roles::get(&keeper.role).mood && !keeper.feelings_off).then(|| crate::feelings::store::view(&keeper.id, &soul)).flatten();
+    let felt = (crate::keepers::kit::roles::get(&keeper.role).mood && !keeper.feelings_off && !crate::kernel::child_lock::on()).then(|| crate::feelings::store::view(&keeper.id, &soul)).flatten();
     let key = pool_key(&keeper.id, &soul, felt.as_ref().filter(|v| !v.stepped_aside).map(|v| v.label));
     if with(|t| t.pools.get(&key).is_none_or(|p| p.poke.len() < LOW || p.pat.len() < LOW)) == Some(true) {
         refill(state, keeper, &soul, key, felt.as_ref());
@@ -184,7 +184,8 @@ fn brief(name: &str, soul: &Soul, felt: Option<&crate::feelings::engine::Feeling
         }
         None => "Right now it is calm and even.".to_string(),
     };
-    format!("The character is called {name}. {} {mood} It is {now} where the person is.", souls::brief(soul))
+    let child = if crate::kernel::child_lock::on() { format!(" {}", crate::kernel::child_lock::RULES) } else { String::new() };
+    format!("The character is called {name}. {} {mood} It is {now} where the person is.{child}", souls::brief(soul))
 }
 
 /// The lines of a model's answer that may be said: short, plain, different, at most a batch.

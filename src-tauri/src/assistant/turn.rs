@@ -58,7 +58,9 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let base = base_context(state, keeper, said);
     // The keeper's mood, when its mode allows one and the person has not turned it off.
     let soul = state.soul(&keeper.soul);
-    let feelings = (role.mood && !keeper.feelings_off).then(|| crate::feelings::store::on_message(&keeper.id, &soul, said)).flatten();
+    // No simulated mood on a child profile.
+    let moody = role.mood && !keeper.feelings_off && !crate::kernel::child_lock::on();
+    let feelings = moody.then(|| crate::feelings::store::on_message(&keeper.id, &soul, said)).flatten();
     let ctx = Context {
         feelings,
         // An approved plan is computer work whatever its words were. A message that came with
@@ -174,7 +176,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     }
 
     // How it went shapes the keeper's mood (only where it has one).
-    if role.mood && !keeper.feelings_off && (!outcomes.is_empty() || !thought.steps.is_empty()) {
+    if role.mood && moody && (!outcomes.is_empty() || !thought.steps.is_empty()) {
         crate::feelings::store::on_outcome(&keeper.id, &soul, outcomes.iter().all(|o| o.succeeded));
     }
     let reply = compose_reply(&thought.reply, &outcomes, &forgotten, !thought.forget.is_empty());
@@ -226,12 +228,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 /// warm spare is started with exactly the instructions the next turn will use.
 pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str) -> Context {
     let role = crate::keepers::kit::roles::get(&keeper.role);
-    // A mode that looks or acts uses the computer only when the person allows acting in Settings.
-    let can_act = state.settings().agent_actions && role.uses_computer();
+    // A mode that looks or acts uses the computer only when the person allows acting in Settings,
+    // and never on a child profile.
+    let child = crate::kernel::child_lock::on();
+    let can_act = !child && state.settings().agent_actions && role.uses_computer();
     Context {
         said: said.to_string(),
         assistant_name: keeper.name.clone(),
-        identity: format!("{} {}", crate::keepers::kit::souls::brief(&state.soul(&keeper.soul)), role.brief),
+        identity: format!("{} {}{}", crate::keepers::kit::souls::brief(&state.soul(&keeper.soul)), role.brief, if child { format!(" {}", crate::kernel::child_lock::RULES) } else { String::new() }),
         facts: vec![],
         recent: vec![],
         elsewhere: vec![],

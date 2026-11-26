@@ -120,6 +120,12 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
     run_turn_with(app, state, keeper_id, chat, text, mode, None).await
 }
 
+/// The mode a chat runs in: its own, or on a child profile (when its own has tools) the Tutor.
+pub(crate) fn child_mode(mode: &str, child: bool) -> String {
+    let has_tools = crate::keepers::kit::roles::get(mode).tools != crate::keepers::kit::roles::Tools::None;
+    if child && has_tools { "tutor".to_string() } else { mode.to_string() }
+}
+
 /// `run_turn` with material the person handed over (`attach`).
 async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str, attached: Option<attach::Attached>) -> Result<TurnResult> {
     let said = text.trim();
@@ -139,6 +145,8 @@ async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat:
         return Err(DeskError::Invalid("That mode does not exist.".into()));
     }
     let keeper = if mode.is_empty() { keeper } else { crate::kernel::settings::KeeperProfile { role: mode.to_string(), ..keeper } };
+    // On a child profile every chat is in a mode with no tools (no computer, no web).
+    let keeper = crate::kernel::settings::KeeperProfile { role: child_mode(&keeper.role, crate::kernel::child_lock::on()), ..keeper };
     let result = turn::turn(app, &memory, state, &keeper, chat, said, None, attached).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
@@ -181,4 +189,17 @@ pub async fn brief_today(app: AppHandle, state: State<'_, AppState>) -> Result<O
 #[tauri::command]
 pub fn assistant_cancel() {
     crate::brain::engines::cli::cancel();
+}
+
+#[cfg(test)]
+mod child_tests {
+    #[test]
+    fn a_child_profile_keeps_every_chat_in_a_mode_without_tools() {
+        for mode in ["system", "assistant", "researcher"] {
+            assert_eq!(super::child_mode(mode, true), "tutor", "{mode} has tools");
+            assert_eq!(super::child_mode(mode, false), mode);
+        }
+        assert_eq!(super::child_mode("companion", true), "companion");
+        assert_eq!(super::child_mode("tutor", true), "tutor");
+    }
 }

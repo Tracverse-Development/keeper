@@ -115,7 +115,7 @@ pub fn keeper_feelings(state: State<'_, AppState>, keeper: Option<String>, mode:
     // The mode asked about (none or unknown: the keeper's own).
     let mode = mode.filter(|m| super::kit::roles::exists(m)).unwrap_or_else(|| profile.role.clone());
     Ok(FeelingsInfo {
-        shows: !profile.feelings_off && super::kit::roles::get(&mode).mood && view.as_ref().is_some_and(|v| !v.stepped_aside),
+        shows: !crate::kernel::child_lock::on() && !profile.feelings_off && super::kit::roles::get(&mode).mood && view.as_ref().is_some_and(|v| !v.stepped_aside),
         view,
         off: profile.feelings_off,
         modes_with_mood: super::kit::roles::all().into_iter().filter(|m| m.mood).map(|m| m.title).collect(),

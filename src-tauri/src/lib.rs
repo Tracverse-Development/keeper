@@ -130,6 +130,8 @@ pub fn run() {
             assistant::touch::keeper_touch,
             assistant::attach::attach_peek,
             commands::usage_month,
+            commands::child_profile,
+            commands::child_profile_set,
             focus::focus_state,
             focus::focus_stop,
             backup::backup_save,

@@ -128,6 +128,9 @@ pub struct Imported {
 /// becomes a new keeper with its own fresh graph (no memories come with it).
 #[tauri::command]
 pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imported> {
+    if crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("Packs from other people are switched off on a child profile.".into()));
+    }
     let client = state.client()?;
     let kit = inventory::kit(&client, &state.kit_place()).await?;
     match packs::read(&text).map_err(DeskError::Invalid)? {
