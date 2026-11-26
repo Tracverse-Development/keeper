@@ -36,6 +36,8 @@ if [ "${LOCAL:-}" != "1" ]; then
   git merge-base --is-ancestor HEAD origin/main || { echo "HEAD $(git rev-parse --short HEAD) is not on origin/main; push it to main first"; exit 1; }
   # Proven against real-shaped memory on this Mac's node before anything is tagged (FIX-0026).
   bash scripts/proof.sh
+  # And the real app, end to end, as a test copy with its own memory (the window shows briefly).
+  bash scripts/bench/smoke.sh
   echo "Tagging Keeper $version at $(git rev-parse --short HEAD) and pushing $tag (scripts/release-mac.sh builds and publishes it)"
   git tag -a "$tag" -m "Keeper $tag"
   git push origin "$tag"

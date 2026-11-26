@@ -14,6 +14,8 @@ export interface Example {
   say?: string;
   /** …or the place that opens. */
   open?: Place;
+  /** With `open: 'settings'`: the words that find its section there ("backup"). */
+  find?: string;
   /** Needs something first, said plainly ("Copy some text first"). */
   needs?: string;
 }
@@ -59,7 +61,7 @@ export const CAN_DO: readonly Group[] = [
     examples: [
       { title: 'What do you know about me?', hint: 'Everything I remember, with Forget beside each.', say: 'What do you know about me?' },
       { title: 'Open my memory', hint: 'Conversations, knowledge, actions and reminders.', open: 'memory' },
-      { title: 'Save a backup', hint: 'One locked file with your keepers and everything they remember.', open: 'settings' },
+      { title: 'Save a backup', hint: 'One locked file with your keepers and everything they remember.', open: 'settings', find: 'backup' },
     ],
   },
   {
@@ -75,6 +77,8 @@ export const CAN_DO: readonly Group[] = [
     id: 'yours',
     title: 'Make it yours',
     examples: [
+      { title: 'Make the text bigger', hint: 'Normal, Large or Larger, for all of Keeper.', open: 'settings', find: 'text size' },
+      { title: 'Tidy my memory', hint: 'Shows what something newer has replaced, to forget.', say: 'Tidy my memory' },
       { title: 'Open the Studio', hint: 'Look, outfit, soul, feelings, voice, level and the marketplace.', open: 'studio' },
       { title: 'Is everything working?', hint: 'Checks the memory node, the mind, the voice and more.', open: 'settings' },
     ],

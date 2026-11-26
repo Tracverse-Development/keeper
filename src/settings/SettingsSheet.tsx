@@ -5,7 +5,7 @@
  * profile) and This Mac (updates, removing). Each section saves on change; a keeper answers a
  * brain change in its own voice (the dashboard speaks it).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, type KitCatalog, type Settings, type SettingsChange } from '../kernel/ipc';
 import { ShareSection } from '../keepers/ShareSection';
@@ -40,14 +40,22 @@ interface Props {
   onKeeperChange: (change: KeeperChange) => void;
   /** Present when there is more than one keeper. */
   onRemoveKeeper?: () => void;
+  /** Open with this search already typed ("backup"), so the sheet lands on that section. */
+  find?: string;
 }
 
-export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpenStudio, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
+export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpenStudio, onClose, onSaved, onKeeperChange, onRemoveKeeper, find = '' }: Props) {
   useEscape(open, onClose);
   const [error, setError] = useState<string | null>(null);
   // The tab on show, and a search that finds a section in any tab.
   const [group, setGroup] = useState<GroupId>('health');
   const [query, setQuery] = useState('');
+  // Each time it opens: the Health tab, or the section that was asked for.
+  useEffect(() => {
+    if (!open) return;
+    setGroup('health');
+    setQuery(find);
+  }, [open, find]);
   const see = shown(group, query);
   const save = (change: SettingsChange) =>
     core

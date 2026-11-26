@@ -91,6 +91,10 @@ pub fn phone_status(state: State<'_, AppState>) -> PhoneStatus {
 
 #[tauri::command]
 pub fn phone_start(app: AppHandle, state: State<'_, AppState>) -> Result<PhoneStatus> {
+    // A phone on the network could reach the keeper without the grown-up in the room.
+    if crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("The phone link is switched off on a child profile.".into()));
+    }
     state.phone.start(&app)
 }
 

@@ -52,6 +52,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [studioOpen, setStudioOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [canDoOpen, setCanDoOpen] = useState(false);
+  /** Words that land Settings on a section when it opens ("backup"). */
+  const [settingsFind, setSettingsFind] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
   const lastTouch = useRef(0);
@@ -319,7 +321,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMic={voice.listen}
         onStop={stop}
       />
-      <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? setSettingsOpen(true) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
+      <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place, find) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? (setSettingsFind(find ?? ''), setSettingsOpen(true)) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -354,12 +356,13 @@ export function Dashboard({ initial }: { initial: Settings }) {
       {keeper && (
         <SettingsSheet
           open={settingsOpen}
+          find={settingsFind}
           settings={settings}
           keeper={keeper}
           kit={kit.kit}
           onKitChanged={() => { kit.refresh(); keepers.reload(); }}
           onOpenStudio={() => { setSettingsOpen(false); setStudioOpen(true); }}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => { setSettingsOpen(false); setSettingsFind(''); }}
           onSaved={setSettings}
           onKeeperChange={changeKeeper}
           onRemoveKeeper={keepers.list && keepers.list.keepers.length > 1 ? () => keepers.remove(keeper.id).then(() => setSettingsOpen(false)) : undefined}

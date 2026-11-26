@@ -80,6 +80,10 @@ fn file_path(now_iso: &str) -> std::path::PathBuf {
 /// removed or overwritten. Nothing is written unless the whole file opens and passes its checks.
 #[tauri::command]
 pub async fn backup_restore(state: State<'_, AppState>, passphrase: String, data: String) -> Result<Restored> {
+    // A backup can bring in keepers, souls and memory made elsewhere: a grown-up's decision.
+    if crate::kernel::child_lock::on() {
+        return Err(DeskError::Invalid("Bringing in a backup is switched off on a child profile.".into()));
+    }
     if data.len() > MAX_FILE_BYTES {
         return Err(DeskError::Invalid("That file is too big to be a Keeper backup.".into()));
     }

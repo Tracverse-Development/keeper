@@ -71,7 +71,15 @@ pub async fn answer(memory: &Memory, said: &str) -> Option<Thought> {
     }
     let name = named(&S, SAVE, s)?;
     // "That" is the latest real request in this keeper's memory.
-    let Ok((turns, _)) = memory.recent_turns().await else { return Some(words("I couldn't read what we just did, so I can't save it yet.".into())) };
+    // Hot memory first: it already holds the message just before this one, which may not have
+    // reached the node yet (seen in the end-to-end smoke: "that" was one request too old).
+    let turns = match crate::memory::hot::get(memory.hot_key()).map(|s| s.recent).filter(|r| !r.is_empty()) {
+        Some(recent) => recent,
+        None => match memory.recent_turns().await {
+            Ok((turns, _)) => turns,
+            Err(_) => return Some(words("I couldn't read what we just did, so I can't save it yet.".into())),
+        },
+    };
     let Some(last) = turns.iter().find(|t| savable(&t.said)) else { return Some(words("There's nothing to save yet. Ask me to do something first.".into())) };
     if memory.routines().await.is_ok_and(|l| l.len() >= MOST && !l.iter().any(|r| r.id == id_of(&name))) {
         return Some(words(format!("You already have {MOST} routines. Forget one first.")));

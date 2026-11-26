@@ -88,6 +88,18 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(shown(reply, json!([])));
     }
 
+    // "tidy my memory": facts a newer one has made out of date, each with Forget beside it.
+    static TIDY: OnceLock<Regex> = OnceLock::new();
+    if re(&TIDY, TIDY_MEMORY).is_match(s) {
+        let Ok((facts, _)) = memory.facts().await else { return Some(shown("I couldn't read your memory just now. Try again in a moment.".into(), json!([]))) };
+        let old: Vec<FactRow> = crate::memory::meaning::outdated(&facts).into_iter().take(40).map(|f| FactRow { id: f.id.clone(), text: f.text.clone(), category: f.category.clone() }).collect();
+        if old.is_empty() {
+            return Some(shown("Your memory looks tidy: nothing in it has been replaced by something newer.".into(), json!([])));
+        }
+        let reply = format!("I found {} that something newer has replaced. Forget the ones that are no longer true.", if old.len() == 1 { "1 thing".to_string() } else { format!("{} things", old.len()) });
+        return Some(Thought { reply, core_panels: vec![Panel::Facts { id: "outdated".into(), title: "These look out of date".into(), facts: old }], ..Thought::default() });
+    }
+
     // "snooze", "snooze for 15 minutes": the reminder that just went off comes back.
     if let Some(reply) = crate::skills::reminder_actions::snooze(&app.state::<crate::state::AppState>(), s).await {
         return Some(shown(reply, json!([])));
@@ -126,12 +138,23 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     None
 }
 
+/// "Tidy my memory", "clean up your memory", "what's out of date in my memory?".
+const TIDY_MEMORY: &str = r"(?i)^(?:please\s+)?(?:(?:tidy|clean)(?:\s+up)?\s+(?:my|your)\s+memory|what(?:'s| is)\s+out of date in\s+(?:my|your)\s+memory)\s*[?.!]?$";
+
 /// "What was I working on yesterday?", "what files did I change today", "my recent files".
 const RECENT_WORK: &str = r"(?i)^(?:please\s+)?(?:can you (?:see|tell me|show me)\s+)?(?:what (?:was i|were i|have i been|i was|i have been|i(?:.ve)? been) (?:working on|doing on (?:my|the) (?:computer|mac))|what (?:files )?did i (?:work on|change|edit)|(?:show (?:me )?)?(?:my )?recent (?:files|work))\b([^?]*)\??$";
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tidy_memory_phrasings() {
+        static R: OnceLock<Regex> = OnceLock::new();
+        let r = re(&R, TIDY_MEMORY);
+        assert!(r.is_match("Tidy my memory") && r.is_match("please clean up your memory.") && r.is_match("What's out of date in my memory?"));
+        assert!(!r.is_match("tidy my downloads") && !r.is_match("clean up my memory card photos"));
+    }
 
     #[test]
     fn recent_work_phrasings() {

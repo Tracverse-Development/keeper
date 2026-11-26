@@ -102,6 +102,25 @@ pub fn run() {
                 if state.settings().setup_complete {
                     assistant::warm::warm_keeper(&state, "");
                 }
+                // What came due while Keeper was closed is said once (and finished) before the
+                // reminders still ahead are scheduled.
+                let mut missed = Vec::new();
+                if let Some(closed_at) = skills::reminder_actions::last_alive() {
+                    for keeper in state.settings().keepers {
+                        missed.extend(skills::reminder_actions::settle_missed(&state, &keeper.id, closed_at).await);
+                    }
+                }
+                // From here on Keeper notes once a minute that it is running.
+                tauri::async_runtime::spawn(async {
+                    loop {
+                        skills::reminder_actions::mark_alive();
+                        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    }
+                });
+                if let Some(line) = skills::reminder_actions::missed_words(&missed) {
+                    platform::notify("Keeper", &line);
+                    let _ = app_handle.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
+                }
                 for keeper in state.settings().keepers {
                     if let Ok(memory) = state.memory_for(&keeper) {
                         for r in memory.upcoming_reminders().await.unwrap_or_default() {

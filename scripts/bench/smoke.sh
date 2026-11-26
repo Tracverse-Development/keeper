@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Start an ISOLATED test Keeper (its own app folder under misc/, a Smoke keeper whose memory
+# lives in a sub-graph of that copy's own home graph, updates off, no shortcut, not listening)
+# and run smoke.py against it through its test link; then stop the test copy (only the process
+# this script started). The real Keeper, its settings and its memory are never touched.
+#   bash scripts/bench/smoke.sh        (BUILD=release for a release build; default debug)
+set -euo pipefail
+root="$(cd "$(dirname "$0")/../.." && pwd)"
+home="$root/misc/smoke-home"
+rm -rf "$home" && mkdir -p "$home"
+today="$(date +%Y-%m-%d)"
+# The built-in mind: every step here is an instant feature, so no model is ever called.
+cat > "$home/settings.json" <<JSON
+{"setupComplete": true, "nodeHome": "$HOME/.dkg", "activeKeeper": "keeper-smoke",
+ "keepers": [{"id": "keeper-smoke", "name": "Smoke", "skin": "robot", "role": "assistant", "soul": "steady", "graphId": "umoja-desk-smoke-$(date +%s)", "brain": "reflex", "model": ""}],
+ "agentActions": false, "askBeforeActing": true, "visual": true, "fastModel": "", "quickReplies": false, "prefetchScenes": false,
+ "alwaysListening": false, "talkShortcut": "", "autoUpdate": false, "lastBrief": "$today", "voice": "Samantha"}
+JSON
+mode="${BUILD:-debug}"
+bin="$root/src-tauri/target/$mode/keeper"
+(cd "$root/src-tauri" && if [ "$mode" = release ]; then cargo build --release -q; else cargo build -q; fi)
+KEEPER_HOME="$home" KEEPER_TEST_LINK=1 "$bin" > "$home/app.log" 2>&1 &
+pid=$!
+trap 'kill $pid 2>/dev/null || true' EXIT
+for i in $(seq 1 80); do [ -s "$home/test-link.txt" ] && break; sleep 0.5; done
+[ -s "$home/test-link.txt" ] || { echo "the test Keeper did not open its link"; tail -20 "$home/app.log"; exit 1; }
+sleep 4   # the memory move into the sub-graph finishes at start
+python3 "$root/scripts/bench/smoke.py" "$home"

@@ -34,10 +34,10 @@ export function TopBar(p: Props) {
             <span className="dot ok" /> {p.openMic ? 'Open mic: listening' : `Listening for “${p.assistantName}”`}
           </span>
         )}
-        <span className="pill" title={p.node ? `${p.node.name} · ${p.node.networkName}` : undefined}>
+        <button type="button" className="pill pill-button" onClick={p.onSettings} title={p.node ? `${p.node.name} · ${p.node.networkName}. Press to check everything.` : 'Press to see what is wrong.'}>
           <span className={`dot ${p.node ? 'ok' : p.nodeChecked ? 'off' : ''}`} />
           {p.node ? `DKG node ${p.node.version} · working memory` : p.nodeChecked ? 'Memory node offline' : 'Checking memory node…'}
-        </span>
+        </button>
         <button type="button" className="pill pill-button" onClick={p.onMemory}>
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
             <circle cx="6" cy="7" r="2.2" fill="currentColor" />

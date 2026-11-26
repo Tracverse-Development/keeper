@@ -12,7 +12,8 @@ interface Props {
   open: boolean;
   keeperName: string;
   onSay: (words: string) => void;
-  onOpen: (place: Place) => void;
+  /** Open a place; `find` = the words that find a section in Settings. */
+  onOpen: (place: Place, find?: string) => void;
   onClose: () => void;
 }
 
@@ -35,7 +36,7 @@ export function CanDoPage({ open, keeperName, onSay, onOpen, onClose }: Props) {
   const groups = matching(query);
   const press = (e: Example) => {
     if (e.say) onSay(e.say);
-    else if (e.open) onOpen(e.open);
+    else if (e.open) onOpen(e.open, e.find);
     else return;
     onClose();
   };

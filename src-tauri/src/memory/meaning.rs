@@ -100,6 +100,23 @@ pub fn slot(text: &str) -> Option<String> {
     ONE_OF.contains(&thing).then(|| format!("your {thing}"))
 }
 
+/// The facts a newer fact has made out of date: for each slot holding more than one fact (in
+/// the same mode's memory), every one but the newest. `facts` are newest first, as memory
+/// returns them. For tidying memory kept before facts replaced each other.
+pub fn outdated(facts: &[super::records::Fact]) -> Vec<&super::records::Fact> {
+    let mut newest: Vec<(String, &str)> = Vec::new();
+    let mut out = Vec::new();
+    for f in facts {
+        let Some(s) = slot(&f.text) else { continue };
+        if newest.iter().any(|(seen, mode)| *seen == s && *mode == f.mode) {
+            out.push(f);
+        } else {
+            newest.push((s, &f.mode));
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,6 +133,15 @@ mod tests {
         assert!(!concepts("Your callback function failed").contains(&"contact"), "a longer word that merely starts the same is not it");
         assert!(concepts("The planet has a card").is_empty(), "planet is not plan, card is not car");
         assert!(concepts("You injured your knee").contains(&"health") && concepts("You moved last week").contains(&"home"));
+    }
+
+    #[test]
+    fn older_facts_in_a_slot_are_out_of_date_and_nothing_else_is() {
+        let fact = |t: &str| super::super::records::Fact::new(t, "general", "2026-11-25T10:00:00Z");
+        // Newest first.
+        let facts = vec![fact("You moved to Boston"), fact("Your sister is Maya"), fact("You live in Port of Spain"), fact("Your sister is Ayo"), fact("You live in Arima"), fact("Your favourite colour is green")];
+        assert_eq!(outdated(&facts).iter().map(|f| f.text.as_str()).collect::<Vec<_>>(), vec!["You live in Port of Spain", "You live in Arima"]);
+        assert!(outdated(&facts[..2]).is_empty());
     }
 
     #[test]

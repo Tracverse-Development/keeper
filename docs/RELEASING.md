@@ -14,7 +14,8 @@ droplets); GitHub CI runs only the basic Linux checks on push (`.github/workflow
    `src-tauri/Cargo.toml` (then `cargo check` so `Cargo.lock` follows). Commit and push to `main`.
    Before tagging, `scripts/release.sh` runs `scripts/proof.sh`: every memory test for real against this Mac's memory node, in a
    sub-graph (the shape real memory has), on scratch graphs. A failure, or no node, stops the release (FIX-0026: 0.10.0 shipped
-   unable to read a keeper's level because no test ran in that shape).
+   unable to read a keeper's level because no test ran in that shape). It then runs `scripts/bench/smoke.sh`: a test copy of the
+   real app (its own folder and memory) is sent real messages through its test link and every reply is checked.
 2. Tag it: `git tag -a vX.Y.Z -m "Keeper vX.Y.Z" && git push origin vX.Y.Z` (`scripts/release.sh`
    checks the versions agree and the commit is on `origin/main` first).
 3. On the build Mac, with the tag checked out: `bash scripts/release-mac.sh`. It builds Apple silicon and
