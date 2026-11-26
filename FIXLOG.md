@@ -187,3 +187,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Guard:** `a_bad_field_or_a_cut_off_answer_keeps_the_reply_and_panels`; intent tests (make-folder and /Applications recognised, the cake and "and/or" not).
 - **Evidence:** bench rerun 9/9 kinds, judge 4.33: research follow-up 4 panels; folder -> approval plan (22 s); storage 31 s (was 101 s); memory turns 2.0 / 2.2 / 5.4 s.
 
+### FIX-0024 — Settings buttons were squeezed flat, Memory tab names overflowed, installer steps ran off the window (2026-11-26)
+- **Area:** `src/dashboard/dashboard.css`, `src/installer/installer.css`, every stylesheet (spacing).
+- **Symptom:** In Settings, "Soul and modes are in the Studio" and "Open the Studio" were drawn about 18px tall with their text spilling out. In the Memory drawer the "Conversations" tab name ran into "Knowledge". The installer's sixth step name was cut off at the window's edge. Spacing and text sizes differed from screen to screen (27 text sizes, 30 spacing values).
+- **Root cause:** The settings sheet is a scrolling flex column, and its children were allowed to shrink (a button shrinks to its text height). Six tabs shared the drawer's width in equal parts with no room for the longest name. Six step names were shown in half a window. Lengths were written by hand in each stylesheet, with no scale.
+- **Fix:** Sheet children never shrink (`.sheet > * { flex-shrink: 0 }`); tabs size to their names and scroll; only the current step is named. One spacing scale (`--space-*`, a 4px grid), one type scale (`--text-*`) and three control heights in `kernel/tokens.css`, and every stylesheet moved onto them.
+- **Guard:** `structure.test.ts` "spacing and type": a gap, padding, margin or font size outside the scale fails the suite (proved by adding `padding: 7px 10px; font-size: 13.5px`, which failed, then removing it).
+- **Evidence:** `scripts/check.sh`: 251 window tests and 145 core tests pass; `vite build` succeeds; before/after screenshots of Studio, dashboard, Settings, Memory and the installer at 1280x820 and 900x620 (`misc/studio-preview/before`, `after`).

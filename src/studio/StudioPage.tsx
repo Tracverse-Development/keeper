@@ -30,12 +30,37 @@ import '../keepers/wardrobe.css';
 import './studio.css';
 
 type Tab = 'look' | 'inventory' | 'forge' | 'soul' | 'feelings' | 'modes' | 'habits' | 'voice' | 'level' | 'market';
-/** The tabs in three groups: how it looks, how it thinks, how it grows. */
-const GROUPS: { name: string; tabs: { id: Tab; name: string }[] }[] = [
-  { name: 'Appearance', tabs: [{ id: 'look', name: 'Look' }, { id: 'inventory', name: 'Inventory' }, { id: 'forge', name: 'Forge' }] },
-  { name: 'Mind', tabs: [{ id: 'soul', name: 'Soul' }, { id: 'feelings', name: 'Feelings' }, { id: 'modes', name: 'Modes' }, { id: 'habits', name: 'Habits' }, { id: 'voice', name: 'Voice' }] },
-  { name: 'Progress', tabs: [{ id: 'level', name: 'Level' }, { id: 'market', name: 'Marketplace' }] },
+/** The tabs in three groups (how it looks, how it thinks, how it grows), each with one line saying what it is for. */
+const GROUPS: { name: string; tabs: { id: Tab; name: string; about: string }[] }[] = [
+  {
+    name: 'Appearance',
+    tabs: [
+      { id: 'look', name: 'Look', about: 'Colour and material, one body part at a time.' },
+      { id: 'inventory', name: 'Inventory', about: 'Everything you own. Point at an item to try it on.' },
+      { id: 'forge', name: 'Forge', about: 'Make your own items from a few words.' },
+    ],
+  },
+  {
+    name: 'Mind',
+    tabs: [
+      { id: 'soul', name: 'Soul', about: 'Who it is: its character and how it speaks.' },
+      { id: 'feelings', name: 'Feelings', about: 'A simulated mood, with its reasons and an off switch.' },
+      { id: 'modes', name: 'Modes', about: 'The jobs it can do, on one mind and memory. It switches mode when you ask for something another mode handles.' },
+      { id: 'habits', name: 'Habits', about: 'What it does on its own when left alone.' },
+      { id: 'voice', name: 'Voice', about: 'How it sounds. Test a voice, then choose it.' },
+    ],
+  },
+  {
+    name: 'Progress',
+    tabs: [
+      { id: 'level', name: 'Level', about: 'Experience earned by use, and what each level opens.' },
+      { id: 'market', name: 'Marketplace', about: 'Items earned by level, and packs people share.' },
+    ],
+  },
 ];
+const TABS = GROUPS.flatMap((g) => g.tabs);
+/** Tabs that browse many items take the wide side; the keeper stands in a narrower stage. */
+const BROWSE: Tab[] = ['inventory', 'market'];
 
 interface Props {
   open: boolean;
@@ -131,7 +156,19 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
           </button>
         </div>
       </header>
-      <div className="studio-body">
+      <div className={`studio-body ${BROWSE.includes(tab) ? 'is-browse' : ''}`}>
+        <nav className="studio-nav" role="tablist" aria-orientation="vertical" aria-label="Studio">
+          {GROUPS.map((g) => (
+            <div key={g.name} className="studio-navgroup" role="group" aria-label={g.name}>
+              <span className="studio-navgroup-name">{g.name}</span>
+              {g.tabs.map((t) => (
+                <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
         <section className="studio-stage" aria-label={`${keeper.name}, as you are making it`}>
           <CharacterStage
             className="studio-character"
@@ -150,18 +187,10 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
           {usesWardrobe && outfit && <span className="studio-caption">{outfit.caption}</span>}
         </section>
         <section className="studio-panel">
-          <div className="studio-tabs" role="tablist" aria-label="Studio">
-            {GROUPS.map((g) => (
-              <span key={g.name} className="studio-tabgroup" aria-label={g.name}>
-                <span className="studio-tabgroup-name">{g.name}</span>
-                {g.tabs.map((t) => (
-                  <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>
-                    {t.name}
-                  </button>
-                ))}
-              </span>
-            ))}
-          </div>
+          <header className="studio-panel-head">
+            <h2>{TABS.find((t) => t.id === tab)?.name}</h2>
+            <p className="muted">{TABS.find((t) => t.id === tab)?.about}</p>
+          </header>
           <div className="studio-scroll">
             {error && <p className="error-line">{error}</p>}
             {!info && !error && <p className="muted">Opening the Studio…</p>}

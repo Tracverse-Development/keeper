@@ -122,21 +122,20 @@ export function ModesTab({ onChanged }: { onChanged: () => void }) {
 
   return (
     <div className="studio-tab">
-      <p className="muted small">Each mode is a job with its own instructions, skills and tools, on the same mind and memory of you. Your keeper switches mode when you ask for something another mode handles.</p>
       <ul className="mode-list">
         {modes.map((m) => (
           <li key={m.id}>
             <button type="button" className="mode-card" onClick={() => setDraft({ ...m })}>
               <strong>{m.title}</strong>
               <span className="muted small">{m.scope}</span>
-              <span className="inv-meta">
-                <span className="wardrobe-tag">{TOOLS.find((t) => t.id === m.tools)?.name}</span>
-                <span className="wardrobe-tag">{m.skills.includes('*') ? 'All skills' : `${m.skills.length} skills`}</span>
-                {m.builtin ? <span className="wardrobe-tag">{m.edited ? 'Edited' : 'Keeper'}</span> : <span className="wardrobe-tag">Yours</span>}
+              <span className="item-tags">
+                <span className="tag">{TOOLS.find((t) => t.id === m.tools)?.name}</span>
+                <span className="tag">{m.skills.includes('*') ? 'All skills' : `${m.skills.length} skills`}</span>
+                {m.builtin ? <span className="tag">{m.edited ? 'Edited' : 'Keeper'}</span> : <span className="tag">Yours</span>}
               </span>
             </button>
             {(m.edited || !m.builtin) && (
-              <button type="button" className="link small" disabled={busy} onClick={() => void reset(m)}>{m.builtin ? 'Reset' : 'Delete'}</button>
+              <button type="button" className="link small mode-undo" disabled={busy} onClick={() => void reset(m)}>{m.builtin ? 'Reset' : 'Delete'}</button>
             )}
           </li>
         ))}

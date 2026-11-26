@@ -3,7 +3,7 @@
    never a white flash, and nothing scrolls. Tokens only. */
 html:has(.talk), html:has(.talk) body, html:has(.talk) #root { background: var(--navy-900); overflow: hidden; }
 
-.talk { position: fixed; inset: 0; display: flex; align-items: center; gap: 18px; padding: 14px 22px 14px 18px; overflow: hidden;
+.talk { position: fixed; inset: 0; display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4) var(--space-6) var(--space-4) var(--space-5); overflow: hidden;
   background: radial-gradient(140% 160% at 0% 50%, var(--navy-600) 0%, var(--navy-800) 45%, var(--navy-900) 100%);
   -webkit-app-region: drag; cursor: default; }
 .talk::after { content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -22,18 +22,18 @@ html:has(.talk), html:has(.talk) body, html:has(.talk) #root { background: var(-
 .talk.is-speaking .talk-mark { animation: talk-speak 0.9s ease-in-out infinite; }
 
 /* ---------- the words ---------- */
-.talk-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.talk-label { margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.16em;
-  font-size: 10.5px; font-weight: 650; color: var(--gold-400); }
+.talk-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.talk-label { margin: 0; display: flex; align-items: center; gap: var(--space-2); text-transform: uppercase; letter-spacing: 0.16em;
+  font-size: var(--text-2xs); font-weight: 650; color: var(--gold-400); }
 .talk-line, .talk-heard { margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.talk-line { font-size: 15px; line-height: 1.4; color: var(--cream-50); -webkit-line-clamp: 3; line-clamp: 3; animation: fade-up 320ms var(--ease) both; }
-.talk-reply { font-family: var(--font-serif); font-size: 15.5px; -webkit-line-clamp: 4; line-clamp: 4; }
-.talk-heard { font-size: 12.5px; color: var(--text-muted); -webkit-line-clamp: 1; line-clamp: 1; }
-.talk-detail { color: var(--gold-300); font-size: 14px; }
+.talk-line { font-size: var(--text-md); line-height: 1.4; color: var(--cream-50); -webkit-line-clamp: 3; line-clamp: 3; animation: fade-up 320ms var(--ease) both; }
+.talk-reply { font-family: var(--font-serif); font-size: var(--text-md); -webkit-line-clamp: 4; line-clamp: 4; }
+.talk-heard { font-size: var(--text-sm); color: var(--text-muted); -webkit-line-clamp: 1; line-clamp: 1; }
+.talk-detail { color: var(--gold-300); font-size: var(--text-base); }
 .talk-muted { color: var(--text-muted); }
-.talk-error { color: var(--danger); font-size: 13.5px; }
+.talk-error { color: var(--danger); font-size: var(--text-base); }
 
-.talk-dots { display: inline-flex; gap: 3px; }
+.talk-dots { display: inline-flex; gap: var(--space-1); }
 .talk-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--gold-400); animation: talk-dot 1.2s ease-in-out infinite; }
 .talk-dots i:nth-child(2) { animation-delay: 0.15s; }
 .talk-dots i:nth-child(3) { animation-delay: 0.3s; }

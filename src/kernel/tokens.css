@@ -35,6 +35,32 @@
   --accent: var(--gold-500);
   --accent-soft: rgba(211, 151, 68, 0.16);
 
+  /* Spacing: ONE scale on a 4px grid. Every gap, padding and margin in the app is one of these
+     (or 0, 1px, 2px for hairlines); structure.test.ts refuses anything else. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  /* Type: ONE scale. Every font size is one of these. */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-display: 44px;
+  /* Controls: the three heights buttons, fields and chips come in. */
+  --control-sm: 32px;
+  --control: 40px;
+  --control-lg: 46px;
+
   --radius-sm: 8px;
   --radius: 14px;
   --radius-lg: 22px;

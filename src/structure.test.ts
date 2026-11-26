@@ -145,3 +145,28 @@ test('panels: the core and the window know the same panel kinds', async () => {
   const body = readFileSync(join(web, 'stage/panels/PanelBody.tsx'), 'utf8');
   for (const k of rustKinds) assert.ok(body.includes(`case '${k}':`), `PanelBody draws ${k}`);
 });
+
+test('spacing and type: every gap, padding, margin and font size is on the one scale (kernel/tokens.css)', () => {
+  // Founder 2026-11-26: "proper spacing and padding... the same for everything". A length written
+  // by hand in one of these properties is how screens drift apart, so only the scale is allowed
+  // (plus 0, hairlines of 1px and 2px, and large offsets in whole steps of 8px).
+  const spacing = /(?<![\w-])(gap|row-gap|column-gap|padding(?:-[a-z]+)?|margin(?:-[a-z]+)?)\s*:([^;}]+)/g;
+  const size = /(?<![\w-])font-size\s*:([^;}]+)/g;
+  const offScale: string[] = [];
+  for (const f of files(web, /\.css$/)) {
+    if (f.endsWith('tokens.css')) continue;
+    const css = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const [, prop, value] of css.matchAll(spacing)) {
+      for (const [length, n] of value.replace(/\([^()]*\)/g, '').matchAll(/-?([\d.]+)px/g)) {
+        const px = Number(n);
+        if (px === 1 || px === 2 || (px >= 48 && px % 8 === 0)) continue;
+        if (px === 110) continue; // the installer's ark, placed by hand
+        offScale.push(`${f.slice(web.length + 1)}: ${prop}: ${length}`);
+      }
+    }
+    for (const [, value] of css.matchAll(size)) {
+      if (!/^\s*(var\(--text-[a-z0-9]+\)|inherit|0)\s*(!important)?\s*$/.test(value)) offScale.push(`${f.slice(web.length + 1)}: font-size:${value}`);
+    }
+  }
+  assert.deepEqual(offScale, [], 'use var(--space-N) and var(--text-NAME) from kernel/tokens.css');
+});
