@@ -118,6 +118,21 @@ pub async fn wardrobe_give(state: State<'_, AppState>, item: String, from: Strin
     change(&state, &item, |keepers, chosen, items| wardrobe::give(keepers, chosen, &from, &to, how, items)).await
 }
 
+/// Share one wardrobe item as a `.keeper.json` pack in Downloads (data only: its part and effect
+/// values, never who wears it). An official item travels as a plain variant: its rarity stays
+/// with Keeper's catalogue and is not claimed by the file. Returns the file path.
+#[tauri::command]
+pub async fn wardrobe_share(state: State<'_, AppState>, item: String) -> Result<String> {
+    let (own, _) = own_items(&state).await;
+    let items = wardrobe::items(&own);
+    let chosen = items.iter().find(|i| i.id == item).ok_or_else(|| DeskError::Invalid("That item isn't in your wardrobe.".into()))?;
+    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None }, one_of_a_kind: chosen.one_of_a_kind };
+    let path = super::kit_commands::downloads_file(&chosen.name);
+    std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }))?;
+    crate::platform::reveal(&path);
+    Ok(path.display().to_string())
+}
+
 /// A wardrobe item designed from words, not yet saved: the Studio previews it on the keeper and
 /// saves it with `wardrobe_add` if the person likes it.
 #[derive(Debug, serde::Serialize)]

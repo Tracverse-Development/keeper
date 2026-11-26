@@ -15,21 +15,22 @@ import { core, sentence, type KeeperProfile, type KeeperVoice, type ZoneLook } f
 import { useEscape } from '../kernel/use-escape';
 import { tryOn } from '../keepers/wardrobe-view';
 import { useWardrobe } from '../keepers/useWardrobe';
-import { WardrobeSection } from '../keepers/WardrobeSection';
-import { DesignBox } from './DesignBox';
+import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
+import { InventoryTab } from './InventoryTab';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
-import { PersonalBox } from './PersonalBox';
 import { useStudio } from './useStudio';
 import { VoiceTab } from './VoiceTab';
+import '../keepers/wardrobe.css';
 import './studio.css';
 
-type Tab = 'look' | 'outfit' | 'habits' | 'voice' | 'level' | 'market';
+type Tab = 'look' | 'inventory' | 'forge' | 'habits' | 'voice' | 'level' | 'market';
 const TABS: { id: Tab; name: string }[] = [
   { id: 'look', name: 'Look' },
-  { id: 'outfit', name: 'Outfit' },
+  { id: 'inventory', name: 'Inventory' },
+  { id: 'forge', name: 'Forge' },
   { id: 'habits', name: 'Habits' },
   { id: 'voice', name: 'Voice' },
   { id: 'level', name: 'Level' },
@@ -56,10 +57,11 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   // The Outfit tab's try-on, shown on the big stage.
-  const [wardrobeKey, setWardrobeKey] = useState(0);
   // Trying on a thinking or celebration effect plays that moment on the stage.
   const [celebrateN, setCelebrateN] = useState(0);
-  const market = useWardrobe(open && tab === 'market', () => {
+  // One wardrobe for the Inventory, the Forge and the Marketplace.
+  const usesWardrobe = tab === 'inventory' || tab === 'forge' || tab === 'market';
+  const market = useWardrobe(open && usesWardrobe, () => {
     onSaved();
     reload();
   });
@@ -80,7 +82,7 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
     [look, habits, voice, keeper],
   );
 
-  const moment = (tab === 'outfit' || tab === 'market') && outfit?.slot && (outfit.slot === 'thinking' || outfit.slot === 'celebrate') ? outfit.slot : null;
+  const moment = usesWardrobe && outfit?.slot && (outfit.slot === 'thinking' || outfit.slot === 'celebrate') ? outfit.slot : null;
   useEffect(() => {
     if (moment !== 'celebrate') return;
     setCelebrateN((n) => n + 1);
@@ -131,7 +133,7 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
           <CharacterStage
             className="studio-character"
             skin={keeper.skin}
-            wearables={(tab === 'outfit' || tab === 'market') && outfit ? outfit.wearables : keeper.wearables}
+            wearables={usesWardrobe && outfit ? outfit.wearables : keeper.wearables}
             look={look}
             habits={habits}
             focusZone={tab === 'look' ? zone : null}
@@ -142,7 +144,7 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
             memoryPulse={0}
           />
           {tab === 'look' && zone && info && <span className="studio-caption">{info.zones.find((z) => z.id === zone)?.name}</span>}
-          {(tab === 'outfit' || tab === 'market') && outfit && <span className="studio-caption">{outfit.caption}</span>}
+          {usesWardrobe && outfit && <span className="studio-caption">{outfit.caption}</span>}
         </section>
         <section className="studio-panel">
           <div className="studio-tabs" role="tablist" aria-label="Studio">
@@ -156,28 +158,29 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
             {error && <p className="error-line">{error}</p>}
             {!info && !error && <p className="muted">Opening the Studio…</p>}
             {info && tab === 'look' && <LookTab info={info} look={look} zone={zone} onZone={setZone} onLook={setLook} />}
-            {tab === 'outfit' && (
-              <DesignBox
-                wearables={keeper.wearables}
-                onPreview={(w, caption) => setOutfit(w ? { wearables: w, caption } : null)}
-                onKept={() => {
-                  onSaved();
-                  setWardrobeKey((k) => k + 1);
-                }}
+            {info && tab === 'inventory' && (
+              <InventoryTab
+                info={info}
+                keeper={keeper}
+                wardrobe={market.wardrobe}
+                busy={market.busy}
+                onWear={(item) => void market.wear(keeper.id, item)}
+                onTakeOff={(item) => void market.takeOff(keeper.id, item)}
+                onGive={(item, to, mode) => void market.give(item, keeper.id, to, mode)}
+                onTry={(item) => setOutfit(item && market.wardrobe ? { wearables: tryOn(keeper.wearables, item, market.wardrobe), caption: `Trying on the ${item.name}`, slot: item.slot } : null)}
               />
             )}
-            {info && tab === 'outfit' && <PersonalBox info={info} keeper={keeper.id} onChanged={() => onSaved()} />}
-            {tab === 'outfit' && (
-              <WardrobeSection
-                key={wardrobeKey}
-                open={open}
+            {info && tab === 'forge' && (
+              <ForgeTab
+                info={info}
                 keeper={keeper}
-                onChanged={() => {
+                busy={market.busy}
+                onPreview={(w, caption) => setOutfit(w ? { wearables: w, caption } : null)}
+                onForged={() => {
                   onSaved();
-                  reload();
+                  void market.reload();
                 }}
-                studio={info ?? undefined}
-                onPreview={(wearables, caption, slot) => setOutfit({ wearables, caption, slot })}
+                onMake={market.add}
               />
             )}
             {info && tab === 'habits' && <HabitsTab info={info} name={keeper.name} habits={habits} onHabits={setHabits} />}
@@ -204,11 +207,11 @@ export function StudioPage({ open, keeper, soulName, onClose, onSaved }: Props) 
                 }}
                 onImported={() => {
                   onSaved();
-                  setWardrobeKey((k) => k + 1);
+                  void market.reload();
                 }}
               />
             )}
-            {market.error && tab === 'market' && <p className="error-line">{market.error}</p>}
+            {market.error && usesWardrobe && <p className="error-line">{market.error}</p>}
           </div>
         </section>
       </div>

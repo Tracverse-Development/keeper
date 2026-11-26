@@ -20,6 +20,8 @@ interface Props {
   onPreview: (wearables: WornPart[] | null, caption: string) => void;
   /** It was kept: the wardrobe reloads. */
   onKept: () => void;
+  /** Example requests offered as one-tap chips. */
+  ideas?: string[];
 }
 
 /** The outfit with the designed item in its slot (whatever was there comes off). */
@@ -28,7 +30,7 @@ export function wearDesigned(wearables: WornPart[], d: Designed): WornPart[] {
   return [...wearables.filter((w) => PARTS.find((p) => p.id === w.part)?.slot !== slot), { part: d.part, effects: d.effects }];
 }
 
-export function DesignBox({ wearables, onPreview, onKept }: Props) {
+export function DesignBox({ wearables, onPreview, onKept, ideas = [] }: Props) {
   const [words, setWords] = useState('');
   const [designed, setDesigned] = useState<Designed | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,13 +67,22 @@ export function DesignBox({ wearables, onPreview, onKept }: Props) {
 
   return (
     <div className="studio-design">
-      <p className="eyebrow">Design from words</p>
+      <p className="eyebrow">Forge from words</p>
       <form className="studio-design-row" onSubmit={(e) => { e.preventDefault(); if (words.trim()) void design(); }}>
         <input className="field" value={words} maxLength={300} placeholder="A neon pink jacket with gold trim…" onChange={(e) => setWords(e.target.value)} aria-label="Describe an item" />
         <button type="submit" className="btn btn-primary btn-small" disabled={busy || words.trim().length < 3}>
-          {busy && !designed ? 'Designing…' : 'Design it'}
+          {busy && !designed ? 'Forging…' : 'Forge it'}
         </button>
       </form>
+      {ideas.length > 0 && !designed && (
+        <div className="studio-chips">
+          {ideas.map((idea) => (
+            <button key={idea} type="button" className="studio-chip" onClick={() => setWords(idea)}>
+              {idea}
+            </button>
+          ))}
+        </div>
+      )}
       {designed && (
         <div className="studio-design-result">
           <span className="studio-design-swatches" aria-hidden="true">

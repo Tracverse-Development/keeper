@@ -48,6 +48,8 @@ export const core = {
   wardrobeTakeOff: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_take_off', { keeper, item }),
   wardrobeGive: (item: string, from: string, to: string, mode: GiveMode) => invoke<Wardrobe>('wardrobe_give', { item, from, to, mode }),
   wardrobeAdd: (item: NewWardrobeItem) => invoke<Wardrobe>('wardrobe_add', { ...item }),
+  /** Share one item as a pack file in Downloads; resolves to its path. */
+  wardrobeShare: (item: string) => invoke<string>('wardrobe_share', { item }),
   /** Design an item from words (validated, not saved). */
   wardrobeDesign: (description: string) => invoke<{ name: string; part: string; effects: Record<string, number | string> }>('wardrobe_design', { description }),
   systemLoad: () => invoke<SystemLoad>('system_load'),

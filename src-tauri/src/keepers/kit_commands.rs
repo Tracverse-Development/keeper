@@ -43,7 +43,7 @@ pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result
     Ok(clean)
 }
 
-fn downloads_file(name: &str) -> std::path::PathBuf {
+pub(super) fn downloads_file(name: &str) -> std::path::PathBuf {
     let base: String = name.to_lowercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
     let dir = dirs::download_dir().or_else(dirs::home_dir).unwrap_or_else(std::env::temp_dir);
     dir.join(format!("{}.keeper.json", base.trim_matches('-')))

@@ -10,7 +10,6 @@ import { ShareSection } from '../keepers/ShareSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
 import { SoulSection } from '../keepers/SoulSection';
-import { WardrobeSection } from '../keepers/WardrobeSection';
 import { EnginePicker } from './EnginePicker';
 import { KeeperNameField } from './KeeperNameField';
 import { LookSection } from './LookSection';
@@ -27,6 +26,8 @@ interface Props {
   kit: KitCatalog | null;
   /** A soul was saved or a pack imported: reload the kit and the keepers. */
   onKitChanged: (imported?: Imported) => void;
+  /** Open the Studio (the wardrobe, look, habits, voice, level and marketplace live there). */
+  onOpenStudio: () => void;
   onClose: () => void;
   onSaved: (settings: Settings) => void;
   onKeeperChange: (change: KeeperChange) => void;
@@ -34,7 +35,7 @@ interface Props {
   onRemoveKeeper?: () => void;
 }
 
-export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
+export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpenStudio, onClose, onSaved, onKeeperChange, onRemoveKeeper }: Props) {
   useEscape(open, onClose);
   const [error, setError] = useState<string | null>(null);
   const save = (change: SettingsChange) =>
@@ -81,8 +82,10 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onClo
         <p className="eyebrow">Body</p>
         <LookSection value={keeper.skin} onPick={(skin) => onKeeperChange({ skin })} />
 
-        <p className="eyebrow">Wardrobe: what {keeper.name} wears</p>
-        <WardrobeSection open={open} keeper={keeper} onChanged={() => onKitChanged()} />
+        <p className="eyebrow">Look, inventory and mods</p>
+        <button type="button" className="btn" onClick={onOpenStudio}>
+          Open {keeper.name}'s Studio
+        </button>
 
         <p className="eyebrow">{keeper.name}'s brain</p>
         {open && <EnginePicker value={keeper.brain} model={keeper.model} onPick={(brain, model) => onKeeperChange(brain === keeper.brain ? { model } : { brain, model })} />}

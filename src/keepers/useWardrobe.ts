@@ -49,6 +49,8 @@ export function useWardrobe(open: boolean, onChanged: () => void) {
     busy,
     wear: (keeper: string, item: string) => run(core.wardrobeWear(keeper, item)),
     takeOff: (keeper: string, item: string) => run(core.wardrobeTakeOff(keeper, item)),
+    /** Read the wardrobe again (an item was forged elsewhere). */
+    reload: () => run(core.wardrobe()),
     give: (item: string, from: string, to: string, mode: GiveMode) => run(core.wardrobeGive(item, from, to, mode)),
     add: (item: NewWardrobeItem) => run(core.wardrobeAdd(item)),
   };

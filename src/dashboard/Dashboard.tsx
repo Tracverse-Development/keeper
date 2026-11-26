@@ -319,6 +319,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           keeper={keeper}
           kit={kit.kit}
           onKitChanged={() => { kit.refresh(); keepers.reload(); }}
+          onOpenStudio={() => { setSettingsOpen(false); setStudioOpen(true); }}
           onClose={() => setSettingsOpen(false)}
           onSaved={setSettings}
           onKeeperChange={changeKeeper}
