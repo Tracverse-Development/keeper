@@ -57,3 +57,12 @@ export interface StudioInfo {
   partRarity: Record<string, string>;
   unlocks: Unlock[];
 }
+
+/** A personal item: a pendant or a T-shirt print with the person's own picture. */
+export type PersonalKind = 'pendant' | 'shirt';
+
+export interface PersonalPicture {
+  kind: PersonalKind;
+  /** A data URL (the picture never leaves the computer). */
+  dataUrl: string;
+}

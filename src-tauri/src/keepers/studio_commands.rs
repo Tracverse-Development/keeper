@@ -57,3 +57,39 @@ pub async fn keeper_studio(state: State<'_, AppState>, keeper: Option<String>) -
         unlocks: levels::UNLOCKS,
     })
 }
+
+/// Keep a picture for a personal item (`kind`: "pendant" or "shirt"), sent as base64. Allowed
+/// once the keeper's level has opened that item; the picture stays on this computer.
+#[tauri::command]
+pub async fn personal_set(state: State<'_, AppState>, keeper: String, kind: String, base64: String) -> Result<Vec<super::kit::personal::Picture>> {
+    use base64::Engine;
+    let profile = state.keeper_or_active(&keeper)?;
+    let unlock = super::kit::personal::unlock_for(&kind).ok_or_else(|| crate::kernel::DeskError::Invalid("That isn't a personal item.".into()))?;
+    let experience = levels::experience(&state.memory_for(&profile)?)
+        .await
+        .ok_or_else(|| crate::kernel::DeskError::Node("Your memory node isn't answering, so the keeper's level can't be checked.".into()))?;
+    if !experience.unlocked.iter().any(|u| u.id == unlock) {
+        let level = levels::UNLOCKS.iter().find(|u| u.id == unlock).map(|u| u.level).unwrap_or(0);
+        return Err(crate::kernel::DeskError::Invalid(format!("{} unlocks this at level {level} (now level {}).", profile.name, experience.level)));
+    }
+    if base64.len() > super::kit::personal::MAX_BYTES * 4 / 3 + 8 {
+        return Err(crate::kernel::DeskError::Invalid("That picture is too big (4 MB at most).".into()));
+    }
+    let bytes = base64::engine::general_purpose::STANDARD.decode(base64.trim()).map_err(|_| crate::kernel::DeskError::Invalid("That picture could not be read.".into()))?;
+    super::kit::personal::save(&profile.id, &kind, &bytes)?;
+    Ok(super::kit::personal::list(&profile.id))
+}
+
+/// Remove a personal item's picture (the file is deleted).
+#[tauri::command]
+pub fn personal_remove(state: State<'_, AppState>, keeper: String, kind: String) -> Result<Vec<super::kit::personal::Picture>> {
+    let profile = state.keeper_or_active(&keeper)?;
+    super::kit::personal::remove(&profile.id, &kind)?;
+    Ok(super::kit::personal::list(&profile.id))
+}
+
+/// A keeper's personal pictures (data URLs for the character to draw).
+#[tauri::command]
+pub fn personal_list(state: State<'_, AppState>, keeper: String) -> Result<Vec<super::kit::personal::Picture>> {
+    Ok(super::kit::personal::list(&state.keeper_or_active(&keeper)?.id))
+}

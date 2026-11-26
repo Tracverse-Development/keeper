@@ -76,3 +76,9 @@
 .market-item.rarity-mythical { box-shadow: 0 0 16px color-mix(in srgb, var(--rarity) 30%, transparent); }
 .market-community { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-lg); border: 1px dashed var(--border-strong); }
 @media (prefers-reduced-motion: reduce) { .market-item { transition: none; } .market-item.rarity-legendary::after, .market-item.rarity-mythical::after { animation: none; } }
+
+/* Your own picture */
+.studio-personal { display: flex; align-items: center; gap: 10px; }
+.studio-personal-name { flex: 1; }
+.studio-personal-thumb { flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--gold-500); }
+.studio-personal-thumb.is-empty { background: var(--navy-700); box-shadow: inset 0 0 0 1px var(--border-strong); }

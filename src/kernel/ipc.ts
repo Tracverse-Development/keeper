@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { StudioInfo } from './ipc-studio';
+import type { PersonalKind, PersonalPicture, StudioInfo } from './ipc-studio';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -70,6 +70,10 @@ export const core = {
   voiceTry: (engine: VoiceEngine, id: string, text: string) => invoke<void>('voice_try', { engine, id, text }),
   /** The Studio's data: level and unlocks, paint zones, materials, habits, rarities. */
   keeperStudio: (keeper?: string) => invoke<StudioInfo>('keeper_studio', { keeper }),
+  /** Personal pictures (pendant, shirt): kept only on this computer, level-locked. */
+  personalList: (keeper: string) => invoke<PersonalPicture[]>('personal_list', { keeper }),
+  personalSet: (keeper: string, kind: PersonalKind, base64: string) => invoke<PersonalPicture[]>('personal_set', { keeper, kind, base64 }),
+  personalRemove: (keeper: string, kind: PersonalKind) => invoke<PersonalPicture[]>('personal_remove', { keeper, kind }),
   phoneStatus: () => invoke<PhoneStatus>('phone_status'),
   phoneStart: () => invoke<PhoneStatus>('phone_start'),
   phoneStop: () => invoke<PhoneStatus>('phone_stop'),

@@ -12,6 +12,7 @@ pub mod look;
 pub mod official;
 pub mod packs;
 pub mod parts;
+pub mod personal;
 pub mod rarity;
 pub mod roles;
 pub mod slots;

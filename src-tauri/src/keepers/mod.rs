@@ -272,6 +272,10 @@ pub fn keepers_remove(state: State<'_, AppState>, id: String) -> Result<KeeperLi
     if state.settings().keepers.len() <= 1 {
         return Err(DeskError::Invalid("Keep at least one keeper.".into()));
     }
+    // Its personal pictures are personal data: they go with it.
+    for (kind, _) in kit::personal::KINDS {
+        kit::personal::remove(&id, kind)?;
+    }
     state.update_settings(|s| {
         s.keepers.retain(|k| k.id != id);
         if s.active_keeper == id {
