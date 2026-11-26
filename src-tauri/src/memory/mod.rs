@@ -10,6 +10,7 @@ pub mod later;
 pub mod outbox;
 mod erase;
 pub mod relocate;
+pub mod routines;
 pub mod panel_events;
 pub mod pinned_scenes;
 pub mod queries;

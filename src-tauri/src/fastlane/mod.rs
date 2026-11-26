@@ -8,10 +8,15 @@
 //! - "brief me", "good morning", "what's on today" the morning brief (`brief`)
 //! - "what do you know about me"                   your facts → a facts panel (forget / pin)
 //! - "week in review", "how was my week"          the week from memory (`week`)
+//! - "save that as my Friday tidy", "my routines" routines by name (`routines`; running one
+//!   is an expansion done before the turn)
+//! - "shorten what I copied"                       the clipboard's text (`clip`)
+//! - "focus for 25 minutes"                        a focus session (`crate::focus`)
 
 pub mod brief;
 pub mod clip;
 pub mod folders;
+pub mod routines;
 pub mod week;
 
 use std::sync::OnceLock;
@@ -80,6 +85,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
     if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
         return Some(shown(reply, json!([])));
+    }
+
+    // "save that as my Friday tidy", "what routines do I have", "forget my … routine".
+    if let Some(thought) = routines::answer(memory, s).await {
+        return Some(thought);
     }
 
     // "shorten what I copied": the clipboard's text is worked on and put back.
