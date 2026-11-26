@@ -59,7 +59,7 @@ fn is_color(s: &str) -> bool {
 fn item_ref(item: &Option<String>) -> Option<String> {
     let r = item.as_deref()?;
     let (kind, id) = r.split_once(':')?;
-    let ok = matches!(kind, "part" | "stock" | "kit") && !id.is_empty() && id.len() <= 60 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    let ok = matches!(kind, "part" | "stock" | "kit" | "official") && !id.is_empty() && id.len() <= 60 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
     ok.then(|| r.to_string())
 }
 

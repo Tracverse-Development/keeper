@@ -50,8 +50,12 @@ pub struct Item {
     pub slot: String,
     pub effects: BTreeMap<String, Value>,
     pub one_of_a_kind: bool,
-    /// "built-in" or "yours".
+    /// "built-in", "official" or "yours".
     pub source: &'static str,
+    /// Its rarity id: an official item's own, else its part's (`rarity.rs`).
+    pub rarity: &'static str,
+    /// One line about it (official items).
+    pub blurb: &'static str,
 }
 
 impl Item {
@@ -66,11 +70,19 @@ impl Item {
 pub fn items(variants: &[Variant]) -> Vec<Item> {
     let mut out: Vec<Item> = parts::PARTS
         .iter()
-        .map(|p| Item { id: format!("part:{}", p.id), name: p.name.into(), part: p.id.into(), slot: p.slot.into(), effects: BTreeMap::new(), one_of_a_kind: false, source: "built-in" })
+        .map(|p| Item { id: format!("part:{}", p.id), name: p.name.into(), part: p.id.into(), slot: p.slot.into(), effects: BTreeMap::new(), one_of_a_kind: false, source: "built-in", rarity: super::rarity::of_part(p.id).id, blurb: "" })
         .collect();
     for s in STOCK {
         let effects = s.effects.iter().map(|(k, v)| (k.to_string(), Value::String(v.to_string()))).collect();
         if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None }, false, "built-in") {
+            out.push(item);
+        }
+    }
+    for o in super::official::OFFICIAL {
+        let effects: BTreeMap<String, Value> = serde_json::from_str(o.effects).unwrap_or_default();
+        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None }, false, "official") {
+            item.rarity = super::rarity::get(o.rarity).map(|r| r.id).unwrap_or(item.rarity);
+            item.blurb = o.blurb;
             out.push(item);
         }
     }
@@ -86,7 +98,8 @@ pub fn items(variants: &[Variant]) -> Vec<Item> {
 fn item_from(id: String, name: &str, worn: &WornPart, one_of_a_kind: bool, source: &'static str) -> Option<Item> {
     let ok = parts::check_effects(worn).ok()?;
     let slot = parts::get(&ok.part)?.slot;
-    Some(Item { id, name: name.to_string(), part: ok.part, slot: slot.into(), effects: ok.effects, one_of_a_kind, source })
+    let rarity = super::rarity::of_part(&ok.part).id;
+    Some(Item { id, name: name.to_string(), part: ok.part, slot: slot.into(), effects: ok.effects, one_of_a_kind, source, rarity, blurb: "" })
 }
 
 /// Which item a worn part came from: its reference, or (outfits from before the wardrobe) the

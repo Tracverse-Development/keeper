@@ -10,10 +10,15 @@ export function levelProgress(e: Experience): number {
   return span <= 0 ? 1 : Math.min(1, Math.max(0, (e.xp - e.levelXp) / span));
 }
 
-/** The rarity of a catalogue part (common when the core did not list it). */
-export function rarityOf(info: StudioInfo, partId: string): Rarity {
-  const id = info.partRarity[partId] ?? 'common';
+/** The rarity of a wardrobe item: its own (official items), else its part's; common otherwise. */
+export function rarityOf(info: StudioInfo, item: { part: string; rarity?: string }): Rarity {
+  const id = item.rarity ?? info.partRarity[item.part] ?? 'common';
   return info.rarities.find((r) => r.id === id) ?? info.rarities[0];
+}
+
+/** Official items grouped by rarity, rarest last (the Marketplace's order). */
+export function byRarity<T extends { rarity?: string }>(info: StudioInfo, items: T[]): { rarity: Rarity; items: T[] }[] {
+  return info.rarities.map((rarity) => ({ rarity, items: items.filter((i) => (i.rarity ?? 'common') === rarity.id) })).filter((g) => g.items.length > 0);
 }
 
 /** The level an item still needs, or null when this keeper may wear it. */

@@ -18,8 +18,9 @@ test('the level bar runs from this level to the next', () => {
 });
 
 test('rarity locks by level; unlisted parts are common', () => {
-  assert.equal(rarityOf(info, 'memory-halo').id, 'rare');
-  assert.equal(rarityOf(info, 'crew-cap').id, 'common');
+  assert.equal(rarityOf(info, { part: 'memory-halo' }).id, 'rare');
+  assert.equal(rarityOf(info, { part: 'crew-cap' }).id, 'common');
+  assert.equal(rarityOf(info, { part: 'crew-cap', rarity: 'mythical' }).id, 'mythical', "an official item's own rarity wins");
   assert.equal(lockedUntil(rarities[1], 3), 4);
   assert.equal(lockedUntil(rarities[1], 4), null);
   assert.equal(lockedUntil(rarities[0], 0), null, 'a brand-new keeper wears common items');

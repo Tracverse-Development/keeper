@@ -9,6 +9,7 @@
 pub mod inventory;
 pub mod levels;
 pub mod look;
+pub mod official;
 pub mod packs;
 pub mod parts;
 pub mod rarity;

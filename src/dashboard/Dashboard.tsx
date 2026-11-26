@@ -282,7 +282,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         })}
       />
       {keeper && <MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} />}
-      {keeper && <StudioPage open={studioOpen} keeper={keeper} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} />}
+      {keeper && <StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} />}
       {keeper && (
         <SettingsSheet
           open={settingsOpen}

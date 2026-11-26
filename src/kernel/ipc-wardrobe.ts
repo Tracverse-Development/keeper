@@ -20,7 +20,11 @@ export interface WardrobeItem {
   slot: string;
   effects: Record<string, number | string>;
   oneOfAKind: boolean;
-  source: 'built-in' | 'yours';
+  source: 'built-in' | 'official' | 'yours';
+  /** Its rarity id: an official item's own, else its part's. */
+  rarity?: string;
+  /** One line about it (official items). */
+  blurb?: string;
   /** Keeper ids wearing it. */
   wornBy: string[];
 }

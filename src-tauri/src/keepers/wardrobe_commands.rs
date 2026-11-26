@@ -95,7 +95,7 @@ pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: Str
     let profile = state.keeper_or_active(&keeper)?;
     let experience = super::kit::levels::experience(&state.memory_for(&profile)?).await;
     change(&state, &item, |keepers, chosen, items| {
-        let rarity = super::kit::rarity::of_part(&chosen.worn().part);
+        let rarity = super::kit::rarity::get(chosen.rarity).unwrap_or_else(|| super::kit::rarity::of_part(&chosen.part));
         if !experience.may_wear(rarity) {
             return Err(format!("{} is {}: {} needs level {} to wear it (now level {}).", chosen.name, rarity.name.to_lowercase(), profile.name, rarity.level, experience.level));
         }

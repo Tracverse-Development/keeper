@@ -88,8 +88,8 @@ export function WardrobeSection({ open, keeper, onChanged, studio, onPreview }: 
             onWear={() => void wear(keeper.id, view.item.id)}
             onTakeOff={() => void takeOff(keeper.id, view.item.id)}
             onGive={(to, mode) => void give(view.item.id, keeper.id, to, mode)}
-            rarity={studio ? rarityOf(studio, view.item.part) : undefined}
-            lockedUntil={studio ? lockedUntil(rarityOf(studio, view.item.part), studio.experience.level) : null}
+            rarity={studio ? rarityOf(studio, view.item) : undefined}
+            lockedUntil={studio ? lockedUntil(rarityOf(studio, view.item), studio.experience.level) : null}
           />
         ))}
       </div>
