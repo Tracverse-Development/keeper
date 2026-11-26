@@ -7,9 +7,9 @@ use tauri::{AppHandle, State};
 use crate::brain::engines::{self, EngineStatus};
 use crate::dkg::client::NodeStatus;
 use crate::kernel::settings::{Settings, VoiceEngine};
-use crate::kernel::{secrets, time, DeskError, Result};
+use crate::kernel::{secrets, DeskError, Result};
 use crate::voice::eleven::{self, ElevenVoice};
-use crate::memory::{catalog, ActionRecord, Chat, Counts, Fact, QueryTrace, Reminder, Retraction, Turn};
+use crate::memory::{catalog, ActionRecord, Chat, Counts, Fact, QueryTrace, Reminder, Turn};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -201,7 +201,7 @@ pub async fn memory_forget_fact(state: State<'_, AppState>, id: String) -> Resul
     if id.len() != 16 || !id.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(crate::kernel::DeskError::Invalid("That isn't a fact id.".into()));
     }
-    state.memory()?.write(&Retraction { fact_id: id, at: time::now_iso() }).await;
+    state.memory()?.erase_fact(&id).await;
     Ok(())
 }
 

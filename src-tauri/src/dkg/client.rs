@@ -124,6 +124,16 @@ impl DkgClient {
         Ok(serde_json::from_value(v)?)
     }
 
+    /// Discard a Knowledge Asset from Working Memory: its triples leave this node (erasure).
+    /// Names are Keeper's own (`desk-…`: letters, digits, dashes), never the person's words.
+    pub async fn discard(&self, graph: &str, name: &str) -> Result<()> {
+        if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            return Err(DeskError::Invalid("That isn't a memory name.".into()));
+        }
+        self.call(reqwest::Method::POST, &format!("/api/knowledge-assets/{name}/wm/discard"), Some(json!({ "contextGraphId": graph })), WRITE_TIMEOUT).await?;
+        Ok(())
+    }
+
     /// Run one bounded SPARQL SELECT (see `memory::queries`) over one layer.
     pub async fn query(&self, graph: &str, sparql: &str, layer: Layer) -> Result<Vec<Row>> {
         let body = json!({ "contextGraphId": graph, "sparql": sparql, "view": layer });

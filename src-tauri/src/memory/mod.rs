@@ -278,9 +278,24 @@ impl Memory {
         let (facts, _) = self.facts().await?;
         let matches: Vec<Fact> = rank::relevant(&facts, what, 3).into_iter().filter(|f| rank::relevant(std::slice::from_ref(f), what, 1).len() == 1 && overlaps(&f.text, what)).collect();
         for f in &matches {
-            self.write(&Retraction { fact_id: f.id.clone(), at: time::now_iso() }).await;
+            self.erase_fact(&f.id).await;
         }
         Ok(matches)
+    }
+
+    /// Forget a fact for real: its Knowledge Asset is discarded from Working Memory, so its words
+    /// leave the node (DESK-ERASE-001). When the node cannot discard it (offline, or the fact is
+    /// still waiting in the outbox) a retraction is written instead, and recall stops using it.
+    /// The one erase path: spoken "forget", the Forget button and the memory screen all use it.
+    pub async fn erase_fact(&self, fact_id: &str) -> WriteReceipt {
+        let name = records::fact_asset_name(fact_id);
+        match self.client().discard(self.graph(), &name).await {
+            Ok(()) => {
+                hot::apply(&self.graph, hot::HotChange::Retract(fact_id.to_string()));
+                WriteReceipt { name, ual: String::new(), status: "erased".into(), queued: false }
+            }
+            Err(_) => self.write(&Retraction { fact_id: fact_id.to_string(), at: time::now_iso() }).await,
+        }
     }
 }
 

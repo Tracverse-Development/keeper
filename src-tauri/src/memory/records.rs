@@ -42,12 +42,17 @@ impl Fact {
     }
 }
 
+/// The Knowledge Asset a fact is written as (one asset per fact, so it can be erased alone).
+pub fn fact_asset_name(fact_id: &str) -> String {
+    format!("desk-fact-{fact_id}")
+}
+
 impl Record for Fact {
     fn hot(&self) -> Option<super::hot::HotChange> {
         Some(super::hot::HotChange::Fact(self.clone()))
     }
     fn asset_name(&self) -> String {
-        format!("desk-fact-{}", self.id)
+        fact_asset_name(&self.id)
     }
     fn quads(&self) -> Vec<Quad> {
         AssetBuilder::new(&self.iri())

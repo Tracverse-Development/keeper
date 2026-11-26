@@ -39,3 +39,8 @@
 - **Context:** rounds 1–10 measured 0.8 s first words on a Companion keeper with acting off, while every new person's first keeper is a System Administrator with acting on; the founder's own Keeper took 6–19 s.
 - **Lesson:** a speed claim holds only for the profile it was measured on. Measure the default first-run profile and the founder's real settings, not the easiest one.
 - **Rule added:** `scripts/bench/run.sh` has `PROFILE=admin`; a speed change is reported with both profiles.
+
+### LES-009 — Working Memory assets can be discarded, so erasure is possible (2026-11-25)
+- **Context:** DESK-ERASE-001 assumed DKG writes are additive only; the node (10.0.26) discards a Working Memory asset by name, sealed or not, and its triples leave the node.
+- **Lesson:** read the node's lifecycle routes before designing around a limit; "a written asset is final" (LES-004) is about changing it, not removing it.
+- **Rule added:** personal records are one asset each, named so they can be erased alone; every forget/erase goes through `Memory::erase_fact` (discard first, retraction only as the offline fallback).

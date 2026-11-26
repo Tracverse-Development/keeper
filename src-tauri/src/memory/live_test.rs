@@ -41,10 +41,17 @@ async fn live_remember_recall_forget() {
     let (turns, _) = memory.recent_turns().await.expect("turns");
     assert!(turns.iter().any(|t| t.id == turn.id), "the turn is on the graph");
 
+    let raw = format!("PREFIX schema: <http://schema.org/> SELECT ?s WHERE {{ ?s ?p ?o . FILTER(CONTAINS(STR(?o), \"{stamp}\")) ?s a ?t . FILTER(CONTAINS(STR(?t), \"Fact\")) }} LIMIT 5");
+    let before = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    assert!(!before.is_empty(), "the raw query finds the fact before it is forgotten");
     let forgotten = memory.forget(&format!("sorrel with ginger {stamp}")).await.expect("forget");
     assert!(forgotten.iter().any(|f| f.id == fact.id), "forget found the fact");
     let (facts, _) = memory.facts().await.expect("facts");
-    assert!(!facts.iter().any(|f| f.id == fact.id), "a retracted fact is never recalled again");
+    assert!(!facts.iter().any(|f| f.id == fact.id), "a forgotten fact is never recalled again");
+    // DESK-ERASE-001: forgetting erases. The fact's words are gone from the node itself, not
+    // only hidden by a retraction (a raw query for its text finds nothing).
+    let left = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    assert!(left.is_empty(), "the fact's triples are erased from Working Memory: {left:?}");
 
     let counts = memory.counts().await.expect("counts");
     assert!(counts.turns >= 1);

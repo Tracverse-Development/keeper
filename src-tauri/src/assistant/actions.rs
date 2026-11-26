@@ -5,9 +5,8 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::kernel::{time, DeskError, Result};
+use crate::kernel::{DeskError, Result};
 use crate::memory::panel_events::PanelEvent;
-use crate::memory::Retraction;
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -52,7 +51,7 @@ pub async fn stage_action(state: State<'_, AppState>, keeper: Option<String>, ac
             r
         }
         Action::Card { front, known } => memory.write(&PanelEvent::new("card", "flashcards", &front, yes(known))).await,
-        Action::Forget { fact_id: id } => memory.write(&Retraction { fact_id: fact_id(&id)?, at: time::now_iso() }).await,
+        Action::Forget { fact_id: id } => memory.erase_fact(&fact_id(&id)?).await,
         Action::Pin { fact_id: id } => memory.write(&PanelEvent::new("pin", "facts", "pin", &fact_id(&id)?)).await,
     };
     Ok(ActionDone { streak })
