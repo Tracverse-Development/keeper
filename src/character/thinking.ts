@@ -24,12 +24,14 @@ export const GOT_IT_MIN_WEIGHT = 0.25;
 
 /**
  * How dramatic thinking looks, 0..1: the thinking mood's weight, scaled up by work
- * (0.6 of full drama while thinking at rest, 1 at full work).
+ * (0.6 of full drama while thinking at rest, 1 at full work). `floor` (0..1) is the least drama
+ * the worn thinking effect allows (`effects/moments.ts`: the vortex always thinks at full drama);
+ * 0 = the shipped curve.
  */
-export function thinkDrama(thinkingWeight: number, work: number): number {
+export function thinkDrama(thinkingWeight: number, work: number, floor = 0): number {
   const weight = clampWork(thinkingWeight);
   if (weight === 0) return 0;
-  return weight * (0.6 + 0.4 * clampWork(work));
+  return weight * Math.max(0.6 + 0.4 * clampWork(work), clampWork(floor));
 }
 
 /** Where `time` is inside a repeating cycle of `period` seconds, 0..1 (negative time too). */

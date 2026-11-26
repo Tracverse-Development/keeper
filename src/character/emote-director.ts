@@ -5,9 +5,12 @@
  *
  * Each frame it samples the playing emote's timeline, fires that emote's cues once each (a
  * burst of sparkles at take-off, hearts as it swoons, a puff on surprise), eases drowsiness in
- * and out (heavy lids and a "z" every few seconds after a long quiet spell), streams data
- * motes while the keeper thinks or works, and throws hearts on a pat and a puff on a poke.
- * Under reduced motion every burst is smaller. Nothing allocates per frame.
+ * and out (heavy lids and a "z" every few seconds after a long quiet spell, as soon as the
+ * keeper's `sleep` habit says) and the nap a long doze becomes, streams data motes while the
+ * keeper thinks or works, and throws hearts on a pat and a puff on a poke. The worn moment
+ * effects (`effects/moments.ts`) decide how thinking looks (the aura round the head, the motes'
+ * colour and rate, the least drama) and what bursts when it celebrates; none worn = the shipped
+ * look. Under reduced motion every burst is smaller. Nothing allocates per frame.
  *
  * Pattern: Mediator between the pure state (machine, idle life, timelines) and the scene
  * (effect layer, the worn skin's anchors).
@@ -17,15 +20,23 @@ import type { Emote, Mood, TouchKind } from './contract';
 import type { EffectLayer } from './effects/effect-layer';
 import type { EffectKind } from './effects/particle-kinds';
 import { EMOTE_SPECS, sampleEmote, type CueOrigin } from './emotes';
-import { addDrowsiness, restingExpression, type ExpressionFrame } from './expression-frame';
-import { ExpressionMachine, PRIORITY, type Priority } from './expression';
+import { cheerMoment, scaled, SHELLS, thinkingMoment, type CheerStyle, type Moment, type ThinkStyle } from './effects/moments';
+import { addDrowsiness, addNap, restingExpression, type ExpressionFrame } from './expression-frame';
+import { DROWSY_AFTER, ExpressionMachine, PRIORITY, type Priority } from './expression';
+import { dozeAfter, resolveHabits } from './habits';
 import { IdleLife } from './idle-life';
 import { damp, type MotionProfile } from './moods';
+import type { ResolvedWear } from './parts';
 import type { Skin } from './skins';
 
 /** Drowsiness eases in slowly and out quickly (1/s); a "z" drifts up every ZZZ_SECONDS. */
 const DROWSY_IN = 0.8;
 const DROWSY_OUT = 6;
+/** A nap deepens slowly and ends at once (1/s). */
+const NAP_IN = 0.45;
+const NAP_OUT = 7;
+/** The cue bit the celebrate effect's burst uses (the emote's own cues use the low bits). */
+const CHEER_BIT = 1 << 30;
 const ZZZ_SECONDS = 2.6;
 /** Data motes per second at full thinking drama, and at full work. */
 const MOTES_THINKING = 7;
@@ -60,6 +71,11 @@ export class EmoteDirector {
   private woke = false;
   private cueInstance = -1;
   private cuesFired = 0;
+  private nap = 0;
+  private drowsyAfter = DROWSY_AFTER;
+  private think: Moment<ThinkStyle> = thinkingMoment(undefined);
+  private cheer: Moment<CheerStyle> | null = null;
+  private readonly shellAt = new Vector3();
 
   /** `effects` is the stage's effect layer (the stage adds it to the scene and frees it). */
   constructor(effects: EffectLayer, random: () => number = Math.random) {
@@ -70,6 +86,23 @@ export class EmoteDirector {
   /** Plays `emote` (after `delay` s); an asked emote also counts as activity. */
   emote(emote: Emote, time: number, priority: Priority = PRIORITY.asked, delay = 0): void {
     if (this.machine.trigger(emote, time, priority, delay) && priority === PRIORITY.asked) this.activity();
+  }
+
+  /** The keeper's habits for its species: what it does when idle and how soon it naps. */
+  setHabits(habits: unknown, species: string): void {
+    this.idle.setHabits(habits, species);
+    this.drowsyAfter = dozeAfter(resolveHabits(habits, species).sleep ?? 1);
+  }
+
+  /** The worn moment effects (the `thinking` and `celebrate` slots; undefined = none worn). */
+  setMoments(thinking: ResolvedWear | undefined, celebrate: ResolvedWear | undefined): void {
+    this.think = thinkingMoment(thinking);
+    this.cheer = cheerMoment(celebrate);
+  }
+
+  /** The least thinking drama the worn thinking effect allows (0 = the shipped curve). */
+  get dramaFloor(): number {
+    return this.think.style.dramaFloor;
   }
 
   /** Something happened (pointer, touch, voice, a mood change): the quiet spell is over. */
@@ -97,7 +130,7 @@ export class EmoteDirector {
     this.motion = input.motion;
     this.quiet += dt;
     const wasDrowsy = this.machine.drowsy;
-    const state = this.machine.step(time, this.quiet, input.mood);
+    const state = this.machine.step(time, this.quiet, input.mood, this.drowsyAfter);
     if (wasDrowsy && !this.machine.drowsy) this.woke = true;
     if (state.kind === 'neutral') {
       const action = this.idle.step(dt, input.mood === 'idle', input.pointerStill);
@@ -114,14 +147,21 @@ export class EmoteDirector {
 
     this.drowsy = damp(this.drowsy, this.machine.drowsy ? 1 : 0, this.machine.drowsy ? DROWSY_IN : DROWSY_OUT, dt);
     addDrowsiness(this.frame, this.drowsy);
+    const napping = this.machine.napping(time);
+    this.nap = damp(this.nap, napping ? 1 : 0, napping ? NAP_IN : NAP_OUT, dt);
+    addNap(this.frame, this.nap < 1e-3 ? 0 : this.nap);
     this.zzzClock = this.drowsy > 0.6 ? this.zzzClock + dt : ZZZ_SECONDS * 0.6;
     if (this.zzzClock >= ZZZ_SECONDS) {
       this.zzzClock = 0;
       this.burst('zzz', 'top', skin, time, 1);
     }
 
-    const moteRate = MOTES_THINKING * input.drama + MOTES_WORKING * Math.max(input.work - 0.3, 0) / 0.7;
-    if (moteRate > 0.05) this.effects.emit('mote', this.origin('head', skin), time, moteRate * this.share(), dt);
+    const think = this.think;
+    const thinkingRate = MOTES_THINKING * input.drama * think.style.motes * think.intensity;
+    const moteRate = thinkingRate + MOTES_WORKING * Math.max(input.work - 0.3, 0) / 0.7;
+    const head = this.origin('head', skin);
+    if (moteRate > 0.05) this.effects.emit('mote', head, time, moteRate * this.share(), dt, input.drama > 0 ? think.colour : null);
+    this.effects.aura.update(think, input.drama, head, time * this.motion.speed, this.motion.amplitude);
     this.effects.update(time);
     return this.frame;
   }
@@ -132,12 +172,35 @@ export class EmoteDirector {
       this.cueInstance = instance;
       this.cuesFired = 0;
     }
-    const cues = EMOTE_SPECS[emote].cues;
+    const spec = EMOTE_SPECS[emote];
+    const cues = spec.cues;
     for (let i = 0; i < cues.length; i++) {
       const bit = 1 << i;
       if (this.cuesFired & bit || elapsed < cues[i].at) continue;
       this.cuesFired |= bit;
+      // A worn celebrate effect bursts instead of the classic celebration.
+      if (cues[i].classic && this.cheer) continue;
       this.burst(cues[i].effect, cues[i].from, skin, time, cues[i].count);
+    }
+    if (this.cheer && spec.cheerAt !== undefined && !(this.cuesFired & CHEER_BIT) && elapsed >= spec.cheerAt) {
+      this.cuesFired |= CHEER_BIT;
+      this.celebrate(this.cheer, skin, time);
+    }
+  }
+
+  /** The worn celebrate effect's burst: confetti, firework shells, a starburst (`moments.ts`). */
+  private celebrate(cheer: Moment<CheerStyle>, skin: Skin, time: number): void {
+    const { style, colour, intensity } = cheer;
+    const n = (count: number): number => Math.max(scaled(count, intensity * this.share()), count > 0 ? 1 : 0);
+    if (style.confetti > 0) this.effects.burst('confetti', this.origin('top', skin), time, n(style.confetti), 0, colour);
+    if (style.sparkles > 0) this.effects.burst('sparkle', this.origin('head', skin), time, n(style.sparkles), 0.01, colour);
+    if (style.flare) this.effects.burst('flare', this.origin('head', skin), time, 1, 0, colour);
+    if (style.rays > 0) this.effects.burst('spark', this.origin('head', skin), time, n(style.rays), 0.002, colour);
+    const top = this.origin('top', skin);
+    for (let s = 0; s < Math.min(style.shells, SHELLS.length); s++) {
+      const shell = SHELLS[s];
+      this.shellAt.set(top.x + shell.at[0], top.y + shell.at[1], top.z + shell.at[2]);
+      this.effects.burst('spark', this.shellAt, time + shell.delay + (style.flare ? 0.35 : 0), n(style.shellSparks), 0, colour);
     }
   }
 

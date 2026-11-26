@@ -51,17 +51,17 @@ export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): 
   head.position.y = centreY;
   parent.add(head);
 
-  kit.blob(head, m.caramel, SKULL, [0, 0, 0]);
-  kit.blob(head, m.cream, [0.17, 0.4, 0.12], [0, 0.14, 0.67]); // blaze between the eyes
-  for (const side of [-1, 1]) kit.blob(head, m.cream, [0.25, 0.2, 0.24], [side * 0.19, -0.27, 0.56]); // cheeks
-  kit.blob(head, m.cream, [0.3, 0.2, 0.27], [0, -0.2, 0.64]); // muzzle
+  kit.blob(head, m.head, SKULL, [0, 0, 0]);
+  kit.blob(head, m.muzzle, [0.17, 0.4, 0.12], [0, 0.14, 0.67]); // blaze between the eyes
+  for (const side of [-1, 1]) kit.blob(head, m.muzzle, [0.25, 0.2, 0.24], [side * 0.19, -0.27, 0.56]); // cheeks
+  kit.blob(head, m.muzzle, [0.3, 0.2, 0.27], [0, -0.2, 0.64]); // muzzle
   const nose = kit.blob(head, m.nose, NOSE_RADII, NOSE_AT);
   kit.blob(head, m.mouth, [0.16, 0.09, 0.16], [0, -0.34, 0.6]); // inside of the mouth
 
   const jaw = new Group();
   jaw.position.set(...JAW_HINGE);
   head.add(jaw);
-  kit.blob(jaw, m.cream, [0.16, 0.065, 0.17], [0, -0.03, 0.09]);
+  kit.blob(jaw, m.muzzle, [0.16, 0.065, 0.17], [0, -0.03, 0.09]);
   const tongue = kit.blob(jaw, m.tongue, [0.105, 0.034, 0.16], [0, -0.025, 0.16]);
 
   const eyes = addPuppyEyes(head, kit);
@@ -107,6 +107,6 @@ function addEar(head: Object3D, kit: PuppyKit, side: number): Group {
     position.setXYZ(i, x, y, z);
   }
   geometry.computeVertexNormals();
-  pivot.add(new Mesh(geometry, kit.materials.caramelDeep));
+  pivot.add(new Mesh(geometry, kit.materials.ears));
   return pivot;
 }

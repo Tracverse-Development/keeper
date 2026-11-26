@@ -11,7 +11,7 @@
  */
 import { Raycaster, Vector2, type Camera } from 'three';
 import { Animator } from './animator';
-import type { Character, Emote, HitRegion, Mood, TouchKind, WornPart } from './contract';
+import type { Character, Emote, HitRegion, Habits, Look, Mood, TouchKind, WornPart } from './contract';
 import { createEffectLayer } from './effects/effect-layer';
 import { isEmote } from './emotes';
 import { isMood } from './moods';
@@ -32,6 +32,10 @@ export interface CreateCharacterOptions {
   skin?: string;
   /** The wearables to start in, without a transition (default: `DEFAULT_WEARABLES`). */
   wearables?: readonly WornPart[];
+  /** The keeper's colours and materials per paint zone (default: the species' own). */
+  look?: Look;
+  /** The keeper's habits, 0 never .. 3 often (default: the species' own). */
+  habits?: Habits;
 }
 
 export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharacterOptions = {}): Character {
@@ -48,6 +52,8 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
   stage.scene.add(wardrobe.group, sparks.group, touchSparkles.group, effects.group);
 
   const animator = new Animator({ stage, skins, wardrobe, touchSparkles, backdrop, effects });
+  animator.setLook(options.look ?? {});
+  animator.setHabits(options.habits ?? {});
   const hitTest = createHitTester(stage.camera, skins);
 
   const reducedMotion = window.matchMedia?.(REDUCED_MOTION_QUERY);
@@ -109,7 +115,17 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       animator.setSkin(createSkin(next));
     },
     setWearables(parts: readonly WornPart[]) {
-      if (!disposed && Array.isArray(parts)) wardrobe.setWearables(parts);
+      if (!disposed && Array.isArray(parts)) animator.setWearables(parts);
+    },
+    setLook(look: Look) {
+      if (!disposed) animator.setLook(look);
+    },
+    setHabits(habits: Habits) {
+      if (!disposed) animator.setHabits(habits);
+    },
+    zoneFocus: (zone) => (typeof zone === 'string' ? animator.zoneFocus(zone) : null),
+    focusZone(zone) {
+      if (!disposed) animator.focusZone(typeof zone === 'string' ? zone : null);
     },
     setWork: (level) => animator.setWork(level),
     hitTest,

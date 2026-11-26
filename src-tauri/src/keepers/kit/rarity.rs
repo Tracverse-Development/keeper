@@ -28,6 +28,16 @@ pub const PART_RARITY: &[(&str, &str)] = &[
     ("memory-halo", "rare"),
     ("star-aura", "uncommon"),
     ("ark-jacket", "uncommon"),
+    ("paw-nails", "rare"),
+    ("dog-collar", "uncommon"),
+    ("think-classic", "common"),
+    ("think-pulse", "uncommon"),
+    ("think-orbit", "rare"),
+    ("think-nebula", "legendary"),
+    ("think-vortex", "mythical"),
+    ("cheer-confetti", "common"),
+    ("cheer-fireworks", "rare"),
+    ("cheer-starburst", "mythical"),
 ];
 
 pub fn get(id: &str) -> Option<&'static Rarity> {
@@ -50,5 +60,7 @@ mod tests {
         }
         assert_eq!(super::of_part("crew-cap").id, "common");
         assert_eq!(super::of_part("memory-halo").id, "rare");
+        assert_eq!(super::of_part("think-vortex").id, "mythical");
+        assert_eq!(super::of_part("cheer-fireworks").id, "rare");
     }
 }

@@ -28,6 +28,8 @@ export interface PartFrame {
   readonly thinking: number;
   /** The "got it" flash 0..1 as a reply arrives after thinking; 0 otherwise. */
   readonly gotIt: number;
+  /** The least thinking drama the worn thinking effect allows (`thinkDrama`'s floor; 0 = classic). */
+  readonly dramaFloor: number;
   /** The worn species' head centre in world space (thinking sparks stream into it). */
   readonly head: Readonly<Vector3>;
 }

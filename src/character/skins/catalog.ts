@@ -20,16 +20,20 @@
 
 import type { BodyShape } from '../parts/fit.ts';
 import type { SlotId } from '../parts/slots.ts';
-import { PUPPY_HAT_FORWARD, PUPPY_HEAD_SHAPE, PUPPY_NECK_SHAPE, PUPPY_NECK_Y, PUPPY_TORSO_SHAPE } from './puppy/puppy-shape.ts';
+import { PUPPY_HAT_FORWARD, PUPPY_HEAD_SHAPE, PUPPY_NECK_SHAPE, PUPPY_NECK_Y, PUPPY_PAWS_SHAPE, PUPPY_TORSO_SHAPE } from './puppy/puppy-shape.ts';
 import { ROBOT_HEAD_SHAPE, ROBOT_NECK_SHAPE, ROBOT_NECK_Y, ROBOT_TORSO_SHAPE } from './robot/robot-shape.ts';
 
-/** The rig joints a worn slot can ride: the leaning body or the turning head. */
-export type Bone = 'body' | 'head';
+/**
+ * The rig joints a worn slot (or one foot of it) can ride: the leaning body, the turning head, and
+ * the puppy's waving front paw and scratching hind paw.
+ */
+export type Bone = 'body' | 'head' | 'paw' | 'hindPaw';
 
 /**
  * Where one slot sits on a body. Floating slots: relative to the rig root at rest (parts float
  * steady: they never follow the bob). Worn slots: relative to the `follow` bone, with the body's
- * `shape` there for the part to fit.
+ * `shape` there for the part to fit. Effect slots (`thinking`, `celebrate`) hold no placement
+ * that matters (`MOMENT`): nothing is drawn on the body, the worn effect changes a moment.
  */
 export interface SlotPlacement {
   readonly position: readonly [number, number, number];
@@ -58,6 +62,8 @@ export interface SkinInfo {
 /** The halo orbit and the ark: the placements both species shipped with. */
 const HALO_RING: SlotPlacement = { position: [0, 0.15, 0], rotation: [0.32, 0, -0.1], scale: 1 };
 const ARK_BASE: SlotPlacement = { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 };
+/** An effect slot: the body offers the moment; there is nothing to place. */
+const MOMENT: SlotPlacement = { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 };
 
 export const SKINS = [
   {
@@ -72,6 +78,8 @@ export const SKINS = [
       back: worn('body', [0, ROBOT_NECK_Y, 0], ROBOT_TORSO_SHAPE),
       base: ARK_BASE,
       aura: { position: [0, -0.35, 0], rotation: [0, 0, 0], scale: 1 },
+      thinking: MOMENT,
+      celebrate: MOMENT,
     },
   },
   {
@@ -84,8 +92,11 @@ export const SKINS = [
       neck: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_NECK_SHAPE),
       torso: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_TORSO_SHAPE),
       back: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_TORSO_SHAPE),
+      paws: worn('body', [0, 0, 0], PUPPY_PAWS_SHAPE),
       base: ARK_BASE,
       aura: { position: [0, -0.62, 0.05], rotation: [0, 0, 0], scale: 0.98 },
+      thinking: MOMENT,
+      celebrate: MOMENT,
     },
   },
 ] as const satisfies readonly SkinInfo[];

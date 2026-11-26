@@ -4,7 +4,7 @@
  * (`skins/catalog.ts`), so a fitted jacket follows the pear of its torso and cuffs its front
  * legs, and a cap follows its skull. Pure data (no three.js).
  */
-import type { BodyShape, Limb, Ring } from '../../parts/fit.ts';
+import type { BodyShape, Foot, Limb, Ring } from '../../parts/fit.ts';
 import { domeProfile } from '../../parts/fit.ts';
 
 /** World height of the neck (top of the torso), of the seat, and of the head centre. */
@@ -83,3 +83,24 @@ export const PUPPY_TORSO_SHAPE: BodyShape = {
   reach: -0.74,
   limbs: LEGS,
 };
+
+/** The paws (cream ellipsoids, body space): front ones under the front legs, hind ones by the haunches. */
+export const PUPPY_FRONT_PAW = { x: 0.22, y: -1.88, z: 0.55, radii: [0.17, 0.11, 0.21] } as const;
+export const PUPPY_HIND_PAW = { x: 0.6, y: -1.9, z: 0.16, radii: [0.15, 0.085, 0.2] } as const;
+/** The hip the screen-left hind leg swings from when it scratches an ear (body space). */
+export const PUPPY_HIP = [-0.5, -1.52, 0.02] as const;
+
+/**
+ * Every paw, for the paws slot (anchor: the body's origin, so these are body space). The
+ * screen-right front paw rides the waving shoulder (`paw`), the screen-left hind paw the
+ * scratching leg (`hindPaw`), so whatever is worn on them follows.
+ */
+const FEET: Foot[] = [
+  { position: [-PUPPY_FRONT_PAW.x, PUPPY_FRONT_PAW.y, PUPPY_FRONT_PAW.z], radii: PUPPY_FRONT_PAW.radii },
+  { position: [PUPPY_FRONT_PAW.x, PUPPY_FRONT_PAW.y, PUPPY_FRONT_PAW.z], radii: PUPPY_FRONT_PAW.radii, bone: 'paw' },
+  { position: [-PUPPY_HIND_PAW.x, PUPPY_HIND_PAW.y, PUPPY_HIND_PAW.z], radii: PUPPY_HIND_PAW.radii, bone: 'hindPaw' },
+  { position: [PUPPY_HIND_PAW.x, PUPPY_HIND_PAW.y, PUPPY_HIND_PAW.z], radii: PUPPY_HIND_PAW.radii },
+];
+
+/** The paws slot: no surface ring, only the feet. */
+export const PUPPY_PAWS_SHAPE: BodyShape = { profile: [], depth: 1, squareness: 2, reach: PUPPY_SEAT_Y, feet: FEET };

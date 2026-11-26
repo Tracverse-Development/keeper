@@ -20,12 +20,29 @@
  *
  * Memory sparks fly into the worn part that offers a `sparkTarget` (the Memory Halo); with
  * no such part worn, `pulse` shows nothing.
+ *
+ * Effect slots (`thinking`, `celebrate`) draw nothing here: the wardrobe only resolves which
+ * moment effect is worn (`moment`) for the emote director to play. Parts worn on feet (the
+ * paws slot) get the live foot joints of the anchor, so they follow a paw that waves.
  */
 import { Group, type Vector3 } from 'three';
 import type { WornPart } from './contract';
-import { DEFAULT_WEARABLES, SLOT_IDS, createPart, resolveWearables, type PartFrame, type PartInstance, type SlotId, type SparkTarget } from './parts';
+import {
+  DEFAULT_WEARABLES,
+  SLOT_IDS,
+  createPart,
+  isEffectSlot,
+  resolveWearables,
+  type DrawnPartId,
+  type PartFrame,
+  type PartInstance,
+  type ResolvedWear,
+  type SlotId,
+  type SparkTarget,
+} from './parts';
 import type { Skin } from './skins';
 import type { SlotAnchor } from './skins/anchors';
+import { slotsOf, type SkinId } from './skins/catalog';
 import { swapPose } from './skins/skin-transition';
 import type { MemorySparks } from './stage/memory-spark';
 
@@ -56,6 +73,7 @@ export class Wardrobe {
   private readonly sparks: MemorySparks;
   private species: Skin;
   private worn: unknown;
+  private moments: Partial<Record<SlotId, ResolvedWear>> = {};
   private pointScale = 0;
   private time = 0;
 
@@ -65,7 +83,7 @@ export class Wardrobe {
     this.sparks = sparks;
     this.species = species;
     this.worn = worn;
-    this.slots = SLOT_IDS.map((id) => {
+    this.slots = SLOT_IDS.filter((id) => !isEffectSlot(id)).map((id) => {
       const holder = new Group();
       holder.name = `wear-${id}`;
       this.group.add(holder);
@@ -86,6 +104,11 @@ export class Wardrobe {
     this.species = species;
     for (const slot of this.slots) slot.settled = false;
     this.reconcile(false);
+  }
+
+  /** The moment effect worn in effect slot `slot` (`thinking`, `celebrate`), if the body offers it. */
+  moment(slot: 'thinking' | 'celebrate'): ResolvedWear | undefined {
+    return this.moments[slot];
   }
 
   /** Sends a memory spark from `origin` into the worn halo; false when none is worn. */
@@ -132,6 +155,9 @@ export class Wardrobe {
   private reconcile(instant: boolean): void {
     const species = this.species;
     const wanted = resolveWearables(this.worn, species.id);
+    const offered = new Set(Object.keys(slotsOf(species.id as SkinId)));
+    this.moments = {};
+    for (const slot of SLOT_IDS) if (isEffectSlot(slot) && offered.has(slot) && wanted[slot]) this.moments[slot] = wanted[slot];
     for (const slot of this.slots) {
       const anchor = species.slots[slot.id];
       const next = anchor ? wanted[slot.id] : undefined;
@@ -141,7 +167,8 @@ export class Wardrobe {
       if (slot.outgoing) this.release(slot.outgoing);
       slot.outgoing = instant ? null : slot.current;
       if (instant && slot.current) this.release(slot.current);
-      slot.current = next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id, next.effects, { species: species.id, shape: anchor.shape })) : null;
+      const follow = anchor?.feet ? { base: anchor.object, feet: anchor.feet } : undefined;
+      slot.current = next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow })) : null;
       slot.swapStartedAt = this.time;
       slot.swapping = !instant;
       setPresence(slot.current, instant ? 1 : 0);

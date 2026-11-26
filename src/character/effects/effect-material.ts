@@ -12,6 +12,10 @@
  *   3 mote     - a tiny glowing square
  *   4 confetti - a paper strip that flips as it spins
  *   5 zzz      - the letter Z
+ *   6 note     - a musical eighth note (a head, a stem, a flag)
+ *   7 spark    - a hot round point with a bright core
+ *   8 orb      - a soft round glow (the thinking aura)
+ *   9 flare    - a blinding star: eight long rays round a white-hot core
  * Additive kinds add light (sparkles, hearts, motes); the others are painted over.
  */
 import { AdditiveBlending, NormalBlending, ShaderMaterial, type IUniform } from 'three';
@@ -84,10 +88,33 @@ const FRAGMENT = /* glsl */ `
     vec2 a = abs(vec2(p.x, p.y / max(abs(cos(vAngle * 1.7)), 0.15)));
     shape = (1.0 - smoothstep(0.78, 0.86, a.x)) * (1.0 - smoothstep(0.36, 0.44, a.y));
     alpha = shape;
-  #else
+  #elif SHAPE == 5
     float d = min(min(segment(p, vec2(-0.5, 0.55), vec2(0.5, 0.55)), segment(p, vec2(-0.5, -0.55), vec2(0.5, -0.55))), segment(p, vec2(0.5, 0.55), vec2(-0.5, -0.55)));
     shape = 1.0 - smoothstep(0.1, 0.17, d);
     alpha = shape;
+  #elif SHAPE == 6
+    vec2 h = (p - vec2(-0.22, -0.52)) * mat2(0.94, 0.34, -0.34, 0.94);
+    float head = length(h / vec2(0.3, 0.21)) - 1.0;
+    float stem = segment(p, vec2(0.05, -0.48), vec2(0.05, 0.72)) - 0.07;
+    float flag = segment(p, vec2(0.05, 0.72), vec2(0.42, 0.28)) - 0.08;
+    float d = min(min(head * 0.2, stem), flag);
+    shape = (1.0 - smoothstep(-0.02, 0.04, d)) + exp(-max(d, 0.0) * 10.0) * 0.35;
+    alpha = 1.0;
+  #elif SHAPE == 7
+    float r2 = dot(p, p);
+    shape = exp(-r2 * 9.0) * 1.4 + exp(-r2 * 2.5) * 0.35;
+    alpha = 1.0;
+  #elif SHAPE == 8
+    float r2 = dot(p, p);
+    shape = exp(-r2 * 4.0) * (1.0 - smoothstep(0.7, 1.0, r2));
+    alpha = 1.0;
+  #else
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float rays = pow(abs(cos(a * 4.0)), 24.0) * exp(-r * 3.0) + pow(abs(cos(a * 4.0 + 0.785)), 40.0) * exp(-r * 5.0) * 0.6;
+    shape = rays + exp(-r * r * 18.0) * 2.0 + exp(-r * 4.0) * 0.25;
+    shape *= 1.0 - smoothstep(0.85, 1.0, r);
+    alpha = 1.0;
   #endif
     if (shape < 0.003) discard;
     gl_FragColor = vec4(vColour * shape * vBright, clamp(alpha * min(vBright, 1.0), 0.0, 1.0));

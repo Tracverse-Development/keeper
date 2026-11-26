@@ -112,3 +112,25 @@ fn outfits_from_before_the_wardrobe_still_show_who_wears_what() {
     take_off(&mut keepers, "k1", find(&items, "part:memory-halo"), &items).unwrap();
     assert!(keepers[0].wearables.is_empty());
 }
+
+#[test]
+fn a_dogs_own_things_and_the_moment_effects_go_through_the_wardrobe() {
+    let (mut keepers, items) = setup();
+    // Only a dog has paws: the robot is refused in a sentence, the puppy wears the nails.
+    let err = wear(&mut keepers, "k1", find(&items, "part:paw-nails"), &items).unwrap_err();
+    assert_eq!(err, "Trini Boi has no paws to wear the Nail Set on.");
+    wear(&mut keepers, "k2", find(&items, "part:paw-nails"), &items).unwrap();
+    // The collar fits a dog's neck only.
+    assert!(wear(&mut keepers, "k1", find(&items, "part:dog-collar"), &items).unwrap_err().contains("doesn't fit"));
+    wear(&mut keepers, "k2", find(&items, "part:dog-collar"), &items).unwrap();
+    // Every body takes a thinking and a celebrate effect; a second thinking effect replaces the first.
+    for id in ["k1", "k2"] {
+        wear(&mut keepers, id, find(&items, "part:think-orbit"), &items).unwrap();
+        wear(&mut keepers, id, find(&items, "part:think-vortex"), &items).unwrap();
+        wear(&mut keepers, id, find(&items, "part:cheer-fireworks"), &items).unwrap();
+    }
+    let pup: Vec<&str> = keepers[1].wearables.iter().map(|w| w.part.as_str()).collect();
+    assert!(pup.contains(&"paw-nails") && pup.contains(&"dog-collar") && pup.contains(&"think-vortex") && !pup.contains(&"think-orbit"), "{pup:?}");
+    assert!(parts::check_outfit(&keepers[1].wearables, "puppy").is_ok());
+    assert!(parts::check_outfit(&keepers[0].wearables, "robot").is_ok());
+}

@@ -30,8 +30,11 @@ import {
   SplineCurve,
   TorusGeometry,
   Vector2,
+  type Object3D,
 } from 'three';
 import { disposeTree } from '../../dispose-tree';
+import { PaintableMaterial, zoneOf, type ZoneTarget } from '../../look/zone-paint';
+import type { ResolvedZone } from '../../look/zones';
 import { HEAD_RADII, ellipsoidPatch } from './head-shape';
 import { PALETTE } from '../../palette';
 import { ROBOT_COLLAR, ROBOT_HEAD_CENTRE_Y, ROBOT_NECK_Y, ROBOT_TORSO_PROFILE } from './robot-shape';
@@ -57,6 +60,15 @@ export interface Body {
    * `1 + beat` (the thinking heartbeat and the "got it" flash; 0 = no change).
    */
   setLights(earGlow: number, presence: number, heat: number, heartBoost: number, beat?: number): void;
+  /**
+   * The paint zones the body owns (`look/zones.ts`): the pearl head and collar, the visor glass
+   * (`face`), the navy torso (`body`), the chest heart-light (`core`) and the gold ear rings that
+   * are its antennas (`antenna`, their glow discs light in the same colour). The eyes are the
+   * face's (`face.ts`).
+   */
+  readonly zones: Readonly<Record<'head' | 'face' | 'body' | 'core' | 'antenna', ZoneTarget>>;
+  /** The meshes of each zone, for framing it (`look/zone-focus.ts`). */
+  readonly zoneMeshes: Readonly<Record<'head' | 'face' | 'body' | 'core' | 'antenna', readonly Object3D[]>>;
   dispose(): void;
 }
 
@@ -152,17 +164,46 @@ export function createBody(): Body {
   const visor = new Mesh(ellipsoidPatch({ ...visorShape, inflate: 0.013 }), visorGlass);
   head.add(border, visor);
 
-  for (const side of [-1, 1]) head.add(buildEar(side, gold, earGlowMaterial));
+  // The ears have their own gold so the antenna zone paints only them.
+  const earGold = gold.clone();
+  const ears = [-1, 1].map((side) => {
+    const ear = buildEar(side, earGold, earGlowMaterial);
+    head.add(ear);
+    return ear;
+  });
 
   const baseRim = earGlowMaterial.emissiveIntensity;
   const heartRest = heartMaterial.emissive.clone();
   const heartHot = new Color(PALETTE.heatAmber);
+  const torsoPaint = new PaintableMaterial(navyGloss);
+  /** The heart-light's brightness from its zone's material (glow brighter, matte softer). */
+  let coreBoost = 1;
   const applyLight = (earGlow: number, presence: number, heat: number, heartBoost: number, beat = 0): void => {
     earGlowMaterial.emissiveIntensity = (baseRim + earGlow * 2.6) * presence;
-    heartMaterial.emissiveIntensity = (1 + 2.2 * presence) * (0.85 + earGlow * 0.6) * (1 + heartBoost * heat) * (1 + beat);
+    heartMaterial.emissiveIntensity = coreBoost * (1 + 2.2 * presence) * (0.85 + earGlow * 0.6) * (1 + heartBoost * heat) * (1 + beat);
     heartMaterial.emissive.copy(heartRest).lerp(heartHot, heat);
     rimGold.emissiveIntensity = RIM_HEAT * heat * presence;
-    navyGloss.sheen = 0.2 + 0.5 * presence;
+    // The sheen breathes with presence on top of whatever surface the body is painted (shipped 0.7).
+    navyGloss.sheen = (torsoPaint.painted.sheen * (0.2 + 0.5 * presence)) / 0.7;
+  };
+  const shippedHeart = heartMaterial.color.clone();
+  const shippedEarGlow = earGlowMaterial.emissive.clone();
+  const core: ZoneTarget = {
+    paint(zone?: ResolvedZone) {
+      heartMaterial.color.copy(shippedHeart);
+      heartRest.copy(shippedHeart);
+      if (zone?.color !== undefined) {
+        heartMaterial.color.setHex(zone.color);
+        heartRest.setHex(zone.color);
+      }
+      coreBoost = zone?.material === 'glow' ? 1.6 : zone?.material === 'matte' ? 0.55 : 1;
+    },
+  };
+  const earGlowPaint: ZoneTarget = {
+    paint(zone?: ResolvedZone) {
+      earGlowMaterial.emissive.copy(shippedEarGlow);
+      if (zone?.color !== undefined) earGlowMaterial.emissive.setHex(zone.color);
+    },
   };
   applyLight(0, 1, 0, 0);
 
@@ -172,6 +213,14 @@ export function createBody(): Body {
     head,
     heart,
     setLights: applyLight,
+    zones: {
+      head: new PaintableMaterial(pearl),
+      face: new PaintableMaterial(visorGlass),
+      body: torsoPaint,
+      core,
+      antenna: zoneOf(new PaintableMaterial(earGold), earGlowPaint),
+    },
+    zoneMeshes: { head: [shell, collar], face: [visor], body: [torso], core: [emblem], antenna: ears },
     dispose: () => disposeTree(root),
   };
 }

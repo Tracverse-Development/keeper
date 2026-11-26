@@ -43,7 +43,10 @@ test('resolveSkinId falls back to the default for anything unknown', () => {
 
 test('every species declares the halo, base and aura slots with finite placements', () => {
   for (const skin of SKINS) {
-    assert.deepEqual(Object.keys(skin.slots).sort(), [...SLOT_IDS].sort(), skin.id);
+    const slots = Object.keys(skin.slots);
+    for (const slot of slots) assert.ok((SLOT_IDS as readonly string[]).includes(slot), `${skin.id} offers unknown ${slot}`);
+    for (const slot of ['halo', 'base', 'aura', 'head', 'neck', 'torso', 'back', 'thinking', 'celebrate']) assert.ok(slots.includes(slot), `${skin.id} offers ${slot}`);
+    assert.equal(slots.includes('paws'), skin.id === 'puppy', 'only the puppy has paws');
     for (const [slot, placement] of Object.entries(skin.slots)) {
       assert.equal(placement.position.length, 3, `${skin.id}.${slot}`);
       assert.equal(placement.rotation.length, 3, `${skin.id}.${slot}`);

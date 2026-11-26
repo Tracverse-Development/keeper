@@ -10,15 +10,21 @@
  *   mote      - tiny data squares drifting up while it thinks or works
  *   confetti  - tumbling paper in brand colours (a quiz streak)
  *   zzz       - a sleepy "z" drifting up and away (drowsy, a yawn)
+ *   note      - a musical note floating up and swaying (humming)
+ *   spark     - a hot point thrown every way at once (fireworks, the starburst)
+ *   flare     - one big bright star that blooms and fades (the starburst's flash)
+ *   orb       - a soft round glow (the thinking aura's orbits, clouds and vortex: `thinking-aura.ts`)
  *
  * Pure data (no three.js): read by `particle-pool.ts` (motion) and `effect-layer.ts` (drawing).
  */
 import { PALETTE } from '../palette.ts';
 
-export type EffectKind = 'sparkle' | 'heart' | 'puff' | 'mote' | 'confetti' | 'zzz';
+export type EffectKind = 'sparkle' | 'heart' | 'puff' | 'mote' | 'confetti' | 'zzz' | 'note' | 'spark' | 'flare';
 
 /** The shape the effect shader draws for a kind (a `#define SHAPE` per material). */
-export const SHAPES: Readonly<Record<EffectKind, number>> = { sparkle: 0, heart: 1, puff: 2, mote: 3, confetti: 4, zzz: 5 };
+export const SHAPES: Readonly<Record<EffectKind, number>> = { sparkle: 0, heart: 1, puff: 2, mote: 3, confetti: 4, zzz: 5, note: 6, spark: 7, flare: 9 };
+/** The thinking aura's soft orb (`thinking-aura.ts`; not a pooled kind). */
+export const AURA_SHAPE = 8;
 
 export type Range = readonly [number, number];
 
@@ -168,5 +174,62 @@ export const EFFECT_KINDS: Readonly<Record<EffectKind, KindSpec>> = {
     bright: 1.3,
     additive: false,
     colours: [PALETTE.cream100, PALETTE.gold300],
+  },
+  note: {
+    capacity: 12,
+    life: [1.8, 2.4],
+    speed: [0.38, 0.55],
+    direction: [0.35, 1, 0.25],
+    cone: 0.5,
+    scatter: 0.15,
+    gravity: 0.05,
+    drag: 0.4,
+    size: [0.2, 0.27],
+    grow: 1.15,
+    angle: [-0.25, 0.25],
+    spin: [-0.4, 0.4],
+    sway: 0.12,
+    swayRate: 3,
+    bright: 1.5,
+    additive: true,
+    colours: [PALETTE.gold300, PALETTE.cream50, PALETTE.gold400],
+  },
+  spark: {
+    capacity: 128,
+    life: [0.8, 1.4],
+    speed: [1.6, 2.6],
+    direction: UP,
+    cone: Math.PI,
+    scatter: 0.05,
+    gravity: -1.1,
+    drag: 2.4,
+    size: [0.07, 0.12],
+    grow: 0.4,
+    angle: [0, 0],
+    spin: [0, 0],
+    sway: 0,
+    swayRate: 0,
+    bright: 3.2,
+    additive: true,
+    colours: [PALETTE.gold300, PALETTE.cream50, PALETTE.heatCore],
+  },
+  flare: {
+    capacity: 4,
+    life: [0.6, 0.7],
+    speed: [0, 0],
+    direction: UP,
+    cone: 0,
+    scatter: 0,
+    gravity: 0,
+    drag: 0,
+    size: [1.6, 1.8],
+    grow: 1.9,
+    angle: [0, Math.PI / 4],
+    spin: [0.6, 1.2],
+    sway: 0,
+    swayRate: 0,
+    bright: 4,
+    additive: true,
+    colours: [PALETTE.cream50],
   },
 };

@@ -20,6 +20,12 @@
  * Gaze is aimed at the pointer relative to where the skin's gaze anchor (its head) is on
  * screen (projected every frame), so the eyes look AT the cursor, not at a point offset
  * by the framing. With no pointer for a few seconds the gaze drifts on its own.
+ *
+ * The keeper's own look, habits and moment effects ride along: `setLook` repaints the worn skin's
+ * zones (only when the look changes, and on every new skin), `setHabits` tells the director what
+ * it does when idle and how soon it naps, the worn `thinking`/`celebrate` effects are read from
+ * the wardrobe whenever the outfit or body changes, and `focusZone` glides the camera onto a
+ * paint zone (`stage/camera-focus.ts`).
  */
 import { Vector3 } from 'three';
 import type { Emote, Mood, TouchKind } from './contract';
@@ -29,14 +35,18 @@ import { EmoteDirector } from './emote-director';
 import { PRIORITY } from './expression';
 import { foldExpression } from './expression-frame';
 import { GazeFollower, POINTER_IDLE_SECONDS } from './gaze';
+import type { ZoneFocus } from './look/zone-focus';
+import { lookKey, resolveLook } from './look/zones';
 import { MOOD_NAMES, blendInto, clampUnit, damp, moodTarget, motionProfile, type MoodParams, type MotionProfile } from './moods';
 import type { PartFrame } from './parts';
 import { foldTouch, reactionEnvelope } from './reactions';
 import type { SkinSwitcher } from './skin-switcher';
 import type { Skin } from './skins';
 import type { Backdrop } from './stage/backdrop';
+import { CameraFocus } from './stage/camera-focus';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
+import type { WornPart } from './contract';
 import type { Wardrobe } from './wardrobe';
 import { gotItEnvelope, isGotIt, thinkDrama } from './thinking';
 import { clampWork, easeWork } from './work-level';
@@ -98,11 +108,49 @@ export class Animator {
   private readonly headWorld = new Vector3();
   private readonly scratch = new Vector3();
 
+  /** The keeper's look and habits as given (untrusted; resolved per species), and the painted key. */
+  private look: unknown = {};
+  private habits: unknown = {};
+  private paintedKey: string | null = null;
+  private readonly camera = new CameraFocus();
+  private focusedZone: string | null = null;
+
   constructor(parts: StageParts) {
     this.parts = parts;
     this.director = new EmoteDirector(parts.effects);
     this.director.emote('wave', 0, PRIORITY.idle, HELLO_DELAY);
-    this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0, thinking: 0, gotIt: 0, head: this.headPoint };
+    this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0, thinking: 0, gotIt: 0, dramaFloor: 0, head: this.headPoint };
+    this.refreshMoments();
+  }
+
+  /** The keeper's colours and materials per paint zone (repaints only when it changes). */
+  setLook(look: unknown): void {
+    this.look = look;
+    this.paint(this.parts.skins.active, false);
+  }
+
+  /** The keeper's habits (idle actions and how soon it naps). */
+  setHabits(habits: unknown): void {
+    this.habits = habits;
+    this.director.setHabits(habits, this.parts.skins.active.id);
+  }
+
+  /** Changes what is worn (the wardrobe eases it) and reads the moment effects anew. */
+  setWearables(worn: readonly WornPart[]): void {
+    this.parts.wardrobe.setWearables(worn);
+    this.refreshMoments();
+  }
+
+  /** Where a camera frames paint zone `zone` on the worn body, or null when it has no such zone. */
+  zoneFocus(zone: string): ZoneFocus | null {
+    return this.parts.skins.active.focus[zone] ?? null;
+  }
+
+  /** Glides the camera onto paint zone `zone` (null or an unknown zone = the whole character). */
+  focusZone(zone: string | null): void {
+    this.focusedZone = zone;
+    const { stage } = this.parts;
+    this.camera.want(zone ? this.zoneFocus(zone) : null, stage.camera, this.camera.busy ? this.camera.target : stage.home.target);
   }
 
   setMood(mood: Mood): void {
@@ -159,6 +207,10 @@ export class Animator {
     this.parts.touchSparkles.burst(this.scratch.setY(this.scratch.y - 0.6), this.time, SWAP_SPARKLES, 0.9);
     this.parts.skins.swap(skin, this.time);
     this.parts.wardrobe.setSpecies(skin);
+    this.paint(skin, true);
+    this.director.setHabits(this.habits, skin.id);
+    this.refreshMoments();
+    if (this.focusedZone) this.focusZone(this.focusedZone);
   }
 
   setReducedMotion(reduced: boolean): void {
@@ -186,7 +238,7 @@ export class Animator {
       mood: this.targetMood,
       motion: this.motion,
       pointerStill: this.gaze.pointerIdleSeconds > POINTER_IDLE_SECONDS,
-      drama: thinkDrama(this.weights.thinking, this.work),
+      drama: thinkDrama(this.weights.thinking, this.work, this.director.dramaFloor),
       work: this.work,
       skin: this.parts.skins.active,
     });
@@ -209,6 +261,7 @@ export class Animator {
       touch: this.touch,
       work: this.work,
       gotIt,
+      dramaFloor: this.director.dramaFloor,
       emote,
     });
 
@@ -220,6 +273,7 @@ export class Animator {
     partFrame.work = this.work;
     partFrame.thinking = this.weights.thinking;
     partFrame.gotIt = gotIt;
+    partFrame.dramaFloor = this.director.dramaFloor;
     skins.active.gazeAnchor.getWorldPosition(this.headPoint);
     wardrobe.update(partFrame);
     touchSparkles.update(this.time);
@@ -229,7 +283,23 @@ export class Animator {
     stage.faceLight.intensity = 0.45 * expression.glow * voiceGlow;
     for (const rim of stage.rimLights) rim.intensity = 1.25 * (0.3 + 0.7 * p.presence);
     stage.bloom.strength = 0.45 + 0.15 * Math.min(p.haloGlow, 1.6);
+    this.camera.step(dt, stage.camera, stage.home);
     stage.render();
+  }
+
+  /** Paints `skin` with the keeper's look for its species (a new skin always; else only on change). */
+  private paint(skin: Skin, fresh: boolean): void {
+    const look = resolveLook(this.look, skin.id);
+    const key = `${skin.id}|${lookKey(look)}`;
+    if (!fresh && key === this.paintedKey) return;
+    this.paintedKey = key;
+    skin.paint(look);
+  }
+
+  /** Reads the worn moment effects from the wardrobe for the director. */
+  private refreshMoments(): void {
+    const { wardrobe } = this.parts;
+    this.director.setMoments(wardrobe.moment('thinking'), wardrobe.moment('celebrate'));
   }
 
   /** The gaze anchor's centre in normalised device coordinates (-1..1). */

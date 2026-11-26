@@ -85,7 +85,7 @@ export function createStarAura(effects: EffectValues, random: () => number = Mat
 
   function update(frame: PartFrame): void {
     const { motion, work } = frame;
-    const think = thinkDrama(frame.thinking, work);
+    const think = thinkDrama(frame.thinking, work, frame.dramaFloor);
     clock += frame.dt * motion.speed * speed * (1 + WORK_SPEED * work + THINK_SPEED * think);
     const bob = 0.07 * motion.amplitude;
     if (think > 0) group.worldToLocal(head.copy(frame.head));

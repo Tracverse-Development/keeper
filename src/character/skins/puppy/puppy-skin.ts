@@ -19,9 +19,12 @@
  * Every amplitude and timing is data (`reactions.ts`); at zero touch, zero work, no thinking
  * and no emote every number is what it shipped with.
  */
-import { Group, Object3D } from 'three';
+import { Group, Object3D, type Mesh, type MeshPhysicalMaterial } from 'three';
 import type { TouchKind } from '../../contract';
 import { disposeTree } from '../../dispose-tree';
+import { measureZones, type ZoneParts } from '../../look/zone-focus';
+import { PaintableMaterial } from '../../look/zone-paint';
+import { LOOK_ZONES, type ResolvedLook } from '../../look/zones';
 import { damp } from '../../moods';
 import { cyclePhase, holdWave, sniff, thinkDrama, twitch } from '../../thinking';
 import { band, effectiveWork } from '../../work-level';
@@ -55,7 +58,9 @@ export function createPuppySkin(): Skin {
   const head = face.head;
   const sweat = addPuppySweat(head, kit);
   const bubble = addPuppyThinking(body);
-  const slots = addSlotAnchors(root, slotsOf('puppy'), { body, head });
+  const slots = addSlotAnchors(root, slotsOf('puppy'), { body, head, paw: parts.paw, hindPaw: parts.scratch.pawJoint });
+  const zones = puppyZones(kit);
+  const focus = measureZones(root, zoneParts(root, kit));
 
   const headProxy = addHitProxy(head, { radii: [1.06, 0.9, 0.95], centre: [0, 0, 0.05] });
   const bodyProxy = addHitProxy(body, { radii: [0.72, 0.8, 0.66], centre: [0, -1.2, 0.05] });
@@ -73,13 +78,15 @@ export function createPuppySkin(): Skin {
   function apply(frame: SkinFrame): void {
     const p = frame.mood;
     const d = blendPuppyDials(frame.weights, dials);
+    // A real nap curls it up like the asleep mood does.
+    d.curl = Math.max(d.curl, frame.emote.nap);
     const a = frame.motion.amplitude;
     const t = frame.time * frame.motion.speed;
     const { poke, pat } = frame.touch;
     const w = effectiveWork(frame.work, frame.weights.thinking, R.think.workBoost);
     const pant = band(w, R.work.pantFrom, R.work.pantTo);
     const T = R.think;
-    const drama = thinkDrama(frame.weights.thinking, frame.work);
+    const drama = thinkDrama(frame.weights.thinking, frame.work, frame.dramaFloor);
 
     // Breathing lives in the chest; the whole puppy bobs less than the floating robot.
     const e = frame.emote;
@@ -96,7 +103,7 @@ export function createPuppySkin(): Skin {
     body.rotation.z = Math.sin(t * 0.29 + 0.7) * 0.015 * a + leanSide * R.pat.bodyRoll * pat + (e.roll + 0.04 * e.swing) * a;
 
     const nod = Math.sin(t * 5.4) * p.nod * (0.4 + frame.mouth) * a;
-    head.rotation.y = frame.gaze.x * 0.38;
+    head.rotation.y = frame.gaze.x * 0.38 + 0.9 * e.chase * a; // chasing: it looks back at its tail
     const bob = Math.sin(t * R.work.headBobSpeed) * R.work.headBob * w * a;
     head.rotation.x = -frame.gaze.y * 0.24 + nod + p.lean * 0.4 + d.curl * 0.28 - R.poke.headPitch * poke + R.pat.headPitch * pat + bob;
     head.rotation.z =
@@ -108,6 +115,10 @@ export function createPuppySkin(): Skin {
     if (drama > 0) head.rotation.z += drama * a * T.tilt * holdWave(cyclePhase(t, T.tiltSeconds));
     head.rotation.z += (0.6 * e.roll + 0.12 * e.swing) * a;
     head.rotation.x += e.pitch * a;
+    // Scratching: the head leans down toward the scratching hind leg (its screen-left side).
+    head.rotation.z += 0.42 * e.scratch * a;
+    head.rotation.x += 0.12 * e.scratch * a;
+    parts.scratch.pose(e.scratch * (0.5 + 0.5 * a), t);
     // The hello wave: the paw lifts forward and up, then waves from the shoulder.
     parts.paw.rotation.set(-2.1 * e.paw * (0.6 + 0.4 * a), 0, 0.35 * e.swing * e.paw * a);
     head.position.y = HEAD_Y - d.curl * R.sleep.headDrop;
@@ -132,13 +143,15 @@ export function createPuppySkin(): Skin {
       d.earPerk + R.poke.earPop * poke + 0.25 * frame.voice + R.work.earPerk * w + T.gotItEars * frame.gotIt + 0.8 * e.wide + 0.5 * e.stars + 0.35 * e.paw - 0.45 * e.sleepy;
     const flickLeft = drama * T.earTwitch * twitch(cyclePhase(t, T.earTwitchSeconds));
     const flickRight = drama * T.earTwitch * twitch(cyclePhase(t + T.earTwitchSeconds / 2, T.earTwitchSeconds));
-    poseEars(frame, perk, d.earTwitch, R.work.earTwitch * w, Math.max(pat, 0.7 * e.hearts), t, flickLeft, flickRight);
+    // The scratched ear flaps with the shaking leg.
+    const scratched = e.scratch * Math.abs(Math.sin(t * 31)) * 0.5;
+    poseEars(frame, perk, d.earTwitch, R.work.earTwitch * w, Math.max(pat, 0.7 * e.hearts), t, flickLeft + scratched, flickRight);
     face.sniff(drama * sniff(cyclePhase(t, T.sniffSeconds)));
 
-    const tailSpeed = d.tailSpeed + R.pat.tailSpeed * pat + R.poke.tailSpeed * poke + R.work.tailSpeed * w + 3 * cheer + 2 * e.paw;
+    const tailSpeed = d.tailSpeed + R.pat.tailSpeed * pat + R.poke.tailSpeed * poke + R.work.tailSpeed * w + 3 * cheer + 2 * e.paw + 5 * e.chase;
     tailPhase += frame.dt * Math.PI * 2 * tailSpeed * frame.motion.speed;
     const sweep = drama > 0 ? drama * T.tailSweep * Math.sin(t * T.tailSweepSpeed) : 0;
-    const wag = (Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w + 0.5 * cheer + 0.3 * e.paw) + sweep) * a;
+    const wag = (Math.sin(tailPhase) * (d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w + 0.5 * cheer + 0.3 * e.paw + 0.5 * e.chase) + sweep) * a;
     parts.tail.rotation.set(0.15 + d.curl * 0.5, wag * 0.35, -0.38 - d.curl * 0.7 + wag);
 
     parts.tag.rotation.x = Math.sin(t * 1.1 + 0.4) * 0.05 * a - body.rotation.x * 0.6 + R.poke.tagSwing * poke;
@@ -185,6 +198,10 @@ export function createPuppySkin(): Skin {
     hitRegions: { head: [headProxy], body: [bodyProxy] },
     slots,
     reactions: R,
+    focus,
+    paint(look: ResolvedLook) {
+      for (const zone of LOOK_ZONES.puppy) zones[zone].paint(look[zone]);
+    },
     apply,
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
@@ -192,4 +209,30 @@ export function createPuppySkin(): Skin {
     setPointScale: (scale) => bubble.setPointScale(scale),
     dispose: () => disposeTree(root),
   };
+}
+
+type PuppyZone = (typeof LOOK_ZONES.puppy)[number];
+
+/** Each paint zone's material (the eyes zone paints the irises). */
+function zoneMaterials(kit: ReturnType<typeof createPuppyKit>): Record<PuppyZone, MeshPhysicalMaterial> {
+  const m = kit.materials;
+  return { head: m.head, ears: m.ears, muzzle: m.muzzle, eyes: m.iris, body: m.body, legs: m.legs, paws: m.paws, tail: m.tail };
+}
+
+function puppyZones(kit: ReturnType<typeof createPuppyKit>): Record<PuppyZone, PaintableMaterial> {
+  const out = {} as Record<PuppyZone, PaintableMaterial>;
+  for (const [zone, material] of Object.entries(zoneMaterials(kit)) as [PuppyZone, MeshPhysicalMaterial][]) out[zone] = new PaintableMaterial(material);
+  return out;
+}
+
+/** The meshes of each zone (every mesh wearing its material) and the side to frame it from. */
+function zoneParts(root: Object3D, kit: ReturnType<typeof createPuppyKit>): Record<string, ZoneParts> {
+  const materials = zoneMaterials(kit);
+  const meshes: Record<string, Object3D[]> = {};
+  root.traverse((node) => {
+    const material = (node as Mesh).material;
+    for (const [zone, m] of Object.entries(materials)) if (material === m && node.visible) (meshes[zone] ??= []).push(node);
+  });
+  const YAW: Partial<Record<PuppyZone, number>> = { ears: 0.5, tail: 2.2, legs: 0.35 };
+  return Object.fromEntries(Object.entries(meshes).map(([zone, list]) => [zone, { meshes: list, yaw: YAW[zone as PuppyZone] ?? 0 }]));
 }

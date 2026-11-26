@@ -13,9 +13,15 @@
  * does nothing) and `work` (0..1) drives the working animations.
  *
  * `memoryPulse` is a counter: every increase sends one spark into the memory halo.
+ *
+ * The keeper's own body: `look` repaints its paint zones live, `habits` sets what it does when
+ * idle (and how soon it naps), and the moment effects arrive inside `wearables` (a part in slot
+ * `thinking` or `celebrate`). `focusZone` glides the camera onto a paint zone (null = the whole
+ * character). All are optional and compared by content, so a parent that rebuilds them every
+ * render causes nothing.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, HitRegion, Mood, TouchKind, WornPart, Emote } from './contract';
+import type { Character, Habits, HitRegion, Look, Mood, TouchKind, WornPart, Emote } from './contract';
 import { createCharacter } from './create-character';
 import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
@@ -37,25 +43,35 @@ export interface CharacterStageProps {
   wearables?: readonly WornPart[];
   /** How hard it is working, 0..1 (turn phase blended with machine load). Default 0. */
   work?: number;
+  /** Colour and material per paint zone (`Look`). Default: the species' own. */
+  look?: Look;
+  /** Habit weights 0..3 (`Habits`). Default: the species' own. */
+  habits?: Habits;
+  /** A paint zone to frame with the camera (`Character.focusZone`); null or absent = the whole character. */
+  focusZone?: string | null;
   /** Called once per touch gesture on the character, after its reaction started. */
   onTouch?: (kind: TouchKind, region: HitRegion) => void;
   className?: string;
 }
 
+const NO_LOOK: Look = {};
+const NO_HABITS: Habits = {};
 const CANVAS_STYLE: CSSProperties = { display: 'block', width: '100%', height: '100%', touchAction: 'none' };
 
 export function CharacterStage(props: CharacterStageProps) {
   const { skin = DEFAULT_SKIN_ID, mood, voiceLevel, mouth, memoryPulse, onTouch, className } = props;
-  const { wearables = DEFAULT_WEARABLES, work = 0 } = props;
+  const { wearables = DEFAULT_WEARABLES, work = 0, look = NO_LOOK, habits = NO_HABITS, focusZone = null } = props;
   // Compared by content: a parent that rebuilds the array every render causes no swap.
   const wearKey = JSON.stringify(wearables);
+  const lookKey = JSON.stringify(look);
+  const habitsKey = JSON.stringify(habits);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const characterRef = useRef<Character | null>(null);
   const lastPulse = useRef(memoryPulse);
   const lastEmote = useRef(props.emote?.n ?? 0);
   // The latest props, read once at mount so the new character starts in the right state.
-  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work });
-  initial.current = { skin, mood, voiceLevel, mouth, wearables, work };
+  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone });
+  initial.current = { skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone };
   const onTouchRef = useRef(onTouch);
   onTouchRef.current = onTouch;
 
@@ -64,7 +80,8 @@ export function CharacterStage(props: CharacterStageProps) {
     if (!canvas) return;
     let character: Character;
     try {
-      character = createCharacter(canvas, { skin: initial.current.skin, wearables: initial.current.wearables });
+      const { skin: firstSkin, wearables: firstWear, look: firstLook, habits: firstHabits } = initial.current;
+      character = createCharacter(canvas, { skin: firstSkin, wearables: firstWear, look: firstLook, habits: firstHabits });
     } catch (error) {
       // No WebGL2 (or a lost GPU): the rest of the app keeps working without the face.
       if (import.meta.env.DEV) console.warn('[character] could not start WebGL', error);
@@ -75,6 +92,7 @@ export function CharacterStage(props: CharacterStageProps) {
     character.setVoiceLevel(initial.current.voiceLevel);
     character.setMouth(initial.current.mouth);
     character.setWork(initial.current.work);
+    character.focusZone(initial.current.focusZone);
 
     const onPointerMove = (event: PointerEvent): void => {
       const x = (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
@@ -94,6 +112,9 @@ export function CharacterStage(props: CharacterStageProps) {
   useEffect(() => characterRef.current?.setSkin(skin), [skin]);
   useEffect(() => characterRef.current?.setWearables(JSON.parse(wearKey) as WornPart[]), [wearKey]);
   useEffect(() => characterRef.current?.setWork(work), [work]);
+  useEffect(() => characterRef.current?.setLook(JSON.parse(lookKey) as Look), [lookKey]);
+  useEffect(() => characterRef.current?.setHabits(JSON.parse(habitsKey) as Habits), [habitsKey]);
+  useEffect(() => characterRef.current?.focusZone(focusZone), [focusZone]);
   useEffect(() => characterRef.current?.setMood(mood), [mood]);
   useEffect(() => characterRef.current?.setVoiceLevel(voiceLevel), [voiceLevel]);
   useEffect(() => characterRef.current?.setMouth(mouth), [mouth]);

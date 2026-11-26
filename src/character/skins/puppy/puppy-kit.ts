@@ -8,13 +8,25 @@
  *
  * Every soft form is a `blob`: one shared high-resolution unit sphere scaled into an
  * ellipsoid, so the whole puppy is built from a single geometry (disposed once).
+ *
+ * Each paint zone (`look/zones.ts`: head, ears, muzzle, eyes, body, legs, paws, tail) has its own
+ * material, so a keeper's look repaints exactly that zone (`zones`); the cream markings that are
+ * no zone (the bib, the tail tip) keep `cream`.
  */
 import { Color, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, SphereGeometry, type Material, type Object3D } from 'three';
 import { PALETTE } from '../../palette';
 
 export interface PuppyMaterials {
-  caramel: MeshPhysicalMaterial;
-  caramelDeep: MeshPhysicalMaterial;
+  /** Zone coats: the skull and lids, the torso, the legs and haunches, the tail. */
+  head: MeshPhysicalMaterial;
+  body: MeshPhysicalMaterial;
+  legs: MeshPhysicalMaterial;
+  tail: MeshPhysicalMaterial;
+  /** The ears (a deeper caramel). */
+  ears: MeshPhysicalMaterial;
+  /** Cream: the muzzle zone (muzzle, cheeks, jaw, blaze), the paws zone, and the unpainted markings. */
+  muzzle: MeshPhysicalMaterial;
+  paws: MeshPhysicalMaterial;
   cream: MeshPhysicalMaterial;
   nose: MeshPhysicalMaterial;
   eye: MeshPhysicalMaterial;
@@ -46,10 +58,16 @@ const fur = (color: number, sheenColor: number): MeshPhysicalMaterial =>
   });
 
 export function createPuppyKit(): PuppyKit {
+  const creamCoat = new Color(PALETTE.coatCream).multiplyScalar(0.92).getHex();
   const materials: PuppyMaterials = {
-    caramel: fur(PALETTE.caramel500, PALETTE.gold300),
-    caramelDeep: fur(PALETTE.caramel700, PALETTE.gold400),
-    cream: fur(new Color(PALETTE.coatCream).multiplyScalar(0.92).getHex(), PALETTE.cream50),
+    head: fur(PALETTE.caramel500, PALETTE.gold300),
+    body: fur(PALETTE.caramel500, PALETTE.gold300),
+    legs: fur(PALETTE.caramel500, PALETTE.gold300),
+    tail: fur(PALETTE.caramel500, PALETTE.gold300),
+    ears: fur(PALETTE.caramel700, PALETTE.gold400),
+    muzzle: fur(creamCoat, PALETTE.cream50),
+    paws: fur(creamCoat, PALETTE.cream50),
+    cream: fur(creamCoat, PALETTE.cream50),
     nose: new MeshPhysicalMaterial({
       color: PALETTE.nose900,
       roughness: 0.32,

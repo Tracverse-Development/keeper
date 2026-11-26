@@ -44,3 +44,8 @@
 - **Context:** DESK-ERASE-001 assumed DKG writes are additive only; the node (10.0.26) discards a Working Memory asset by name, sealed or not, and its triples leave the node.
 - **Lesson:** read the node's lifecycle routes before designing around a limit; "a written asset is final" (LES-004) is about changing it, not removing it.
 - **Rule added:** personal records are one asset each, named so they can be erased alone; every forget/erase goes through `Memory::erase_fact` (discard first, retraction only as the offline fallback).
+
+### LES-010 — A painted surface and a per-frame animation must not both own one value (2026-11-25)
+- **Context:** Round E2 made each paint zone repaintable live. The robot's torso already wrote `sheen` every frame (it breathes with presence), so a painted "metal" torso would have had its sheen rewritten 60 times a second, and toggling a lobe on and off each frame recompiles the shader each frame.
+- **Lesson:** A look is a REST value; animation rides on it. Paint writes the rest values once per change (`look/zone-paint.ts` `PaintableMaterial.painted`) and any per-frame write scales from that painted rest, never from a constant. Physical-material lobes (sheen, clearcoat, iridescence) may switch on or off only when the look changes, so three.js compiles a variant once, never per frame.
+- **Rule added:** Skins paint only in `Skin.paint` (called on a look change or a new skin); a per-frame material write in a skin reads `PaintableMaterial.painted`. Every species zone has its own material (the puppy's coat was one shared caramel), so a zone repaints exactly its own meshes.

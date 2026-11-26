@@ -101,3 +101,29 @@ test('slots: the core and the character list the same slots (in order, with thei
   assert.deepEqual(Object.keys(rustSpecies).sort(), SKINS.map((s: { id: string }) => s.id).sort(), 'species differ');
   for (const skin of SKINS as unknown as readonly { id: string; slots: Record<string, unknown> }[]) assert.deepEqual(rustSpecies[skin.id], Object.keys(skin.slots).sort(), `${skin.id} slots`);
 });
+
+test('look: the core and the character list the same paint zones per species, and the same materials', async () => {
+  const { LOOK_ZONES, MATERIALS } = await import('./character/look/zones.ts');
+  const rust = readFileSync(join(core, 'keepers/kit/look.rs'), 'utf8');
+  const zones = Object.fromEntries([...rust.matchAll(/\("([a-z]+)", &\[((?:zone\("[^"]+", "[^"]+"\),? ?)+)\]\)/g)].map((m) => [m[1], [...m[2].matchAll(/zone\("([^"]+)"/g)].map((z) => z[1])]));
+  assert.deepEqual(zones, LOOK_ZONES, 'paint zones differ (ids and order, per species)');
+  const block = rust.slice(rust.indexOf('pub const MATERIALS'), rust.indexOf('];', rust.indexOf('pub const MATERIALS')));
+  assert.deepEqual([...block.matchAll(/\("([a-z]+)", "[^"]+"\)/g)].map((m) => m[1]), [...MATERIALS], 'materials differ');
+});
+
+test('habits: the core and the character list the same habits, owned by the same species', async () => {
+  const { HABITS } = await import('./character/habits.ts');
+  const rust = readFileSync(join(core, 'keepers/kit/look.rs'), 'utf8');
+  const block = rust.slice(rust.indexOf('pub const HABITS'), rust.indexOf('];', rust.indexOf('pub const HABITS')));
+  const fromRust = [...block.matchAll(/\("([a-z-]+)", "[^"]+", &\[([^\]]*)\]\)/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1])]);
+  assert.deepEqual(fromRust, HABITS.map((h: { id: string; only: readonly string[] }) => [h.id, [...h.only]]), 'habits differ');
+});
+
+test('parts: the core and the character agree on which species each part fits', async () => {
+  const { PARTS } = await import('./character/parts/catalog.ts');
+  const rust = readFileSync(join(core, 'keepers/kit/parts.rs'), 'utf8');
+  const fromRust = Object.fromEntries([...rust.matchAll(/Part \{ id: "([^"]+)", name: "[^"]+", slot: "[^"]+", species: &\[([^\]]*)\]/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1])]));
+  for (const p of PARTS as unknown as readonly { id: string; species: 'any' | readonly string[] }[]) assert.deepEqual(fromRust[p.id], p.species === 'any' ? [] : [...p.species], `${p.id} species`);
+  const rarity = readFileSync(join(core, 'keepers/kit/rarity.rs'), 'utf8');
+  for (const id of ['paw-nails', 'dog-collar', 'think-classic', 'think-pulse', 'think-orbit', 'think-nebula', 'think-vortex', 'cheer-confetti', 'cheer-fireworks', 'cheer-starburst']) assert.ok(rarity.includes(`("${id}", "`), `${id} has a rarity`);
+});

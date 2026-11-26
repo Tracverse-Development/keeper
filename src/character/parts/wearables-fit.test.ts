@@ -10,9 +10,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Mesh, Vector3, type Object3D } from 'three';
 import { SKINS } from '../skins/catalog.ts';
-import { PARTS, resolveWearables } from './catalog.ts';
+import { PARTS, findPart, resolveWearables } from './catalog.ts';
 import { resolveEffects } from './effects.ts';
-import { bodyLevel, clearance, radiusAt, type BodyShape, type Limb } from './fit.ts';
+import { bodyLevel, clearance, footClearance, footLevel, radiusAt, type BodyShape, type Foot, type Limb } from './fit.ts';
 import { isWornSlot, type SlotId } from './slots.ts';
 import { WORN_FACTORIES } from './worn-parts.ts';
 
@@ -31,6 +31,25 @@ const BOXY: BodyShape = {
   limbs: [-1, 1].flatMap((side) => [-0.25, -0.6].map((y) => ({ position: [side * 0.66, y, 0.05], radius: 0.11, length: 0.5, tilt: 0.1 }) as Limb)),
 };
 
+/** Made-up feet no shipped species has: six of them, big and small, flat and tall. */
+const ODD_FEET: BodyShape = {
+  profile: [],
+  depth: 1,
+  squareness: 2,
+  reach: -2,
+  feet: [-1, 0, 1].flatMap((i) => [
+    { position: [i * 0.5, -1, 0.4], radii: [0.12, 0.06, 0.25] } as Foot,
+    { position: [i * 0.5, -1, -0.4], radii: [0.22, 0.14, 0.16] } as Foot,
+  ]),
+};
+
+/** How far a point is off the body (feet: the nearest foot), in world units roughly; <0 = inside. */
+function offBody(shape: BodyShape, v: Vector3): number | null {
+  if (shape.feet) return footClearance(shape.feet, v.x, v.y, v.z) * Math.min(...shape.feet.map((f) => Math.min(...f.radii)));
+  const r = radiusAt(shape, v.y);
+  return r > 0 ? clearance(shape, v.x, v.y, v.z) * r : null; // above or below the body: clear
+}
+
 function vertices(root: Object3D, keep: (mesh: Mesh) => boolean): Vector3[] {
   root.updateMatrixWorld(true);
   const out: Vector3[] = [];
@@ -47,18 +66,23 @@ const inSleeve = (mesh: Object3D): boolean => {
   return false;
 };
 
-/** Every place a worn part can go: each species' slot, plus the boxy body as a torso, back and neck. */
-function fittings(): { body: string; slot: SlotId; shape: BodyShape }[] {
+/**
+ * Every place a worn part can go: each species' slot (for a species-only part, only its species),
+ * plus the boxy body as a torso, back and neck, and the odd feet as paws.
+ */
+function fittings(part: (typeof WORN)[number]): { body: string; slot: SlotId; shape: BodyShape }[] {
   const out: { body: string; slot: SlotId; shape: BodyShape }[] = [];
   for (const skin of SKINS) {
+    if (part.species !== 'any' && !(part.species as readonly string[]).includes(skin.id)) continue;
     for (const [slot, placement] of Object.entries(skin.slots) as [SlotId, { shape?: BodyShape }][]) if (placement.shape) out.push({ body: skin.id, slot, shape: placement.shape });
   }
   for (const slot of ['torso', 'back', 'neck'] as const) out.push({ body: 'boxy', slot, shape: BOXY });
-  return out;
+  out.push({ body: 'odd-feet', slot: 'paws', shape: ODD_FEET });
+  return out.filter((f) => f.slot === part.slot);
 }
 
 for (const part of WORN) {
-  for (const { body, slot, shape } of fittings().filter((f) => f.slot === part.slot)) {
+  for (const { body, slot, shape } of fittings(part)) {
     test(`${part.id} fits the ${body}'s ${slot}`, () => {
       const factory = WORN_FACTORIES[part.id as keyof typeof WORN_FACTORIES];
       const instance = factory(resolveEffects(part.effects, {}), { species: body, shape });
@@ -69,8 +93,8 @@ for (const part of WORN) {
       // Nothing sinks into the body (sleeves are measured against their limbs below).
       let worst = Infinity;
       for (const v of vertices(instance.group, (m) => !inSleeve(m))) {
-        const r = radiusAt(shape, v.y);
-        if (r > 0) worst = Math.min(worst, clearance(shape, v.x, v.y, v.z) * r); // above or below the body: clear
+        const off = offBody(shape, v);
+        if (off !== null) worst = Math.min(worst, off);
       }
       assert.ok(worst >= -TOLERANCE, `${part.id} sinks ${(-worst).toFixed(4)} into the ${body}`);
 
@@ -88,15 +112,28 @@ for (const part of WORN) {
           assert.ok(Math.hypot(local.x, local.z) >= limb.radius - TOLERANCE, 'a sleeve wraps its limb from outside');
         }
       });
-      instance.update({ dt: 1 / 60, time: 3.2, motion: { amplitude: 1, speed: 1 }, mood: {}, voice: 0, work: 1, thinking: 0, gotIt: 0, head: new Vector3() } as never);
-      for (const v of vertices(instance.group, (m) => !inSleeve(m))) assert.ok(bodyLevel(shape, v.x, v.y, v.z) >= 1 - 4 * TOLERANCE, 'moving cloth never passes into the body');
+      instance.update({ dt: 1 / 60, time: 3.2, motion: { amplitude: 1, speed: 1 }, mood: {}, voice: 0, work: 1, thinking: 0, gotIt: 0, dramaFloor: 0, head: new Vector3() } as never);
+      const level = (v: Vector3): number => (shape.feet ? Math.min(...shape.feet.map((f) => footLevel(f, v.x, v.y, v.z))) : bodyLevel(shape, v.x, v.y, v.z));
+      for (const v of vertices(instance.group, (m) => !inSleeve(m))) assert.ok(level(v) >= 1 - 4 * TOLERANCE, 'moving cloth never passes into the body');
       instance.dispose();
     });
   }
 }
 
-test('every species offers every worn slot today, and a body without a slot simply goes without', () => {
-  for (const part of WORN) for (const skin of SKINS) assert.ok(part.slot in skin.slots, `${skin.id} offers ${part.slot}`);
+test('nails sit on every paw: four per foot, and none on a body without feet', () => {
+  const pup = SKINS.find((s) => s.id === 'puppy')!.slots.paws!.shape!;
+  const nails = WORN_FACTORIES['paw-nails'](resolveEffects(findPart('paw-nails')!.effects, {}), { species: 'puppy', shape: pup });
+  let count = 0;
+  nails.group.traverse((n) => n instanceof Mesh && count++);
+  assert.equal(count, 4 * pup.feet!.length);
+  assert.ok(!('paws' in SKINS.find((s) => s.id === 'robot')!.slots), 'a robot has no paws');
+});
+
+test('every worn part has a body to go on, and a body without a slot simply goes without', () => {
+  for (const part of WORN) {
+    const fits = SKINS.filter((skin) => part.slot in skin.slots && (part.species === 'any' || (part.species as readonly string[]).includes(skin.id)));
+    assert.ok(fits.length > 0, `${part.id} fits some species`);
+  }
   // A wear list naming a part for a slot the body lacks resolves (the wardrobe then leaves it empty).
   const worn = resolveWearables([{ part: 'trail-pack' }, { part: 'crew-cap' }], 'puppy');
   assert.deepEqual(Object.keys(worn).sort(), ['back', 'head']);
