@@ -5,8 +5,10 @@ use serde::{Serialize, Serializer};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DeskError {
-    /// The DKG node could not be reached or refused the request.
-    #[error("The memory node did not answer: {0}")]
+    /// The DKG node could not be reached, refused the request, or answered with an error. The
+    /// text is a whole sentence saying WHICH (FIX-0026: "did not answer" was once shown for a
+    /// node that had answered).
+    #[error("{0}")]
     Node(String),
     /// The node already holds a finalized asset with this name (HTTP 409). For a record that
     /// never changes this means it is already kept; records that change are written as versions.

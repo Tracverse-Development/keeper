@@ -1,0 +1,94 @@
+/**
+ * What a keeper can do, as examples a person can press: each either says something to the
+ * keeper (`say`) or opens a place in the app (`open`). One list, shown on the "What I can do"
+ * page; pure data, checked by a test (every example does exactly one thing, no two alike).
+ */
+export type Place = 'studio' | 'settings' | 'memory';
+
+export interface Example {
+  /** What the person sees on the button. */
+  title: string;
+  /** One line on what happens. */
+  hint: string;
+  /** Said to the keeper when pressed… */
+  say?: string;
+  /** …or the place that opens. */
+  open?: Place;
+  /** Needs something first, said plainly ("Copy some text first"). */
+  needs?: string;
+}
+
+export interface Group {
+  id: string;
+  title: string;
+  examples: Example[];
+}
+
+export const CAN_DO: readonly Group[] = [
+  {
+    id: 'everyday',
+    title: 'Every day',
+    examples: [
+      { title: 'Brief me', hint: 'Your day: calendar, reminders and the files you changed.', say: 'Brief me' },
+      { title: 'Week in review', hint: 'What we talked about, what I learned and what I did.', say: 'Week in review' },
+      { title: 'Remind me in 10 minutes to stretch', hint: 'A reminder, spoken when it is due.', say: 'Remind me in 10 minutes to stretch' },
+      { title: 'Focus for 25 minutes', hint: 'A quiet stretch: reminders wait until it ends.', say: 'Focus for 25 minutes' },
+      { title: 'Find my resume', hint: 'Looks through this Mac for a file by name.', say: 'Find my resume' },
+    ],
+  },
+  {
+    id: 'learn',
+    title: 'Learn something',
+    examples: [
+      { title: 'Explain fractions visually', hint: 'A lesson in panels you can point at and ask about.', say: 'Explain fractions visually' },
+      { title: 'Quiz me on what I just learned', hint: 'Questions on the lesson; right answers count toward the level.', say: 'Quiz me on what I just learned' },
+    ],
+  },
+  {
+    id: 'text',
+    title: 'Text and files',
+    examples: [
+      { title: 'Fix what I copied', hint: 'Corrects the text on your clipboard and puts it back.', say: 'Fix what I copied', needs: 'Copy some text first.' },
+      { title: 'Shorten what I copied', hint: 'About half the length, same meaning.', say: 'Shorten what I copied', needs: 'Copy some text first.' },
+      { title: 'Drop a file on me', hint: 'Drag a document onto this window: I summarise, explain or remember it.' },
+    ],
+  },
+  {
+    id: 'memory',
+    title: 'Memory',
+    examples: [
+      { title: 'What do you know about me?', hint: 'Everything I remember, with Forget beside each.', say: 'What do you know about me?' },
+      { title: 'Open my memory', hint: 'Conversations, knowledge, actions and reminders.', open: 'memory' },
+      { title: 'Save a backup', hint: 'One locked file with your keepers and everything they remember.', open: 'settings' },
+    ],
+  },
+  {
+    id: 'computer',
+    title: 'This computer',
+    examples: [
+      { title: "How's my computer?", hint: 'Processor, memory, disk and network, live.', say: "How's my computer?" },
+      { title: 'What is going on with my network?', hint: 'Your connection right now, then a closer look.', say: 'What is going on with my network?' },
+      { title: 'What routines do I have?', hint: 'Things you asked me to do that you saved by name.', say: 'What routines do I have?' },
+    ],
+  },
+  {
+    id: 'yours',
+    title: 'Make it yours',
+    examples: [
+      { title: 'Open the Studio', hint: 'Look, outfit, soul, feelings, voice, level and the marketplace.', open: 'studio' },
+      { title: 'Is everything working?', hint: 'Checks the memory node, the mind, the voice and more.', open: 'settings' },
+    ],
+  },
+];
+
+/** Every example in one list (for searching and for the test). */
+export function allExamples(groups: readonly Group[] = CAN_DO): Example[] {
+  return groups.flatMap((g) => g.examples);
+}
+
+/** The groups with only the examples whose title or hint holds every typed word. */
+export function matching(query: string, groups: readonly Group[] = CAN_DO): Group[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...groups];
+  return groups.map((g) => ({ ...g, examples: g.examples.filter((e) => words.every((w) => `${e.title} ${e.hint}`.toLowerCase().includes(w))) })).filter((g) => g.examples.length > 0);
+}

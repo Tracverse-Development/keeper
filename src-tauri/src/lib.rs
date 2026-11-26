@@ -10,6 +10,7 @@ mod dkg;
 mod fastlane;
 mod feelings;
 mod focus;
+mod health;
 mod hotkey;
 mod keepers;
 mod kernel;
@@ -132,6 +133,8 @@ pub fn run() {
             commands::usage_month,
             commands::child_profile,
             commands::child_profile_set,
+            health::health_check,
+            health::health_fix,
             focus::focus_state,
             focus::focus_stop,
             backup::backup_save,

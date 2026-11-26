@@ -17,6 +17,8 @@ export interface PaletteDeps {
   week: () => void;
   /** Work on the text on the clipboard (`say` is the request, e.g. 'Shorten what I copied'). */
   clip: (say: string) => void;
+  /** Open the "What I can do" page. */
+  help: () => void;
   /** Start a focus session (25 minutes; reminders are held until it ends). */
   focus: () => void;
   stop: () => void;
@@ -33,6 +35,7 @@ export interface PaletteDeps {
 
 export function paletteCommands(d: PaletteDeps): Command[] {
   const out: Command[] = [
+    { id: 'help', title: 'What can you do?', keywords: ['help', 'examples', 'abilities', 'features', 'how'], hint: 'Every ability as an example to press', run: d.help },
     { id: 'new-chat', title: 'New chat', keywords: ['start', 'fresh', 'clear'], run: d.newChat },
     { id: 'brief', title: 'Brief me', keywords: ['morning', 'day', 'agenda', 'today'], hint: 'Your day: calendar, reminders, files', run: d.brief },
     { id: 'week', title: 'Week in review', keywords: ['weekly', 'review', 'summary', 'recap'], hint: 'What we talked about, what I learned and did', run: d.week },

@@ -9,6 +9,7 @@ import { core, sentence, type Imported, type KeeperChange, type KeeperProfile, t
 import { ShareSection } from '../keepers/ShareSection';
 import { BackupSection } from './BackupSection';
 import { ChildSection } from './ChildSection';
+import { HealthSection } from './HealthSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
 import { SpendingSection } from './SpendingSection';
@@ -59,6 +60,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
           </button>
         </div>
         {error && <p className="error-line">{error}</p>}
+        <p className="eyebrow">Is everything working?</p>
+        {open && <HealthSection />}
+
 
         <p className="eyebrow">This keeper</p>
         <KeeperNameField key={keeper.id} name={keeper.name} onSave={(name) => onKeeperChange({ name })} />

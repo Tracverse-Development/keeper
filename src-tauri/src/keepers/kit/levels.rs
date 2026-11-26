@@ -127,29 +127,35 @@ pub fn check_level_up(app: &tauri::AppHandle, keeper: String, memory: Memory) {
 
 const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> ";
 
-/// One bounded count over the keeper's graph (one class per query: LES-001); None when the
-/// node did not answer.
-async fn count(memory: &Memory, body: &str) -> Option<u64> {
+/// One bounded count over the keeper's own place (one class per query: LES-001).
+async fn count(memory: &Memory, body: &str) -> crate::kernel::Result<u64> {
     let sparql = format!("{PREFIXES}SELECT (COUNT(?s) AS ?n) WHERE {{ {body} }}");
-    memory
-        .client()
-        .query(memory.place(), &sparql, Layer::Working)
-        .await
-        .ok()
-        .map(|rows| rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))
+    let rows = memory.client().query(memory.place(), &sparql, Layer::Working).await?;
+    Ok(rows.first().and_then(|r| r.get("n").and_then(|n| n.parse().ok())).unwrap_or(0))
 }
 
 /// The keeper's experience, read from its graph (four small counts, run together), only when
 /// every count was answered: a node that is down must never look like level 0 (the next
-/// message would "level up", and items would lock).
-pub async fn experience(memory: &Memory) -> Option<Experience> {
+/// message would "level up", and items would lock). The error is the node's real one, so what
+/// is shown says what actually failed.
+pub async fn experience_or_why(memory: &Memory) -> crate::kernel::Result<Experience> {
     let (turns, lessons, quiz_right, actions) = tokio::join!(
         count(memory, "?s a desk:Turn"),
         count(memory, "?s a desk:Turn ; desk:panels ?p . FILTER(STRLEN(?p) > 2)"),
         count(memory, "?s a desk:PanelEvent ; desk:eventKind \"quiz\" ; desk:value \"yes\""),
         count(memory, "?s a desk:Action"),
     );
-    Some(Experience::from_done(Done { turns: turns?, lessons: lessons?, quiz_right: quiz_right?, actions: actions? }))
+    Ok(Experience::from_done(Done { turns: turns?, lessons: lessons?, quiz_right: quiz_right?, actions: actions? }))
+}
+
+/// `experience_or_why` where only "could it be read" matters.
+pub async fn experience(memory: &Memory) -> Option<Experience> {
+    experience_or_why(memory).await.ok()
+}
+
+/// The sentence shown when a keeper's level could not be read: what was wanted, then why.
+pub fn unread(keeper_name: &str, why: &crate::kernel::DeskError) -> crate::kernel::DeskError {
+    crate::kernel::DeskError::Node(format!("I couldn't read {keeper_name}'s level. {why}"))
 }
 
 #[cfg(test)]

@@ -85,19 +85,19 @@ impl DkgClient {
         }
         let res = req.send().await.map_err(|e| DeskError::Node(transport_words(&e)))?;
         let status = res.status();
-        let text = res.text().await.map_err(|e| DeskError::Node(e.to_string()))?;
+        let text = res.text().await.map_err(|_| DeskError::Node("Your memory node's answer could not be read.".into()))?;
         if !status.is_success() {
             // The node's own message, shortened; never the request (it may carry personal words).
             let short: String = text.chars().take(200).collect();
             if status == reqwest::StatusCode::CONFLICT {
                 return Err(DeskError::Exists(format!("{path}: {short}")));
             }
-            return Err(DeskError::Node(format!("{path} answered {status}: {short}")));
+            return Err(DeskError::Node(refused_words(status.as_u16(), &short)));
         }
         if text.trim().is_empty() {
             return Ok(json!({}));
         }
-        serde_json::from_str(&text).map_err(|_| DeskError::Node(format!("{path} answered something that is not JSON")))
+        serde_json::from_str(&text).map_err(|_| DeskError::Node("Your memory node answered something Keeper could not read.".into()))
     }
 
     pub async fn status(&self) -> Result<NodeStatus> {
@@ -181,10 +181,22 @@ impl DkgClient {
 
 fn transport_words(e: &reqwest::Error) -> String {
     if e.is_timeout() {
-        "it took too long to answer".into()
+        "Your memory node took too long to answer.".into()
     } else if e.is_connect() {
-        "it is not running or not reachable on this computer".into()
+        "Your memory node is not running, or can't be reached on this computer.".into()
     } else {
-        e.to_string()
+        "Your memory node could not be reached.".into()
+    }
+}
+
+/// A node that answered with an error, as a sentence saying what kind: it refused the sign-in,
+/// it is busy, or it rejected the request (with its own short words, never the request's).
+pub fn refused_words(status: u16, said: &str) -> String {
+    let said = said.trim();
+    let its_words = if said.is_empty() { String::new() } else { format!(" It said: {said}") };
+    match status {
+        401 | 403 => format!("Your memory node refused Keeper's sign-in. Restart Keeper; if it keeps happening, the node's sign-in token has changed.{its_words}"),
+        503 => format!("Your memory node is running but busy or still starting. Try again in a moment.{its_words}"),
+        _ => format!("Your memory node answered with an error ({status}).{its_words}"),
     }
 }

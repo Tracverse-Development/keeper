@@ -129,7 +129,7 @@ pub async fn install(computer_name: &str, say: impl Fn(&str)) -> Result<NodeLoca
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
-    Err(DeskError::Node("the new node started but did not answer within 90 seconds".into()))
+    Err(DeskError::Node("The new node started but did not answer within 90 seconds.".into()))
 }
 
 #[cfg(test)]

@@ -173,3 +173,13 @@ export interface SeasonNow {
   daysLeft: number;
   items: SeasonQuest[];
 }
+
+/** One health check (`health::Check`): what was found, and the one fix Keeper can offer. */
+export interface HealthCheck {
+  id: string;
+  name: string;
+  level: 'ok' | 'warn' | 'bad';
+  detail: string;
+  /** The fix's label (`health_fix` with this check's id), or null when there is none. */
+  fix: string | null;
+}

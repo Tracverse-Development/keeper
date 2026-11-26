@@ -77,7 +77,7 @@ async fn start_and_wait() -> Result<bool> {
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
-    Err(DeskError::Node("Keeper's memory node was started but did not answer within a minute".into()))
+    Err(DeskError::Node("Keeper's memory node was started but did not answer within a minute.".into()))
 }
 
 /// The watchdog: every `WATCH_EVERY`, start Keeper's own node if it stopped answering, and send

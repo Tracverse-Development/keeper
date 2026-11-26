@@ -34,6 +34,7 @@ import type { Touch } from '../kernel/ipc';
 import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { CanDoPage } from './CanDoPage';
 import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
@@ -50,6 +51,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [canDoOpen, setCanDoOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [happyUntil, setHappyUntil] = useState(0);
   const lastTouch = useRef(0);
@@ -265,7 +267,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMemory={() => setMemoryOpen((o) => !o)}
         onSettings={() => setSettingsOpen(true)}
         onStudio={() => setStudioOpen(true)}
-        extra={<FocusChip refreshKey={assistant.exchanges.length} />}
+        extra={<><FocusChip refreshKey={assistant.exchanges.length} /><button type="button" className="pill pill-button" onClick={() => setCanDoOpen(true)}>What I can do</button></>}
       />
       <KeeperSidebar
         keepers={keepers.list?.keepers ?? []}
@@ -313,6 +315,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMic={voice.listen}
         onStop={stop}
       />
+      <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? setSettingsOpen(true) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -331,6 +334,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           week: () => void assistant.send('Week in review'),
           focus: () => void assistant.send('Start a focus session'),
           clip: (say) => void assistant.send(say),
+          help: () => setCanDoOpen(true),
           stop,
           openSettings: () => setSettingsOpen(true),
           openStudio: () => setStudioOpen(true),

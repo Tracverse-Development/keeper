@@ -96,7 +96,7 @@ pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, a
     if !keepers::valid_name(&name) {
         return Err(DeskError::Invalid("Give your keeper a short name (letters and numbers).".into()));
     }
-    let loc = node::locate(std::path::Path::new(&node_home)).ok_or_else(|| DeskError::Node("that node folder has no port or sign-in token".into()))?;
+    let loc = node::locate(std::path::Path::new(&node_home)).ok_or_else(|| DeskError::Node("That node folder has no port or sign-in token.".into()))?;
     let client = DkgClient::new(&loc);
     let existing = state.settings().keepers.first().cloned();
     // A fresh install starts in the home graph's `keeper-1` sub-graph; an existing keeper keeps

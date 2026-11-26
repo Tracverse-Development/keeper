@@ -5,7 +5,7 @@ import { rank } from './rank.ts';
 import { paletteCommands } from './palette-commands.ts';
 
 const noop = () => {};
-const base = { keepers: [{ id: 'a', name: 'Trini Boi' }, { id: 'b', name: 'Pup' }], activeKeeper: 'a', pinned: [{ id: 'p1', title: 'Times table' }], busy: false, activate: noop, newChat: noop, brief: noop, week: noop, focus: noop, clip: noop, stop: noop, openSettings: noop, openStudio: noop, openMemory: noop, openScenes: noop, openPinned: noop };
+const base = { keepers: [{ id: 'a', name: 'Trini Boi' }, { id: 'b', name: 'Pup' }], activeKeeper: 'a', pinned: [{ id: 'p1', title: 'Times table' }], busy: false, activate: noop, newChat: noop, brief: noop, week: noop, focus: noop, clip: noop, help: noop, stop: noop, openSettings: noop, openStudio: noop, openMemory: noop, openScenes: noop, openPinned: noop };
 
 test('the palette offers the other keepers, pinned scenes, and Stop only while busy', () => {
   const ids = paletteCommands(base).map((c) => c.id);

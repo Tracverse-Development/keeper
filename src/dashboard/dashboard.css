@@ -196,3 +196,19 @@
 .spending { display: flex; flex-direction: column; gap: var(--space-3); }
 .spending-now { margin: 0; line-height: 1.5; }
 .spending-now strong { font-size: var(--text-lg); color: var(--gold-300); }
+/* Is everything working? (Settings) */
+.health { display: flex; flex-direction: column; gap: var(--space-3); }
+.health-summary { display: flex; align-items: center; gap: var(--space-2); }
+.health-summary strong { flex: 1; }
+.health-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.health-list li { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: rgba(7, 10, 22, 0.45); border: 1px solid var(--border); }
+.health-list li.is-bad { border-color: var(--danger, var(--warn)); }
+.health-list .dot { margin-top: var(--space-2); flex: none; }
+.health-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* What I can do */
+.cando { width: min(920px, calc(100% - 48px)); max-height: calc(100% - 64px); padding: var(--space-6); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: var(--space-4); overflow: hidden; }
+.cando-groups { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-5); padding-right: var(--space-1); }
+.cando-group ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.cando-example { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: var(--space-3) var(--space-4); border-radius: var(--radius); border: 1px solid var(--border); background: rgba(7, 10, 22, 0.45); color: var(--text); cursor: pointer; transition: border-color 200ms var(--ease), background 200ms var(--ease); }
+.cando-example:hover:not(:disabled), .cando-example:focus-visible { border-color: var(--gold-400); background: rgba(30, 40, 72, 0.7); }
+.cando-example:disabled { cursor: default; opacity: 0.85; }

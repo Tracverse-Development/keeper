@@ -38,13 +38,8 @@ pub struct Studio {
 pub async fn keeper_studio(state: State<'_, AppState>, keeper: Option<String>) -> Result<Studio> {
     let profile = state.keeper_or_active(keeper.as_deref().unwrap_or(""))?;
     let memory = state.memory_for(&profile)?;
-    let experience = match levels::experience(&memory).await {
-        Some(e) => {
-            levels::record_level(&profile.id, e.level);
-            e
-        }
-        None => return Err(crate::kernel::DeskError::Node("Your memory node isn't answering, so the level can't be read right now.".into())),
-    };
+    let experience = levels::experience_or_why(&memory).await.map_err(|e| levels::unread(&profile.name, &e))?;
+    levels::record_level(&profile.id, experience.level);
     Ok(Studio {
         keeper: profile.id.clone(),
         experience,
@@ -65,9 +60,7 @@ pub async fn personal_set(state: State<'_, AppState>, keeper: String, kind: Stri
     use base64::Engine;
     let profile = state.keeper_or_active(&keeper)?;
     let unlock = super::kit::personal::unlock_for(&kind).ok_or_else(|| crate::kernel::DeskError::Invalid("That isn't a personal item.".into()))?;
-    let experience = levels::experience(&state.memory_for(&profile)?)
-        .await
-        .ok_or_else(|| crate::kernel::DeskError::Node("Your memory node isn't answering, so the keeper's level can't be checked.".into()))?;
+    let experience = levels::experience_or_why(&state.memory_for(&profile)?).await.map_err(|e| levels::unread(&profile.name, &e))?;
     if !experience.unlocked.iter().any(|u| u.id == unlock) {
         let level = levels::UNLOCKS.iter().find(|u| u.id == unlock).map(|u| u.level).unwrap_or(0);
         return Err(crate::kernel::DeskError::Invalid(format!("{} unlocks this at level {level} (now level {}).", profile.name, experience.level)));

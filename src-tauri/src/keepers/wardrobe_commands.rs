@@ -93,9 +93,7 @@ pub async fn wardrobe_list(state: State<'_, AppState>) -> Result<Wardrobe> {
 pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: String) -> Result<Wardrobe> {
     // Rarity is earned: a keeper wears an item only once its level reaches the item's rarity.
     let profile = state.keeper_or_active(&keeper)?;
-    let experience = super::kit::levels::experience(&state.memory_for(&profile)?)
-        .await
-        .ok_or_else(|| DeskError::Node("Your memory node isn't answering, so the keeper's level can't be checked. Try again in a moment.".into()))?;
+    let experience = super::kit::levels::experience_or_why(&state.memory_for(&profile)?).await.map_err(|e| super::kit::levels::unread(&profile.name, &e))?;
     change(&state, &item, |keepers, chosen, items| {
         let rarity = super::kit::rarity::get(chosen.rarity).unwrap_or_else(|| super::kit::rarity::of_part(&chosen.part));
         if !experience.may_wear(rarity) {
