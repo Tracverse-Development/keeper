@@ -13,6 +13,8 @@ export interface PaletteDeps {
   activate: (id: string) => void;
   newChat: () => void;
   brief: () => void;
+  /** The week in review, from memory. */
+  week: () => void;
   stop: () => void;
   openSettings: () => void;
   /** Optional so older callers and tests keep working. */
@@ -29,6 +31,7 @@ export function paletteCommands(d: PaletteDeps): Command[] {
   const out: Command[] = [
     { id: 'new-chat', title: 'New chat', keywords: ['start', 'fresh', 'clear'], run: d.newChat },
     { id: 'brief', title: 'Brief me', keywords: ['morning', 'day', 'agenda', 'today'], hint: 'Your day: calendar, reminders, files', run: d.brief },
+    { id: 'week', title: 'Week in review', keywords: ['weekly', 'review', 'summary', 'recap'], hint: 'What we talked about, what I learned and did', run: d.week },
   ];
   if (d.busy) out.unshift({ id: 'stop', title: 'Stop', keywords: ['cancel', 'halt', 'quiet'], hint: 'End the answer in progress', run: d.stop });
   for (const k of d.keepers) {

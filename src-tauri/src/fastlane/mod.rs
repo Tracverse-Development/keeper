@@ -7,9 +7,11 @@
 //! - "how's my computer", "system status"         CPU and memory → a chart panel
 //! - "brief me", "good morning", "what's on today" the morning brief (`brief`)
 //! - "what do you know about me"                   your facts → a facts panel (forget / pin)
+//! - "week in review", "how was my week"          the week from memory (`week`)
 
 pub mod brief;
 pub mod folders;
+pub mod week;
 
 use std::sync::OnceLock;
 
@@ -72,6 +74,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
 
     if re(&BRIEF, r"(?i)^(?:brief me|morning brief|good morning|what(?:'s| is) on (?:today|my day)|catch me up)\b.*$").is_match(s) {
         return Some(brief::compose(app, memory, keeper).await);
+    }
+
+    static WEEK: OnceLock<Regex> = OnceLock::new();
+    if re(&WEEK, week::ASKS).is_match(s) {
+        return Some(week::compose(memory, keeper).await);
     }
 
     if let Some(c) = re(&RECENT, RECENT_WORK).captures(s) {

@@ -326,6 +326,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
             stage.reset();
           },
           brief: () => void assistant.send('Brief me'),
+          week: () => void assistant.send('Week in review'),
           stop,
           openSettings: () => setSettingsOpen(true),
           openStudio: () => setStudioOpen(true),
