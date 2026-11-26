@@ -3,6 +3,7 @@
 //! commands the window may call. Module map: ARCHITECTURE.md.
 
 mod assistant;
+mod backup;
 mod brain;
 mod commands;
 mod dkg;
@@ -127,6 +128,8 @@ pub fn run() {
             assistant::assistant_cancel,
             assistant::touch::keeper_touch,
             assistant::attach::attach_peek,
+            backup::backup_save,
+            backup::backup_restore,
             setup::remove::setup_remove,
             brain::engines::setup::engine_setup,
             brain::engines::setup::engine_sign_in,

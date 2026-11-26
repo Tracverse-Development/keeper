@@ -101,6 +101,10 @@ export const core = {
   finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
   /** `mode`: the chat's mode (a role id; absent = the keeper's default). */
   turn: (text: string, keeper?: string, chat?: string, mode?: string, attach?: Handed) => invoke<TurnResult>('assistant_turn', { text, keeper, chat, mode, attach }),
+  /** Save every keeper, its memory and the kit as one sealed file in Downloads. */
+  backupSave: (passphrase: string) => invoke<{ path: string; keepers: number; records: number }>('backup_save', { passphrase }),
+  /** Bring a backup in (`data`: the file's bytes in base64): adds and merges, never removes. */
+  backupRestore: (passphrase: string, data: string) => invoke<{ keepers: string[]; written: number; already: number }>('backup_restore', { passphrase, data }),
   /** Look at something handed over (a dropped file, dragged text): its name and size; rejects in plain words when it cannot be read. */
   attachPeek: (attach: Handed) => invoke<HandedPeek>('attach_peek', { attach }),
   stageAction: (action: PanelAction, keeper?: string) => invoke<ActionDone>('stage_action', { keeper, action }),

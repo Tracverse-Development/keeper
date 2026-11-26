@@ -65,6 +65,57 @@ async fn triples(client: &DkgClient, graph: &str, data_graph: &str) -> Result<Ve
     Ok(rows.into_iter().filter_map(|r| Some(Quad { subject: r.get("s")?.clone(), predicate: r.get("p")?.clone(), object: r.get("o")?.clone() })).collect())
 }
 
+/// One asset as a backup carries it: its name and its triples, exactly as written.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Asset {
+    pub name: String,
+    pub quads: Vec<Quad>,
+}
+
+/// Every live asset at `place`, read whole. Fails if any one cannot be read: a backup that
+/// silently lacks records is worse than no backup.
+pub async fn export(client: &DkgClient, place: &Place) -> Result<Vec<Asset>> {
+    if place.sub.is_none() && !client.has_graph(&place.graph).await? {
+        return Ok(vec![]);
+    }
+    let mut out = Vec::new();
+    for (name, data_graph) in assets(client, place).await? {
+        let quads = triples(client, &place.graph, &data_graph).await?;
+        if quads.is_empty() {
+            return Err(crate::kernel::DeskError::Io(format!("I couldn't read the record {name}.")));
+        }
+        out.push(Asset { name, quads });
+    }
+    Ok(out)
+}
+
+/// Write `assets` into `to` under their own names (so each stays erasable by name). Names
+/// already there are left alone, so a restore that stopped runs again cleanly; `verified` only
+/// when every name is in the target afterwards.
+pub async fn import(client: &DkgClient, to: &Place, list: &[Asset]) -> Result<MoveReport> {
+    if let Some(sub) = &to.sub {
+        client.ensure_sub_graph(&to.graph, sub).await?;
+    }
+    let mut have: HashSet<String> = assets(client, to).await?.into_iter().map(|(n, _)| n).collect();
+    let mut report = MoveReport { listed: list.len(), ..MoveReport::default() };
+    for asset in list {
+        if have.contains(&asset.name) {
+            report.already += 1;
+            continue;
+        }
+        match client.write_asset(to, &asset.name, &asset.quads).await {
+            Ok(_) | Err(crate::kernel::DeskError::Exists(_)) => {
+                report.copied += 1;
+                have.insert(asset.name.clone());
+            }
+            Err(_) => report.failed += 1,
+        }
+    }
+    let now: HashSet<String> = assets(client, to).await?.into_iter().map(|(n, _)| n).collect();
+    report.verified = report.failed == 0 && list.iter().all(|a| now.contains(&a.name));
+    Ok(report)
+}
+
 /// Copy every live asset at `from` into `to` (a sub-graph, created if needed).
 pub async fn move_assets(client: &DkgClient, from: &Place, to: &Place) -> Result<MoveReport> {
     if let Some(sub) = &to.sub {

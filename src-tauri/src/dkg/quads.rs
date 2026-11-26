@@ -9,12 +9,12 @@
 //!     .build();
 //! ```
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{literal, ontology};
 
 /// One quad in the shape `POST /api/knowledge-assets` takes (`object` is an IRI or an encoded literal).
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Quad {
     pub subject: String,
     pub predicate: String,

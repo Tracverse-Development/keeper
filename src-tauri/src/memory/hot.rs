@@ -152,8 +152,8 @@ pub fn apply(graph: &str, change: HotChange) {
     }
 }
 
-/// Forget every mirror (tests; a keeper removed).
-#[cfg(test)]
+/// Forget every mirror: the next recall reads the DKG again (after a backup is restored into
+/// the graphs; tests).
 pub fn clear() {
     if let Ok(mut pool) = HOT.lock() {
         *pool = None;

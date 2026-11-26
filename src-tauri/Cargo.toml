@@ -41,6 +41,8 @@ base64 = "0.22"
 sysinfo = { version = "0.40", default-features = false, features = ["system", "network", "disk"] }
 # The push-to-talk keeper button (a global shortcut, held to talk).
 tauri-plugin-global-shortcut = "2"
+chacha20poly1305 = "0.10"
+argon2 = "0.5"
 
 [profile.release]
 codegen-units = 1
