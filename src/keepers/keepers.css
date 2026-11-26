@@ -37,11 +37,13 @@
 .model-row { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .model-row .field { height: 40px; }
 
-/* A chat row: the chat, then its Delete (shown on hover or focus; a second press erases). */
-.chat-row { display: flex; align-items: center; gap: 4px; }
-.chat-row .chat { flex: 1; min-width: 0; }
-.chat-delete { flex: none; border: 0; background: transparent; color: var(--text-muted); border-radius: 8px; padding: 4px 8px; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s ease, background .15s ease; }
+/* A chat row: the chat, with its Delete over the right edge (shown on hover or focus, so the
+   chat keeps its full width; a second press erases). */
+.chat-row { position: relative; }
+.chat-row .chat { width: 100%; }
+.chat-delete { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--text-muted); border-radius: 8px; padding: 4px 8px; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s ease, background .15s ease; }
 .chat-row:hover .chat-delete, .chat-delete:focus-visible, .chat-delete.is-confirming { opacity: 1; }
 .chat-delete:hover { background: rgba(255, 255, 255, .06); color: var(--text); }
 .chat-delete.is-confirming { color: #fff; background: var(--danger); font-size: 12px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .chat-delete { transition: none; } }
+.chat-row .chat-title { padding-right: 24px; }
