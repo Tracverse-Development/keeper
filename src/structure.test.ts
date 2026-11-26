@@ -181,3 +181,18 @@ test('spacing and type: every gap, padding, margin and font size is on the one s
   }
   assert.deepEqual(offScale, [], 'use var(--space-N) and var(--text-NAME) from kernel/tokens.css');
 });
+
+// The changelog is the record of every version (founder 2026-11-26: "need to keep track of changes
+// throughout versions"). The version in package.json must have an entry with at least one change
+// written, the newest entry must be that version, and versions only go down the page.
+test('changelog: the current version has an entry, on top, and versions are in order', () => {
+  const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version as string;
+  const log = readFileSync(join(root, 'CHANGELOG.md'), 'utf8');
+  const heads = [...log.matchAll(/^## \[(\d+)\.(\d+)\.(\d+)\] - \d{4}-\d{2}-\d{2}\s*$/gm)];
+  assert.ok(heads.length > 0, 'CHANGELOG.md has no version entries');
+  assert.equal(`${heads[0][1]}.${heads[0][2]}.${heads[0][3]}`, version, `the newest changelog entry is not ${version}: write what changed before raising the version`);
+  const body = log.slice((heads[0].index ?? 0) + heads[0][0].length, heads[1]?.index ?? log.length);
+  assert.ok(/^- \S/m.test(body), `the ${version} entry lists no change`);
+  const rank = (h: RegExpMatchArray) => Number(h[1]) * 1e6 + Number(h[2]) * 1e3 + Number(h[3]);
+  for (let i = 1; i < heads.length; i++) assert.ok(rank(heads[i - 1]) > rank(heads[i]), `${heads[i][0].trim()} is out of order`);
+});

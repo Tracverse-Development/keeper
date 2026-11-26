@@ -34,6 +34,8 @@ if [ "${LOCAL:-}" != "1" ]; then
   # A release is made from code already on main, so the tag never carries an unreviewed commit.
   git fetch -q origin main
   git merge-base --is-ancestor HEAD origin/main || { echo "HEAD $(git rev-parse --short HEAD) is not on origin/main; push it to main first"; exit 1; }
+  # A version is written in the changelog before it is tagged; its entry becomes the release notes.
+  python3 scripts/changelog.py --check "$version"
   # Proven against real-shaped memory on this Mac's node before anything is tagged (FIX-0026).
   bash scripts/proof.sh
   # And the real app, end to end, as a test copy with its own memory (the window shows briefly).

@@ -25,6 +25,8 @@ export GH_TOKEN="$(gh auth token -u Tracverse-Development)"
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "uncommitted changes; the build would not be $tag"; exit 1; }
 
 out="$(mktemp -d)"
+# The release notes are this version's CHANGELOG.md entry (no entry, no release).
+python3 scripts/changelog.py "$version" > "$out/notes.md"
 for target in aarch64-apple-darwin x86_64-apple-darwin; do
   arch="${target%%-*}"
   label="$([ "$arch" = aarch64 ] && echo aarch64 || echo x64)"
@@ -46,7 +48,7 @@ done
 
 # The draft for this tag: this script makes it (nothing is built on GitHub's runners any more).
 if ! gh release view "$tag" -R "$repo" >/dev/null 2>&1; then
-  gh release create "$tag" -R "$repo" --draft --verify-tag --title "Keeper $version" --notes "Keeper $version" >/dev/null
+  gh release create "$tag" -R "$repo" --draft --verify-tag --title "Keeper $version" --notes-file "$out/notes.md" >/dev/null
   echo "created the $tag draft"
 fi
 gh release download "$tag" -R "$repo" -p latest.json -D "$out" --clobber 2>/dev/null || echo '{"platforms":{}}' > "$out/latest.json"
@@ -56,7 +58,8 @@ import json, sys, datetime
 out, version, repo = sys.argv[1:]
 feed = json.load(open(f"{out}/latest.json"))
 feed.setdefault("version", version)
-feed.setdefault("notes", f"Keeper {version}")
+# What an installed copy shows about the update: the changelog entry.
+feed["notes"] = open(f"{out}/notes.md").read().strip() or f"Keeper {version}"
 feed.setdefault("pub_date", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
 for line in open(f"{out}/platforms.txt"):
     platform, label = line.split()

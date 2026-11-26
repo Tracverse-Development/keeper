@@ -1,0 +1,226 @@
+# Changelog
+
+Every released version of Keeper, newest first: what was added, what changed and what was fixed,
+in the words a person using it would recognise. A version is written here before it is tagged
+(`scripts/release.sh` refuses a version with no entry), and its entry becomes the release's notes
+on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause and the guard.
+
+Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
+refinements.
+
+## [0.11.1] - 2026-11-26
+
+### Added
+- Reminders that came due while Keeper was closed are said once at the next start, in one line. A repeating one comes back at its next time.
+- "Tidy my memory" lists facts that something newer has replaced, each with a Forget button.
+- The "What I can do" page gains "Make the text bigger" and "Tidy my memory".
+
+### Changed
+- Examples on the "What I can do" page open Settings at the right section (backup, text size).
+- Settings opens on the Health tab each time.
+- The memory pill in the top bar is a button that opens the health checks.
+- On a child profile the phone link will not start and a backup cannot be brought in.
+- Every release now also runs an end-to-end test: a test copy of the real app is sent real messages and each reply is checked.
+
+### Fixed
+- "Save that as my Friday tidy" saved the request before the last one. It now takes the request just before it.
+
+## [0.11.0] - 2026-11-26
+
+### Added
+- A "What I can do" page: every ability as an example you press to try, with a search.
+- "Is everything working?" in Settings: the memory node, this keeper's memory, the mind, the voice, the calendar and the spending limit are checked for real, with a fix button where Keeper can act.
+- A receipt under any answer that changed something on the computer, with "Put it back".
+- Reminders can repeat (daily, weekdays, weekly), be snoozed, and be deleted from the list.
+- Chats: search every conversation, rename a chat, pin a chat to the top.
+- Dropped PDFs are read, and so are the words in a dropped picture.
+- A text size setting (Normal, Large, Larger) for all of Keeper.
+- Every release runs the memory tests for real against a memory node before it can be tagged.
+
+### Changed
+- Errors say what actually failed (not running, too slow, refused, busy) instead of one message for everything.
+- Every panel shows one line on what you can do with it, and the keeper leads numbers with what they mean.
+- Settings is in five tabs with a search that finds a section in any tab.
+- The Studio saves everything as you change it. One Done button replaces Save.
+- Touching the keeper, or starting to type, stops it talking. A long answer is spoken as its first two sentences; the rest is on screen.
+- Every control shows a focus ring when reached by keyboard.
+
+## [0.10.2] - 2026-11-26
+
+### Added
+- Memory recalls by meaning, not only by matching words: "who should I call for family news?" finds "Your sister is Maya".
+- A newer fact replaces the one it makes out of date (a new address, job, phone number or favourite). The chat shows "Replaced: …" under the answer.
+
+### Changed
+- A fact named by its own words is forgotten alone. Before, forgetting could also take other facts that shared a word with it.
+
+## [0.10.1] - 2026-11-26
+
+### Fixed
+- The Studio said "Your memory node isn't answering" and could not read the level. After memory moved into sub-graphs, six reads still used the wrong address; the level, pinned scenes, quiz streaks, saved scenes, routines and season progress read correctly again (FIX-0026).
+- The first panel on a network question showed two numbers and no explanation. It now says what the traffic means and shows speed in and out, the peak, this Mac's address and totals (FIX-0025).
+
+## [0.10.0] - 2026-11-26
+
+### Added
+- Under every answer: what the keeper knew about you when it answered, with Forget beside each fact.
+- Drop a file or dragged text on the keeper: it summarises, explains or remembers it.
+- Backup: every keeper, its memory and the kit in one passphrase-locked file, which can be brought in on another Mac.
+- Spending: the cost under each answer, the month's total, and a monthly limit that keeps answers on this Mac.
+- Child profile: a passcode-locked switch for a child's Keeper.
+- Focus sessions: a quiet stretch with reminders held, counted toward the keeper's level.
+- Routines: save a request under a name and run it again by that name.
+- Week in review, built from the keeper's own memory.
+- Work on text you copied in any app: rewrite, shorten, fix, translate or explain it.
+- Seasons: a small set open for a few weeks, each item earned by something useful you do.
+- Keeper card: a picture of the keeper with its name, level and soul.
+- Pick the keeper up: press and hold, then move.
+- Packs carry their maker's name and link, shown before a pack is added.
+- The Forge's base maker sets every effect by hand, tried on live.
+
+### Changed
+- A touch is answered from the keeper's soul and current mood, not from a fixed list of lines.
+- The keeper's mood shows in its body: smile and light, breathing, blinking, lids.
+- One spacing and type scale across every screen, a rebuilt Marketplace, and a side menu in the Studio (FIX-0024).
+- All memory lives in one context graph with a sub-graph per keeper and one for the kit. Existing memory is moved exactly and verified (FIX-0021, FIX-0022).
+- Answers are faster and fit the question better: looks run in one call, and lessons and panels are checked by a scenario bench.
+
+### Fixed
+- An answer that arrived malformed or cut off lost its panels. The reply and every complete panel are now kept (FIX-0023).
+
+## [0.9.1] - 2026-11-26
+
+### Fixed
+- A look at the computer that was refused one command now carries on instead of stopping; computer work shows clear steps, its panels arrive together, and a level-up no longer replaces the answer (FIX-0020).
+
+## [0.9.0] - 2026-11-26
+
+### Added
+- Panels that fit the job: a live dashboard of the computer, watch, visit, file and sources.
+- Optional feelings: a simulated mood for a keeper, with safety rules built in.
+- Modes can be edited and are stored with the kit; the soul can be edited.
+
+### Changed
+- Modes are locked to their job: a request outside a mode's scope switches mode (FIX-0017).
+- The Studio's tabs are grouped as Appearance, Mind and Progress.
+
+### Fixed
+- Network questions now run their look instead of stalling (FIX-0019).
+
+## [0.8.0] - 2026-11-25
+
+### Added
+- The Studio: look, inventory, forge, habits, voice, level and marketplace for each keeper.
+- Modes (jobs with their own skills and tools) and answer styles, chosen per chat.
+- Rarity, and levels earned by use; your own picture on a pendant or a T-shirt.
+- Design a wardrobe item from words.
+
+### Changed
+- Each chat is its own train of thought.
+- Work on the computer is shown live in words and animation, never as commands.
+- Panel actions answer instantly; a lesson's cards are prepared together.
+
+## [0.7.4] - 2026-11-25
+
+### Fixed
+- Everyday words no longer send a chat down the slow acting path.
+- Idle engine processes are ended after 20 minutes (FIX-0014).
+
+## [0.7.3] - 2026-11-25
+
+### Added
+- Delete a conversation, and its words leave the memory node.
+
+### Changed
+- Keeper starts speaking at the first sentence of an answer.
+- A lesson answered before opens from memory without a round trip to the node.
+
+### Fixed
+- "Forget" erases the fact from the node instead of only hiding it (FIX-0013).
+
+## [0.7.2] - 2026-11-25
+
+### Added
+- Approve a plan from the phone.
+
+### Changed
+- "What was I working on?" answers at once from the files changed.
+- Lessons are tighter, the speed line shows when the first picture arrived, and approving is twice as fast.
+
+## [0.7.1] - 2026-11-25
+
+### Fixed
+- A System Administrator keeper answers ordinary chat at chat speed (FIX-0012).
+
+## [0.7.0] - 2026-11-25
+
+### Added
+- The command palette (Command-K).
+- One wardrobe per person: any keeper wears any item, fitted to its body.
+- An expressive face: emotes, idle life and naps.
+- Stop ends a turn; messages sent while the keeper is busy wait their turn.
+- Keeper sets up Claude Code and opens its sign-in.
+- Remove Keeper from this Mac.
+
+### Changed
+- Faster answers: hot memory, writes after the reply, warm spare engines, quick replies and live typing.
+- Scenes have breadcrumbs, a strip and arrow keys.
+
+### Fixed
+- Keeper keeps answering when its memory node stops, and starts it again (FIX-0009, FIX-0010, FIX-0011).
+- Keeper installs its own checksum-verified Node.js for the memory node (FIX-0008).
+
+## [0.6.2] - 2026-11-25
+
+### Fixed
+- The collapsed keepers rail shows one clean active frame (FIX-0006).
+
+## [0.6.1] - 2026-11-25
+
+### Added
+- Pinned scenes.
+
+### Changed
+- An approved plan is enforced: the first step outside it stops the engine.
+- The morning brief lists files in 20 ms.
+
+## [0.6.0] - 2026-11-25
+
+### Added
+- Panels you work in (checklists, forms, quizzes), approve before acting, and the morning brief.
+
+### Changed
+- Faster answers.
+
+## [0.5.1] - 2026-11-25
+
+### Fixed
+- Cards show their title and text together; engine tags no longer wrap.
+
+## [0.5.0] - 2026-11-25
+
+### Added
+- Scenes you can go back to, panels that arrive while the answer is still being written, a visual mode, and fast updates.
+
+## [0.4.0] - 2026-11-25
+
+### Added
+- The Stage (answers shown as panels), the Keeper Kit (soul, role, body, outfit) and work animations.
+
+## [0.3.1] - 2026-11-25
+
+### Fixed
+- The Windows and Linux builds failed to compile (a macOS-only event).
+
+## [0.3.0] - 2026-11-25
+
+### Added
+- Several keepers, each with its own memory graph; chats; the question catalog; push to talk; Windows and Linux builds.
+
+### Changed
+- API keys are kept in Keeper's own private store, so macOS no longer asks for the Keychain.
+
+## [0.2.0] - 2026-11-25
+
+### Added
+- The first release, as Keeper (renamed from Umoja Desk): a personal assistant whose memory is your own OriginTrail DKG node, with open-mic listening and chat history read from the node.
