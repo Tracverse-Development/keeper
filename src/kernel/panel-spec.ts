@@ -27,7 +27,13 @@ export type Panel =
   | { kind: 'checklist'; id: string; title: string; items: { id: string; text: string; done: boolean }[] }
   | { kind: 'form'; id: string; title: string; fields: { id: string; label: string; kind: 'text' | 'number' | 'choice' | 'date'; choices?: string[]; placeholder?: string }[]; submit: string }
   | { kind: 'approval'; id: string; title: string; summary: string; steps: { action: string; target: string; detail?: string }[]; token: string }
-  | { kind: 'facts'; id: string; title: string; facts: { id: string; text: string; category: string }[] };
+  | { kind: 'facts'; id: string; title: string; facts: { id: string; text: string; category: string }[] }
+  // ---- added in 0.9: research, live dashboards, things to watch, visit or open ----
+  | { kind: 'sources'; id: string; title: string; items: { title: string; url: string; note?: string }[] }
+  | { kind: 'live'; id: string; title: string; metrics: ('cpu' | 'memory' | 'network' | 'disk' | 'apps')[] }
+  | { kind: 'media'; id: string; title: string; url: string; caption?: string }
+  | { kind: 'web'; id: string; title: string; url: string; summary?: string }
+  | { kind: 'file'; id: string; title: string; path: string; note?: string };
 
 export type PanelKind = Panel['kind'];
 

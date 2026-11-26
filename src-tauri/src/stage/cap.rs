@@ -20,10 +20,19 @@ fn cell_text(v: &serde_json::Value) -> String {
     }
 }
 
+/// What a live panel can show.
+pub const LIVE_METRICS: [&str; 5] = ["cpu", "memory", "network", "disk", "apps"];
+
+/// A plain web address (https or http; no spaces, quotes or angle brackets).
+pub fn web_address(url: &str) -> bool {
+    let u = url.trim();
+    (u.starts_with("https://") || u.starts_with("http://")) && u.len() > 10 && u.len() <= 500 && !u.chars().any(|c| c.is_whitespace() || c == '"' || c == '<' || c == '>')
+}
+
 /// A source worth showing: a plain http(s) web address (no spaces, no other schemes), a title.
 fn web_source(s: &Source) -> Option<Source> {
     let url = s.url.trim();
-    let ok = (url.starts_with("https://") || url.starts_with("http://")) && url.len() <= 500 && url.len() > 10 && !url.chars().any(|c| c.is_whitespace() || c == '"' || c == '<' || c == '>');
+    let ok = web_address(url);
     (ok && !s.title.trim().is_empty()).then(|| Source { title: clip(&s.title, 200), url: url.to_string(), note: clip_opt(&s.note, 300) })
 }
 
@@ -144,6 +153,29 @@ impl Panel {
                 }
                 Panel::Sources { id: id(&i), title: if title.trim().is_empty() { "Sources".into() } else { clip(&title, MAX_SHORT) }, items }
             }
+            Panel::Live { id: i, title, metrics } => {
+                let metrics: Vec<String> = metrics.into_iter().filter(|m| LIVE_METRICS.contains(&m.as_str())).take(LIVE_METRICS.len()).collect();
+                Panel::Live { id: id(&i), title: if title.trim().is_empty() { "Your computer, live".into() } else { clip(&title, MAX_SHORT) }, metrics }
+            }
+            Panel::Media { id: i, title, url, caption } => {
+                if !web_address(&url) {
+                    return None;
+                }
+                Panel::Media { id: id(&i), title: clip(&title, MAX_SHORT), url: url.trim().to_string(), caption: clip_opt(&caption, 300) }
+            }
+            Panel::Web { id: i, title, url, summary } => {
+                if !web_address(&url) {
+                    return None;
+                }
+                Panel::Web { id: id(&i), title: clip(&title, MAX_SHORT), url: url.trim().to_string(), summary: clip_opt(&summary, 400) }
+            }
+            Panel::File { id: i, title, path, note } => {
+                let p = path.trim();
+                if !(p.starts_with("~/") || p.starts_with("/Users/")) || p.contains("..") || p.len() > 500 {
+                    return None;
+                }
+                Panel::File { id: id(&i), title: clip(&title, MAX_SHORT), path: p.to_string(), note: clip_opt(&note, 300) }
+            }
             // The plan to approve and the person's facts come only from the core, never an engine.
             Panel::Approval { .. } | Panel::Facts { .. } => return None,
         };
@@ -172,6 +204,10 @@ impl Panel {
         | Panel::Checklist { id, .. }
         | Panel::Form { id, .. }
         | Panel::Sources { id, .. }
+        | Panel::Live { id, .. }
+        | Panel::Media { id, .. }
+        | Panel::Web { id, .. }
+        | Panel::File { id, .. }
         | Panel::Approval { id, .. }
         | Panel::Facts { id, .. }) = self;
         *id = new.to_string();

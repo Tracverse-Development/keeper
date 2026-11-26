@@ -6,6 +6,7 @@
 //! table is capped (`cap`) so one answer cannot flood the window. The window renders text only.
 
 mod cap;
+pub mod open;
 pub mod panel;
 pub mod stream;
 
@@ -56,7 +57,13 @@ array; usually 2 to 4, at most 5, each short: a few lines or items, since the pe
 {\"kind\":\"timeline\",\"title\",\"events\":[{\"when\",\"title\",\"detail\"}]}, {\"kind\":\"folder\",\"title\",\"path\",\"entries\":[{\"name\",\"kind\":\"file|folder\",\"change\":\"added|removed|moved|kept\",\"to\"}]} (show a folder before/after you change it), \
 {\"kind\":\"sliders\",\"title\",\"expression\":\"weekly * weeks\",\"resultLabel\",\"unit\",\"variables\":[{\"name\",\"label\",\"min\",\"max\",\"step\",\"value\"}]} (what-if calculators; arithmetic only), \
 {\"kind\":\"flashcards\",\"title\",\"cards\":[{\"front\",\"back\"}]} (practice), {\"kind\":\"agenda\",\"title\",\"items\":[{\"time\",\"title\",\"detail\",\"kind\":\"event|reminder|task\"}]}, \
-{\"kind\":\"checklist\",\"title\",\"items\":[{\"id\",\"text\",\"done\"}]} (steps the person ticks off), {\"kind\":\"form\",\"title\",\"fields\":[{\"id\",\"label\",\"kind\":\"text|number|choice|date\",\"choices\"}],\"submit\"} (when you need details from the person). \
+{\"kind\":\"checklist\",\"title\",\"items\":[{\"id\",\"text\",\"done\"}]} (steps the person ticks off), {\"kind\":\"form\",\"title\",\"fields\":[{\"id\",\"label\",\"kind\":\"text|number|choice|date\",\"choices\"}],\"submit\"} (when you need details from the person), \
+{\"kind\":\"live\",\"title\",\"metrics\":[\"cpu\",\"memory\",\"network\",\"disk\",\"apps\"]} (a LIVE dashboard of this computer that keeps updating: use it whenever the person asks how the computer, its network or its storage is doing), \
+{\"kind\":\"media\",\"title\",\"url\",\"caption\"} (a video or picture to watch, https; YouTube plays in place), {\"kind\":\"web\",\"title\",\"url\",\"summary\"} (a page to visit), \
+{\"kind\":\"file\",\"title\",\"path\",\"note\"} (a file you made or found, ~/…: the person can open it or show it in the Finder). \
+CHOOSE PANELS FOR THE JOB, not by habit: looking at or doing something on the computer → live, table, folder, files, file (a dashboard of what is, never a lesson); teaching or \
+explaining → steps, cards, diagram, formula, then a quiz; comparing → table or chart; research → table, text and sources; something to watch, visit or open → media, web, file; \
+plain conversation → no panels. \
 With panels, keep \"reply\" to one or two spoken sentences that point at them, and write \"reply\" BEFORE \"panels\" in the JSON.";
 
 #[cfg(test)]

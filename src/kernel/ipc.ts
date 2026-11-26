@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { ActionDone, Answer, PimAccess, PinnedScene, Chat, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, PersonalKind, PersonalPicture, RoleInfo, StudioInfo } from './ipc-studio';
+import type { FeelingsInfo, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive } from './ipc-studio';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -74,6 +74,10 @@ export const core = {
   keeperStudio: (keeper?: string) => invoke<StudioInfo>('keeper_studio', { keeper }),
   /** Modes: list, save (an edited built-in or the person's own), reset or delete; the skills a mode can have. */
   modesList: () => invoke<RoleInfo[]>('modes_list'),
+  /** A live reading of this computer (the live panel polls it while on screen). */
+  systemLive: () => invoke<SystemLive>('system_live'),
+  /** Open what a panel shows: a web page in the browser, or a file in your home (open, or show in the Finder). */
+  stageOpen: (target: string, how: 'open' | 'reveal' = 'open') => invoke<void>('stage_open', { target, how }),
   /** The keeper's simulated feelings, and resetting them. */
   keeperFeelings: (keeper?: string) => invoke<FeelingsInfo>('keeper_feelings', { keeper }),
   feelingsReset: (keeper?: string) => invoke<FeelingsInfo>('feelings_reset', { keeper }),

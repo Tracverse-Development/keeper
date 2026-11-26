@@ -149,6 +149,8 @@ impl PlanGuard {
             self.paths(&step.detail).into_iter().find(|p| !self.roots.iter().any(|r| p.starts_with(r))).map(|p| format!("\u{201c}{}\u{201d} is outside the plan you approved.", p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "that place".into())))
         };
         if let Some(v) = &verdict {
+            // The local log keeps what was stopped (the person never hears the command).
+            eprintln!("[guard] stopped {}: {}", step.tool, step.detail);
             if let Ok(mut slot) = self.verdict.lock() {
                 slot.get_or_insert_with(|| v.clone());
             }
@@ -232,6 +234,9 @@ mod tests {
     fn the_founders_look_was_a_read_and_verdicts_are_words_not_commands() {
         // The command that stopped "why does Foreman look blank" on 2026-11-25.
         let g = PlanGuard::read_only(Path::new("/Users/a"));
+        // A device scan the engine really wrote (2026-11-26): quiet redirects and ndp only read.
+        let scan = "ping -c 2 -t 3 192.168.1.255 >/dev/null 2>&1; arp -an; echo ---; ndp -an | head -30; echo ---; networksetup -getairportnetwork en0";
+        assert_eq!(g.check(&step("Bash", scan)), None, "a device scan only reads");
         let cmd = "ls /Applications ~/Applications 2>/dev/null | grep -i fore; mdfind -name foreman 2>/dev/null | grep -v Library | head -20; ps aux | grep -i foreman | grep -v grep";
         assert_eq!(g.check(&step("Bash", cmd)), None, "looking at apps and processes is a read");
         for (guard, call) in [(PlanGuard::read_only(Path::new("/Users/a")), step("Bash", "rm -rf ~/x")), (plan(), step("Write", "/Users/a/Desktop/notes.txt")), (plan(), step("Bash", "rm ~/Downloads/old.pdf"))] {

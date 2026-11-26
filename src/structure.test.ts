@@ -134,3 +134,14 @@ test('styles: the core and the window list the same answer styles', async () => 
   const ids = [...rust.matchAll(/Style \{\s*id: "([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, STYLES.map((s: { id: string }) => s.id));
 });
+
+test('panels: the core and the window know the same panel kinds', async () => {
+  const rust = readFileSync(join(core, 'stage/panel.rs'), 'utf8');
+  const enumBody = rust.slice(rust.indexOf('pub enum Panel {'));
+  const rustKinds = [...enumBody.matchAll(/^    ([A-Z][a-z]+) \{/gm)].map((m) => m[1].toLowerCase()).sort();
+  const spec = readFileSync(join(web, 'kernel/panel-spec.ts'), 'utf8');
+  const tsKinds = [...spec.matchAll(/kind: '([a-z]+)'; id: string/g)].map((m) => m[1]).sort();
+  assert.deepEqual(tsKinds, rustKinds);
+  const body = readFileSync(join(web, 'stage/panels/PanelBody.tsx'), 'utf8');
+  for (const k of rustKinds) assert.ok(body.includes(`case '${k}':`), `PanelBody draws ${k}`);
+});

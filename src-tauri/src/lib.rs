@@ -176,6 +176,8 @@ pub fn run() {
             keepers::wardrobe_commands::wardrobe_give,
             keepers::wardrobe_commands::wardrobe_add,
             system::system_load,
+            system::system_live,
+            stage::open::stage_open,
             hotkey::talk_hide,
             hotkey::talk_shortcut_status,
             setup::setup_folders,

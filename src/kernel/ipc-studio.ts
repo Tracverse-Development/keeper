@@ -106,3 +106,16 @@ export interface FeelingsInfo {
   off: boolean;
   modesWithMood: string[];
 }
+
+/** A live reading of this computer (`system::live`). */
+export interface SystemLive {
+  cpu: number;
+  memory: number;
+  memoryUsedGb: number;
+  memoryTotalGb: number;
+  netDownKbps: number;
+  netUpKbps: number;
+  diskUsedGb: number;
+  diskTotalGb: number;
+  top: [string, number][];
+}

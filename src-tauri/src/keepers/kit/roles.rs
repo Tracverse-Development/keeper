@@ -80,7 +80,8 @@ const BUILTIN: &[Builtin] = &[
         blurb: "Keeps your computer in order: files, folders, finding and opening things, editing documents, apps.",
         brief: "Your mode: this person's System Administrator. Your domain is their computer: finding, opening, organising, \
 renaming and tidying files and folders, editing documents, opening apps and websites, and knowing where things are. When you act, \
-say plainly what you did and where things are now, and show it as a \"files\" panel.",
+say plainly what you did and where things are now, and show it as a \"files\" panel. When the person asks about the computer, its network, storage \
+or what is running, show it as it is: a live panel plus tables (devices, interfaces, folders), not a lesson. Teach only when asked to explain.",
         tools: Tools::Act,
         skills: &["*"],
         mood: false,

@@ -16,6 +16,9 @@ use crate::stage::stream::PanelStream;
 use crate::brain::prompt;
 use crate::kernel::{DeskError, Result};
 
+/// The longest tool input kept whole for the plan guard (longer ones are cut and never pass).
+const MAX_STEP: usize = 4000;
+
 const ACTING_TOOLS: &str = "Bash Edit Write MultiEdit NotebookEdit WebFetch WebSearch Task";
 
 /// The command line for this keeper and mode. The message itself goes on stdin (stream-json
@@ -73,13 +76,16 @@ pub fn read_line(line: &str, steps: &mut Vec<AgentStep>, result: &mut Option<Str
             for item in v["message"]["content"].as_array().into_iter().flatten() {
                 if item["type"] == "tool_use" {
                     let input = &item["input"];
+                    // The FULL command goes to the plan guard (FIX-0019: it once judged a copy cut at
+                    // 160 characters and stopped a harmless look); only the live phase text is short.
+                    // A command longer than the cap is cut with "…", which the guard never accepts.
                     let detail = ["command", "file_path", "path", "url", "pattern", "description", "query"]
                         .iter()
                         .find_map(|k| input[*k].as_str())
-                        .map(|s| cli::short(s, 160))
+                        .map(|s| if s.chars().count() <= MAX_STEP { s.to_string() } else { cli::short(s, MAX_STEP) })
                         .unwrap_or_default();
                     let tool = item["name"].as_str().unwrap_or("tool").to_string();
-                    said_now = Some(format!("{tool}: {detail}"));
+                    said_now = Some(format!("{tool}: {}", cli::short(&detail, 160)));
                     steps.push(AgentStep { tool, detail });
                 }
             }
@@ -185,6 +191,13 @@ mod tests {
         read_line(r#"{"type":"result","result":"{\"reply\":\"Done\"}"}"#, &mut steps, &mut result);
         assert_eq!(steps, vec![AgentStep { tool: "Bash".into(), detail: "ls ~/Desktop".into() }]);
         assert_eq!(result.as_deref(), Some("{\"reply\":\"Done\"}"));
+        // FIX-0019: a long command reaches the guard whole; only the phase text is short.
+        let long = format!("route -n get default; echo ---; {}networksetup -getairportnetwork en0", "ifconfig | grep inet; ".repeat(12));
+        let line = serde_json::json!({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": long}}]}}).to_string();
+        let mut steps = vec![];
+        let said = read_line(&line, &mut steps, &mut result).unwrap();
+        assert_eq!(steps[0].detail, long, "the guard sees every character");
+        assert!(said.chars().count() < 200, "the live phase text stays short");
     }
 
     /// The real Claude Code CLI with the person's subscription: `cargo test live_claude -- --ignored`.

@@ -219,6 +219,15 @@ pub enum Panel {
     Form { #[serde(default)] id: String, title: String, fields: Vec<Field>, #[serde(default)] submit: String },
     /// The sources a research answer cites, numbered in order ([1], [2]…).
     Sources { #[serde(default)] id: String, title: String, items: Vec<Source> },
+    /// A live dashboard of this computer that keeps updating while it is on screen
+    /// (`metrics`: cpu, memory, network, disk, apps; empty = all).
+    Live { #[serde(default)] id: String, title: String, #[serde(default)] metrics: Vec<String> },
+    /// A video or picture to watch or look at (an https address; YouTube links play in place).
+    Media { #[serde(default)] id: String, title: String, url: String, #[serde(default)] caption: Option<String> },
+    /// A web page to visit (opens in the browser).
+    Web { #[serde(default)] id: String, title: String, url: String, #[serde(default)] summary: Option<String> },
+    /// A file the keeper made or found, to open or show in the Finder (a path in the person's home).
+    File { #[serde(default)] id: String, title: String, path: String, #[serde(default)] note: Option<String> },
     /// Only the core writes these (the plan before acting); engines' approval panels are dropped.
     Approval { #[serde(default)] id: String, title: String, summary: String, steps: Vec<PlanStep>, token: String },
     /// Only the core writes these (from the graph); engines' facts panels are dropped.

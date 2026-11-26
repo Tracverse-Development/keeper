@@ -146,3 +146,12 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** every definition carries a millisecond save counter (`seq`); `definitions()` orders by it after the node's order (records from before stay first and in their order). Applies to souls, wardrobe items and modes.
 - **Guard:** live test `live_modes_save_reload_and_reset_on_the_kit_graph` (save then reset in the same second ends reset).
 - **Evidence:** memory live tests 14/14.
+
+### FIX-0019 — A harmless network look was stopped: the guard judged a command cut at 160 characters (2026-11-26)
+- **Area:** `brain/engines/claude.rs` `read_line`, `brain/guard.rs`, `platform/read_commands.rs`
+- **Symptom:** In System Administrator mode, "show me what's going on with my home network" always answered "I stopped. I was only going to look…".
+- **Root cause:** each tool call's input was shortened to 160 characters for the live phase text, and the SAME shortened copy went to the plan guard. A long chain of reads ended in "…" mid-word, which never matches a read command. Network tools (netstat, arp, ndp, route get, ipconfig get…, tailscale status, dscacheutil -q) and pipe filters (cut, tr, sed/awk in reading forms) were also missing.
+- **Fix:** the guard gets the full input (up to 4,000 characters; anything longer is cut and refused); the phase text stays short. Network reads were added in their reading forms only, and full-path programs count by name only from system folders or /Applications. A stopped look gets one retry, told why it was stopped.
+- **Guard:** `reads_tool_calls_and_the_result` (a long command reaches the guard whole), `the_founders_look_was_a_read…` (the real device-scan command), read_commands tests (reads pass; `ifconfig en0 down`, `sed -i`, `tailscale up`, `~/bin/ls`, `/usr/bin/../../Users/x/ls` refused).
+- **Evidence:** live, System Administrator: "home network" → live dashboard + 3 tables, healthy-network answer (32 s); "how is my computer doing" → live dashboard (2.4 s).
+

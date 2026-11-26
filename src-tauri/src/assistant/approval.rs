@@ -55,6 +55,43 @@ pub(super) const PLAN_ONLY: &str = "\n\n(PLAN ONLY, do not act and do not use to
 /// guard (`PlanGuard::read_only`) stops the engine at its first change.
 const LOOK_ACTIONS: [&str; 6] = ["look", "list", "read", "search", "find", "check"];
 
+/// Said with a look at the computer: show what IS, not a lesson (founder 2026-11-26: "not
+/// everything is an explainer").
+const LOOKING: &str = "\n\n(You are LOOKING at this computer for the person. Show what you found as it is: tables of what you saw (devices, interfaces, folders, apps) and a live panel if it helps. No quiz, no flashcards, no lesson unless they asked you to explain. Use plain read commands joined with ; or | only: no loops (for, while), no $( ) or backticks, no subshells, no writing to files: the safety guard stops those and the look ends.)";
+
+/// The note for a look's second try: what the guard refused, in its own plain words.
+fn retry_note(why: &str) -> String {
+    format!("\n\n(Your previous attempt was stopped by the safety guard: {why} Try again with simpler read-only commands, one tool per piece, no background jobs (&), no sleep.)")
+}
+
+/// What a question about the computer's health should open with: a live dashboard of the parts
+/// it names (network, storage, memory, processor), or all of them for "how is my computer".
+pub(super) fn live_panel_for(said: &str) -> Option<Panel> {
+    let s = said.to_lowercase();
+    let has = |words: &[&str]| words.iter().any(|w| s.contains(w));
+    let mut metrics = vec![];
+    if has(&["network", "wi-fi", "wifi", "internet", "router", "bandwidth", "connection"]) {
+        metrics.push("network".to_string());
+    }
+    if has(&["disk", "storage", "space", "drive"]) {
+        metrics.push("disk".to_string());
+    }
+    if has(&["memory", "ram"]) {
+        metrics.push("memory".to_string());
+    }
+    if has(&["cpu", "processor", "slow", "hot", "fan", "running", "busy"]) {
+        metrics.extend(["cpu".to_string(), "apps".to_string()]);
+    }
+    let whole = has(&["my computer", "my mac", "my laptop", "this computer", "the computer"]) && has(&["how", "doing", "health", "status", "check", "show", "look"]);
+    if metrics.is_empty() && !whole {
+        return None;
+    }
+    if whole {
+        metrics.clear();
+    }
+    Some(Panel::Live { id: "live".into(), title: "Your computer, live".into(), metrics })
+}
+
 fn only_looks(steps: &[PlanStep]) -> bool {
     steps.iter().all(|s| LOOK_ACTIONS.contains(&s.action.trim().to_lowercase().as_str()))
 }
@@ -90,8 +127,21 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     if only_looks(&steps) {
         progress(Progress::ReplyText(" ".into()));
         let home = dirs::home_dir().unwrap_or_default();
-        let looking = Context { may_act: true, guard: Some(std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home))), ..ctx.clone() };
-        let (thought, mind) = brain::think(keeper, &looking, progress).await;
+        let said = format!("{}{LOOKING}", ctx.said);
+        let guard = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
+        let looking = Context { said: said.clone(), may_act: true, guard: Some(guard.clone()), ..ctx.clone() };
+        let (mut thought, mut mind) = brain::think(keeper, &looking, progress).await;
+        // A look the guard stopped gets ONE more try with simpler commands, told why (the guard
+        // stays strict; the engine adapts). A second stop is reported as before.
+        if let Some(why) = guard.stopped() {
+            let retry = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
+            let again = Context { said: format!("{said}{}", retry_note(&why)), may_act: true, guard: Some(retry), ..ctx.clone() };
+            (thought, mind) = brain::think(keeper, &again, progress).await;
+        }
+        let engine_has_live = thought.panels.to_string().contains("\"kind\":\"live\"");
+        if let Some(live) = live_panel_for(&ctx.said).filter(|_| !engine_has_live) {
+            thought.core_panels.insert(0, live);
+        }
         return Answer { thought, mind, cached: false, switched: None };
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };
@@ -142,6 +192,12 @@ mod tests {
         assert!(plans.take(&t).is_some() && plans.take(&t).is_none(), "a plan is used once");
         let look = |a: &str| PlanStep { action: a.into(), target: "~/Desktop".into(), detail: None };
         assert!(only_looks(&[look("look"), look("List")]), "looking runs without approval");
+        let Some(Panel::Live { metrics, .. }) = super::live_panel_for("Show me what's going on with my home network.") else { panic!("network → live") };
+        assert_eq!(metrics, vec!["network".to_string()]);
+        let Some(Panel::Live { metrics, .. }) = super::live_panel_for("How is my computer doing?") else { panic!("whole computer → live") };
+        assert!(metrics.is_empty(), "all metrics");
+        assert!(super::live_panel_for("find my tax letter").is_none(), "a file search gets no dashboard");
+        assert!(super::retry_note("I only look.").contains("I only look."), "the retry says why");
         assert!(!only_looks(&[look("look"), look("move")]), "any change needs approval");
     }
 }

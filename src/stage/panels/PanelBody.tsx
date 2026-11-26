@@ -10,6 +10,11 @@ import { ChartPanel } from './ChartPanel.tsx';
 import { ChecklistPanel } from './ChecklistPanel.tsx';
 import { DiagramPanel } from './DiagramPanel.tsx';
 import { FactsPanel } from './FactsPanel.tsx';
+import { FilePanel } from './FilePanel.tsx';
+import { LivePanel } from './LivePanel.tsx';
+import { MediaPanel } from './MediaPanel.tsx';
+import { SourcesPanel } from './SourcesPanel.tsx';
+import { WebPanel } from './WebPanel.tsx';
 import { FilesPanel } from './FilesPanel.tsx';
 import { FlashcardsPanel } from './FlashcardsPanel.tsx';
 import { FolderPanel } from './FolderPanel.tsx';
@@ -48,6 +53,11 @@ export function PanelBody({ panel, onPick, onAction }: Props) {
     case 'form': return <FormPanel panel={panel} onPick={onPick} onAction={onAction} />;
     case 'approval': return <ApprovalPanel panel={panel} onPick={onPick} onAction={onAction} />;
     case 'facts': return <FactsPanel panel={panel} onPick={onPick} onAction={onAction} />;
+    case 'sources': return <SourcesPanel panel={panel} onPick={onPick} />;
+    case 'live': return <LivePanel panel={panel} onPick={onPick} />;
+    case 'media': return <MediaPanel panel={panel} onPick={onPick} />;
+    case 'web': return <WebPanel panel={panel} onPick={onPick} />;
+    case 'file': return <FilePanel panel={panel} onPick={onPick} />;
     default: {
       const unknown: never = panel;
       return unknown;
