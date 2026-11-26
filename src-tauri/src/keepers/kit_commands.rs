@@ -16,7 +16,7 @@ use crate::state::AppState;
 pub struct Catalog {
     pub species: &'static [species::Species],
     pub parts: &'static [parts::Part],
-    pub roles: &'static [roles::Role],
+    pub roles: Vec<roles::Role>,
     pub souls: Vec<souls::Soul>,
     pub variants: Vec<Variant>,
 }
@@ -30,7 +30,7 @@ pub async fn kit_catalog(state: State<'_, AppState>) -> Result<Catalog> {
     };
     let mut all = souls::builtin();
     all.extend(state.custom_souls());
-    Ok(Catalog { species: species::SPECIES, parts: parts::PARTS, roles: roles::ROLES, souls: all, variants })
+    Ok(Catalog { species: species::SPECIES, parts: parts::PARTS, roles: roles::all(), souls: all, variants })
 }
 
 /// Save (create or update) one of the person's own souls in their kit graph.
@@ -41,6 +41,36 @@ pub async fn souls_save(state: State<'_, AppState>, soul: souls::Soul) -> Result
     inventory::save_soul(&client, &inventory::kit(&client).await?, &clean).await?;
     state.refresh_souls().await;
     Ok(clean)
+}
+
+/// Save a mode: an edited built-in or one of the person's own (validated: tools from the closed
+/// list, known skills, http(s) links). The keeper uses it from the next message.
+#[tauri::command]
+pub async fn modes_save(state: State<'_, AppState>, mode: roles::Role) -> Result<Vec<roles::Role>> {
+    let clean = roles::sanitize(&mode, &crate::skills::names()).map_err(DeskError::Invalid)?;
+    let client = state.client()?;
+    inventory::save_mode(&client, &inventory::kit(&client).await?, &clean, false).await?;
+    state.refresh_souls().await;
+    Ok(roles::all())
+}
+
+/// Reset a built-in mode to Keeper's version, or delete one of the person's own modes.
+#[tauri::command]
+pub async fn modes_reset(state: State<'_, AppState>, id: String) -> Result<Vec<roles::Role>> {
+    let mode = roles::all().into_iter().find(|m| m.id == id).ok_or_else(|| DeskError::Invalid("There is no such mode.".into()))?;
+    if state.settings().keepers.iter().any(|k| k.role == id) && !mode.builtin {
+        return Err(DeskError::Invalid(format!("A keeper uses {} as its default mode; choose another first.", mode.title)));
+    }
+    let client = state.client()?;
+    inventory::save_mode(&client, &inventory::kit(&client).await?, &mode, true).await?;
+    state.refresh_souls().await;
+    Ok(roles::all())
+}
+
+/// Every mode in effect (built-ins, edited built-ins, the person's own).
+#[tauri::command]
+pub fn modes_list() -> Vec<roles::Role> {
+    roles::all()
 }
 
 pub(super) fn downloads_file(name: &str) -> std::path::PathBuf {

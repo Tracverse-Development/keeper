@@ -30,12 +30,12 @@ Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [
 Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
         name = ctx.assistant_name,
         identity = ctx.identity,
-        skills = skills::catalogue_for(crate::keepers::kit::roles::get(&ctx.job)),
+        skills = skills::catalogue_for(&crate::keepers::kit::roles::get(&ctx.job)),
         // A turn with no mode (a prepared lesson card) has no mode rule.
         acting = format!(
             "{} {}",
             if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
-            if ctx.job.is_empty() { String::new() } else { crate::keepers::kit::roles::mode_rule(crate::keepers::kit::roles::get(&ctx.job)) }
+            if ctx.job.is_empty() { String::new() } else { crate::keepers::kit::roles::mode_rule(&crate::keepers::kit::roles::get(&ctx.job)) }
         ),
         stage = stage_rules(ctx),
     )

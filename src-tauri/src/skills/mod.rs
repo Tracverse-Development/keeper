@@ -48,6 +48,11 @@ const CATALOGUE: &[(&str, &str)] = &[
     ("switch-engine", "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex"),
 ];
 
+/// Every skill's name (what a mode may list).
+pub fn names() -> Vec<&'static str> {
+    CATALOGUE.iter().map(|(name, _)| *name).collect()
+}
+
 /// The skills a mode may use, as the engine is told them (it never hears of the others).
 pub fn catalogue_for(mode: &crate::keepers::kit::roles::Role) -> String {
     let list: Vec<String> = CATALOGUE.iter().filter(|(name, _)| mode.allows(name)).map(|(name, what)| format!("- {name}: {what}")).collect();

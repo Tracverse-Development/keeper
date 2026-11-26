@@ -59,7 +59,7 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
         .text("desk:skin", &keeper.skin)
         .text("desk:soul", &soul.id)
         .text("desk:wearables", &serde_json::to_string(&keeper.wearables).unwrap_or_default())
-        .text("schema:description", role.title)
+        .text("schema:description", &role.title)
         .link(pred::ABOUT, OWNER)
         .time(pred::AT, &time::now_iso())
         .build();
@@ -84,13 +84,13 @@ pub async fn write_profile(client: &DkgClient, keeper: &KeeperProfile, soul: &ki
 pub struct KeeperList {
     pub keepers: Vec<KeeperProfile>,
     pub active: String,
-    pub roles: &'static [kit::roles::Role],
+    pub roles: Vec<kit::roles::Role>,
 }
 
 fn list(state: &AppState) -> KeeperList {
     let s = state.settings();
     let active = s.active().map(|k| k.id.clone()).unwrap_or_default();
-    KeeperList { keepers: s.keepers, active, roles: kit::roles::ROLES }
+    KeeperList { keepers: s.keepers, active, roles: kit::roles::all() }
 }
 
 #[tauri::command]

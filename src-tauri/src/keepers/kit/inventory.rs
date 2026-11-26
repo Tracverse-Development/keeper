@@ -90,18 +90,53 @@ pub async fn save_soul(client: &DkgClient, graph: &str, soul: &Soul) -> Result<S
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:soul:{}", soul.id))
         .a("desk:Soul")
         .text(pred::NAME, &soul.name)
-        .text("desk:definition", &serde_json::to_string(soul)?)
+        .text("desk:definition", &with_seq(serde_json::to_value(soul)?))
         .link(pred::BY, ASSISTANT)
         .time(pred::AT, &at)
         .build();
     Ok(client.write_asset(graph, &version_name("soul", &soul.id, &at), &quads).await?.ka_ual)
 }
 
+/// Save one of the person's modes (an edited built-in or their own), or with `removed` its
+/// tombstone (a reset built-in or a deleted mode): each save is the id's next version.
+pub async fn save_mode(client: &DkgClient, graph: &str, mode: &super::roles::Role, removed: bool) -> Result<String> {
+    let at = time::now_iso();
+    // Versions are ordered by this counter: timestamps have one-second steps, and an edit then a
+    // reset within a second must still end reset.
+    let record = if removed { serde_json::json!({ "id": mode.id, "removed": true }) } else { serde_json::to_value(mode)? };
+    let definition = with_seq(record);
+    let quads = AssetBuilder::new(&format!("urn:umoja:desk:mode:{}", mode.id))
+        .a("desk:Mode")
+        .text(pred::NAME, &mode.title)
+        .text("desk:definition", &definition)
+        .link(pred::BY, ASSISTANT)
+        .time(pred::AT, &at)
+        .build();
+    Ok(client.write_asset(graph, &version_name("mode", &format!("{}-{}", mode.id, short_hash(&definition, 6)), &at), &quads).await?.ka_ual)
+}
+
+/// The person's modes, newest version per id; tombstones drop the id (back to Keeper's own).
+pub async fn modes(client: &DkgClient, graph: &str, known_skills: &[&str]) -> Result<Vec<super::roles::Role>> {
+    let mut out: Vec<super::roles::Role> = Vec::new();
+    let records: Vec<serde_json::Value> = definitions(client, graph, "Mode").await?.iter().filter_map(|d| serde_json::from_str(d).ok()).collect();
+    for v in records {
+        let id = v["id"].as_str().unwrap_or_default().to_string();
+        out.retain(|m| m.id != id);
+        if v["removed"].as_bool() == Some(true) {
+            continue;
+        }
+        if let Some(m) = serde_json::from_value::<super::roles::Role>(v).ok().and_then(|m| super::roles::sanitize(&m, known_skills).ok()) {
+            out.push(m);
+        }
+    }
+    Ok(out)
+}
+
 /// Save a wardrobe item (a part variant). A save of an existing id is its next version: the asset
 /// name hashes the time AND the definition, so two different saves in one second never collide.
 pub async fn save_variant(client: &DkgClient, graph: &str, variant: &Variant) -> Result<String> {
     let at = time::now_iso();
-    let definition = serde_json::to_string(variant)?;
+    let definition = with_seq(serde_json::to_value(variant)?);
     let quads = AssetBuilder::new(&format!("urn:umoja:desk:kit:{}", variant.id))
         .a("desk:KitItem")
         .text(pred::NAME, &variant.name)
@@ -112,11 +147,21 @@ pub async fn save_variant(client: &DkgClient, graph: &str, variant: &Variant) ->
     Ok(client.write_asset(graph, &version_name("kit", &variant.id, &format!("{at}\u{0}{definition}")), &quads).await?.ka_ual)
 }
 
+/// A definition with its save counter (milliseconds): versions are ordered by it, because the
+/// node's timestamps have one-second steps and two saves in one second must keep their order.
+fn with_seq(mut record: serde_json::Value) -> String {
+    record["seq"] = serde_json::json!(chrono::Utc::now().timestamp_millis());
+    record.to_string()
+}
+
 async fn definitions(client: &DkgClient, graph: &str, class: &str) -> Result<Vec<String>> {
     // Newest first, so the limit drops old versions; returned oldest first so the newest wins.
     let sparql = format!("{PREFIXES}SELECT ?def ?at WHERE {{ ?s a desk:{class} ; desk:definition ?def ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 300");
     let mut defs: Vec<String> = client.query(graph, &sparql, Layer::Working).await?.into_iter().filter_map(|r| r.get("def").cloned()).collect();
     defs.reverse();
+    // Within the same second, the save counter decides (stable: older records without one keep
+    // the node's order and come first).
+    defs.sort_by_key(|d| serde_json::from_str::<serde_json::Value>(d).ok().and_then(|v| v["seq"].as_i64()).unwrap_or(0));
     Ok(defs)
 }
 

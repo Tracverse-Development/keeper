@@ -138,3 +138,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** quoted strings are blanked before a chain is split (`unquoted`); report tools read with their reading sub-commands only (`diskutil list/info/apfs list`, `defaults read`, `launchctl list/print`, `networksetup -get…/-list…`, `scutil --get`, `pmset -g`, `sysctl` without `=`, `vm_stat`, `top`); their changing forms stay refused.
 - **Guard:** guard test `disk_and_system_reports_are_reads_and_their_changing_forms_are_not` (the exact command passes; `diskutil eraseDisk`, `apfs deleteVolume`, `defaults write`, `sysctl -w`, `pmset sleep 0`, `launchctl unload`, and a real `rm` after a quoted echo are stopped).
 - **Evidence:** real Keeper (bench): the same question now answers "about 559 gigabytes free out of roughly 995".
+
+### FIX-0018 — Two saves of a soul, item or mode in the same second could come back in the wrong order (2026-11-26)
+- **Area:** `keepers::kit::inventory` (save_soul, save_variant, save_mode, definitions)
+- **Symptom:** found by the new mode live test: an edited mode then a reset within one second came back still edited.
+- **Root cause:** versions were ordered only by `prov:generatedAtTime`, which has one-second steps; equal times came back in any order.
+- **Fix:** every definition carries a millisecond save counter (`seq`); `definitions()` orders by it after the node's order (records from before stay first and in their order). Applies to souls, wardrobe items and modes.
+- **Guard:** live test `live_modes_save_reload_and_reset_on_the_kit_graph` (save then reset in the same second ends reset).
+- **Evidence:** memory live tests 14/14.

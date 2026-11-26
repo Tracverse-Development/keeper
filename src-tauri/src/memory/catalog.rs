@@ -130,8 +130,11 @@ pub fn build(q: &Question, args: &HashMap<String, String>) -> Result<String> {
                 body = body.replace("{chat}", value);
             }
             Param::Mode => {
-                let m = crate::keepers::kit::roles::ROLES.iter().find(|r| r.id == value).ok_or_else(|| invalid("mode"))?;
-                body = body.replace("{mode}", m.id);
+                if !crate::keepers::kit::roles::exists(value) {
+                    return Err(invalid("mode"));
+                }
+                // Mode ids are slugs (letters, digits, dashes), safe in the literal.
+                body = body.replace("{mode}", value);
             }
             Param::Skill => {
                 if value.is_empty() || value.len() > 40 || !value.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase() || ":-".contains(c)) {

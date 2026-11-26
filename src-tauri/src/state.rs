@@ -87,10 +87,13 @@ impl AppState {
         self.souls.lock().map(|s| s.clone()).unwrap_or_default()
     }
 
-    /// Reload the person's souls from their kit graph.
+    /// Reload the person's souls and modes from their kit graph.
     pub async fn refresh_souls(&self) {
         let Ok(client) = self.client() else { return };
         let Ok(graph) = crate::keepers::kit::inventory::kit(&client).await else { return };
+        if let Ok(modes) = crate::keepers::kit::inventory::modes(&client, &graph, &crate::skills::names()).await {
+            crate::keepers::kit::roles::set_personal(modes);
+        }
         if let Ok(list) = crate::keepers::kit::inventory::souls(&client, &graph).await {
             if let Ok(mut s) = self.souls.lock() {
                 *s = list;
