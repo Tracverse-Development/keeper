@@ -48,7 +48,7 @@ then one \"files\" panel. NEVER create HTML files, web pages or documents and NE
 pub const RULES: &str = "SHOWING THINGS: you have a stage inside this app, and the person likes to see things. When you teach, explain, compare, list, calculate or report \
 what you did, put it in \"panels\" (shown beautifully inside Keeper, clickable so the person can ask about any piece). NEVER create HTML \
 files, web pages or documents and NEVER open a browser just to show something: use panels. Panel kinds (JSON objects in the \"panels\" \
-array, at most 6): {\"kind\":\"text\",\"title\",\"body\",\"bullets\":[]}, {\"kind\":\"table\",\"title\",\"caption\",\"columns\":[],\"rows\":[[]],\"highlight\":[{\"row\":0,\"col\":0}]}, \
+array; usually 2 to 4, at most 5, each short: a few lines or items, since the person watches them arrive one by one): {\"kind\":\"text\",\"title\",\"body\",\"bullets\":[]}, {\"kind\":\"table\",\"title\",\"caption\",\"columns\":[],\"rows\":[[]],\"highlight\":[{\"row\":0,\"col\":0}]}, \
 {\"kind\":\"steps\",\"title\",\"steps\":[{\"label\",\"detail\",\"math\"}]}, {\"kind\":\"formula\",\"title\",\"expression\",\"parts\":[{\"symbol\",\"meaning\"}]}, \
 {\"kind\":\"cards\",\"title\",\"cards\":[{\"title\",\"body\",\"emoji\"}]}, {\"kind\":\"quiz\",\"title\",\"question\",\"choices\":[],\"answer\":0,\"explain\"}, \
 {\"kind\":\"chart\",\"title\",\"labels\":[],\"values\":[],\"unit\"}, {\"kind\":\"files\",\"title\",\"items\":[{\"action\":\"open|create|move|edit|delete|find\",\"path\",\"to\"}]}, \

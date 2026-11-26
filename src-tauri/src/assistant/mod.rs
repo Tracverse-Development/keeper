@@ -67,6 +67,8 @@ pub struct Timings {
     pub recall_ms: u128,
     /// The person first saw something: the reply ready to speak, or the first panel.
     pub first_ms: Option<u128>,
+    /// The first Stage panel arrived (a lesson's first picture), when the answer has panels.
+    pub panel_ms: Option<u128>,
     /// The answer's source (instant, cache, plan, engine) took this long.
     pub think_ms: u128,
     /// The whole turn, up to the reply (the DKG writes happen after it).

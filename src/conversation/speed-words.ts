@@ -13,5 +13,6 @@ function seconds(ms: number): string {
 export function speedWords(t: Timings): string {
   const who = SOURCES[t.source] ?? t.source;
   const first = t.firstMs ?? t.totalMs;
-  return t.firstMs !== null && t.totalMs - first > 400 ? `First words in ${seconds(first)} · done in ${seconds(t.totalMs)} · ${who}` : `Answered in ${seconds(t.totalMs)} · ${who}`;
+  const picture = t.panelMs != null && t.panelMs - first > 400 ? ` · first picture ${seconds(t.panelMs)}` : '';
+  return t.firstMs !== null && t.totalMs - first > 400 ? `First words in ${seconds(first)}${picture} · done in ${seconds(t.totalMs)} · ${who}` : `Answered in ${seconds(t.totalMs)} · ${who}`;
 }

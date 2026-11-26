@@ -312,6 +312,8 @@ export interface Timings {
   recallMs: number;
   /** The person first saw something (the reply ready, or a panel). */
   firstMs: number | null;
+  /** The first Stage panel arrived (absent or null when the answer has none). */
+  panelMs?: number | null;
   thinkMs: number;
   totalMs: number;
   source: string;

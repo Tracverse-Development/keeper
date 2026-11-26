@@ -41,3 +41,4 @@ acting on, ask before acting, ElevenLabs voice), measure with `PROFILE=admin`, f
 |---|---|---|
 | 1 | The founder's slowness (FIX-0012): acting keepers took the plan path on every message | admin bench first words median 7,968 → 480 ms, p90 13,192 → 849 ms; 0.7.1 |
 | 2 | Questions like the founder's: "what was I working on yesterday" answers instantly from the files changed (fastlane `RECENT_WORK`); release script makes its own draft (the 0.7.1 publish waited 10 min) | "computer-miss" 8,788 ms → 43 ms with the real file list; admin bench median 467 ms, p90 1,068 ms; 0.7.1 published |
+| 3 | Lessons: fewer, tighter panels (usually 2 to 4, at most 5); the speed line shows when the first picture arrived (`Timings.panel_ms`) | fresh lesson on the admin bench: first words 1.9 s, first picture 4.5 s, done 9.8 s (was 11.7 to 13 s done) |

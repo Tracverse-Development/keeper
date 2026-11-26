@@ -70,10 +70,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
             f.get_or_insert(started.elapsed().as_millis());
         }
     };
+    let panel_ms: Mutex<Option<u128>> = Mutex::new(None);
     let progress = |p: brain::Progress| match p {
         brain::Progress::Step(step) => phase(app, "acting", step),
         brain::Progress::Panel(panel) => {
             seen();
+            if let Ok(mut f) = panel_ms.lock() {
+                f.get_or_insert(started.elapsed().as_millis());
+            }
             let _ = app.emit(events::STAGE_PANEL, json!({ "keeper": keeper.id, "chat": chat, "panel": panel }));
         }
         brain::Progress::ReplyText(words) => {
@@ -154,7 +158,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     phase(app, "done", "");
 
     let first = first_ms.lock().ok().and_then(|f| *f);
-    let timings = Timings { recall_ms, first_ms: first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
+    let panel_first = panel_ms.lock().ok().and_then(|f| *f);
+    let timings = Timings { recall_ms, first_ms: first, panel_ms: panel_first, think_ms, total_ms: started.elapsed().as_millis(), source: if matches!(mind.id.as_str(), "instant" | "cache" | "reflex") { mind.id.clone() } else { mind.label.clone() } };
     Ok(TurnResult { keeper: keeper.id.clone(), chat, reply, mind, learned, forgotten, actions: outcomes, panels, steps: thought.steps, traces: recall.traces, writes, memory_offline, timings })
 }
 
