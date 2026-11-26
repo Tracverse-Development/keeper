@@ -9,6 +9,7 @@
 
 pub mod kit;
 pub mod kit_commands;
+pub mod studio_commands;
 pub mod wardrobe_commands;
 
 use serde::{Deserialize, Serialize};
@@ -135,7 +136,7 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
         wearables: crate::kernel::settings::default_wearables(),
         graph_id: graph_id_for(&seed, first),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(),
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
@@ -167,6 +168,14 @@ pub struct KeeperChange {
     pub role: Option<String>,
     pub soul: Option<String>,
     pub wearables: Option<Vec<kit::parts::WornPart>>,
+    /// Colour and material per paint zone (validated against the species' zones).
+    pub look: Option<std::collections::BTreeMap<String, kit::look::ZoneLook>>,
+    /// Idle habits, 0..3 each (validated against the species' habits).
+    pub habits: Option<std::collections::BTreeMap<String, f64>>,
+    /// Its own voice.
+    pub voice: Option<crate::kernel::settings::KeeperVoice>,
+    /// True: go back to the app-wide voice (`voice` is ignored).
+    pub app_voice: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -204,6 +213,14 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
         Some(w) => Some(kit::parts::check_outfit(w, change.skin.as_deref().unwrap_or(&current.skin)).map_err(DeskError::Invalid)?),
         None => None,
     };
+    let species = change.skin.clone().unwrap_or_else(|| current.skin.clone());
+    let look = change.look.as_ref().map(|l| kit::look::check_look(l, &species));
+    let habits = change.habits.as_ref().map(|h| kit::look::check_habits(h, &species));
+    if let Some(v) = &change.voice {
+        if v.id.is_empty() || v.id.len() > 64 || !v.id.chars().all(|c| c.is_ascii_alphanumeric() || " ()-_.".contains(c)) {
+            return Err(DeskError::Invalid("That isn't a voice.".into()));
+        }
+    }
     if let Some(m) = &change.model {
         if m.len() > 80 || !m.chars().all(|c| c.is_ascii_alphanumeric() || "._:-/".contains(c)) {
             return Err(DeskError::Invalid("That isn't a model name.".into()));
@@ -232,6 +249,17 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
             }
             if let Some(w) = outfit {
                 k.wearables = w;
+            }
+            if let Some(l) = look {
+                k.look = l;
+            }
+            if let Some(h) = habits {
+                k.habits = h;
+            }
+            if change.app_voice == Some(true) {
+                k.voice = None;
+            } else if let Some(v) = change.voice {
+                k.voice = Some(v);
             }
         }
     })?;

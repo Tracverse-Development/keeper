@@ -32,6 +32,24 @@ pub struct WornPart {
     pub item: Option<String>,
 }
 
+/// One paint zone's look (`keepers::kit::look`): a colour (#rrggbb) and a material, either optional.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZoneLook {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material: Option<String>,
+}
+
+/// A keeper's own voice: which engine and which voice (a macOS voice name or an ElevenLabs id).
+/// Absent = the app-wide voice in Settings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeeperVoice {
+    pub engine: VoiceEngine,
+    pub id: String,
+}
+
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
     ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")) }).collect()
@@ -61,11 +79,20 @@ pub struct KeeperProfile {
     pub brain: String,
     /// The engine's model ("" = the engine's own default; an Ollama tag for Ollama).
     pub model: String,
+    /// Colour and material per paint zone (`keepers::kit::look`); empty = the species' own colours.
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub look: std::collections::BTreeMap<String, ZoneLook>,
+    /// What it does on its own when idle, 0..3 per habit; empty = the species' defaults.
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub habits: std::collections::BTreeMap<String, f64>,
+    /// Its own voice; None = the app-wide voice.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voice: Option<KeeperVoice>,
 }
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new() }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None }
     }
 }
 
@@ -151,6 +178,20 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// These settings with the active keeper's own voice in place of the app-wide one (when it
+    /// has one), so each keeper sounds like itself.
+    pub fn speaking_as_active(&self) -> Settings {
+        let mut s = self.clone();
+        if let Some(v) = self.keepers.iter().find(|k| k.id == self.active_keeper).and_then(|k| k.voice.clone()) {
+            match v.engine {
+                VoiceEngine::Elevenlabs => s.eleven_voice_id = v.id,
+                _ => s.voice = v.id,
+            }
+            s.voice_engine = v.engine;
+        }
+        s
+    }
+
     /// Read the settings; a missing or unreadable file means first run (defaults).
     pub fn load() -> Settings {
         let mut s: Settings = std::fs::read(paths::settings_file()).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok()).unwrap_or_default();
@@ -179,7 +220,7 @@ impl Settings {
             wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
-            model,
+            model, look: Default::default(), habits: Default::default(), voice: None
         });
         self.active_keeper = "keeper-1".into();
     }

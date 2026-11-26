@@ -132,3 +132,16 @@ async fn live_deleting_a_chat_erases_its_turns() {
     let left = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
     assert!(left.is_empty(), "the person's words are gone from the node: {left:?}");
 }
+
+#[tokio::test]
+#[ignore]
+async fn live_experience_grows_with_use() {
+    let memory = live_memory().await;
+    let before = crate::keepers::kit::levels::experience(&memory).await;
+    let at = time::now_iso();
+    assert!(!memory.write(&Turn::new("Teach me fractions", "Here you go.", "reflex", &at, "")).await.queued);
+    let after = crate::keepers::kit::levels::experience(&memory).await;
+    assert_eq!(after.done.turns, before.done.turns + 1, "the turn counts");
+    assert_eq!(after.xp, before.xp + crate::keepers::kit::levels::XP_TURN, "10 XP for a turn");
+    println!("live graph: level {} with {} XP ({:?})", after.level, after.xp, after.done);
+}

@@ -44,7 +44,7 @@ pub fn run() {
                     let line = format!("A reminder: {}.", reminder.text.trim_end_matches('.'));
                     platform::notify("Keeper", &line);
                     let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
-                    let _ = state.voice.speak(&app, &line, &state.settings(), false).await;
+                    let _ = state.voice.speak(&app, &line, &state.settings().speaking_as_active(), false).await;
                 });
             });
             let state = AppState::new(Settings::load(), reminders);
@@ -149,6 +149,7 @@ pub fn run() {
             keepers::kit_commands::pack_export,
             keepers::kit_commands::pack_import,
             keepers::wardrobe_commands::wardrobe_list,
+            keepers::studio_commands::keeper_studio,
             keepers::wardrobe_commands::wardrobe_wear,
             keepers::wardrobe_commands::wardrobe_take_off,
             keepers::wardrobe_commands::wardrobe_give,

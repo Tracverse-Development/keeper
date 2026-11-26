@@ -114,7 +114,7 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
                 wearables: bp.wearables.clone(),
                 graph_id: super::graph_id_for(&seed, false),
                 brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-                model: settings.active().map(|k| k.model.clone()).unwrap_or_default(),
+                model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None
             };
             super::write_profile(&client, &profile, &bp.soul).await?;
             let id = profile.id.clone();
