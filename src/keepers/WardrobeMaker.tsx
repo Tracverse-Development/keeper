@@ -1,30 +1,43 @@
 /**
- * Make your own wardrobe item: a part from the catalogue in your colours, with a name, and
- * whether it is one of a kind (a single physical thing only one keeper wears at a time) or a
- * design anyone can wear. The core validates it and saves it to your kit on the DKG.
+ * Make your own wardrobe item: a part from the catalogue with every one of its effects set by
+ * hand (colours with a picker, numbers such as spin speed with a slider), a name, and whether it
+ * is one of a kind (a single physical thing only one keeper wears at a time) or a design anyone
+ * can wear. While it is open the keeper tries it on live (`onTry`). The core validates it and
+ * saves it to your kit on the DKG.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PARTS } from '../character';
-import type { NewWardrobeItem } from '../kernel/ipc';
+import type { NewWardrobeItem, WornPart } from '../kernel/ipc';
 
 interface Props {
   /** Start with a part for this slot. */
   slot: string;
   busy: boolean;
   onSave: (item: NewWardrobeItem) => Promise<boolean>;
+  /** The item as it is being made, to try on (null when the maker closes). */
+  onTry?: (item: WornPart | null) => void;
 }
 
-const defaultsOf = (partId: string): Record<string, string> =>
-  Object.fromEntries(Object.entries(PARTS.find((p) => p.id === partId)?.effects ?? {}).flatMap(([key, spec]) => (spec.kind === 'colour' ? [[key, spec.default]] : [])));
+type Effects = Record<string, number | string>;
 
-export function WardrobeMaker({ slot, busy, onSave }: Props) {
+const defaultsOf = (partId: string): Effects => Object.fromEntries(Object.entries(PARTS.find((p) => p.id === partId)?.effects ?? {}).map(([key, spec]) => [key, spec.default]));
+
+export function WardrobeMaker({ slot, busy, onSave, onTry }: Props) {
   const [open, setOpen] = useState(false);
   const [part, setPart] = useState<string>(PARTS.find((p) => p.slot === slot)?.id ?? PARTS[0].id);
   const [name, setName] = useState('');
-  const [colours, setColours] = useState<Record<string, string>>(() => defaultsOf(part));
+  const [effects, setEffects] = useState<Effects>(() => defaultsOf(part));
   const [oneOfAKind, setOneOfAKind] = useState(false);
   const info = PARTS.find((p) => p.id === part);
+  const effectsKey = JSON.stringify(effects);
+
+  // The keeper wears it as it is made; closing the maker takes it off again.
+  useEffect(() => {
+    if (!open) return;
+    onTry?.({ part, effects: JSON.parse(effectsKey) as Effects });
+    return () => onTry?.(null);
+  }, [open, part, effectsKey]);
 
   if (!open) {
     return (
@@ -35,14 +48,15 @@ export function WardrobeMaker({ slot, busy, onSave }: Props) {
   }
   const pick = (id: string) => {
     setPart(id);
-    setColours(defaultsOf(id));
+    setEffects(defaultsOf(id));
   };
   const save = () =>
-    void onSave({ name, part, effects: colours, oneOfAKind }).then((ok) => {
+    void onSave({ name, part, effects, oneOfAKind }).then((ok) => {
       if (!ok) return;
       setOpen(false);
       setName('');
     });
+  const specs = Object.entries(info?.effects ?? {});
   return (
     <div className="wardrobe-make">
       <input className="field" placeholder="Name it (e.g. Trini Boi's Jacket)" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
@@ -54,17 +68,27 @@ export function WardrobeMaker({ slot, busy, onSave }: Props) {
         ))}
       </select>
       <div className="wardrobe-colours">
-        {Object.entries(info?.effects ?? {}).flatMap(([key, spec]) =>
+        {specs.flatMap(([key, spec]) =>
           spec.kind === 'colour'
             ? [
                 <label key={key} className="wardrobe-colour">
-                  <input type="color" value={colours[key] ?? spec.default} onChange={(e) => setColours({ ...colours, [key]: e.target.value })} />
+                  <input type="color" value={String(effects[key] ?? spec.default)} onChange={(e) => setEffects({ ...effects, [key]: e.target.value })} />
                   <span className="small">{spec.label}</span>
                 </label>,
               ]
             : [],
         )}
       </div>
+      {specs.flatMap(([key, spec]) =>
+        spec.kind === 'number'
+          ? [
+              <label key={key} className="wardrobe-dial">
+                <span className="small">{spec.label}</span>
+                <input type="range" min={spec.min} max={spec.max} step={spec.step ?? (spec.max - spec.min) / 40} value={Number(effects[key] ?? spec.default)} onChange={(e) => setEffects({ ...effects, [key]: Number(e.target.value) })} />
+              </label>,
+            ]
+          : [],
+      )}
       <label className="toggle">
         <input type="checkbox" checked={oneOfAKind} onChange={(e) => setOneOfAKind(e.target.checked)} />
         <span>

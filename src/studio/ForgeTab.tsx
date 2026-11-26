@@ -7,7 +7,7 @@
 import { PARTS } from '../character';
 import type { KeeperProfile, NewWardrobeItem, StudioInfo, WornPart } from '../kernel/ipc';
 import { WardrobeMaker } from '../keepers/WardrobeMaker';
-import { DesignBox } from './DesignBox';
+import { DesignBox, wearDesigned } from './DesignBox';
 import { PersonalBox } from './PersonalBox';
 
 interface Props {
@@ -27,8 +27,13 @@ export function ForgeTab({ info, keeper, busy, onPreview, onForged, onMake }: Pr
       <DesignBox wearables={keeper.wearables} onPreview={onPreview} onKept={onForged} ideas={IDEAS} />
       <div className="studio-design">
         <p className="eyebrow">Forge from a base</p>
-        <p className="muted small">Choose a part and set its colours yourself. {PARTS.length} parts to start from.</p>
-        <WardrobeMaker slot="torso" busy={busy} onSave={onMake} />
+        <p className="muted small">Choose a part and set its colours and motion yourself; your keeper tries it on as you go. {PARTS.length} parts to start from.</p>
+        <WardrobeMaker
+          slot="torso"
+          busy={busy}
+          onSave={onMake}
+          onTry={(item) => (item ? onPreview(wearDesigned(keeper.wearables, { name: '', part: item.part, effects: item.effects ?? {} }), 'Trying on what you are making') : onPreview(null, ''))}
+        />
       </div>
       <PersonalBox info={info} keeper={keeper.id} onChanged={() => onForged()} />
     </div>
