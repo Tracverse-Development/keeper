@@ -8,7 +8,7 @@ import { SKINS } from '../skins/catalog.ts';
 import { DEFAULT_WEARABLES, PARTS, SLOT_IDS, findPart, fitsSpecies, resolveWearables } from './catalog.ts';
 import { resolveEffects } from './effects.ts';
 
-test('the built-in parts: one per slot, floating (halo, hull, aura) and worn (jacket, scarf, cap, pack)', () => {
+test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap, pack, a dog nail set and collar) and the moment effects', () => {
   assert.deepEqual(
     PARTS.map((part) => [part.id, part.slot]),
     [
@@ -19,8 +19,21 @@ test('the built-in parts: one per slot, floating (halo, hull, aura) and worn (ja
       ['knit-scarf', 'neck'],
       ['crew-cap', 'head'],
       ['trail-pack', 'back'],
+      ['paw-nails', 'paws'],
+      ['dog-collar', 'neck'],
+      ['think-classic', 'thinking'],
+      ['think-pulse', 'thinking'],
+      ['think-orbit', 'thinking'],
+      ['think-nebula', 'thinking'],
+      ['think-vortex', 'thinking'],
+      ['cheer-confetti', 'celebrate'],
+      ['cheer-fireworks', 'celebrate'],
+      ['cheer-starburst', 'celebrate'],
     ],
   );
+  assert.deepEqual(findPart('paw-nails')!.species, ['puppy']);
+  assert.deepEqual(findPart('dog-collar')!.species, ['puppy']);
+  for (const part of PARTS) if (part.slot === 'thinking' || part.slot === 'celebrate') assert.deepEqual(Object.keys(part.effects), ['color', 'intensity'], part.id);
   assert.deepEqual([...new Set(PARTS.map((p) => p.slot))].sort(), [...SLOT_IDS].sort(), 'every slot has a part');
 });
 

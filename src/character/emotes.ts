@@ -25,11 +25,15 @@ export interface EmoteCue {
   readonly effect: EffectKind;
   readonly count: number;
   readonly from: CueOrigin;
+  /** The classic celebration burst: skipped when a celebrate effect is worn (it bursts instead). */
+  readonly classic?: boolean;
 }
 
 export interface EmoteSpec {
   readonly seconds: number;
   readonly cues: readonly EmoteCue[];
+  /** A celebration moment: the worn celebrate effect (`effects/moments.ts`) bursts at this second. */
+  readonly cheerAt?: number;
   /** Writes the pose at `t` seconds (0..seconds) into `out` (channels not set stay at rest). */
   readonly pose: (t: number, out: ExpressionFrame) => void;
 }
@@ -56,6 +60,9 @@ function hop(t: number, out: ExpressionFrame, air: number, height: number): numb
 
 const CELEBRATE_SECONDS = 1.6;
 const STREAK_SECONDS = 2.2;
+const HUM_SECONDS = 4.2;
+const CHASE_SECONDS = 2;
+const SCRATCH_SECONDS = 2.4;
 
 export const EMOTE_SPECS: Readonly<Record<Emote, EmoteSpec>> = {
   wave: {
@@ -72,6 +79,7 @@ export const EMOTE_SPECS: Readonly<Record<Emote, EmoteSpec>> = {
   },
   celebrate: {
     seconds: CELEBRATE_SECONDS,
+    cheerAt: 0.2,
     cues: [
       { at: 0.2, effect: 'sparkle', count: 18, from: 'head' },
       { at: 0.7, effect: 'sparkle', count: 8, from: 'chest' },
@@ -84,8 +92,9 @@ export const EMOTE_SPECS: Readonly<Record<Emote, EmoteSpec>> = {
   },
   streak: {
     seconds: STREAK_SECONDS,
+    cheerAt: 0.22,
     cues: [
-      { at: 0.22, effect: 'confetti', count: 56, from: 'top' },
+      { at: 0.22, effect: 'confetti', count: 56, from: 'top', classic: true },
       { at: 0.22, effect: 'sparkle', count: 14, from: 'head' },
       { at: 0.85, effect: 'sparkle', count: 10, from: 'chest' },
     ],
@@ -181,6 +190,48 @@ export const EMOTE_SPECS: Readonly<Record<Emote, EmoteSpec>> = {
       const e = envelope(t, 0.9, 0.05, 0.3);
       out.pitch = 0.16 * Math.max(0, Math.sin((t * Math.PI * 2) / 0.45)) * e;
       out.happy = 0.3 * e;
+    },
+  },
+  hum: {
+    seconds: HUM_SECONDS,
+    cues: [0.3, 1.0, 1.6, 2.3, 3.0].map((at) => ({ at, effect: 'note' as const, count: 1, from: 'top' as const })),
+    pose(t, out) {
+      const e = envelope(t, HUM_SECONDS, 0.5, 0.7);
+      out.hum = e;
+      out.roll = 0.07 * Math.sin(t * 2.7) * e;
+      out.pitch = 0.03 * Math.sin(t * 5.4) * e;
+      out.lift = 0.02 * e * Math.max(0, Math.sin(t * 5.4));
+      out.happy = 0.55 * e;
+    },
+  },
+  'chase-tail': {
+    seconds: CHASE_SECONDS,
+    cues: [{ at: 1.55, effect: 'puff', count: 6, from: 'chest' }],
+    pose(t, out) {
+      // A glance back at the tail, two quick turns after it (slow in, slow out), a dizzy settle.
+      const spot = band(t, 0, 0.25) * (1 - band(t, 0.35, 0.45));
+      const k = band(t, 0.3, 1.5);
+      const e = envelope(t, CHASE_SECONDS, 0.2, 0.45);
+      out.chase = e;
+      out.yaw = Math.PI * 4 * k; // `band` already eases in and out
+      out.lift = 0.06 * Math.abs(Math.sin(k * Math.PI * 4)) * (k > 0 && k < 1 ? 1 : 0);
+      out.roll = -0.1 * e + 0.05 * spot;
+      out.pitch = 0.12 * e;
+      const settle = Math.max(t - 1.5, 0);
+      out.squash = settle > 0 ? 0.04 * Math.sin(settle * 22) * Math.exp(-settle * 6) : -0.05 * spot;
+      out.happy = 0.6 * e;
+    },
+  },
+  scratch: {
+    seconds: SCRATCH_SECONDS,
+    cues: [],
+    pose(t, out) {
+      const e = envelope(t, SCRATCH_SECONDS, 0.35, 0.45);
+      out.scratch = e;
+      out.roll = -0.14 * e;
+      out.pitch = 0.05 * e;
+      out.happy = 0.85 * e;
+      out.lift = -0.03 * e;
     },
   },
 };

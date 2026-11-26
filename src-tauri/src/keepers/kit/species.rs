@@ -14,8 +14,8 @@ pub struct Species {
 }
 
 pub const SPECIES: &[Species] = &[
-    Species { id: "robot", name: "Robot", slots: &["halo", "head", "neck", "torso", "back", "base", "aura"] },
-    Species { id: "puppy", name: "Dog", slots: &["halo", "head", "neck", "torso", "back", "base", "aura"] },
+    Species { id: "robot", name: "Robot", slots: &["halo", "head", "neck", "torso", "back", "base", "aura", "thinking", "celebrate"] },
+    Species { id: "puppy", name: "Dog", slots: &["halo", "head", "neck", "torso", "back", "paws", "base", "aura", "thinking", "celebrate"] },
 ];
 
 pub fn get(id: &str) -> Option<&'static Species> {
@@ -35,5 +35,7 @@ mod tests {
             assert!(s.slots.iter().all(|slot| super::super::slots::get(slot).is_some()), "{}", s.id);
         }
         assert!(super::offers("puppy", "back") && !super::offers("puppy", "wings") && !super::offers("dragon", "head"));
+        assert!(super::offers("puppy", "paws") && !super::offers("robot", "paws"), "only a dog has paws");
+        assert!(super::SPECIES.iter().all(|s| super::offers(s.id, "thinking") && super::offers(s.id, "celebrate")), "every body has the effect slots");
     }
 }

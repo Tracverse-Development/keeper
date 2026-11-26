@@ -5,11 +5,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EMOTE_NAMES, EMOTE_SPECS, envelope, isEmote, sampleEmote } from './emotes.ts';
-import { addDrowsiness, foldExpression, restingExpression, type ExpressionChannel } from './expression-frame.ts';
+import { addDrowsiness, addNap, foldExpression, restingExpression, type ExpressionChannel } from './expression-frame.ts';
 import { EFFECT_KINDS } from './effects/particle-kinds.ts';
 import { moodTarget } from './moods.ts';
 
-const CONTRACT_EMOTES = ['wave', 'celebrate', 'streak', 'love', 'surprised', 'wink', 'sleepy', 'stretch', 'look-around', 'nod'];
+const CONTRACT_EMOTES = ['wave', 'celebrate', 'streak', 'love', 'surprised', 'wink', 'sleepy', 'stretch', 'look-around', 'nod', 'hum', 'chase-tail', 'scratch'];
 
 test('every contract emote has a timeline, and only those', () => {
   assert.deepEqual([...EMOTE_NAMES].sort(), [...CONTRACT_EMOTES].sort());
@@ -74,6 +74,23 @@ test('the signature channels show up: hearts, wink, wide, sleepy, paw, look, spi
   assert.ok(peak('wave', 'paw') > 0.95 && peak('wave', 'swing') > 0.9);
   assert.ok(peak('look-around', 'look') > 0.95 && peak('look-around', 'lookX') > 0.7);
   assert.ok(peak('streak', 'yaw') > 6);
+  assert.ok(peak('hum', 'hum') > 0.95 && peak('hum', 'roll') > 0.05);
+  assert.ok(peak('chase-tail', 'chase') > 0.95 && peak('chase-tail', 'yaw') > 12, 'two turns after the tail');
+  assert.ok(peak('scratch', 'scratch') > 0.95 && peak('scratch', 'happy') > 0.8);
+});
+
+test('humming floats notes up; only celebrations carry a cheer moment, and the classic burst is marked', () => {
+  assert.ok(EMOTE_SPECS.hum.cues.length >= 4 && EMOTE_SPECS.hum.cues.every((cue) => cue.effect === 'note'));
+  for (const name of EMOTE_NAMES) assert.equal(EMOTE_SPECS[name].cheerAt !== undefined, name === 'celebrate' || name === 'streak', name);
+  assert.deepEqual(EMOTE_SPECS.streak.cues.filter((cue) => cue.classic).map((cue) => cue.effect), ['confetti']);
+});
+
+test('a nap shuts the eyes, dims the light and slows the breath; nothing at 0', () => {
+  assert.deepEqual(addNap(restingExpression(), 0), restingExpression());
+  const napping = foldExpression(moodTarget('idle'), addNap(restingExpression(), 1));
+  assert.ok(napping.eyeOpen < 0.01, `eyes ${napping.eyeOpen}`);
+  assert.ok(napping.presence < 0.5 && napping.glow < 0.5);
+  assert.ok(napping.bobSpeed < moodTarget('idle').bobSpeed && napping.bobAmp > moodTarget('idle').bobAmp, 'slow, deep breaths');
 });
 
 test('cues land inside their emote, name real effects, and fit a 31-bit mask', () => {

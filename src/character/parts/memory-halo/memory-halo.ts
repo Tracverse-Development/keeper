@@ -36,7 +36,7 @@ export function createMemoryHalo(effects: EffectValues, random: () => number = M
     const p = frame.mood;
     haloFrame.dt = frame.dt;
     haloFrame.time = frame.time;
-    const think = thinkDrama(frame.thinking, frame.work);
+    const think = thinkDrama(frame.thinking, frame.work, frame.dramaFloor);
     haloFrame.speed = (p.haloSpeed * spinIdle + frame.work * spinWork + think * THINK_SPIN * spinWork) * frame.motion.speed;
     haloFrame.glow = p.haloGlow * (1 + frame.voice * VOICE_GLOW) * (1 + WORK_GLOW * frame.work) * (1 + THINK_GLOW * think + GOT_IT_GLOW * frame.gotIt);
     haloFrame.scale = p.haloScale * (1 + frame.voice * VOICE_SWELL * frame.motion.amplitude) * (1 + GOT_IT_SWELL * frame.gotIt * frame.motion.amplitude);

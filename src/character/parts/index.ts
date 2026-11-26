@@ -1,10 +1,11 @@
 /**
  * The parts registry: the catalogue (`PARTS`, pure data) plus the factory for each id.
  *
- * The factory table is a `Record<PartId, ...>`: the typecheck fails if a catalogue row has
- * no factory, or a factory has no row. Worn parts come from `worn-parts.ts`.
+ * The factory table is a `Record<DrawnPartId, ...>`: the typecheck fails if a drawn catalogue row
+ * has no factory, or a factory has no row. Worn parts come from `worn-parts.ts`; the moment
+ * effects (`moment-catalog.ts`) draw nothing on the body and have no factory.
  */
-import type { PartId } from './catalog';
+import type { DrawnPartId } from './catalog';
 import { createArkHull } from './ark-hull/ark-hull';
 import type { EffectValues } from './effects';
 import type { PartFit } from './fit';
@@ -13,12 +14,12 @@ import type { PartFactory, PartInstance } from './part';
 import { createStarAura } from './star-aura/star-aura';
 import { WORN_FACTORIES } from './worn-parts';
 
-export { DEFAULT_WEARABLES, PARTS, SLOT_IDS, isWornSlot, resolveWearables, type PartId, type PartInfo, type ResolvedWear, type SlotId } from './catalog';
+export { DEFAULT_WEARABLES, PARTS, SLOT_IDS, isEffectSlot, isWornSlot, resolveWearables, type DrawnPartId, type PartId, type PartInfo, type ResolvedWear, type SlotId } from './catalog';
 export type { EffectSchema, EffectSpec, EffectValues } from './effects';
 export type { BodyShape, PartFit } from './fit';
 export type { PartFrame, PartInstance, SparkTarget } from './part';
 
-const FACTORIES: Readonly<Record<PartId, PartFactory>> = {
+const FACTORIES: Readonly<Record<DrawnPartId, PartFactory>> = {
   'memory-halo': (effects) => createMemoryHalo(effects),
   'ark-hull': (effects) => createArkHull(effects),
   'star-aura': (effects) => createStarAura(effects),
@@ -26,6 +27,6 @@ const FACTORIES: Readonly<Record<PartId, PartFactory>> = {
 };
 
 /** Builds the part `id` with already resolved effects, fitted to `fit` (worn parts read its shape). */
-export function createPart(id: PartId, effects: EffectValues, fit: PartFit): PartInstance {
+export function createPart(id: DrawnPartId, effects: EffectValues, fit: PartFit): PartInstance {
   return FACTORIES[id](effects, fit);
 }

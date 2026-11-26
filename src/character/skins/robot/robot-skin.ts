@@ -21,6 +21,8 @@
  */
 import { Object3D } from 'three';
 import type { TouchKind } from '../../contract';
+import { measureZones } from '../../look/zone-focus';
+import { LOOK_ZONES, type ResolvedLook } from '../../look/zones';
 import { speechBars } from '../../speech-bars';
 import { cyclePhase, heartbeat, heartbeatRate, scanSweep, thinkDrama } from '../../thinking';
 import { band, effectiveWork, workTint } from '../../work-level';
@@ -46,6 +48,16 @@ export function createRobotSkin(): Skin {
   body.root.add(embers.group);
   const thinking = addRobotThinking(body.head);
   const slots = addSlotAnchors(body.root, slotsOf('robot'), { body: body.body, head: body.head });
+  const zones = { ...body.zones, eyes: { paint: face.paintEyes } };
+  const z = body.zoneMeshes;
+  const focus = measureZones(body.root, {
+    head: { meshes: z.head },
+    face: { meshes: z.face },
+    eyes: { meshes: face.eyeMeshes },
+    body: { meshes: z.body },
+    core: { meshes: z.core },
+    antenna: { meshes: z.antenna, yaw: 0.7 },
+  });
 
   const headProxy = addHitProxy(body.head, {
     radii: [HEAD_RADII.x * 1.18, HEAD_RADII.y * 1.04, HEAD_RADII.z * 1.04],
@@ -70,7 +82,7 @@ export function createRobotSkin(): Skin {
     const { poke, pat } = frame.touch;
     const work = effectiveWork(frame.work, frame.weights.thinking, R.think.workBoost);
     const hum = band(work, R.work.emberFrom, 1);
-    const drama = thinkDrama(frame.weights.thinking, frame.work);
+    const drama = thinkDrama(frame.weights.thinking, frame.work, frame.dramaFloor);
     const T = R.think;
 
     const e = frame.emote;
@@ -102,7 +114,8 @@ export function createRobotSkin(): Skin {
     }
     const scanTime = t * (1 + work);
 
-    const bars = Math.min(1, frame.weights.speaking + frame.weights.listening);
+    // Humming shows a soft equaliser too, swaying to its own little tune.
+    const bars = Math.min(1, frame.weights.speaking + frame.weights.listening + 0.8 * e.hum);
     workTint(work, R.work, tint);
     const voiceGlow = 1 + frame.voice * 0.15;
     face.update({
@@ -129,7 +142,8 @@ export function createRobotSkin(): Skin {
     });
     // While it speaks the bars never lie flat (a low murmur between words); the square root
     // makes quiet speech still read as movement.
-    speechBars(Math.sqrt(Math.max(frame.mouth, frame.voice, BAR_MURMUR * frame.weights.speaking)), frame.time, face.barHeights);
+    const tune = e.hum > 0 ? e.hum * (0.3 + 0.2 * Math.sin(frame.time * 5.4)) : 0;
+    speechBars(Math.sqrt(Math.max(frame.mouth, frame.voice, BAR_MURMUR * frame.weights.speaking, tune)), frame.time, face.barHeights);
     const beat = drama * T.heartbeat * heartbeat(beatPhase) + T.gotItFlash * frame.gotIt;
     body.setLights(frame.voice, p.presence, band(work, R.work.heatFrom, 1), R.work.heatGlow, beat);
     thinking.update(drama * (0.4 + 0.6 * a), t); // reduced motion: calmer rings and lines
@@ -145,6 +159,10 @@ export function createRobotSkin(): Skin {
     hitRegions: { head: [headProxy], body: [bodyProxy] },
     slots,
     reactions: R,
+    focus,
+    paint(look: ResolvedLook) {
+      for (const zone of LOOK_ZONES.robot) zones[zone].paint(look[zone]);
+    },
     apply,
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;

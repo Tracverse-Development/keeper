@@ -22,6 +22,7 @@ import {
   SRGBColorSpace,
   Scene,
   Vector2,
+  Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
 } from 'three';
@@ -39,7 +40,8 @@ const VIEWPORT_SHARE = 0.6;
 /** World y of the subject's centre, and how far below it the camera aims (chat-bar room). */
 const SUBJECT_CENTRE_Y = -0.35;
 const AIM_DROP_SHARE = 0.12;
-const FIELD_OF_VIEW = 30;
+/** Shared with the zone focus maths (`look/zone-focus.ts` FOCUS_FIELD_OF_VIEW). */
+export const FIELD_OF_VIEW = 30;
 const MAX_PIXEL_RATIO = 2;
 
 export interface Stage {
@@ -51,6 +53,8 @@ export interface Stage {
   readonly faceLight: PointLight;
   /** The gold rim lights, dimmed together when the character sleeps. */
   readonly rimLights: readonly DirectionalLight[];
+  /** Where the camera stands and looks to frame the whole character (set by `resize`). */
+  readonly home: { readonly position: Vector3; readonly target: Vector3 };
   /** Resize to CSS pixels; `pixelRatio` is capped at 2. */
   resize(width: number, height: number, pixelRatio: number): void;
   render(): void;
@@ -76,6 +80,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   scene.environmentIntensity = 0.3;
 
   const camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100);
+  const home = { position: new Vector3(), target: new Vector3() };
 
   const { faceLight, rimLights } = addLights(scene);
 
@@ -95,7 +100,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     renderer.setSize(w, h, false);
     composer.setPixelRatio(ratio);
     composer.setSize(w, h);
-    frameSubject(camera, w / h);
+    frameSubject(camera, w / h, home);
   }
 
   return {
@@ -105,6 +110,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     bloom,
     faceLight,
     rimLights,
+    home,
     resize,
     render: () => composer.render(),
     dispose() {
@@ -142,8 +148,8 @@ function addLights(scene: Scene): { faceLight: PointLight; rimLights: Directiona
   return { faceLight, rimLights: [rimLeft, rimRight] };
 }
 
-/** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width. */
-function frameSubject(camera: PerspectiveCamera, aspect: number): void {
+/** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width; writes the pose into `home`. */
+function frameSubject(camera: PerspectiveCamera, aspect: number, home: { position: Vector3; target: Vector3 }): void {
   const halfFov = (FIELD_OF_VIEW * Math.PI) / 360;
   const distanceForHeight = SUBJECT_HEIGHT / VIEWPORT_SHARE / (2 * Math.tan(halfFov));
   const distanceForWidth = SUBJECT_WIDTH / 0.9 / (2 * Math.tan(halfFov) * aspect);
@@ -154,4 +160,6 @@ function frameSubject(camera: PerspectiveCamera, aspect: number): void {
   camera.position.set(0, aimY + 0.4, distance);
   camera.lookAt(0, aimY, 0);
   camera.updateProjectionMatrix();
+  home.position.copy(camera.position);
+  home.target.set(0, aimY, 0);
 }

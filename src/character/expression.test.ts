@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EMOTE_SPECS } from './emotes.ts';
 import { DROWSY_AFTER, ExpressionMachine, PRIORITY } from './expression.ts';
+import { NAP_AFTER_DOZE } from './habits.ts';
 import { IDLE_GAP, IdleLife } from './idle-life.ts';
 import { BAR_COUNT, speechBars } from './speech-bars.ts';
 
@@ -72,6 +73,19 @@ test('an emote ending deep in a quiet spell goes straight to drowsy; a trigger w
   assert.equal(kindOf(machine), 'emoting');
 });
 
+test('a doze that lasts becomes a nap; the sleep habit sets how soon; activity ends it', () => {
+  const machine = new ExpressionMachine();
+  machine.step(10, 40, 'idle', 30);
+  assert.equal(machine.drowsy, true, 'a heavy sleeper dozes after 30 s');
+  assert.equal(machine.napping(10 + NAP_AFTER_DOZE - 1), false);
+  assert.equal(machine.napping(10 + NAP_AFTER_DOZE), true);
+  machine.step(30, 0, 'idle', 30);
+  assert.equal(machine.napping(30), false, 'the pointer, a voice or a turn wakes it');
+  const never = new ExpressionMachine();
+  never.step(1000, 1e6, 'idle', Infinity);
+  assert.equal(never.drowsy, false, 'sleep weight 0 never dozes');
+});
+
 test('idle life acts only when free, after a gap inside IDLE_GAP', () => {
   const life = new IdleLife(() => 0);
   assert.equal(life.step(IDLE_GAP[1] + 1, false, true), null);
@@ -81,7 +95,7 @@ test('idle life acts only when free, after a gap inside IDLE_GAP', () => {
     action = life.step(0.5, true, true);
     elapsed += 0.5;
   }
-  assert.equal(action, 'look-around');
+  assert.equal(action, 'stretch', 'the first habit with an emote wins a zero roll');
   assert.ok(elapsed >= IDLE_GAP[0] && elapsed <= IDLE_GAP[1] + 0.5);
 });
 

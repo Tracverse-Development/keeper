@@ -1,13 +1,17 @@
 /**
  * Idle life: while the character is idle and nothing else is playing, it now and then does
- * something on its own: glances around (only when nobody is moving the pointer, so it never
- * fights the gaze following the mouse), stretches, winks or nods. The gap between actions is
- * random (`IDLE_GAP`), and the clock only runs while it is free to act.
+ * something on its own, chosen by its HABITS (`habits.ts`): glances around (only when nobody is
+ * moving the pointer, so it never fights the gaze following the mouse), stretches, winks, nods,
+ * and the species' own: a robot hums, a dog chases its tail or scratches an ear. Each habit's
+ * weight (0 never .. 3 often) is its share of the picks; a habit the keeper never set takes the
+ * species' default. The gap between actions is random (`IDLE_GAP`), and the clock only runs
+ * while it is free to act. (Napping, the `sleep` habit, is a state run by the director.)
  *
  * Pattern: a small scheduler with a weighted pick. Pure (no three.js, no DOM; the random
  * source is injectable): tested by `idle-life.test.ts`.
  */
 import type { Emote } from './contract';
+import { habitsOf, resolveHabits, type Habits } from './habits.ts';
 
 /** Shortest and longest pause between idle actions (seconds of free time). */
 export const IDLE_GAP = [9, 18] as const;
@@ -19,20 +23,29 @@ export interface IdleAction {
   readonly needsStillPointer: boolean;
 }
 
-export const IDLE_ACTIONS: readonly IdleAction[] = [
-  { emote: 'look-around', weight: 4, needsStillPointer: true },
-  { emote: 'stretch', weight: 2, needsStillPointer: false },
-  { emote: 'nod', weight: 1, needsStillPointer: false },
-  { emote: 'wink', weight: 1, needsStillPointer: false },
-];
+/** The idle actions `habits` give species `species` (weight 0 = never picked). */
+export function idleActions(habits: Habits, species: string): IdleAction[] {
+  const out: IdleAction[] = [];
+  for (const habit of habitsOf(species)) {
+    if (habit.emote) out.push({ emote: habit.emote, weight: habits[habit.id] ?? 0, needsStillPointer: Boolean(habit.needsStillPointer) });
+  }
+  return out;
+}
 
 export class IdleLife {
   private readonly random: () => number;
   private waitFor: number;
+  private actions: IdleAction[];
 
-  constructor(random: () => number = Math.random) {
+  constructor(random: () => number = Math.random, species = 'robot') {
     this.random = random;
     this.waitFor = this.gap();
+    this.actions = idleActions(resolveHabits({}, species), species);
+  }
+
+  /** The keeper's habits for its species (missing habits take the species' defaults). */
+  setHabits(habits: unknown, species: string): void {
+    this.actions = idleActions(resolveHabits(habits, species), species);
   }
 
   /**
@@ -44,14 +57,22 @@ export class IdleLife {
     this.waitFor -= dt;
     if (this.waitFor > 0) return null;
     this.waitFor = this.gap();
-    const options = IDLE_ACTIONS.filter((action) => pointerStill || !action.needsStillPointer);
-    const total = options.reduce((sum, action) => sum + action.weight, 0);
+    let total = 0;
+    for (const action of this.actions) if (this.allowed(action, pointerStill)) total += action.weight;
+    if (total <= 0) return null;
     let roll = this.random() * total;
-    for (const action of options) {
+    let last: Emote | null = null;
+    for (const action of this.actions) {
+      if (!this.allowed(action, pointerStill)) continue;
+      last = action.emote;
       roll -= action.weight;
       if (roll < 0) return action.emote;
     }
-    return options[options.length - 1]?.emote ?? null;
+    return last;
+  }
+
+  private allowed(action: IdleAction, pointerStill: boolean): boolean {
+    return action.weight > 0 && (pointerStill || !action.needsStillPointer);
   }
 
   private gap(): number {

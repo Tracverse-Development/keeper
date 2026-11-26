@@ -10,9 +10,11 @@
  * dome, a backpack finds the back's depth). So the robot's tapering spirit torso and the puppy's
  * pear each get a jacket of their own shape, with sleeves only where there are limbs.
  *
- * Pure maths (no three.js): tested by `fit.test.ts`, and used by the wearables-fit test to prove
+ * Pure maths (no three.js at run time; `follow` only names its type): tested by `fit.test.ts`, and used by the wearables-fit test to prove
  * every catalogue part sits outside, and close to, every body that offers its slot.
  */
+
+import type { Object3D } from 'three';
 
 /** One ring of a body's surface: [half-width (x), height (y)] in the anchor's space. */
 export type Ring = readonly [number, number];
@@ -25,6 +27,17 @@ export interface Limb {
   readonly length: number;
   /** Its tilt about x (radians), as the rig poses it. */
   readonly tilt: number;
+}
+
+/**
+ * A foot (a paw): an ellipsoid at `position` with half-extents `radii`, in the anchor's space at
+ * rest. `bone` names the rig joint it rides when that is not the slot's own (`skins/catalog.ts`
+ * `Bone`: the puppy's waving front paw rides `paw`, its scratching hind paw `hindPaw`).
+ */
+export interface Foot {
+  readonly position: readonly [number, number, number];
+  readonly radii: readonly [number, number, number];
+  readonly bone?: string;
 }
 
 /** The surface a species publishes for one worn slot. */
@@ -40,6 +53,8 @@ export interface BodyShape {
   /** How far the neck opening leans, front down (radians); 0 = level. */
   readonly lean?: number;
   readonly limbs?: readonly Limb[];
+  /** The feet a paws slot is worn on (empty `profile` then: there is no surface ring to follow). */
+  readonly feet?: readonly Foot[];
 }
 
 /** What a part is told about the body it is built for. */
@@ -47,6 +62,12 @@ export interface PartFit {
   readonly species: string;
   /** Present for worn slots; floating parts need only the anchor's scale. */
   readonly shape?: BodyShape;
+  /**
+   * Live joints for a shape with feet: `feet[i]` rides foot i's bone (a paw that waves), `base` is
+   * the slot's anchor. A part follows them each frame (`followFoot`); absent (as in the fit test),
+   * every foot stays at its rest place.
+   */
+  readonly follow?: { readonly base: Object3D; readonly feet: readonly Object3D[] };
 }
 
 /** A garment ring: its height and the half-width and half-depth it is cut to. */
@@ -79,6 +100,22 @@ function catmullRom(t: number, p0: number, p1: number, p2: number, p3: number): 
   return (2 * p1 - 2 * p2 + v0 + v1) * t ** 3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t ** 2 + v0 * t + p1;
 }
 
+/**
+ * Where a point sits against a foot: below 1 inside the ellipsoid, 1 on it, above 1 outside.
+ */
+export function footLevel(foot: Foot, x: number, y: number, z: number): number {
+  const [rx, ry, rz] = foot.radii;
+  const [cx, cy, cz] = foot.position;
+  return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2;
+}
+
+/** A point's clearance from the nearest foot, as a share of that foot's size (0 = on it). */
+export function footClearance(feet: readonly Foot[], x: number, y: number, z: number): number {
+  let best = Infinity;
+  for (const foot of feet) best = Math.min(best, Math.sqrt(footLevel(foot, x, y, z)) - 1);
+  return best;
+}
+
 /** Samples between curve points (enough that linear reading between them is within ~1 mm). */
 const SAMPLES = 160;
 const sampled = new WeakMap<readonly Ring[], Ring[]>();
@@ -94,6 +131,7 @@ function samples(profile: readonly Ring[]): Ring[] {
 
 /** The body's half-width at height `y` (0 above or below the profile). */
 export function radiusAt(shape: BodyShape, y: number): number {
+  if (shape.profile.length === 0) return 0;
   const points = samples(shape.profile);
   for (let i = 0; i < points.length - 1; i++) {
     const [r0, y0] = points[i];

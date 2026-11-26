@@ -65,8 +65,12 @@ export class ParticlePool {
     return time < this.busyUntil;
   }
 
-  /** Launches one particle from `at`, born `delay` seconds after `time`; returns its slot. */
-  spawn(at: Point3, time: number, random: () => number, delay = 0): number {
+  /**
+   * Launches one particle from `at`, born `delay` seconds after `time`; returns its slot. With
+   * `colour` (0xrrggbb) the particle takes that colour (lightened a little at random) instead of
+   * one of the kind's brand colours.
+   */
+  spawn(at: Point3, time: number, random: () => number, delay = 0, colour?: number): number {
     const s = this.spec;
     const i = this.next;
     this.next = (i + 1) % this.capacity;
@@ -86,10 +90,13 @@ export class ParticlePool {
     this.seed[i] = random();
     this.startAngle[i] = pick(s.angle, random());
     this.startSize[i] = pick(s.size, random());
-    const colour = s.colours[Math.min(s.colours.length - 1, Math.floor(random() * s.colours.length))];
-    this.colours[i * 3] = ((colour >> 16) & 255) / 255;
-    this.colours[i * 3 + 1] = ((colour >> 8) & 255) / 255;
-    this.colours[i * 3 + 2] = (colour & 255) / 255;
+    const picked = s.colours[Math.min(s.colours.length - 1, Math.floor(random() * s.colours.length))];
+    const chosen = colour ?? picked;
+    // A chosen colour varies toward white per particle, so a burst in one colour still sparkles.
+    const light = colour === undefined ? 0 : random() * 0.35;
+    this.colours[i * 3] = lighten(((chosen >> 16) & 255) / 255, light);
+    this.colours[i * 3 + 1] = lighten(((chosen >> 8) & 255) / 255, light);
+    this.colours[i * 3 + 2] = lighten((chosen & 255) / 255, light);
     return i;
   }
 
@@ -161,6 +168,10 @@ export function coneDirection(axis: readonly [number, number, number], cone: num
   out[offset] = dx * along + (ux * Math.cos(phi) + wx * Math.sin(phi)) * side;
   out[offset + 1] = dy * along + (uy * Math.cos(phi) + wy * Math.sin(phi)) * side;
   out[offset + 2] = dz * along + (uz * Math.cos(phi) + wz * Math.sin(phi)) * side;
+}
+
+function lighten(channel: number, amount: number): number {
+  return channel + (1 - channel) * amount;
 }
 
 function pick(range: Range, r: number): number {

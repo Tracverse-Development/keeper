@@ -43,6 +43,18 @@ pub const PARTS: &[Part] = &[
     Part { id: "knit-scarf", name: "Knit Scarf", slot: "neck", species: &[], effects: &[color("color"), color("stripe"), num("sway", 0.0, 2.0)] },
     Part { id: "crew-cap", name: "Crew Cap", slot: "head", species: &[], effects: &[color("color"), color("trim")] },
     Part { id: "trail-pack", name: "Trail Pack", slot: "back", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0)] },
+    // Species-only: a dog's nails and collar.
+    Part { id: "paw-nails", name: "Nail Set", slot: "paws", species: &["puppy"], effects: &[color("color"), num("shine", 0.0, 1.0)] },
+    Part { id: "dog-collar", name: "Collar", slot: "neck", species: &["puppy"], effects: &[color("color"), color("tag")] },
+    // Effects for moments (slot kind "effect"): how thinking and a celebration look.
+    Part { id: "think-classic", name: "Classic Thinking", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-pulse", name: "Pulse", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-orbit", name: "Orbit", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-nebula", name: "Nebula", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-vortex", name: "Vortex", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-confetti", name: "Confetti", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-fireworks", name: "Fireworks", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-starburst", name: "Starburst", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
 ];
 
 pub fn get(id: &str) -> Option<&'static Part> {
@@ -146,10 +158,33 @@ mod tests {
         for p in PARTS {
             assert!(super::super::slots::get(p.slot).is_some(), "{} names an unknown slot", p.id);
             for s in super::super::species::SPECIES {
-                assert_eq!(check(&worn(p.id), s.id).is_ok(), s.slots.contains(&p.slot), "{} on {}", p.id, s.id);
+                let fits = s.slots.contains(&p.slot) && (p.species.is_empty() || p.species.contains(&s.id));
+                assert_eq!(check(&worn(p.id), s.id).is_ok(), fits, "{} on {}", p.id, s.id);
             }
         }
         assert!(check(&worn("crew-cap"), "dragon").is_err(), "unknown bodies are refused");
+    }
+
+    #[test]
+    fn a_dog_wears_its_nails_and_collar_and_a_robot_cannot() {
+        assert!(check(&worn("paw-nails"), "puppy").is_ok() && check(&worn("dog-collar"), "puppy").is_ok());
+        assert!(check(&worn("paw-nails"), "robot").unwrap_err().contains("doesn't fit"));
+        assert!(check(&worn("dog-collar"), "robot").unwrap_err().contains("doesn't fit"));
+        // A collar and a scarf both go round the neck: one at a time.
+        assert!(check_outfit(&[worn("dog-collar"), worn("knit-scarf")], "puppy").unwrap_err().contains("neck"));
+    }
+
+    #[test]
+    fn every_body_wears_one_thinking_and_one_celebrate_effect() {
+        for body in ["robot", "puppy"] {
+            let outfit = check_outfit(&[worn("think-vortex"), worn("cheer-starburst"), worn("memory-halo")], body).unwrap();
+            assert_eq!(outfit.len(), 3, "{body}");
+            assert!(check_outfit(&[worn("think-orbit"), worn("think-pulse")], body).unwrap_err().contains("thinking"));
+        }
+        let w: WornPart = serde_json::from_value(json!({"part": "think-nebula", "effects": {"intensity": 9, "color": "#C25CF0"}})).unwrap();
+        let ok = check(&w, "robot").unwrap();
+        assert_eq!(ok.effects.get("intensity"), Some(&json!(2.0)));
+        assert_eq!(ok.effects.get("color"), Some(&json!("#c25cf0")));
     }
 
     #[test]

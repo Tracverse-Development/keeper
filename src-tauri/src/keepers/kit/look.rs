@@ -25,7 +25,7 @@ const fn zone(id: &'static str, name: &'static str) -> Zone {
 
 /// The paint zones each species offers.
 pub const ZONES: &[(&str, &[Zone])] = &[
-    ("robot", &[zone("head", "Head"), zone("face", "Face screen"), zone("eyes", "Eyes"), zone("body", "Body"), zone("core", "Chest core"), zone("antenna", "Antenna")]),
+    ("robot", &[zone("head", "Head"), zone("face", "Face screen"), zone("eyes", "Eyes"), zone("body", "Body"), zone("core", "Chest core"), zone("antenna", "Ear antennas")]),
     ("puppy", &[zone("head", "Head"), zone("ears", "Ears"), zone("muzzle", "Muzzle"), zone("eyes", "Eyes"), zone("body", "Body"), zone("legs", "Legs"), zone("paws", "Paws"), zone("tail", "Tail")]),
 ];
 

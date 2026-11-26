@@ -65,12 +65,18 @@ test('every species publishes a sound shape for each worn slot it offers, and no
     for (const slot of SLOTS) {
       const placement = (skin.slots as Record<string, { follow?: string; shape?: BodyShape }>)[slot.id];
       if (!placement) continue;
-      if (slot.kind === 'floating') {
+      if (slot.kind !== 'worn') {
         assert.equal(placement.shape, undefined, `${skin.id}.${slot.id}`);
         continue;
       }
       const shape = placement.shape!;
       assert.ok(shape && placement.follow, `${skin.id}.${slot.id} has a bone and a shape`);
+      if (shape.feet) {
+        // A paws slot: no surface ring, a finite ellipsoid per foot.
+        assert.ok(shape.feet.length > 0 && shape.profile.length === 0, `${skin.id}.${slot.id} feet`);
+        for (const foot of shape.feet) for (const n of [...foot.position, ...foot.radii]) assert.ok(Number.isFinite(n), `${skin.id}.${slot.id} foot`);
+        continue;
+      }
       assert.ok(shape.profile.length >= 2, `${skin.id}.${slot.id} profile`);
       for (let i = 1; i < shape.profile.length; i++) assert.ok(shape.profile[i][1] < shape.profile[i - 1][1], `${skin.id}.${slot.id} runs top to bottom`);
       assert.ok(shape.depth > 0.3 && shape.depth <= 1.2 && shape.squareness >= 2, `${skin.id}.${slot.id} cross-section`);

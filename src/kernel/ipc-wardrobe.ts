@@ -4,11 +4,14 @@
  * slots each keeper's body offers. Kept beside `ipc-types.ts` (re-exported by `ipc.ts`).
  */
 
-/** Where a wearable goes: floating round the body, or worn on it (fitted to each species). */
+/**
+ * Where a wearable goes: floating round the body, worn on it (fitted to each species), or an
+ * effect slot (`thinking`, `celebrate`) whose part changes how a moment looks.
+ */
 export interface SlotInfo {
   id: string;
   name: string;
-  kind: 'floating' | 'worn';
+  kind: 'floating' | 'worn' | 'effect';
 }
 
 /** One thing the person owns. A design can be worn by many keepers; one of a kind by one. */

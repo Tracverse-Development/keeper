@@ -4,12 +4,14 @@
  * with cream paws, round haunches, a navy collar with a small gold ark tag, and a tail.
  *
  * Parts the skin animates are returned: the torso (breathing), the tag (it swings) with
- * its glowing heart (memory sparks leave from it), the tail pivot (wagging) and the
- * screen-right front leg's shoulder pivot (`paw`: it lifts and waves hello). At rest the
- * pivot is the identity, so the leg sits exactly where it always did.
+ * its glowing heart (memory sparks leave from it), the tail pivot (wagging), the
+ * screen-right front leg's shoulder pivot (`paw`: it lifts and waves hello) and the screen-left
+ * hind leg (`scratch`: it swings out and up to scratch an ear). At rest every pivot is where the
+ * paw always sat, and the scratching leg's shin is hidden, so the puppy looks as it always did.
  */
 import {
   CapsuleGeometry,
+  Quaternion,
   CatmullRomCurve3,
   CylinderGeometry,
   Group,
@@ -24,7 +26,17 @@ import {
   type Object3D,
 } from 'three';
 import type { PuppyKit } from './puppy-kit';
-import { PUPPY_COLLAR, PUPPY_FRONT_LEG, PUPPY_NECK_Y, PUPPY_SEAT_Y, PUPPY_TORSO_DEPTH, PUPPY_TORSO_PROFILE } from './puppy-shape';
+import {
+  PUPPY_COLLAR,
+  PUPPY_FRONT_LEG,
+  PUPPY_FRONT_PAW,
+  PUPPY_HIND_PAW,
+  PUPPY_HIP,
+  PUPPY_NECK_Y,
+  PUPPY_SEAT_Y,
+  PUPPY_TORSO_DEPTH,
+  PUPPY_TORSO_PROFILE,
+} from './puppy-shape';
 
 /** The rig's measurements live in `puppy-shape.ts` (shared with the anchors wearables fit). */
 const NECK_Y = PUPPY_NECK_Y;
@@ -40,13 +52,25 @@ export interface PuppyBody {
   readonly tail: Group;
   /** The screen-right front leg's shoulder pivot (rotate it to lift and wave the paw). */
   readonly paw: Group;
+  /** The screen-left hind leg: `pose(amount, t)` swings it out and up to scratch (0 = at rest). */
+  readonly scratch: ScratchLeg;
 }
+
+export interface ScratchLeg {
+  /** The joint the hind paw rides (worn nails follow it). */
+  readonly pawJoint: Group;
+  pose(amount: number, t: number): void;
+}
+
+/** Where the scratching paw reaches (body space): up by the ear on its side. */
+const SCRATCH_REACH = [-0.86, -0.42, 0.22] as const;
+const SHIN_RADIUS = 0.1;
 
 export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   const m = kit.materials;
   const curve = new SplineCurve(PUPPY_TORSO_PROFILE.map(([r, y]) => new Vector2(r, y)));
   const outline = curve.getSpacedPoints(96).map((p) => new Vector2(Math.max(p.x, 0.001), p.y));
-  const torso = new Mesh(new LatheGeometry(outline, 96), m.caramel);
+  const torso = new Mesh(new LatheGeometry(outline, 96), m.body);
   torso.position.y = SEAT_Y;
   torso.scale.z = PUPPY_TORSO_DEPTH;
   parent.add(torso);
@@ -55,17 +79,20 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   const paw = new Group();
   paw.position.set(...SHOULDER);
   parent.add(paw);
+  const FP = PUPPY_FRONT_PAW;
+  const HP = PUPPY_HIND_PAW;
+  const scratch = addScratchLeg(parent, kit);
   for (const side of [-1, 1]) {
-    kit.blob(parent, m.caramel, [0.32, 0.36, 0.44], [side * 0.46, -1.6, 0.02]); // haunch
-    kit.blob(parent, m.cream, [0.15, 0.085, 0.2], [side * 0.6, -1.9, 0.16]); // hind paw
+    kit.blob(parent, m.legs, [0.32, 0.36, 0.44], [side * 0.46, -1.6, 0.02]); // haunch
+    if (side === 1) kit.blob(parent, m.paws, HP.radii, [side * HP.x, HP.y, HP.z]); // hind paw (the other rides the scratching leg)
     // The screen-right leg hangs from the shoulder pivot (positions made relative to it).
     const holder = side === 1 ? paw : parent;
     const [ox, oy, oz] = side === 1 ? SHOULDER : [0, 0, 0];
-    const leg = new Mesh(new CapsuleGeometry(LEG.radius, LEG.length, 12, 32), m.caramel);
+    const leg = new Mesh(new CapsuleGeometry(LEG.radius, LEG.length, 12, 32), m.legs);
     leg.position.set(side * LEG.x - ox, LEG.y - oy, LEG.z - oz);
     leg.rotation.x = LEG.tilt; // top rounds into the chest as a shoulder, paw forward
     holder.add(leg);
-    kit.blob(holder, m.cream, [0.17, 0.11, 0.21], [side * 0.22 - ox, -1.88 - oy, 0.55 - oz]); // front paw
+    kit.blob(holder, m.paws, FP.radii, [side * FP.x - ox, FP.y - oy, FP.z - oz]); // front paw
   }
 
   const collar = new Mesh(new TorusGeometry(PUPPY_COLLAR.radius, PUPPY_COLLAR.tube, 24, 96), m.collar);
@@ -82,7 +109,54 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   tail.scale.setScalar(1.25);
   parent.add(tail);
 
-  return { torso, tag, heart, tail, paw };
+  return { torso, tag, heart, tail, paw, scratch };
+}
+
+/**
+ * The screen-left hind leg, built to scratch: a hip pivot whose leg points at the paw. At rest the
+ * leg points down at the paw's own place (the shin hidden: the haunch covers the hip), so the paw
+ * sits exactly where it always did; scratching swings the leg out, forward and up toward the ear
+ * on that side (a slerp between the two directions, so it sweeps round the outside, never
+ * through the body), stretches the shin and shakes it fast. The paw keeps its own level (it is
+ * counter-turned), so it reads as a paw, not a stick end.
+ */
+function addScratchLeg(parent: Object3D, kit: PuppyKit): ScratchLeg {
+  const HP = PUPPY_HIND_PAW;
+  const hip = new Group();
+  hip.name = 'scratch-hip';
+  hip.position.set(...PUPPY_HIP);
+  parent.add(hip);
+  const restDir = new Vector3(-HP.x, HP.y, HP.z).sub(new Vector3(...PUPPY_HIP));
+  const restLength = restDir.length();
+  const reachDir = new Vector3(...SCRATCH_REACH).sub(new Vector3(...PUPPY_HIP));
+  const reachLength = reachDir.length();
+  const UP = new Vector3(0, 1, 0);
+  const rest = new Quaternion().setFromUnitVectors(UP, restDir.normalize());
+  const reach = new Quaternion().setFromUnitVectors(UP, reachDir.normalize());
+  const swing = new Group();
+  hip.add(swing);
+  const shin = new Mesh(new CapsuleGeometry(SHIN_RADIUS, 1, 8, 20), kit.materials.legs);
+  shin.visible = false;
+  swing.add(shin);
+  const pawJoint = new Group();
+  pawJoint.name = 'scratch-paw';
+  swing.add(pawJoint);
+  kit.blob(pawJoint, kit.materials.paws, HP.radii, [0, 0, 0]);
+  const level = new Quaternion();
+
+  function pose(amount: number, t: number): void {
+    const s = Math.min(Math.max(amount, 0), 1);
+    swing.quaternion.slerpQuaternions(rest, reach, s * s * (3 - 2 * s));
+    if (s > 0) swing.rotateZ(0.16 * Math.sin(t * 31) * s);
+    const length = restLength + (reachLength - restLength) * s;
+    pawJoint.position.set(0, length, 0);
+    pawJoint.quaternion.copy(level.copy(swing.quaternion).invert());
+    shin.visible = s > 0.04;
+    shin.position.y = length / 2;
+    shin.scale.set(1, length / (1 + 2 * SHIN_RADIUS), 1);
+  }
+  pose(0, 0);
+  return { pawJoint, pose };
 }
 
 /** A gold disc on a ring with a small ark crescent and a glowing heart-light on it. */
@@ -136,9 +210,9 @@ function buildTail(kit: PuppyKit): Group {
     }
   }
   geometry.computeVertexNormals();
-  pivot.add(new Mesh(geometry, kit.materials.caramel));
+  pivot.add(new Mesh(geometry, kit.materials.tail));
   const tip = path.getPointAt(1);
   kit.blob(pivot, kit.materials.cream, [0.03, 0.03, 0.03], [tip.x, tip.y, tip.z]);
-  kit.blob(pivot, kit.materials.caramel, [0.085, 0.085, 0.085], [0, 0, 0]); // rounded root
+  kit.blob(pivot, kit.materials.tail, [0.085, 0.085, 0.085], [0, 0, 0]); // rounded root
   return pivot;
 }

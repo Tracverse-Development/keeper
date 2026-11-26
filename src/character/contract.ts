@@ -87,8 +87,24 @@ export interface Character {
  *   stretch     - stretches tall with content eyes, then settles
  *   look-around - glances left and right (the pointer still wins the moment it moves)
  *   nod         - a quick "yes" nod
+ *   hum         - sways gently while little musical notes float up (a robot's habit)
+ *   chase-tail  - a quick spin after its own tail (a dog's habit)
+ *   scratch     - leans over and scratches an ear with a back leg (a dog's habit)
  */
-export type Emote = 'wave' | 'celebrate' | 'streak' | 'love' | 'surprised' | 'wink' | 'sleepy' | 'stretch' | 'look-around' | 'nod';
+export type Emote =
+  | 'wave'
+  | 'celebrate'
+  | 'streak'
+  | 'love'
+  | 'surprised'
+  | 'wink'
+  | 'sleepy'
+  | 'stretch'
+  | 'look-around'
+  | 'nod'
+  | 'hum'
+  | 'chase-tail'
+  | 'scratch';
 
 // Appended to the interface above by declaration merging (the contract grows by appending).
 export interface Character {
@@ -106,3 +122,61 @@ export interface Character {
    */
   emote(name: Emote): void;
 }
+
+/**
+ * The keeper's look: a colour (`#rrggbb`) and a material per PAINT ZONE of its body, mirroring
+ * `KeeperProfile.look` in the core (`src-tauri/src/keepers/kit/look.rs`). Zones by species
+ * (`LOOK_ZONES`): robot `head`, `face`, `eyes`, `body`, `core`, `antenna` (its gold ear rings);
+ * puppy `head`, `ears`, `muzzle`, `eyes`, `body`, `legs`, `paws`, `tail`. Materials: `matte`,
+ * `gloss`, `metal`, `fur`, `glow`. A zone left out keeps the species' own colour and material;
+ * unknown zones, bad colours and unknown materials are ignored, e.g.
+ *   { ears: { color: '#c0392b' }, body: { material: 'metal' }, eyes: { color: '#1fd2d6', material: 'glow' } }
+ */
+export type Look = Readonly<Record<string, { color?: string; material?: string }>>;
+
+/**
+ * The keeper's habits: what it does on its own when idle, as weights from 0 (never) to 3
+ * (often), mirroring `KeeperProfile.habits` (`look.rs` HABITS). Ids: `sleep` (how soon a quiet
+ * keeper dozes off and naps: eyes shut, the robot's screen dimmed, slow breathing, "z"s, until the
+ * pointer moves, someone speaks or a turn starts), `stretch`, `look-around`, `wink`, `nod`, and the
+ * species' own: `hum` (robot), `chase-tail` and `scratch` (puppy). A habit left out takes the
+ * species' default; a habit the species does not have is ignored.
+ */
+export type Habits = Readonly<Record<string, number>>;
+
+/** Where a camera should stand to frame one paint zone (the Studio's zoom onto a part). */
+export interface ZoneFocus {
+  /** The point to look at (world units, the character at rest). */
+  readonly target: { readonly x: number; readonly y: number; readonly z: number };
+  /** How far from `target` the camera stands. */
+  readonly distance: number;
+  /** Which side to look from: radians round the body, 0 = the front, positive = from screen right. */
+  readonly yaw: number;
+}
+
+// The keeper's own look, habits and the Studio's camera (appended by declaration merging).
+export interface Character {
+  /** Repaint the paint zones live (`Look`); no rebuild, no transition; an equal look does nothing. */
+  setLook(look: Look): void;
+  /** Change what the keeper does when idle and how soon it naps (`Habits`). */
+  setHabits(habits: Habits): void;
+  /** Where to frame paint zone `zone` on the current body, or null when the body has no such zone. */
+  zoneFocus(zone: string): ZoneFocus | null;
+  /**
+   * Glide the character's own camera onto paint zone `zone` (eased, about a second), or back to
+   * the whole character with null (an unknown zone also goes back). A species swap re-aims at the
+   * new body's zone of the same name.
+   */
+  focusZone(zone: string | null): void;
+}
+
+/*
+ * Moment effects (thinking, celebrate) arrive as WEARABLES, like any part: a `WornPart` whose part
+ * is a moment effect (`PARTS` rows in slot `thinking` or `celebrate`: think-classic, think-pulse,
+ * think-orbit, think-nebula, think-vortex; cheer-confetti, cheer-fireworks, cheer-starburst), with
+ * effects `{ color: '#rrggbb', intensity: 0.25..2 }`, e.g.
+ *   setWearables([{ part: 'memory-halo' }, { part: 'think-vortex', effects: { color: '#c25cf0' } }])
+ * The worn thinking effect plays whenever the mood is `thinking`; the worn celebrate effect bursts
+ * at the moment `emote('celebrate')` or `emote('streak')` takes off. None worn = the classic
+ * thinking and the shipped celebration.
+ */

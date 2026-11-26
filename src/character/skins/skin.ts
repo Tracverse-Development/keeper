@@ -21,10 +21,14 @@
  *    `emote` channel at 0 exactly as it does without emotes.
  *  - It declares its slots (`slots`, built from its catalogue row by `anchors.ts`) and keeps
  *    every reaction amplitude and timing in its data table (`reactions`).
+ *  - It paints every paint zone its species declares (`paint`, `look/zones.ts`) and publishes a
+ *    camera focus for each (`focus`).
  */
 import type { Object3D } from 'three';
 import type { HitRegion, Mood, TouchKind } from '../contract';
 import type { ExpressionFrame } from '../expression-frame';
+import type { ZoneFocus } from '../look/zone-focus';
+import type { ResolvedLook } from '../look/zones';
 import type { MoodParams, MotionProfile } from '../moods';
 import type { SlotAnchors } from './anchors';
 import type { ReactionTable } from './reactions-table';
@@ -53,6 +57,8 @@ export interface SkinFrame {
   readonly work: number;
   /** The "got it" flash 0..1 as a reply arrives after thinking (`thinking.ts`); 0 otherwise. */
   readonly gotIt: number;
+  /** The least thinking drama the worn thinking effect allows (`thinkDrama`'s floor; 0 = classic). */
+  readonly dramaFloor: number;
   /**
    * The playing emote and drowsiness (`expression-frame.ts`): body offsets (squash and
    * stretch, lift, roll, pitch, a spin, a wave, a raised paw) and face amounts (hearts, stars,
@@ -82,6 +88,16 @@ export interface Skin {
   readonly slots: SlotAnchors;
   /** The species' reaction tuning (touch timings feed the shared envelopes). */
   readonly reactions: ReactionTable;
+  /**
+   * Where a camera frames each paint zone this species has (`look/zones.ts` ids), measured from
+   * the rig at rest (`look/zone-focus.ts`).
+   */
+  readonly focus: Readonly<Record<string, ZoneFocus>>;
+  /**
+   * Repaints the zones: `look` is already validated for this species; a zone left out gets the
+   * species' own colour and material back. Called only when the look changes (never per frame).
+   */
+  paint(look: ResolvedLook): void;
   /** Device pixels per world unit, for skins that draw glowing point sprites. */
   setPointScale?(scale: number): void;
   /** Turns one frame of shared dials into this skin's pose, materials and lights. */

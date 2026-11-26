@@ -20,6 +20,7 @@ import { Color, Group, Mesh, Vector2 } from 'three';
 import { disposeTree } from '../../dispose-tree';
 import { PALETTE } from '../../palette';
 import { BAR_COUNT } from '../../speech-bars';
+import type { ResolvedZone } from '../../look/zones';
 import { createGlyphMaterial, type GlyphMaterial } from './glyph-material';
 import { curvedQuad } from './head-shape';
 
@@ -58,6 +59,7 @@ export interface FaceState {
 const REST = { core: new Color(PALETTE.cream50), edge: new Color(PALETTE.gold400) };
 const COOL = { core: new Color(PALETTE.workCyanCore), edge: new Color(PALETTE.workCyanEdge) };
 const HOT = { core: new Color(PALETTE.heatCore), edge: new Color(PALETTE.heatAmber) };
+const WHITE = new Color(0xffffff);
 
 const EYE_HALF = new Vector2(0.115, 0.17);
 const EYE_SPACING = 0.3;
@@ -82,6 +84,14 @@ const FACE_INFLATE = 0.022;
 
 export interface Face {
   readonly group: Group;
+  /** The two eye quads (the `eyes` paint zone's meshes, for framing it). */
+  readonly eyeMeshes: readonly Mesh[];
+  /**
+   * Paints the glyphs (the `eyes` zone): a colour becomes the glow's edge with a near-white core
+   * of the same hue; `glow` burns brighter, `matte` softer. Undefined = the shipped warm cream.
+   * Work and thinking tints still play over it.
+   */
+  paintEyes(zone: ResolvedZone | undefined): void;
   /** The equaliser bar heights 0..1 the mouth shows when `bars` > 0 (write them each frame). */
   readonly barHeights: Float32Array;
   update(state: FaceState): void;
@@ -94,13 +104,17 @@ export function createFace(): Face {
 
   const eyeQuad = new Vector2(EYE_HALF.x + EYE_MARGIN, EYE_HALF.y + EYE_MARGIN).multiplyScalar(2);
   const sides = [-1, 1] as const;
+  const eyeMeshes: Mesh[] = [];
   const eyes: GlyphMaterial[] = sides.map((side) => {
     const material = createGlyphMaterial({ quad: eyeQuad, half: EYE_HALF, line: 0.016, glowWidth: 0.045 });
     const mesh = new Mesh(curvedQuad(eyeQuad.x, eyeQuad.y, side * EYE_SPACING, EYE_Y, FACE_INFLATE), material);
     mesh.renderOrder = 2;
     group.add(mesh);
+    eyeMeshes.push(mesh);
     return material;
   });
+  /** This face's resting glyph colours (painted by the `eyes` zone) and glow. */
+  const rest = { core: REST.core.clone(), edge: REST.edge.clone(), glow: 1 };
 
   const mouthQuad = new Vector2(0.42, 0.34);
   const mouth = createGlyphMaterial({ quad: mouthQuad, half: MOUTH_HALF, line: 0.012, glowWidth: 0.035 });
@@ -119,8 +133,8 @@ export function createFace(): Face {
     const cool = scan > 0 ? Math.max(state.cool, scan) : state.cool;
     const hot = scan > 0 ? state.hot * (1 - 0.5 * scan) : state.hot;
     for (const glyph of glyphs) {
-      glyph.uniforms.uCore.value.copy(REST.core).lerp(COOL.core, cool).lerp(HOT.core, hot);
-      glyph.uniforms.uEdge.value.copy(REST.edge).lerp(COOL.edge, cool).lerp(HOT.edge, hot);
+      glyph.uniforms.uCore.value.copy(rest.core).lerp(COOL.core, cool).lerp(HOT.core, hot);
+      glyph.uniforms.uEdge.value.copy(rest.edge).lerp(COOL.edge, cool).lerp(HOT.edge, hot);
     }
     const barX = state.scanX * (EYE_SPACING + EYE_HALF.x);
     const beat = 1 + state.hearts * HEART_BEAT * Math.max(0, Math.sin(state.time * HEART_RATE)) ** 4;
@@ -137,7 +151,7 @@ export function createFace(): Face {
       u.uTime.value = state.time;
       u.uSquint.value = state.squint;
       u.uBend.value = state.eyeBend * (1 - scan);
-      u.uGlow.value = state.glow;
+      u.uGlow.value = state.glow * rest.glow;
       u.uShift.value.set(shiftX, shiftY);
       u.uScan.value = scan;
       u.uScanX.value = barX - sides[i] * EYE_SPACING;
@@ -156,5 +170,15 @@ export function createFace(): Face {
     m.uShift.value.set(shiftX * 0.4, shiftY * 0.3);
   }
 
-  return { group, barHeights, update, dispose: () => disposeTree(group) };
+  function paintEyes(zone: ResolvedZone | undefined): void {
+    rest.core.copy(REST.core);
+    rest.edge.copy(REST.edge);
+    if (zone?.color !== undefined) {
+      rest.edge.setHex(zone.color);
+      rest.core.setHex(zone.color).lerp(WHITE, 0.7);
+    }
+    rest.glow = zone?.material === 'glow' ? 1.45 : zone?.material === 'matte' ? 0.75 : 1;
+  }
+
+  return { group, eyeMeshes, barHeights, update, paintEyes, dispose: () => disposeTree(group) };
 }

@@ -4,20 +4,24 @@
  * tests can check them without a GPU.
  *
  * Pattern: Registry. A part fills one SLOT a species declares (`slots.ts`: floating `halo`,
- * `base`, `aura`; worn on the body `head`, `neck`, `torso`, `back`), lists the species it fits
+ * `base`, `aura`; worn on the body `head`, `neck`, `torso`, `back`, `paws`; effects for moments
+ * `thinking`, `celebrate`: `moment-catalog.ts`), lists the species it fits
  * (`'any'` or skin ids) and carries an effects schema (`effects.ts`). A variant is a part id
  * plus effect values. Worn parts fit themselves to the body's published shape (`fit.ts`), so
  * `'any'` really means any species that offers the slot.
  *
  * Adding a part: one row here, one factory under `parts/<id>/` and one line in
- * `parts/index.ts` (whose table is typed against `PartId`, so a row without a factory fails
- * the typecheck).
+ * `parts/index.ts` (whose table is typed against the drawn `PartId`s, so a row without a factory
+ * fails the typecheck). A moment effect is a row in `moment-catalog.ts` and a style in
+ * `effects/moments.ts` (it has no factory: nothing is drawn on the body).
  */
 import type { WornPart } from '../contract';
 import { effectsKey, resolveEffects, type EffectSchema, type EffectValues } from './effects.ts';
+import { MOMENT_PARTS, type MomentPartId } from './moment-catalog.ts';
 import type { SlotId } from './slots.ts';
 
-export { SLOT_IDS, SLOTS, isWornSlot, type SlotId, type SlotKind } from './slots.ts';
+export { SLOT_IDS, SLOTS, isEffectSlot, isWornSlot, type SlotId, type SlotKind } from './slots.ts';
+export type { MomentPartId } from './moment-catalog.ts';
 
 export interface PartInfo {
   /** Stable kebab-case id, stored in profiles and packs; never rename a shipped one. */
@@ -31,7 +35,7 @@ export interface PartInfo {
   readonly effects: EffectSchema;
 }
 
-export const PARTS = [
+const WEARABLE_PARTS = [
   {
     id: 'memory-halo',
     name: 'Memory Halo',
@@ -115,9 +119,35 @@ export const PARTS = [
       sway: { kind: 'number', label: 'Bounce', min: 0, max: 2, default: 1 },
     },
   },
+  {
+    id: 'paw-nails',
+    name: 'Nail Set',
+    slot: 'paws',
+    species: ['puppy'],
+    description: 'Little polished nails on every paw, in any colour, with as much shine as you like.',
+    effects: {
+      color: { kind: 'colour', label: 'Polish', default: '#d39744' },
+      shine: { kind: 'number', label: 'Shine', min: 0, max: 1, default: 0.7 },
+    },
+  },
+  {
+    id: 'dog-collar',
+    name: 'Collar',
+    slot: 'neck',
+    species: ['puppy'],
+    description: 'A soft leather collar with a round name tag hanging at the front.',
+    effects: {
+      color: { kind: 'colour', label: 'Leather', default: '#b57b2c' },
+      tag: { kind: 'colour', label: 'Tag', default: '#d39744' },
+    },
+  },
 ] as const satisfies readonly PartInfo[];
 
+export const PARTS = [...WEARABLE_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
+
 export type PartId = (typeof PARTS)[number]['id'];
+/** The parts drawn on (or round) the body: every part but the moment effects. */
+export type DrawnPartId = Exclude<PartId, MomentPartId>;
 
 /** What the character wears when nothing else is chosen: the shipped look. */
 export const DEFAULT_WEARABLES: readonly WornPart[] = [{ part: 'memory-halo' }, { part: 'ark-hull' }];
