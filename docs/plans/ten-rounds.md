@@ -49,3 +49,18 @@ acting on, ask before acting, ElevenLabs voice), measure with `PROFILE=admin`, f
 | 8 | Delete a conversation: × on a chat, then "Delete for good", erases every turn and the chat from the node (`Memory::erase_chat`, `chat_delete`); the open chat is replaced by a fresh one | live test: a 2-turn chat erased, a raw query for its words finds nothing; window tests 214/214 |
 | 9 | Fewer false "computer work" turns: a changing verb needs a computer thing, a path or "my" ("run a marathon", "save money", "a chat to delete" stay chat); 0.7.3 published | "I want to run a marathon…" now the quick model, 1.6 s to first words (before: the Opus plan path); computer turns still plan; approve → folder made |
 | 10 | Regression: every live test, both bench profiles, leak check; found idle engine spares living for an hour (FIX-0014: a one-minute sweep ends spares past 20 min); a live test made unique (it collided with another test's timestamp) | 25/25 live tests; admin bench median 699 ms, companion 675 ms, 0 errors; no bench process left; 0.7.4 |
+
+### Second set: decisions taken with the recommended option (founder to review)
+
+1. A keeper that may act uses tools only when the words ask for computer work; everything else is answered as chat (quick model). A miss is caught by the engine saying it needs the computer.
+2. A plan made only of looking (list, read, search) runs at once without asking, held read-only by the guard; any change still needs Approve.
+3. Acting turns run without the person's own Claude Code settings, hooks and plugins (as chat turns already did): Keeper's instructions are the whole configuration.
+4. Lessons ask for usually 2 to 4 panels (at most 5, was 6) so they finish sooner.
+5. Speech starts at the first sentence; the rest is queued behind it.
+6. "Forget" erases the fact from the node (Working Memory discard), and a chat can be deleted with two presses (× then "Delete for good"); there is no undo for either.
+7. Idle engine processes are ended after 20 minutes (the next message after a long break starts one fresh, about 0.3 s slower).
+
+### Needs the founder
+- Linux and Windows build host (DESK-BUILD-LINUX-WIN-001): Mac releases only until one exists.
+- Home Core testing: its ssh needs this Mac's key.
+- Lessons and acting run on the keeper's model (Claude Code's default, Opus); Sonnet would roughly halve a lesson's 10 s, at some cost in depth. Keep Opus, or use Sonnet for lessons?
