@@ -22,6 +22,8 @@ interface Props {
   /** Beside the stage: only the latest exchange, so nothing covers the character. */
   compact?: boolean;
   onSend: (text: string) => void;
+  /** The mode and style controls, shown above the message box. */
+  modeBar?: React.ReactNode;
   onMic: () => void;
   onStop: () => void;
 }
@@ -84,6 +86,7 @@ export function ConversationDock(p: Props) {
       <div className="dock-status" aria-live="polite">
         {p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
       </div>
+      {p.modeBar}
       <form
         className="dock-input glass"
         onSubmit={(e) => {

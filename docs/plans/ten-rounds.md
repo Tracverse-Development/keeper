@@ -70,3 +70,4 @@ acting on, ask before acting, ElevenLabs voice), measure with `PROFILE=admin`, f
 | Round | Theme | Result |
 |---|---|---|
 | M1 | Threads (FIX-0015) and the guard's words (FIX-0016) | two chats on a real Keeper stay separate and know of each other; the founder's "look" command passes the guard; no commands in spoken text |
+| M2+M3 | Styles (Balanced, Explainer, Brief, Chat) and Modes (Assistant, System Administrator, Researcher, Tutor, Companion) with their own instructions, skills and tools; per-chat mode, mode/style pickers, ⌘K "… mode" | real Keeper: Tutor answers with a hint and a question; Assistant looks at the desktop and says it can only look; System Administrator plans; Researcher cites real sources (73 s) |

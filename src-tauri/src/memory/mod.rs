@@ -194,7 +194,7 @@ impl Memory {
         let (rows, trace) = self.run(q).await?;
         let turns = rows
             .iter()
-            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: get(r, "c").rsplit(':').next().unwrap_or_default().into(), panels: vec![] })
+            .map(|r| Turn { id: get(r, "t").rsplit(':').next().unwrap_or_default().into(), said: get(r, "said"), replied: get(r, "replied"), mind: get(r, "mind"), at: get(r, "at"), chat: get(r, "c").rsplit(':').next().unwrap_or_default().into(), panels: vec![], mode: String::new() })
             .collect();
         Ok((turns, trace))
     }
@@ -230,6 +230,7 @@ impl Memory {
                 chat: chat.to_string(),
                 // Re-validated on the way out: stored panels are data like any other.
                 panels: serde_json::from_str::<serde_json::Value>(&get(r, "panels")).map(|v| crate::stage::read(&v)).unwrap_or_default(),
+                mode: get(r, "mode"),
             })
             .collect())
     }
@@ -371,7 +372,7 @@ mod thread_tests {
     use super::*;
 
     fn t(said: &str, chat: &str, at: &str) -> Turn {
-        Turn { id: said.into(), said: said.into(), replied: "ok".into(), mind: String::new(), at: at.into(), chat: chat.into(), panels: vec![] }
+        Turn { id: said.into(), said: said.into(), replied: "ok".into(), mind: String::new(), at: at.into(), chat: chat.into(), panels: vec![], mode: String::new() }
     }
 
     #[test]

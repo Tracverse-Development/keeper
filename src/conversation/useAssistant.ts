@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { core, EVENTS, on, sentence, type Phase, type Turn, type TurnResult } from '../kernel/ipc';
+import { chatMode } from './styles';
 
 export interface Exchange {
   id: number;
@@ -38,6 +39,10 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   replyRef.current = onReply;
   const chatRef = useRef(chatId);
   chatRef.current = chatId;
+  // The mode this chat is in ('' = the keeper's default mode).
+  const [mode, setMode] = useState('');
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   useEffect(
     () =>
@@ -119,7 +124,7 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   const send = async (text: string, toKeeper?: string) => {
     const said = text.trim();
     if (!said) return;
-    await run(said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined));
+    await run(said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined, modeRef.current || undefined));
   };
 
   /** Approve or refuse the plan the keeper showed before acting. */
@@ -144,13 +149,15 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   /** Show a chat loaded from the keeper's graph and continue it. */
   const showChat = (chat: string, turns: Turn[]) => {
     setChatId(chat);
+    setMode(chatMode(turns, ''));
     setExchanges(turns.slice(-KEEP).map((t) => fromTurn(nextId.current++, t, keeper ?? '')));
   };
 
   const newChat = () => {
     setChatId('');
     setExchanges([]);
+    setMode('');
   };
 
-  return { exchanges, chatId, phase, detail, busy, send, decide, brief, announce, record, showChat, newChat };
+  return { exchanges, chatId, mode, setMode, phase, detail, busy, send, decide, brief, announce, record, showChat, newChat };
 }

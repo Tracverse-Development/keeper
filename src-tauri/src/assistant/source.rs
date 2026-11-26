@@ -32,8 +32,8 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     if ctx.said.starts_with(FOLLOW_UP) {
         super::prefetch::wait_if_preparing(&ctx.said).await;
     }
-    let mode = brain::modes::get(&ctx.mode);
-    if ctx.visual && !ctx.may_act && mode.id == brain::modes::DEFAULT && crate::memory::scene_cache::cacheable(&ctx.said) {
+    let style = brain::styles::get(&ctx.style);
+    if ctx.visual && !ctx.may_act && style.id == brain::styles::DEFAULT && crate::memory::scene_cache::cacheable(&ctx.said) {
         if let Ok(Some(scene)) = memory.cached_scene(&ctx.said).await {
             for p in &scene.panels {
                 progress(Progress::Panel(p.clone()));
@@ -44,13 +44,14 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     }
     let settings = state.settings();
     let can_act = brain::engines::spec(&keeper.brain).is_some_and(|s| s.can_act);
-    if ctx.may_act && can_act && settings.ask_before_acting && !approved {
+    let mode = crate::keepers::kit::roles::get(&keeper.role);
+    if ctx.may_act && can_act && mode.may_act() && settings.ask_before_acting && !approved {
         return approval::plan(state, keeper, ctx, chat, progress).await;
     }
     // Pointing at a panel, or a short conversational turn, goes to the quick helper model when
     // one is set: about 1 s to the first words against about 2 s (measured 2026-11-25).
     let quick_turn = ctx.said.starts_with(FOLLOW_UP) || (settings.quick_replies && conversational(&ctx.said));
-    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && mode.quick;
+    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && style.quick && mode.tools != crate::keepers::kit::roles::Tools::Web;
     let thinker = if quick { KeeperProfile { model: settings.fast_model.clone(), ..keeper.clone() } } else { keeper.clone() };
     let (thought, mut mind) = brain::think(&thinker, ctx, progress).await;
     // Taken as conversation, but the engine says it is computer work: run it again with tools
@@ -59,7 +60,7 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
         let acting = Context { may_act: true, ..ctx.clone() };
         // The live text so far ("Let me take a look.") stays; the real answer follows it.
         progress(Progress::ReplyText(" ".into()));
-        if settings.ask_before_acting {
+        if settings.ask_before_acting && mode.may_act() {
             return approval::plan(state, keeper, &acting, chat, progress).await;
         }
         let (thought, mind) = brain::think(keeper, &acting, progress).await;

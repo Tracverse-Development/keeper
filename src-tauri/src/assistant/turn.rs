@@ -58,8 +58,13 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         elsewhere: recall.elsewhere.clone(),
-        // An approved plan binds this turn: each tool call is checked against it.
-        guard: approved.map(|steps| std::sync::Arc::new(crate::brain::guard::PlanGuard::new(steps, &dirs::home_dir().unwrap_or_default()))),
+        // An approved plan binds this turn: each tool call is checked against it. A mode that
+        // only looks is held read-only (no plan needed: it changes nothing).
+        guard: match approved {
+            Some(steps) => Some(std::sync::Arc::new(crate::brain::guard::PlanGuard::new(steps, &dirs::home_dir().unwrap_or_default()))),
+            None if role.tools == crate::keepers::kit::roles::Tools::Look => Some(std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&dirs::home_dir().unwrap_or_default()))),
+            None => None,
+        },
         ..base
     };
     let identity = ctx.identity.clone();
@@ -164,14 +169,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut panels = crate::stage::read(&thought.panels);
     panels.extend(thought.core_panels.iter().cloned());
     // A fresh visual answer is kept under its question; a lesson's cards are prepared next.
-    if !answer.cached && ctx.visual && !ctx.may_act && crate::brain::modes::get(&ctx.mode).id == crate::brain::modes::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
+    if !answer.cached && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
         if let Some(scene) = CachedScene::new(said, &reply, &panels) {
             later.add(&scene, "scene");
         }
     }
     super::prefetch::spawn(app, keeper, identity, recall.facts.clone(), &panels);
     // The scene is kept with the turn, so reopening the chat brings its panels back.
-    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels);
+    let turn = Turn::new(said, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&keeper.role);
     writes.push(later.add(&turn, "turn"));
     let app_for_writes = app.clone();
     let (level_keeper, level_memory) = (keeper.id.clone(), memory.clone());
@@ -197,7 +202,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 /// warm spare is started with exactly the instructions the next turn will use.
 pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str) -> Context {
     let role = crate::keepers::kit::roles::get(&keeper.role);
-    let can_act = state.settings().agent_actions && role.may_act;
+    // A mode that looks or acts uses the computer only when the person allows acting in Settings.
+    let can_act = state.settings().agent_actions && role.uses_computer();
     Context {
         said: said.to_string(),
         assistant_name: keeper.name.clone(),
@@ -210,7 +216,8 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         // then a turn gets tools only when its words ask for computer work (`intent`).
         may_act: can_act && super::intent::wants_computer(said),
         can_act,
-        mode: keeper.mode.clone(),
+        job: role.id.to_string(),
+        style: keeper.style.clone(),
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
     }

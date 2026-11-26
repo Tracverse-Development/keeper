@@ -91,12 +91,13 @@ pub(super) fn wrote(app: &AppHandle, receipt: &WriteReceipt, kind: &str) {
 /// One turn. `keeper` = which keeper (empty: the active one); `chat` = continue that chat
 /// (empty: start a new one, named after this message).
 #[tauri::command]
-pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: String, keeper: Option<String>, chat: Option<String>) -> Result<TurnResult> {
-    run_turn(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text).await
+pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: String, keeper: Option<String>, chat: Option<String>, mode: Option<String>) -> Result<TurnResult> {
+    run_turn(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or("")).await
 }
 
 /// One turn, from the window, the talk window or the phone link.
-pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str) -> Result<TurnResult> {
+/// `mode`: the mode this chat is in (a `keepers::kit::roles` id; "" = the keeper's default).
+pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str) -> Result<TurnResult> {
     let said = text.trim();
     if said.is_empty() {
         return Err(DeskError::Invalid("Say something first.".into()));
@@ -109,6 +110,11 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
     }
     let keeper = state.keeper_or_active(keeper_id)?;
     let memory = state.memory_for(&keeper)?;
+    // This chat's mode, for this turn: the keeper works as that job (its skills, tools, brief).
+    if !mode.is_empty() && !crate::keepers::kit::roles::exists(mode) {
+        return Err(DeskError::Invalid("That mode does not exist.".into()));
+    }
+    let keeper = if mode.is_empty() { keeper } else { crate::kernel::settings::KeeperProfile { role: mode.to_string(), ..keeper } };
     let result = turn::turn(app, &memory, state, &keeper, chat, said, None).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
@@ -144,7 +150,7 @@ pub async fn brief_today(app: AppHandle, state: State<'_, AppState>) -> Result<O
         return Ok(None);
     }
     state.update_settings(|s| s.last_brief = today)?;
-    Ok(Some(run_turn(&app, &state, "", "", "Brief me").await?))
+    Ok(Some(run_turn(&app, &state, "", "", "Brief me", "").await?))
 }
 
 /// The Stop button: end the turn in progress (the engine process is killed).

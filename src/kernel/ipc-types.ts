@@ -36,13 +36,16 @@ export interface KeeperProfile {
   habits?: Record<string, number>;
   /** Its own voice; absent = the app-wide voice in Settings. */
   voice?: KeeperVoice;
+  /** How it shows answers: balanced, explainer, brief, chat (absent = balanced). */
+  style?: string;
 }
 
 export interface RoleInfo {
   id: string;
   title: string;
   blurb: string;
-  may_act: boolean;
+  /** What the mode may touch: talk only, the web, look at the computer, or change it. */
+  tools: 'none' | 'web' | 'look' | 'act';
   skills: string[];
 }
 
@@ -108,7 +111,7 @@ export interface KeeperSaved {
   announcement: string | null;
 }
 
-export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model' | 'role' | 'soul' | 'wearables' | 'look' | 'habits' | 'voice'>> & {
+export type KeeperChange = Partial<Pick<KeeperProfile, 'name' | 'skin' | 'brain' | 'model' | 'role' | 'soul' | 'wearables' | 'look' | 'habits' | 'voice' | 'style'>> & {
   /** True: go back to the app-wide voice. */
   appVoice?: boolean;
 };
@@ -252,6 +255,8 @@ export interface Turn {
   chat: string;
   /** The Stage panels this turn showed (its scene). */
   panels?: Panel[];
+  /** The mode it was in (a chat reopens in its mode). */
+  mode?: string;
 }
 
 export interface ActionRecord {

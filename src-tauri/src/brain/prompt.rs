@@ -30,20 +30,20 @@ Answer ONLY with JSON: {{\"reply\": string, \"panels\": [panel], \"remember\": [
 Put \"reply\" FIRST. {stage} \"remember\" holds NEW lasting facts the person just told you about themselves, written in the second person (\"Your sister is Maya\"); categories: identity, preference, person, place, work, health, schedule, general. Leave it empty when nothing new was learned.",
         name = ctx.assistant_name,
         identity = ctx.identity,
-        skills = skills::catalogue(),
+        skills = skills::catalogue_for(crate::keepers::kit::roles::get(&ctx.job)),
         acting = if ctx.may_act { ACTING } else if ctx.can_act { CHAT_TURN } else { NOT_ACTING },
         stage = stage_rules(ctx),
     )
 }
 
-/// How to show things in this keeper's mode: the Stage rules (or words only), then the mode's own.
+/// How to show things in this keeper's style: the Stage rules (or words only), then the style's own.
 fn stage_rules(ctx: &Context) -> String {
-    let mode = super::modes::get(&ctx.mode);
-    let stage = if ctx.visual && mode.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES };
-    if mode.rules.is_empty() {
+    let style = super::styles::get(&ctx.style);
+    let stage = if ctx.visual && style.visual { crate::stage::RULES } else { crate::stage::TEXT_RULES };
+    if style.rules.is_empty() {
         stage.to_string()
     } else {
-        format!("{stage} {}", mode.rules)
+        format!("{stage} {}", style.rules)
     }
 }
 

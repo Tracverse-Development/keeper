@@ -127,3 +127,10 @@ test('parts: the core and the character agree on which species each part fits', 
   const rarity = readFileSync(join(core, 'keepers/kit/rarity.rs'), 'utf8');
   for (const id of ['paw-nails', 'dog-collar', 'think-classic', 'think-pulse', 'think-orbit', 'think-nebula', 'think-vortex', 'cheer-confetti', 'cheer-fireworks', 'cheer-starburst']) assert.ok(rarity.includes(`("${id}", "`), `${id} has a rarity`);
 });
+
+test('styles: the core and the window list the same answer styles', async () => {
+  const { STYLES } = await import('./conversation/styles.ts');
+  const rust = readFileSync(join(core, 'brain/styles.rs'), 'utf8');
+  const ids = [...rust.matchAll(/Style \{\s*id: "([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(ids, STYLES.map((s: { id: string }) => s.id));
+});

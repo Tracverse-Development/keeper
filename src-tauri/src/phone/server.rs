@@ -80,7 +80,9 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                     // Continue a chat the phone started (its id came back with the last reply).
                     let chat: String = body["chat"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_hexdigit()).take(32).collect();
                     let state = app.state::<AppState>();
-                    let result = tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", &chat, &text));
+                    // The chat's mode, when the phone (or a test) names one; validated by run_turn.
+                    let mode: String = body["mode"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_lowercase()).take(20).collect();
+                    let result = tauri::async_runtime::block_on(crate::assistant::run_turn(&app, &state, "", &chat, &text, &mode));
                     reply_turn(req, &app, &text, result);
                 }
                 // Approve or refuse a plan the keeper showed (the phone sees its steps and token).

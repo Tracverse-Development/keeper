@@ -79,11 +79,19 @@ pub struct Turn {
     /// The Stage panels this turn showed (its scene), validated.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub panels: Vec<crate::stage::Panel>,
+    /// The mode it was in (`keepers::kit::roles`), so a chat reopens in its mode ("" = default).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mode: String,
 }
 
 impl Turn {
     pub fn new(said: &str, replied: &str, mind: &str, at: &str, chat: &str) -> Turn {
-        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into(), chat: chat.into(), panels: vec![] }
+        Turn { id: short_hash(&format!("{at}\u{0}{said}"), 16), said: said.into(), replied: replied.into(), mind: mind.into(), at: at.into(), chat: chat.into(), panels: vec![], mode: String::new() }
+    }
+
+    pub fn with_mode(mut self, mode: &str) -> Turn {
+        self.mode = mode.to_string();
+        self
     }
 
     pub fn with_panels(mut self, panels: &[crate::stage::Panel]) -> Turn {
@@ -113,6 +121,7 @@ impl Record for Turn {
             .time(pred::AT, &self.at);
         let b = if self.chat.is_empty() { b } else { b.link(pred::IN_CHAT, &entity("chat", &self.chat)) };
         let b = if self.panels.is_empty() { b } else { b.text(pred::PANELS, &serde_json::to_string(&self.panels).unwrap_or_default()) };
+        let b = if self.mode.is_empty() { b } else { b.text("desk:mode", &self.mode) };
         b.build()
     }
 }

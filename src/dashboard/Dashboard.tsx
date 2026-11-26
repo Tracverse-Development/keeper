@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
+import { ModeBar } from '../conversation/ModeBar';
 import { useAssistant } from '../conversation/useAssistant';
 import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
@@ -178,6 +179,14 @@ export function Dashboard({ initial }: { initial: Settings }) {
     }
   };
 
+  /** This chat's mode: the keeper works as that job from the next message on, and says so. */
+  const switchMode = (mode: string) => {
+    if (!keeper || mode === (assistant.mode || keeper.role)) return;
+    assistant.setMode(mode);
+    const title = keepers.list?.roles.find((r) => r.id === mode)?.title ?? mode;
+    assistant.announce(`Now in ${title} mode.`, name);
+  };
+
   const openChat = (id: string) =>
     chats
       .open(id)
@@ -264,6 +273,15 @@ export function Dashboard({ initial }: { initial: Settings }) {
         full={sidebarOpen && assistant.chatId !== ''}
         compact={stage.showing}
         onSend={(t) => assistant.send(t)}
+        modeBar={keeper && (
+          <ModeBar
+            modes={keepers.list?.roles ?? []}
+            mode={assistant.mode || keeper.role}
+            style={keeper.style ?? 'balanced'}
+            onMode={switchMode}
+            onStyle={(style) => void changeKeeper({ style })}
+          />
+        )}
         onMic={voice.listen}
         onStop={stop}
       />
@@ -285,6 +303,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
           stop,
           openSettings: () => setSettingsOpen(true),
           openStudio: () => setStudioOpen(true),
+          modes: (keepers.list?.roles ?? []).map((r) => ({ id: r.id, title: r.title })),
+          setMode: switchMode,
           openMemory: () => setMemoryOpen(true),
           openScenes: stage.reopen,
           openPinned: pins.open,

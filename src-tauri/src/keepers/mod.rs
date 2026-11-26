@@ -136,7 +136,7 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
         wearables: crate::kernel::settings::default_wearables(),
         graph_id: graph_id_for(&seed, first),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, mode: String::new()
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new()
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
@@ -176,8 +176,8 @@ pub struct KeeperChange {
     pub voice: Option<crate::kernel::settings::KeeperVoice>,
     /// True: go back to the app-wide voice (`voice` is ignored).
     pub app_voice: Option<bool>,
-    /// How it answers (`brain::modes`).
-    pub mode: Option<String>,
+    /// How it shows its answers (`brain::styles`).
+    pub style: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -215,9 +215,9 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
         Some(w) => Some(kit::parts::check_outfit(w, change.skin.as_deref().unwrap_or(&current.skin)).map_err(DeskError::Invalid)?),
         None => None,
     };
-    if let Some(m) = &change.mode {
-        if !crate::brain::modes::exists(m) {
-            return Err(DeskError::Invalid("That mode does not exist.".into()));
+    if let Some(m) = &change.style {
+        if !crate::brain::styles::exists(m) {
+            return Err(DeskError::Invalid("That style does not exist.".into()));
         }
     }
     let species = change.skin.clone().unwrap_or_else(|| current.skin.clone());
@@ -263,8 +263,8 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
             if let Some(h) = habits {
                 k.habits = h;
             }
-            if let Some(m) = change.mode {
-                k.mode = m;
+            if let Some(m) = change.style {
+                k.style = m;
             }
             if change.app_voice == Some(true) {
                 k.voice = None;

@@ -24,6 +24,8 @@ const MAX_STEPS: usize = 20;
 #[derive(Clone)]
 pub struct PendingPlan {
     pub keeper: String,
+    /// The mode the plan was made in (the acting turn runs in it).
+    pub mode: String,
     pub chat: String,
     pub said: String,
     pub steps: Vec<PlanStep>,
@@ -98,7 +100,7 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     if keeper.brain == "claude" {
         crate::brain::engines::claude::warm_up(&Context { may_act: true, guard: None, ..ctx.clone() }, &keeper.model);
     }
-    let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
+    let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), mode: keeper.role.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
     let panel = Panel::Approval { id: format!("plan-{token}"), title: "My plan".into(), summary: summary.clone(), steps, token };
     Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false }
 }
@@ -114,6 +116,7 @@ pub async fn decide(app: &AppHandle, state: &AppState, token: &str, approve: boo
     let plan = state.plans.take(token).ok_or_else(|| DeskError::Invalid("That plan has expired. Ask me again.".into()))?;
     let keeper = state.keeper_or_active(&plan.keeper)?;
     let memory = state.memory_for(&keeper)?;
+    let keeper = crate::kernel::settings::KeeperProfile { role: plan.mode.clone(), ..keeper };
     if approve {
         let said = format!("{}{}", plan.said, mandate(&plan.steps));
         return turn::turn(app, &memory, state, &keeper, &plan.chat, &said, Some(&plan.steps)).await;
@@ -134,7 +137,7 @@ mod tests {
         assert_eq!(steps.len(), 1);
         assert!(mandate(&steps).contains("1. move ~/Downloads/a.pdf (to Documents)"));
         let plans = Plans::default();
-        let t = plans.keep(PendingPlan { keeper: "k".into(), chat: "c".into(), said: "s".into(), steps });
+        let t = plans.keep(PendingPlan { keeper: "k".into(), mode: "system".into(), chat: "c".into(), said: "s".into(), steps });
         assert_eq!(t.len(), 24);
         assert!(plans.take(&t).is_some() && plans.take(&t).is_none(), "a plan is used once");
         let look = |a: &str| PlanStep { action: a.into(), target: "~/Desktop".into(), detail: None };
