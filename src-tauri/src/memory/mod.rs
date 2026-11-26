@@ -269,8 +269,8 @@ impl Memory {
 
     /// What recall needs, read from the DKG (fills hot memory).
     async fn load_hot(&self) -> Result<hot::Snapshot> {
-        let ((facts, _), (recent, _), pinned, practice) = tokio::try_join!(self.facts(), self.recent_turns(), async { Ok(self.pinned().await) }, async { Ok(self.practice().await) })?;
-        Ok(hot::Snapshot { facts, pinned, recent, practice })
+        let ((facts, _), (recent, _), pinned, practice, scene_keys) = tokio::try_join!(self.facts(), self.recent_turns(), async { Ok(self.pinned().await) }, async { Ok(self.practice().await) }, async { Ok(self.scene_keys().await) })?;
+        Ok(hot::Snapshot { facts, pinned, recent, practice, scene_keys })
     }
 
     /// Retract the remembered facts that best match `what`; returns what was forgotten.

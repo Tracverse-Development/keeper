@@ -12,6 +12,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use super::records::{Fact, Turn};
+use super::scene_cache::CachedScene;
 
 const MAX_AGE: Duration = Duration::from_secs(30 * 60);
 /// The same windows as the recall queries (`queries::RECENT_TURNS`, `Memory::practice`).
@@ -25,6 +26,20 @@ pub enum HotChange {
     Turn(Turn),
     Pin(String),
     Practice(Fact),
+    /// A scene kept under its question (the scene cache).
+    Scene(CachedScene),
+}
+
+/// What hot memory knows about a question's cached scene.
+pub enum SceneLookup {
+    /// The mirror is not loaded: ask the DKG.
+    Unknown,
+    /// No scene was ever kept for this question: answer fresh, no query.
+    Miss,
+    /// The scene, already in memory.
+    Hit(CachedScene),
+    /// A scene is on the DKG but not in memory yet: fetch it once.
+    OnDkg,
 }
 
 #[derive(Clone)]
@@ -33,6 +48,9 @@ pub struct Snapshot {
     pub pinned: HashSet<String>,
     pub recent: Vec<Turn>,
     pub practice: Vec<Fact>,
+    /// The keys of every scene kept in the graph (`scene_cache::key`); None when they could
+    /// not be read (then every lookup asks the DKG, as before).
+    pub scene_keys: Option<HashSet<String>>,
 }
 
 struct Mirror {
@@ -41,6 +59,8 @@ struct Mirror {
     pinned: HashSet<String>,
     recent: VecDeque<Turn>,
     practice: VecDeque<Fact>,
+    scene_keys: Option<HashSet<String>>,
+    scenes: HashMap<String, CachedScene>,
     loaded: Instant,
 }
 
@@ -55,13 +75,25 @@ pub fn get(graph: &str) -> Option<Snapshot> {
         pinned: m.pinned.clone(),
         recent: m.recent.iter().cloned().collect(),
         practice: m.practice.iter().cloned().collect(),
+        scene_keys: m.scene_keys.clone(),
     })
+}
+
+/// Look up a cached scene by key without touching the DKG when the answer is already known.
+pub fn scene(graph: &str, key: &str) -> SceneLookup {
+    let Ok(pool) = HOT.lock() else { return SceneLookup::Unknown };
+    let Some(m) = pool.as_ref().and_then(|p| p.get(graph)).filter(|m| m.loaded.elapsed() < MAX_AGE) else { return SceneLookup::Unknown };
+    match m.scenes.get(key) {
+        Some(s) => SceneLookup::Hit(s.clone()),
+        None if m.scene_keys.as_ref().is_none_or(|keys| keys.contains(key)) => SceneLookup::OnDkg,
+        None => SceneLookup::Miss,
+    }
 }
 
 /// Fill the mirror from what the DKG just answered.
 pub fn load(graph: &str, snap: Snapshot) {
     let Ok(mut pool) = HOT.lock() else { return };
-    let m = Mirror { facts: snap.facts, gone: HashSet::new(), pinned: snap.pinned, recent: snap.recent.into_iter().take(RECENT).collect(), practice: snap.practice.into_iter().take(PRACTICE).collect(), loaded: Instant::now() };
+    let m = Mirror { facts: snap.facts, gone: HashSet::new(), pinned: snap.pinned, recent: snap.recent.into_iter().take(RECENT).collect(), practice: snap.practice.into_iter().take(PRACTICE).collect(), scene_keys: snap.scene_keys, scenes: HashMap::new(), loaded: Instant::now() };
     pool.get_or_insert_with(HashMap::new).insert(graph.to_string(), m);
 }
 
@@ -88,6 +120,12 @@ pub fn apply(graph: &str, change: HotChange) {
             m.practice.push_front(p);
             m.practice.truncate(PRACTICE);
         }
+        HotChange::Scene(s) => {
+            if let Some(keys) = m.scene_keys.as_mut() {
+                keys.insert(s.key.clone());
+            }
+            m.scenes.insert(s.key.clone(), s);
+        }
     }
 }
 
@@ -109,7 +147,7 @@ mod tests {
         let g = "hot-test";
         assert!(get(g).is_none(), "nothing until loaded");
         let f = Fact::new("Your sister is Maya", "person", "2026-11-25T10:00:00Z");
-        load(g, Snapshot { facts: vec![f.clone()], pinned: HashSet::new(), recent: vec![], practice: vec![] });
+        load(g, Snapshot { facts: vec![f.clone()], pinned: HashSet::new(), recent: vec![], practice: vec![], scene_keys: Some(HashSet::from(["old".to_string()])) });
         apply(g, HotChange::Fact(Fact::new("You live in Springfield", "place", "2026-11-25T11:00:00Z")));
         apply(g, HotChange::Retract(f.id.clone()));
         apply(g, HotChange::Pin("abc".into()));
@@ -118,5 +156,11 @@ mod tests {
         assert!(s.pinned.contains("abc"));
         apply("unloaded", HotChange::Pin("x".into()));
         assert!(get("unloaded").is_none(), "an unloaded graph is not invented");
+        assert!(matches!(scene(g, "new"), SceneLookup::Miss), "an unknown question costs no query");
+        assert!(matches!(scene(g, "old"), SceneLookup::OnDkg), "a scene kept earlier is fetched once");
+        let kept = CachedScene { key: "new".into(), question: "q".into(), reply: "r".into(), panels: vec![], at: String::new() };
+        apply(g, HotChange::Scene(kept));
+        assert!(matches!(scene(g, "new"), SceneLookup::Hit(_)));
+        assert!(matches!(scene("unloaded", "x"), SceneLookup::Unknown));
     }
 }

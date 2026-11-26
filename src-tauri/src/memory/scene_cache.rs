@@ -50,6 +50,9 @@ impl CachedScene {
 }
 
 impl Record for CachedScene {
+    fn hot(&self) -> Option<super::hot::HotChange> {
+        Some(super::hot::HotChange::Scene(self.clone()))
+    }
     fn asset_name(&self) -> String {
         // A new version each time (finalized assets never change); the lookup takes the newest.
         format!("desk-scene-{}-{}", self.key, short_hash(&self.at, 10))
@@ -71,15 +74,31 @@ impl Memory {
     /// The cached scene for this exact question, if one was kept.
     pub async fn cached_scene(&self, question: &str) -> Result<Option<CachedScene>> {
         let k = key(question);
+        // Hot memory knows every key kept in this graph: a new question costs no query.
+        match super::hot::scene(self.graph(), &k) {
+            super::hot::SceneLookup::Miss => return Ok(None),
+            super::hot::SceneLookup::Hit(scene) => return Ok(Some(scene)),
+            super::hot::SceneLookup::OnDkg | super::hot::SceneLookup::Unknown => {}
+        }
         let sparql = format!(
             "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX prov: <http://www.w3.org/ns/prov#> \
              SELECT ?replied ?panels ?at WHERE {{ ?s a desk:CachedScene ; desk:key \"{k}\" ; desk:replied ?replied ; desk:panels ?panels ; prov:generatedAtTime ?at }} ORDER BY DESC(?at) LIMIT 1"
         );
         let rows = self.client().query(self.graph(), &sparql, Layer::Working).await?;
-        Ok(rows.into_iter().next().and_then(|r| {
+        let scene = rows.into_iter().next().and_then(|r| {
             let panels = serde_json::from_str::<serde_json::Value>(r.get("panels")?).ok().map(|v| crate::stage::read(&v))?;
             (!panels.is_empty()).then(|| CachedScene { key: k.clone(), question: question.to_string(), reply: r.get("replied").cloned().unwrap_or_default(), panels, at: r.get("at").cloned().unwrap_or_default() })
-        }))
+        });
+        if let Some(s) = &scene {
+            super::hot::apply(self.graph(), super::hot::HotChange::Scene(s.clone()));
+        }
+        Ok(scene)
+    }
+
+    /// The keys of every scene kept in this graph (loaded into hot memory with recall's data).
+    pub(super) async fn scene_keys(&self) -> Option<std::collections::HashSet<String>> {
+        let sparql = "PREFIX desk: <https://umojaark.com/ns/desk#> SELECT DISTINCT ?k WHERE { ?s a desk:CachedScene ; desk:key ?k } LIMIT 5000";
+        self.client().query(self.graph(), sparql, Layer::Working).await.ok().map(|rows| rows.into_iter().filter_map(|r| r.get("k").cloned()).collect())
     }
 
     /// Keep a scene under its question.
