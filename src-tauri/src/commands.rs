@@ -176,6 +176,15 @@ pub async fn chat_turns(state: State<'_, AppState>, keeper: Option<String>, chat
     state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?.chat_turns(&chat).await
 }
 
+/// Delete a chat and every turn in it from its keeper's graph (erased from the node).
+#[tauri::command]
+pub async fn chat_delete(state: State<'_, AppState>, keeper: Option<String>, chat: String) -> Result<usize> {
+    if chat.is_empty() || chat.len() > 32 || !chat.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(DeskError::Invalid("That isn't a chat id.".into()));
+    }
+    state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?.erase_chat(&chat).await
+}
+
 /// The question catalog (every question a keeper can ask its graph).
 #[tauri::command]
 pub fn catalog_list() -> Vec<catalog::QuestionInfo> {

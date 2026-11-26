@@ -108,3 +108,23 @@ async fn live_scenes_come_back_with_their_chat() {
     let t = back.iter().find(|t| t.id == turn.id).expect("the turn");
     assert_eq!(t.panels, panels, "the scene comes back exactly, quotes, braces and newlines included");
 }
+
+#[tokio::test]
+#[ignore]
+async fn live_deleting_a_chat_erases_its_turns() {
+    let memory = live_memory().await;
+    let stamp = time::now_iso();
+    let chat = Chat::start(&format!("My doctor's notes {stamp}"), &stamp);
+    assert!(!memory.write(&chat).await.queued);
+    for said in ["My blood pressure is 140 over 90", "I take lisinopril"] {
+        assert!(!memory.write(&Turn::new(&format!("{said} {stamp}"), "Noted.", "reflex", &stamp, &chat.id)).await.queued);
+    }
+    assert_eq!(memory.chat_turns(&chat.id).await.unwrap().len(), 2, "both turns are on the graph");
+
+    assert_eq!(memory.erase_chat(&chat.id).await.expect("erase"), 2, "both turns erased");
+    assert!(memory.chat_turns(&chat.id).await.unwrap().is_empty(), "no turn of the chat is left");
+    assert!(!memory.chats().await.unwrap().iter().any(|c| c.id == chat.id), "the chat is no longer listed");
+    let raw = format!("SELECT ?s WHERE {{ ?s ?p ?o . FILTER(CONTAINS(STR(?o), \"{stamp}\")) }} LIMIT 5");
+    let left = memory.client().query(memory.graph(), &raw, crate::dkg::Layer::Working).await.expect("raw query");
+    assert!(left.is_empty(), "the person's words are gone from the node: {left:?}");
+}

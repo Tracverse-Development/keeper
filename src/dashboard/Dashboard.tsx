@@ -233,6 +233,11 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onActivate={(id) => keepers.activate(id).catch(() => undefined)}
         onNewChat={() => { assistant.newChat(); stage.reset(); }}
         onOpenChat={openChat}
+        onDeleteChat={(id) => {
+          // Deleting the chat on screen starts a fresh one, so nothing shows erased words.
+          if (id === assistant.chatId) { assistant.newChat(); stage.reset(); }
+          void chats.remove(id);
+        }}
         onCreate={(k) => keepers.create(k)}
       />
       <ConversationDock

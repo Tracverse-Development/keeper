@@ -50,6 +50,8 @@ export const core = {
   removeKeeper: (id: string) => invoke<KeeperList>('keepers_remove', { id }),
   chats: (keeper?: string) => invoke<Chat[]>('chats_list', { keeper }),
   chatTurns: (chat: string, keeper?: string) => invoke<Turn[]>('chat_turns', { keeper, chat }),
+  /** Erase a chat and its turns from the keeper's graph; resolves to the number of turns erased. */
+  deleteChat: (chat: string, keeper?: string) => invoke<number>('chat_delete', { keeper, chat }),
   catalog: () => invoke<QuestionInfo[]>('catalog_list'),
   ask: (question: string, args: Record<string, string>, keeper?: string) => invoke<Answer>('catalog_run', { keeper, question, args }),
   folders: () => invoke<FolderAccess[]>('setup_folders'),

@@ -28,6 +28,8 @@ pub enum HotChange {
     Practice(Fact),
     /// A scene kept under its question (the scene cache).
     Scene(CachedScene),
+    /// A chat was erased: its turns leave the recent conversation.
+    DropChat(String),
 }
 
 /// What hot memory knows about a question's cached scene.
@@ -119,6 +121,9 @@ pub fn apply(graph: &str, change: HotChange) {
         HotChange::Practice(p) => {
             m.practice.push_front(p);
             m.practice.truncate(PRACTICE);
+        }
+        HotChange::DropChat(chat) => {
+            m.recent.retain(|t| t.chat != chat);
         }
         HotChange::Scene(s) => {
             if let Some(keys) = m.scene_keys.as_mut() {

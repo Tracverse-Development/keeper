@@ -283,6 +283,19 @@ impl Memory {
         Ok(matches)
     }
 
+    /// Delete a chat for real: every turn in it and the chat itself are discarded from Working
+    /// Memory (the person's words leave the node). Returns how many turns were erased. Stops at
+    /// the first asset the node refuses, so a half-deleted chat is reported, never hidden.
+    pub async fn erase_chat(&self, chat_id: &str) -> Result<usize> {
+        let turns = self.chat_turns(chat_id).await?;
+        for t in &turns {
+            self.client().discard(self.graph(), &format!("desk-turn-{}", t.id)).await?;
+        }
+        self.client().discard(self.graph(), &format!("desk-chat-{chat_id}")).await?;
+        hot::apply(&self.graph, hot::HotChange::DropChat(chat_id.to_string()));
+        Ok(turns.len())
+    }
+
     /// Forget a fact for real: its Knowledge Asset is discarded from Working Memory, so its words
     /// leave the node (DESK-ERASE-001). When the node cannot discard it (offline, or the fact is
     /// still waiting in the outbox) a retraction is written instead, and recall stops using it.

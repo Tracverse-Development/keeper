@@ -24,6 +24,8 @@ interface Props {
   onActivate: (id: string) => void;
   onNewChat: () => void;
   onOpenChat: (id: string) => void;
+  /** Erase a chat from the keeper's graph (asked twice: Delete, then Delete for good). */
+  onDeleteChat: (id: string) => void;
   onCreate: (k: { name: string; skin: string; role: string; soul?: string }) => Promise<unknown>;
 }
 
@@ -38,6 +40,8 @@ function when(iso: string): string {
 
 export function KeeperSidebar(p: Props) {
   const [adding, setAdding] = useState(false);
+  /** The chat whose Delete was pressed once (a second press erases it). */
+  const [confirming, setConfirming] = useState<string | null>(null);
   const roleTitle = (id: string) => p.roles.find((r) => r.id === id)?.title ?? id;
 
   return (
@@ -85,10 +89,24 @@ export function KeeperSidebar(p: Props) {
           {p.chats.length === 0 && !p.error && <p className="muted small">No chats yet. Say hello.</p>}
           <ul className="chat-list">
             {p.chats.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className="chat-row">
                 <button type="button" className={`chat ${c.id === p.chatId ? 'is-on' : ''}`} onClick={() => p.onOpenChat(c.id)}>
                   <span className="chat-title">{c.title || 'Untitled chat'}</span>
                   <span className="muted small">{when(c.at)}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`chat-delete ${confirming === c.id ? 'is-confirming' : ''}`}
+                  aria-label={confirming === c.id ? `Delete "${c.title || 'Untitled chat'}" for good` : `Delete "${c.title || 'Untitled chat'}"`}
+                  onClick={() => {
+                    if (confirming === c.id) {
+                      setConfirming(null);
+                      p.onDeleteChat(c.id);
+                    } else setConfirming(c.id);
+                  }}
+                  onBlur={() => setConfirming((x) => (x === c.id ? null : x))}
+                >
+                  {confirming === c.id ? 'Delete for good' : '×'}
                 </button>
               </li>
             ))}

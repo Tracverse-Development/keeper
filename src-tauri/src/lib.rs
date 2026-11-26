@@ -133,6 +133,7 @@ pub fn run() {
             commands::voice_list,
             commands::engines_list,
             commands::chats_list,
+            commands::chat_delete,
             commands::chat_turns,
             commands::catalog_list,
             commands::catalog_run,
