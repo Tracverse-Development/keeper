@@ -11,6 +11,9 @@ import { withoutPrefixes } from './questions';
 import { QuestionsTab } from './QuestionsTab';
 import { useEscape } from '../kernel/use-escape';
 
+/** How a repeating reminder's rhythm reads in the list. */
+const REPEAT_WORDS: Record<string, string> = { daily: 'every day', weekdays: 'every weekday', weekly: 'every week' };
+
 const TABS = ['Conversations', 'Knowledge', 'Actions', 'Reminders', 'Questions', 'Queries'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -49,6 +52,15 @@ export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: bool
   useEffect(() => {
     if (open) load();
   }, [open, refreshKey, keeper]);
+
+  const cancelReminder = async (id: string) => {
+    try {
+      await core.reminderCancel(id, keeper ?? undefined);
+      load();
+    } catch (e) {
+      setError(sentence(e));
+    }
+  };
 
   const forget = async (id: string) => {
     try {
@@ -133,8 +145,14 @@ export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: bool
               <li key={r.id}>
                 <div>
                   <p>{r.text}</p>
-                  <span className="muted small">{when(r.dueAt)}</span>
+                  <span className="muted small">
+                    {when(r.dueAt)}
+                    {r.repeat ? ` · ${REPEAT_WORDS[r.repeat] ?? r.repeat}` : ''}
+                  </span>
                 </div>
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => void cancelReminder(r.id)} aria-label={`Delete the reminder: ${r.text}`}>
+                  Delete
+                </button>
               </li>
             ))}
           </ul>

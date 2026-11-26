@@ -150,7 +150,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut outcomes = Vec::new();
     if !thought.actions.is_empty() {
         phase(app, "acting", "");
-        let env = SkillEnv { app, memory, reminders: &state.reminders };
+        let env = SkillEnv { app, memory, reminders: &state.reminders, keeper: &keeper.id };
         for request in thought.actions.iter().take(4) {
             // A role only uses the skills it is allowed (a companion does not open apps).
             if !role.allows(&request.skill) {

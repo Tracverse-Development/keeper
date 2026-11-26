@@ -51,7 +51,7 @@ pub const RECENT_ACTIONS: Query = Query {
 
 pub const REMINDERS: Query = Query {
     label: "Which reminders are coming up?",
-    body: "SELECT ?r ?text ?due ?at WHERE { ?r a desk:Reminder ; schema:text ?text ; desk:dueAt ?due ; prov:generatedAtTime ?at } ORDER BY ?due LIMIT 50",
+    body: "SELECT ?r ?text ?due ?at ?repeat WHERE { ?r a desk:Reminder ; schema:text ?text ; desk:dueAt ?due ; prov:generatedAtTime ?at . OPTIONAL { ?r desk:repeat ?repeat } } ORDER BY ?due LIMIT 50",
 };
 
 pub const COUNTS: Query = Query {

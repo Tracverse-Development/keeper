@@ -277,6 +277,8 @@ export interface Reminder {
   text: string;
   dueAt: string;
   at: string;
+  /** How it repeats: daily, weekdays, weekly (absent: once). */
+  repeat?: string;
 }
 
 export interface QueryTrace {

@@ -144,6 +144,8 @@ export const core = {
   unpinScene: (id: string, keeper?: string) => invoke<void>('scene_unpin', { keeper, id }),
   pimRequestAccess: () => invoke<PimAccess>('pim_request_access'),
   overview: (keeper?: string) => invoke<Overview>('memory_overview', { keeper }),
+  /** Delete a reminder: erased from the keeper's graph, and it will not fire. */
+  reminderCancel: (id: string, keeper?: string) => invoke<void>('reminder_cancel', { id, keeper }),
   /** Erase one fact from a keeper's graph (the active keeper when none is named). */
   forgetFact: (id: string, keeper?: string) => invoke<void>('memory_forget_fact', { id, keeper }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),

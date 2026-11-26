@@ -292,7 +292,7 @@ impl Memory {
         let now = time::now();
         Ok(rows
             .iter()
-            .map(|r| Reminder { id: get(r, "r").rsplit(':').next().unwrap_or_default().into(), text: get(r, "text"), due_at: get(r, "due"), at: get(r, "at") })
+            .map(|r| Reminder { id: get(r, "r").rsplit(':').next().unwrap_or_default().into(), text: get(r, "text"), due_at: get(r, "due"), at: get(r, "at"), repeat: get(r, "repeat"), keeper: String::new() })
             .filter(|r| time::parse_iso(&r.due_at).is_some_and(|due| due > now))
             .collect())
     }

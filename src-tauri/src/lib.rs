@@ -54,6 +54,8 @@ pub fn run() {
                     platform::notify("Keeper", &line);
                     let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
                     let _ = state.voice.speak(&app, &line, &state.settings().speaking_as_active(), false).await;
+                    // A repeating reminder is written again for its next time, in its keeper's memory.
+                    skills::reminder_actions::come_round(&state, &reminder).await;
                 });
             });
             let state = AppState::new(Settings::load(), reminders);
@@ -103,7 +105,8 @@ pub fn run() {
                 for keeper in state.settings().keepers {
                     if let Ok(memory) = state.memory_for(&keeper) {
                         for r in memory.upcoming_reminders().await.unwrap_or_default() {
-                            state.reminders.schedule(r);
+                            let repeat = r.repeat.clone();
+                            state.reminders.schedule(r.repeating(&repeat, &keeper.id));
                         }
                     }
                 }
@@ -133,6 +136,7 @@ pub fn run() {
             commands::usage_month,
             commands::child_profile,
             commands::child_profile_set,
+            skills::reminder_actions::reminder_cancel,
             health::health_check,
             health::health_fix,
             focus::focus_state,

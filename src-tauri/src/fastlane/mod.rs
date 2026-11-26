@@ -23,6 +23,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 use serde_json::json;
+use tauri::Manager;
 
 use crate::brain::Thought;
 use crate::kernel::settings::KeeperProfile;
@@ -84,6 +85,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
 
     // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
     if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
+        return Some(shown(reply, json!([])));
+    }
+
+    // "snooze", "snooze for 15 minutes": the reminder that just went off comes back.
+    if let Some(reply) = crate::skills::reminder_actions::snooze(&app.state::<crate::state::AppState>(), s).await {
         return Some(shown(reply, json!([])));
     }
 

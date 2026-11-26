@@ -260,11 +260,25 @@ pub struct Reminder {
     pub text: String,
     pub due_at: String,
     pub at: String,
+    /// How it repeats (`skills::reminders::REPEATS`: daily, weekdays, weekly); "" = once.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub repeat: String,
+    /// The keeper it belongs to (set when it is scheduled, never stored: it lives in that
+    /// keeper's own graph), so its next occurrence is written to the right memory.
+    #[serde(skip)]
+    pub keeper: String,
 }
 
 impl Reminder {
     pub fn new(text: &str, due_at: &str, at: &str) -> Reminder {
-        Reminder { id: short_hash(&format!("{due_at}\u{0}{}", normalise(text)), 16), text: text.into(), due_at: due_at.into(), at: at.into() }
+        Reminder { id: short_hash(&format!("{due_at}\u{0}{}", normalise(text)), 16), text: text.into(), due_at: due_at.into(), at: at.into(), repeat: String::new(), keeper: String::new() }
+    }
+
+    /// Repeating this way ("" = once), for this keeper.
+    pub fn repeating(mut self, repeat: &str, keeper: &str) -> Reminder {
+        self.repeat = repeat.to_string();
+        self.keeper = keeper.to_string();
+        self
     }
 }
 
@@ -273,13 +287,14 @@ impl Record for Reminder {
         format!("desk-reminder-{}", self.id)
     }
     fn quads(&self) -> Vec<Quad> {
-        AssetBuilder::new(&entity("reminder", &self.id))
+        let b = AssetBuilder::new(&entity("reminder", &self.id))
             .a(class::REMINDER)
             .text(pred::TEXT, &self.text)
             .time(pred::DUE_AT, &self.due_at)
             .link(pred::BY, ASSISTANT)
-            .time(pred::AT, &self.at)
-            .build()
+            .time(pred::AT, &self.at);
+        let b = if self.repeat.is_empty() { b } else { b.text("desk:repeat", &self.repeat) };
+        b.build()
     }
 }
 

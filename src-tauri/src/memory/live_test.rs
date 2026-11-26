@@ -64,10 +64,14 @@ async fn live_remember_recall_forget() {
 async fn live_reminders_reload() {
     let memory = live_memory().await;
     let due = time::iso(time::now() + chrono::Duration::hours(2));
-    let reminder = Reminder::new(&format!("stretch {}", time::now_iso()), &due, &time::now_iso());
+    let reminder = Reminder::new(&format!("stretch {}", time::now_iso()), &due, &time::now_iso()).repeating("weekdays", "keeper-live");
     assert!(!memory.write(&reminder).await.queued);
     let upcoming = memory.upcoming_reminders().await.expect("reminders");
-    assert!(upcoming.iter().any(|r| r.id == reminder.id), "a future reminder reloads from the DKG");
+    let back = upcoming.iter().find(|r| r.id == reminder.id).expect("a future reminder reloads from the DKG");
+    assert_eq!(back.repeat, "weekdays", "with how it repeats");
+    // Deleted, it is gone from the node.
+    memory.client().discard(memory.place(), &reminder.asset_name()).await.expect("erased");
+    assert!(!memory.upcoming_reminders().await.expect("reminders").iter().any(|r| r.id == reminder.id));
 }
 
 #[tokio::test]

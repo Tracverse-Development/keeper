@@ -4,6 +4,7 @@
 //!
 //! Adding a skill: one entry in `CATALOGUE` and one arm in `run`.
 
+pub mod reminder_actions;
 pub mod reminders;
 
 use serde::{Deserialize, Serialize};
@@ -40,7 +41,7 @@ pub struct Outcome {
 const CATALOGUE: &[(&str, &str)] = &[
     ("open-app", "{\"name\": \"Notes\"} opens a Mac app by name"),
     ("open-website", "{\"url\": \"https://umojaark.com\"} opens a website in the browser"),
-    ("remind", "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later"),
+    ("remind", "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later; add \"repeat\": \"daily\", \"weekdays\" or \"weekly\" (with atLocal) for one that comes back"),
     ("add-event", "{\"title\": \"Dentist\", \"start\": \"2026-12-01T15:00:00-05:00\", \"end\": \"2026-12-01T16:00:00-05:00\"} puts an event on the person's calendar (RFC 3339 times with offset)"),
     ("find-contact", "{\"name\": \"Hannah\"} looks someone up in the person's contacts (phone numbers, emails)"),
     ("recall-actions", "{} lists what you have done for the person recently (from the DKG)"),
@@ -69,6 +70,8 @@ pub struct SkillEnv<'a> {
     pub app: &'a tauri::AppHandle,
     pub memory: &'a Memory,
     pub reminders: &'a reminders::Scheduler,
+    /// The keeper acting (a repeating reminder is written back to its memory each time).
+    pub keeper: &'a str,
 }
 
 pub async fn run(req: &ActionRequest, env: &SkillEnv<'_>) -> Outcome {
@@ -164,10 +167,11 @@ fn open_website(input: &serde_json::Value) -> Result<String> {
 async fn remind(input: &serde_json::Value, env: &SkillEnv<'_>) -> Result<String> {
     let text = str_field(input, "text")?;
     let due = reminders::due_time(input, time::now()).ok_or_else(|| DeskError::Invalid("I need to know when: in some minutes, or a time like 5:30 pm.".into()))?;
-    let reminder = Reminder::new(text, &time::iso(due), &time::now_iso());
+    let repeat = reminders::repeat_of(input).map_err(DeskError::Invalid)?;
+    let reminder = Reminder::new(text, &time::iso(due), &time::now_iso()).repeating(&repeat, env.keeper);
     let receipt = env.memory.write(&reminder).await;
     env.reminders.schedule(reminder.clone());
-    let when = due.with_timezone(&chrono::Local).format("%-I:%M %p").to_string();
+    let when = format!("{}{}", due.with_timezone(&chrono::Local).format("%-I:%M %p"), reminders::repeat_words(&repeat));
     let saved = if receipt.queued { "It's saved here and will reach your memory node when it's back." } else { "It's in your memory graph." };
     Ok(format!("I'll remind you to {text} at {when}. {saved}"))
 }
