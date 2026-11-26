@@ -183,3 +183,14 @@ export interface HealthCheck {
   /** The fix's label (`health_fix` with this check's id), or null when there is none. */
   fix: string | null;
 }
+
+/** What a pack's signature says (`keepers::kit::pack_sign::Check`). */
+export type PackSignature = { state: 'unsigned' } | { state: 'valid'; key: string; fingerprint: string } | { state: 'broken' };
+
+/** Where a pack comes from, checked before it is added (`pack_sign::Trust`). */
+export interface PackTrust {
+  signature: PackSignature;
+  maker: string | null;
+  seenBefore: boolean;
+  otherKeyForName: boolean;
+}

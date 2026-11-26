@@ -23,8 +23,12 @@ droplets); GitHub CI runs only the basic Linux checks on push (`.github/workflow
    creates the draft release if needed, uploads the `.dmg`, `.app.tar.gz` and `.sig` files, merges both
    Macs into the draft's `latest.json` (the `darwin-<arch>` and `darwin-<arch>-app` entries both name
    the new build), checks the platforms in `REQUIRE` are signed, and publishes.
-4. Prove it: an installed older copy in a clean VM updates itself (round 10 did 0.6.2 → 0.7.0;
-   `~/ForemanProjects/vm` holds tart and the VM driver scripts).
+4. Prove it: an installed older copy in a fresh VM updates itself:
+   `bash scripts/update-proof.sh <previous> <new>` clones the test VM, wipes Keeper from it, installs the
+   previous release from GitHub, opens it, and passes only when it has replaced itself with the new one
+   (0.11.1 → 0.11.2 took about 10 s). It deletes its VM copy at the end.
+5. Release notes are the version's CHANGELOG.md entry: write it before raising the version
+   (`scripts/changelog.py --check <version>` is run by release.sh, and the suite fails without it).
 
 Linux and Windows: built in-house on a VM or droplet (Windows cross-built from Linux with
 cargo-xwin) once that build host exists; until then a release carries the Mac builds, and Linux and

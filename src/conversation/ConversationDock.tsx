@@ -8,6 +8,8 @@ import { DkgTrail } from './DkgTrail';
 import { KnownFacts } from './KnownFacts';
 import { Receipt } from './Receipt';
 import { forgottenWords } from './known-facts';
+import { UndoFact } from './UndoFact';
+import { waitingWords } from './undo-view';
 import { speedWords } from './speed-words';
 import type { Exchange } from './useAssistant';
 
@@ -73,10 +75,14 @@ export function ConversationDock(p: Props) {
                       <li key={f.id}>Remembered: {f.text}</li>
                     ))}
                     {x.result.forgotten.map((f) => (
-                      <li key={f.id} className="is-gone">{forgottenWords(x.result!.learned.length > 0)}: {f.text}</li>
+                      <li key={f.id}>
+                        <span className="is-gone">{forgottenWords(x.result!.learned.length > 0)}: {f.text}</span>
+                        <UndoFact fact={f} keeper={x.result!.keeper} leftAt={x.at ?? 0} />
+                      </li>
                     ))}
                   </ul>
                 )}
+                {waitingWords(x.result.writes.filter((w) => w.queued).length) && <p className="muted small">{waitingWords(x.result.writes.filter((w) => w.queued).length)}</p>}
                 {x.note && <p className="bubble-note">✦ {x.note}</p>}
                 {x.result.steps.length > 0 && <Receipt steps={x.result.steps} busy={p.busy} onUndo={p.onSend} />}
                 {(x.result.used?.length ?? 0) > 0 && <KnownFacts facts={x.result.used ?? []} keeper={x.result.keeper} />}

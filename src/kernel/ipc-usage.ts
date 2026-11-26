@@ -24,3 +24,10 @@ export interface Spending {
   capUsd: number;
   reached: boolean;
 }
+
+/** One version's changelog entry (`updater::whats_new::Entry`): its sections in order. */
+export interface ChangeEntry {
+  version: string;
+  date: string;
+  sections: [string, string[]][];
+}

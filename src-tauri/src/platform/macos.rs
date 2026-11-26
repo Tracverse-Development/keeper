@@ -72,6 +72,11 @@ pub async fn clipboard_write(text: &str) -> Result<()> {
     }
 }
 
+pub fn system_version() -> String {
+    let version = Command::new("/usr/bin/sw_vers").arg("-productVersion").output().ok().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()).unwrap_or_default();
+    format!("macOS {version}")
+}
+
 pub fn computer_name() -> String {
     Command::new("/usr/sbin/scutil")
         .args(["--get", "ComputerName"])

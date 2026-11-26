@@ -7,11 +7,12 @@ import { useRef, useState, type DragEvent } from 'react';
 
 import { core, sentence, type Imported } from '../kernel/ipc';
 import { PACK_MAX_BYTES, packPreview, type PackPreview } from './market-view';
+import { trustLine, type TrustLine } from './pack-trust';
 
 export function PackDrop({ onImported }: { onImported: (i: Imported) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
-  const [pending, setPending] = useState<{ text: string; preview: Extract<PackPreview, { ok: true }> } | null>(null);
+  const [pending, setPending] = useState<{ text: string; preview: Extract<PackPreview, { ok: true }>; trust: TrustLine | null } | null>(null);
   const [note, setNote] = useState<{ words: string; bad: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -30,7 +31,9 @@ export function PackDrop({ onImported }: { onImported: (i: Imported) => void }) 
       return;
     }
     setNote(null);
-    setPending({ text, preview });
+    // Its signature is checked by the core; without an answer, nothing is claimed about it.
+    const trust = await core.checkPack(text).then(trustLine).catch(() => null);
+    setPending({ text, preview, trust });
   };
 
   const add = async () => {
@@ -72,15 +75,15 @@ export function PackDrop({ onImported }: { onImported: (i: Imported) => void }) 
             <p className="pack-maker small">
               Made by <strong>{pending.preview.maker.name}</strong>
               {pending.preview.maker.link && <span className="muted selectable"> · {pending.preview.maker.link}</span>}
-              <span className="muted"> (the name on the file; not checked)</span>
             </p>
           )}
+          {pending.trust && <p className={`pack-trust small is-${pending.trust.tone}`}>{pending.trust.words}</p>}
           <ul className="pack-carries">
             {pending.preview.carries.map((c) => <li key={c}>{c}</li>)}
             <li className="muted">No memories, no code</li>
           </ul>
           <div className="item-actions">
-            <button type="button" className="btn btn-primary btn-small" disabled={adding} onClick={() => void add()}>{adding ? 'Adding…' : pending.preview.kind === 'keeper' ? 'Add this keeper' : 'Add to my kit'}</button>
+            <button type="button" className="btn btn-primary btn-small" disabled={adding || pending.trust?.tone === 'bad'} onClick={() => void add()}>{adding ? 'Adding…' : pending.preview.kind === 'keeper' ? 'Add this keeper' : 'Add to my kit'}</button>
             <button type="button" className="btn btn-ghost btn-small" disabled={adding} onClick={() => setPending(null)}>Not now</button>
           </div>
         </div>

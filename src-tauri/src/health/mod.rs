@@ -151,3 +151,29 @@ pub async fn health_fix(app: AppHandle, state: State<'_, AppState>, id: String) 
     }
     Ok(all(&app, &state).await)
 }
+
+/// Everything support needs to see what is wrong, as one text to copy: the version, this Mac's
+/// system, every health check, and the last lines of Keeper's own log. Holds no conversation,
+/// fact, name of a person, key or file content; the person sees it before sharing it.
+#[tauri::command]
+pub async fn support_report(app: AppHandle, state: State<'_, AppState>) -> Result<String> {
+    let checks = all(&app, &state).await;
+    let settings = state.settings();
+    let system = crate::platform::system_version();
+    let mut out = vec![
+        format!("Keeper {}", app.package_info().version),
+        format!("{system} ({})", std::env::consts::ARCH),
+        format!("{} keeper(s); mind of the active keeper: {}", settings.keepers.len(), settings.active().map(|k| crate::brain::engines::label(&k.brain)).unwrap_or("none")),
+        String::new(),
+        "Health:".into(),
+    ];
+    out.extend(checks.iter().map(|c| format!("- {} [{:?}]: {}", c.name, c.level, c.detail)));
+    out.push(String::new());
+    out.push("Recent problems (Keeper's log):".into());
+    let lines = crate::kernel::log::tail(60);
+    if lines.is_empty() {
+        out.push("(none)".into());
+    }
+    out.extend(lines);
+    Ok(out.join("\n"))
+}

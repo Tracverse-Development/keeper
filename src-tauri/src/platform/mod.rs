@@ -38,6 +38,11 @@ pub fn notify(title: &str, body: &str) {
     os::notify(title, body)
 }
 
+/// The system's name and version ("macOS 27.2"), for a support report.
+pub fn system_version() -> String {
+    os::system_version()
+}
+
 /// The computer's name ("Ada's MacBook Pro"), for naming a new node.
 pub fn computer_name() -> String {
     os::computer_name()

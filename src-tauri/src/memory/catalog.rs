@@ -60,7 +60,7 @@ pub const QUESTIONS: &[Question] = &[
         body: "SELECT ?r ?fact ?at WHERE { ?r a desk:Retraction ; desk:retracts ?fact ; prov:generatedAtTime ?at } ORDER BY DESC(?at) LIMIT 200" },
     // ---- conversations ----
     Question { id: "chats", title: "Our chats", group: "Conversations", params: &[],
-        body: "SELECT ?c ?title ?at ?pinned WHERE { ?c a desk:Chat ; schema:name ?title ; prov:generatedAtTime ?at . OPTIONAL { ?c desk:pinned ?pinned } } ORDER BY DESC(?at) LIMIT 100" },
+        body: "SELECT ?c ?title ?at ?pinned WHERE { ?c a desk:Chat ; schema:name ?title ; prov:generatedAtTime ?at . OPTIONAL { ?c desk:pinned ?pinned } } ORDER BY DESC(?at) LIMIT 500" },
     Question { id: "chat-turns", title: "One chat, start to finish", group: "Conversations", params: &[Param::Chat],
         body: "SELECT ?t ?said ?replied ?mind ?at ?panels ?mode WHERE { ?t a desk:Turn ; desk:inChat <urn:umoja:desk:chat:{chat}> ; desk:said ?said ; desk:replied ?replied ; prov:generatedAtTime ?at . OPTIONAL { ?t desk:mind ?mind } OPTIONAL { ?t desk:panels ?panels } OPTIONAL { ?t desk:mode ?mode } } ORDER BY ?at LIMIT 300" },
     Question { id: "turns-recent", title: "What we talked about lately", group: "Conversations", params: &[Param::Days],

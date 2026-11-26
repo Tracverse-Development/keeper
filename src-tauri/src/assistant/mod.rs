@@ -111,7 +111,12 @@ pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: St
         Some(input) => Some(attach::read(&input, Some(&app)).await?),
         None => None,
     };
-    run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached).await
+    let result = run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached).await;
+    if let Err(e) = &result {
+        // The failure, never the message that caused it.
+        crate::kernel::log::error("turn", &e.to_string());
+    }
+    result
 }
 
 /// One turn, from the window, the talk window or the phone link.

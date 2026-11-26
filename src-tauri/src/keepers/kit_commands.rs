@@ -116,7 +116,7 @@ pub fn pack_export(state: State<'_, AppState>, kind: String, id: String) -> Resu
         _ => return Err(DeskError::Invalid("Choose a keeper or a soul to share.".into())),
     };
     let path = downloads_file(&name);
-    std::fs::write(&path, packs::write(&pack, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref()))?;
+    std::fs::write(&path, packs::write(&pack, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref())?)?;
     platform::reveal(&path);
     Ok(path.display().to_string())
 }
@@ -134,6 +134,18 @@ pub struct Imported {
 /// becomes a new keeper with its own fresh graph (no memories come with it).
 #[tauri::command]
 pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imported> {
+    // A pack that says it is signed but does not check out was changed or forged: refused.
+    let signature = super::kit::pack_sign::check(&text);
+    if signature == super::kit::pack_sign::Check::Broken {
+        return Err(DeskError::Invalid("This pack's signature doesn't match its contents: it was changed after it was made, so I won't add it.".into()));
+    }
+    // A signed pack's key is remembered with the maker name it gave (trust on first use).
+    if let (super::kit::pack_sign::Check::Valid { key, .. }, Some(maker)) = (&signature, packs::maker_of(&text)) {
+        let (key, name) = (key.clone(), maker.name);
+        let _ = state.update_settings(|s| {
+            s.known_makers.entry(key).or_insert(name);
+        });
+    }
     if crate::kernel::child_lock::on() {
         return Err(DeskError::Invalid("Packs from other people are switched off on a child profile.".into()));
     }
@@ -186,4 +198,14 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
             Ok(Imported { kind: "keeper", name, keeper: Some(id) })
         }
     }
+}
+
+/// What a pack says about where it comes from, checked before it is added: its signature, its
+/// maker, and whether this key or this maker's name was seen before.
+#[tauri::command]
+pub fn pack_check(state: State<'_, AppState>, text: String) -> Result<super::kit::pack_sign::Trust> {
+    if text.len() > packs::MAX_BYTES {
+        return Err(DeskError::Invalid("That file is too big to be a keeper pack.".into()));
+    }
+    Ok(super::kit::pack_sign::trust(&text, &state.settings().known_makers))
 }

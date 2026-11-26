@@ -41,6 +41,8 @@ pub fn look_guard_hook() {
 }
 
 pub fn run() {
+    // A crash is written down before the app ends (kernel::log).
+    kernel::log::catch_panics();
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(hotkey::plugin())
@@ -161,8 +163,13 @@ pub fn run() {
             skills::reminder_actions::reminder_cancel,
             memory::chats::chat_change,
             memory::chats::chats_search,
+            commands::memory_restore_fact,
+            updater::whats_new::whats_new,
+            updater::whats_new::whats_new_seen,
+            keepers::kit_commands::pack_check,
             health::health_check,
             health::health_fix,
+            health::support_report,
             focus::focus_state,
             focus::focus_stop,
             backup::backup_save,

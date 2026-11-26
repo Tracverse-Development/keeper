@@ -79,6 +79,24 @@ impl DkgClient {
     }
 
     async fn call(&self, method: reqwest::Method, path: &str, body: Option<serde_json::Value>, timeout: Duration) -> Result<serde_json::Value> {
+        // A read the node could not answer this moment (not reachable, too slow, busy) is tried
+        // once more after a short pause; writes are never repeated here (the outbox owns them).
+        let read = method == reqwest::Method::GET || path == "/api/query";
+        let first = self.call_once(method.clone(), path, body.clone(), timeout).await;
+        let result = match first {
+            Err(DeskError::Node(ref why)) if read && retryable(why) => {
+                tokio::time::sleep(Duration::from_millis(RETRY_PAUSE_MS)).await;
+                self.call_once(method, path, body, timeout).await
+            }
+            other => other,
+        };
+        if let Err(DeskError::Node(why)) = &result {
+            crate::kernel::log::error("node", &format!("{path}: {why}"));
+        }
+        result
+    }
+
+    async fn call_once(&self, method: reqwest::Method, path: &str, body: Option<serde_json::Value>, timeout: Duration) -> Result<serde_json::Value> {
         let mut req = self.http.request(method, format!("{}{path}", self.base)).timeout(timeout).bearer_auth(&self.token);
         if let Some(body) = body {
             req = req.json(&body);
@@ -177,6 +195,15 @@ impl DkgClient {
             .map(|row| row.into_iter().map(|(k, v)| (k, literal::decode(v.as_str().unwrap_or_default()))).collect())
             .collect())
     }
+}
+
+/// How long to wait before asking the node once more.
+const RETRY_PAUSE_MS: u64 = 400;
+
+/// A failure worth one more try: the node was not reachable, slow, or busy (never a refusal of
+/// the request itself, which would only fail again).
+fn retryable(why: &str) -> bool {
+    why.contains("took too long") || why.contains("not running") || why.contains("could not be reached") || why.contains("busy or still starting")
 }
 
 fn transport_words(e: &reqwest::Error) -> String {

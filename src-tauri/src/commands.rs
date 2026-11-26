@@ -316,3 +316,36 @@ pub fn child_profile_set(state: State<'_, AppState>, on: bool, passcode: String)
     }
     Ok(crate::kernel::child_lock::on())
 }
+
+/// A fact as the window sends it back to undo a forget (validated: it becomes memory again).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FactBack {
+    pub text: String,
+    pub category: String,
+    pub at: String,
+    #[serde(default)]
+    pub mode: String,
+    #[serde(default)]
+    pub topics: Vec<String>,
+}
+
+/// The categories a fact may have (what the mind is told to use).
+const CATEGORIES: [&str; 8] = ["identity", "preference", "person", "place", "health", "schedule", "general", "work"];
+
+/// Undo a forget or a replacement: the fact is remembered again, as it was.
+#[tauri::command]
+pub async fn memory_restore_fact(state: State<'_, AppState>, keeper: Option<String>, fact: FactBack) -> Result<crate::memory::Fact> {
+    let text = fact.text.trim();
+    if text.is_empty() || text.chars().count() > 500 || text.chars().any(char::is_control) {
+        return Err(DeskError::Invalid("That isn't a fact I can put back.".into()));
+    }
+    let category = if CATEGORIES.contains(&fact.category.as_str()) { fact.category.as_str() } else { "general" };
+    let at = crate::kernel::time::parse_iso(&fact.at).map(crate::kernel::time::iso).unwrap_or_else(crate::kernel::time::now_iso);
+    let mode = if crate::keepers::kit::roles::exists(&fact.mode) { fact.mode.as_str() } else { "" };
+    let restored = crate::memory::Fact::new(text, category, &at).about(&fact.topics);
+    let restored = crate::memory::Fact { mode: mode.to_string(), ..restored };
+    let memory = state.memory_for(&state.keeper_or_active(keeper.as_deref().unwrap_or(""))?)?;
+    memory.restore_fact(&restored).await;
+    Ok(restored)
+}

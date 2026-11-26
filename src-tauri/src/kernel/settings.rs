@@ -152,6 +152,13 @@ pub struct Settings {
     /// (`kernel::usage`); 0 = no limit. Once reached, turns stay on this computer.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub monthly_cap_usd: f64,
+    /// Keys that signed packs the person added, and the maker name each pack gave (trust on first
+    /// use: a pack naming a known maker but signed by another key is flagged).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub known_makers: std::collections::BTreeMap<String, String>,
+    /// The newest version whose "What's new" the person has seen (`updater::whats_new`).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub last_seen_version: String,
     /// The name (and optional https link) put on packs the person shares, as their maker
     /// (`keepers::kit::packs::Maker`); empty = packs carry no maker.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -201,6 +208,8 @@ impl Default for Settings {
             talk_shortcut: "Alt+Space".into(),
             auto_update: true,
             monthly_cap_usd: 0.0,
+            last_seen_version: String::new(),
+            known_makers: Default::default(),
             maker_name: String::new(),
             maker_link: String::new(),
             kit_moved: false,

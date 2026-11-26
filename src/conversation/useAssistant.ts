@@ -21,6 +21,8 @@ export interface Exchange {
   queued?: boolean;
   /** A small celebration under the answer (a level up), never in place of it. */
   note?: string;
+  /** When the answer arrived (ms): Undo for what it forgot is offered for a while after. */
+  at?: number;
 }
 
 const KEEP = 40;
@@ -96,7 +98,7 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
         setChatId(result.chat);
         // A turn that moved to another mode leaves the chat in that mode (the picker follows).
         if (result.switched && result.mode) setMode(result.mode);
-        setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result } : x)));
+        setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result, at: Date.now() } : x)));
         replyRef.current(result, said);
       }
     } catch (e) {

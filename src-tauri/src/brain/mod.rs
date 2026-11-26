@@ -54,7 +54,10 @@ pub async fn think(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(Pro
         (Some(Err(crate::kernel::DeskError::Brain(m))), _) if m == engines::cli::STOPPED => {
             (Thought { reply: "Okay, I stopped.".into(), ..Thought::default() }, MindUsed { id: "stopped".into(), label: "Stopped".into(), local: true, fell_back: None })
         }
-        (Some(Err(e)), _) => (reflex::think(ctx), builtin(Some(format!("{}: {e}", engines::label(id))))),
+        (Some(Err(e)), _) => {
+            crate::kernel::log::error("mind", &format!("{} did not answer: {e}", engines::label(id)));
+            (reflex::think(ctx), builtin(Some(format!("{}: {e}", engines::label(id)))))
+        }
         _ => (reflex::think(ctx), builtin(None)),
     }
 }

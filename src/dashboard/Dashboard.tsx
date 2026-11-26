@@ -5,7 +5,7 @@
  * `useChats`, `useAssistant`, `useVoice`, `useDashboardEvents`) and the pure rules (`mood.ts`,
  * `person-name.ts`).
  */
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
@@ -19,11 +19,8 @@ import { useKit } from '../keepers/useKit';
 import { focusQuestion } from '../kernel/panel-spec';
 import { useChats } from '../keepers/useChats';
 import { useKeepers } from '../keepers/useKeepers';
-import { MemoryDrawer } from '../memory/MemoryDrawer';
 import { CommandPalette } from '../palette/CommandPalette';
 import { paletteCommands } from '../palette/palette-commands';
-import { SettingsSheet } from '../settings/SettingsSheet';
-import { StudioPage } from '../studio/StudioPage';
 import { levelUpLine } from '../studio/studio-view';
 import { useLevelUp } from '../studio/useLevelUp';
 import { Stage } from '../stage/Stage';
@@ -35,6 +32,7 @@ import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
 import { CanDoPage } from './CanDoPage';
+import { WhatsNew } from './WhatsNew';
 import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
@@ -42,8 +40,21 @@ import { usePinnedScenes } from './usePinnedScenes';
 import { useStageState } from './useStageState';
 import './dashboard.css';
 
+// Screens opened now and then load the first time they are opened, so the window itself opens
+// sooner (they stay loaded after that, so closing and reopening keeps their animation).
+const MemoryDrawer = lazy(() => import('../memory/MemoryDrawer').then((m) => ({ default: m.MemoryDrawer })));
+const SettingsSheet = lazy(() => import('../settings/SettingsSheet').then((m) => ({ default: m.SettingsSheet })));
+const StudioPage = lazy(() => import('../studio/StudioPage').then((m) => ({ default: m.StudioPage })));
+
 /** One touch reaction at a time; a burst of clicks is one poke. */
 const TOUCH_GAP_MS = 1500;
+
+/** Which flags have ever been true: a screen loads the first time it is opened and stays. */
+function useOpened<K extends string>(now: Record<K, boolean>): Record<K, boolean> {
+  const ever = useRef({} as Record<K, boolean>);
+  for (const key of Object.keys(now) as K[]) if (now[key]) ever.current[key] = true;
+  return ever.current;
+}
 
 export function Dashboard({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial);
@@ -52,6 +63,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [studioOpen, setStudioOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [canDoOpen, setCanDoOpen] = useState(false);
+  // Which of the screens loaded on first use have been opened (then they stay mounted).
+  const opened = useOpened({ memory: memoryOpen, settings: settingsOpen, studio: studioOpen });
   /** Words that land Settings on a section when it opens ("backup"). */
   const [settingsFind, setSettingsFind] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
@@ -321,6 +334,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMic={voice.listen}
         onStop={stop}
       />
+      <WhatsNew />
       <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place, find) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? (setSettingsFind(find ?? ''), setSettingsOpen(true)) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
       <CommandPalette
         open={paletteOpen}
@@ -351,9 +365,10 @@ export function Dashboard({ initial }: { initial: Settings }) {
           openPinned: pins.open,
         })}
       />
-      {keeper && <MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} />}
-      {keeper && <StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} />}
-      {keeper && (
+      {keeper && opened.memory && <Suspense fallback={null}><MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} /></Suspense>}
+      {keeper && opened.studio && <Suspense fallback={null}><StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} /></Suspense>}
+      {keeper && opened.settings && (
+        <Suspense fallback={null}>
         <SettingsSheet
           open={settingsOpen}
           find={settingsFind}
@@ -367,6 +382,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           onKeeperChange={changeKeeper}
           onRemoveKeeper={keepers.list && keepers.list.keepers.length > 1 ? () => keepers.remove(keeper.id).then(() => setSettingsOpen(false)) : undefined}
         />
+        </Suspense>
       )}
     </main>
   );

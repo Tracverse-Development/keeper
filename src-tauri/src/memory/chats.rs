@@ -15,7 +15,7 @@ const MAX_TITLE: usize = 60;
 const MOST_FOUND: usize = 20;
 const SNIPPET: usize = 120;
 /// How many of the latest exchanges a search reads.
-const SEARCHED: usize = 400;
+const SEARCHED: usize = 3000;
 const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> PREFIX prov: <http://www.w3.org/ns/prov#> ";
 
 /// A chat's title as kept: single spaces, no control characters, a sane length; None when empty.
@@ -93,7 +93,7 @@ impl Memory {
         Ok(changed)
     }
 
-    /// Search this keeper's conversations (its latest four hundred exchanges) for `query`.
+    /// Search this keeper's conversations (its latest three thousand exchanges) for `query`.
     /// One bounded read naming its class, each exchange with the chat it belongs to.
     pub async fn search_chats(&self, query: &str) -> Result<Vec<Found>> {
         if search_words(query).is_empty() {

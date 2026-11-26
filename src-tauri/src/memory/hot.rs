@@ -118,6 +118,8 @@ pub fn apply(graph: &str, change: HotChange) {
     let Some(m) = pool.as_mut().and_then(|p| p.get_mut(graph)) else { return };
     match change {
         HotChange::Fact(f) => {
+            // A fact written again (Undo after Forget) is known again.
+            m.gone.remove(&f.id);
             m.facts.retain(|x| x.id != f.id);
             m.facts.insert(0, f);
         }

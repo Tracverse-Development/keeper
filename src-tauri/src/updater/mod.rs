@@ -4,6 +4,8 @@
 //! restart. "Check for updates" in Settings does the same on demand. An update whose signature
 //! does not match is refused by the updater itself.
 
+pub mod whats_new;
+
 use std::time::Duration;
 
 use serde::Serialize;

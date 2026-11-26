@@ -53,7 +53,31 @@ pub struct CachedScene {
 impl CachedScene {
     /// The scene to keep for this question (None when it showed nothing).
     pub fn new(question: &str, reply: &str, panels: &[Panel]) -> Option<CachedScene> {
+        // "Switching to Tutor mode for this." was true the first time only: the kept scene holds
+        // the answer itself (the bench showed a cached lesson announcing a switch that did not happen).
+        let reply = without_switch(reply);
         (!panels.is_empty()).then(|| CachedScene { key: key(question), question: question.to_string(), reply: reply.to_string(), panels: panels.to_vec(), at: crate::kernel::time::now_iso() })
+    }
+}
+
+/// The reply without a leading "Switching to … mode for this." line.
+fn without_switch(reply: &str) -> &str {
+    let r = reply.trim_start();
+    if r.starts_with("Switching to ") {
+        if let Some(end) = r.find(" mode for this.") {
+            return r[end + " mode for this.".len()..].trim_start();
+        }
+    }
+    reply
+}
+
+#[cfg(test)]
+mod switch_tests {
+    #[test]
+    fn a_kept_scene_does_not_announce_a_switch() {
+        assert_eq!(super::without_switch("Switching to Tutor mode for this. A rainbow forms…"), "A rainbow forms…");
+        assert_eq!(super::without_switch("A rainbow forms…"), "A rainbow forms…");
+        assert_eq!(super::without_switch("Switching to a new hobby is fun."), "Switching to a new hobby is fun.");
     }
 }
 

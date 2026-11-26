@@ -8,6 +8,25 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.12.0] - 2026-11-26
+
+### Added
+- What's new: after an update, Keeper shows once what changed in each version since you last looked.
+- Undo for 30 seconds after a fact is forgotten or replaced by a newer one.
+- Packs are signed with your own key. Before a pack is added, Keeper says whether it is unchanged since it was made, whether it comes from a maker whose packs you added before, and warns when it uses a known maker's name with a different key. A pack that was changed after signing is refused.
+- "Copy a report for support" in Settings, Health: the version, this Mac's system, every health check and Keeper's recent problems, with no conversations, facts or keys.
+- Keeper keeps its own log of what went wrong, on this Mac only, including any crash.
+- Under an answer, a note when what it learned is waiting to reach your memory (it is kept on this Mac until the node answers).
+
+### Changed
+- A read from the memory node that fails because the node was busy or slow is tried once more before an error is shown.
+- Chat search covers your latest 3,000 exchanges (was 400), and the chat list shows up to 500 chats (was 100).
+- The window opens a little faster: the Studio, Settings and Memory screens load the first time they are opened.
+- Each release is checked, in a fresh virtual Mac, to update an installed copy of the version before it by itself.
+
+### Fixed
+- A lesson opened again from memory said "Switching to Tutor mode" although nothing switched.
+
 ## [0.11.2] - 2026-11-26
 
 ### Fixed

@@ -242,6 +242,8 @@ export interface Fact {
   at: string;
   /** Everyday words for what it is about, added when it was learned (absent on older facts). */
   topics?: string[];
+  /** The mode whose working memory it belongs to (absent: personal, every mode). */
+  mode?: string;
 }
 
 export interface Turn {

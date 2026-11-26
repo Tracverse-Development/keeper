@@ -11,6 +11,9 @@ pub fn open_url(_: &str) -> Result<()> {
     Err(DeskError::Invalid("Opening pages is not supported on this system yet.".into()))
 }
 pub fn notify(_: &str, _: &str) {}
+pub fn system_version() -> String {
+    std::env::consts::OS.to_string()
+}
 pub fn computer_name() -> String {
     "Keeper".into()
 }

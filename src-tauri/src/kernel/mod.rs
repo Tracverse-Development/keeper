@@ -3,6 +3,7 @@
 
 pub mod child_lock;
 pub mod error;
+pub mod log;
 pub mod events;
 pub mod paths;
 pub mod programs;

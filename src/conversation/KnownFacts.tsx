@@ -8,10 +8,13 @@ import { useState } from 'react';
 import { core, sentence } from '../kernel/ipc';
 import type { Fact } from '../kernel/ipc-types';
 import { knownLine, stillKnown } from './known-facts';
+import { UndoFact } from './UndoFact';
 
 export function KnownFacts({ facts, keeper }: { facts: Fact[]; keeper: string }) {
   const [open, setOpen] = useState(false);
-  const [forgotten, setForgotten] = useState<ReadonlySet<string>>(new Set());
+  // What was forgotten here, and when (Undo is offered for a while after).
+  const [forgottenAt, setForgottenAt] = useState<ReadonlyMap<string, number>>(new Map());
+  const forgotten: ReadonlySet<string> = new Set(forgottenAt.keys());
   const [busy, setBusy] = useState('');
   const [error, setError] = useState<string | null>(null);
   const left = stillKnown(facts, forgotten);
@@ -21,7 +24,7 @@ export function KnownFacts({ facts, keeper }: { facts: Fact[]; keeper: string })
     setError(null);
     try {
       await core.forgetFact(id, keeper || undefined);
-      setForgotten((f) => new Set(f).add(id));
+      setForgottenAt((m) => new Map(m).set(id, Date.now()));
     } catch (e) {
       setError(sentence(e));
     } finally {
@@ -47,7 +50,26 @@ export function KnownFacts({ facts, keeper }: { facts: Fact[]; keeper: string })
               </button>
             </li>
           ))}
-          {left.length === 0 && <li className="muted">Nothing from this answer is remembered any more.</li>}
+          {facts
+            .filter((f) => forgottenAt.has(f.id))
+            .map((f) => (
+              <li key={f.id} className="is-forgotten">
+                <span className="muted">Forgot: {f.text}</span>
+                <UndoFact
+                  fact={f}
+                  keeper={keeper}
+                  leftAt={forgottenAt.get(f.id) ?? 0}
+                  onBack={() =>
+                    setForgottenAt((m) => {
+                      const next = new Map(m);
+                      next.delete(f.id);
+                      return next;
+                    })
+                  }
+                />
+              </li>
+            ))}
+          {left.length === 0 && forgottenAt.size === 0 && <li className="muted">Nothing from this answer is remembered any more.</li>}
           {error && <li className="error-line">{error}</li>}
         </ul>
       )}

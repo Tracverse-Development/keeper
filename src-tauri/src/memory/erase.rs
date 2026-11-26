@@ -47,6 +47,14 @@ impl Memory {
         stale
     }
 
+    /// Undo a forget: the fact is written back exactly as it was (same words, so the same id
+    /// and record name), and a retraction written while the node was away is removed, so it is
+    /// recalled again at once.
+    pub async fn restore_fact(&self, fact: &Fact) -> WriteReceipt {
+        let _ = self.discard_everywhere(&format!("desk-retraction-{}", fact.id)).await;
+        self.write(fact).await
+    }
+
     /// Delete a chat for real: every turn in it and the chat itself are discarded from Working
     /// Memory (the person's words leave the node). Returns how many turns were erased. Stops at
     /// the first asset the node refuses, so a half-deleted chat is reported, never hidden.

@@ -168,4 +168,8 @@
 .pack-carries { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .item-card { transition: none; } .item-art-shine { animation: none !important; } }
 .pack-maker { margin: 0; overflow-wrap: anywhere; }
+.pack-trust { margin: 0; color: var(--text-muted); }
+.pack-trust.is-ok { color: var(--success, var(--text)); }
+.pack-trust.is-warn { color: var(--warning, var(--gold-300)); }
+.pack-trust.is-bad { color: var(--danger, var(--text)); }
 .season-quest { flex: 1 1 100%; display: flex; flex-direction: column; gap: var(--space-1); }

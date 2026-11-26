@@ -8,9 +8,9 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { Chat, ChatFound } from './ipc-chats';
-import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, FocusSession, HealthCheck, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
-import type { Spending } from './ipc-usage';
+import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, Fact, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
+import type { FeelingsInfo, FocusSession, HealthCheck, PackTrust, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
+import type { ChangeEntry, Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
@@ -47,6 +47,8 @@ export const core = {
   saveSoul: (soul: Soul) => invoke<Soul>('souls_save', { soul }),
   exportPack: (kind: 'keeper' | 'soul', id: string) => invoke<string>('pack_export', { kind, id }),
   importPack: (text: string) => invoke<Imported>('pack_import', { text }),
+  /** Where a pack comes from (its signature and maker), before it is added. */
+  checkPack: (text: string) => invoke<PackTrust>('pack_check', { text }),
   wardrobe: () => invoke<Wardrobe>('wardrobe_list'),
   wardrobeWear: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_wear', { keeper, item }),
   wardrobeTakeOff: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_take_off', { keeper, item }),
@@ -108,6 +110,13 @@ export const core = {
   finishSetup: (brain: EngineId, model: string, voice: string) => invoke<void>('setup_finish', { brain, model, voice }),
   /** `mode`: the chat's mode (a role id; absent = the keeper's default). */
   turn: (text: string, keeper?: string, chat?: string, mode?: string, attach?: Handed) => invoke<TurnResult>('assistant_turn', { text, keeper, chat, mode, attach }),
+  /** One text for support: version, system, every check and Keeper's recent problems (no conversations or facts). */
+  supportReport: () => invoke<string>('support_report'),
+  /** Undo a forget or a replacement: the fact is remembered again as it was. */
+  restoreFact: (fact: Fact, keeper?: string) => invoke<Fact>('memory_restore_fact', { keeper, fact: { text: fact.text, category: fact.category, at: fact.at, mode: fact.mode ?? '', topics: fact.topics ?? [] } }),
+  /** The changelog entries newer than what the person last saw, and marking them seen. */
+  whatsNew: () => invoke<ChangeEntry[]>('whats_new'),
+  whatsNewSeen: () => invoke<void>('whats_new_seen'),
   /** Run every health check now, and do the one fix a check offers (then check again). */
   healthCheck: () => invoke<HealthCheck[]>('health_check'),
   healthFix: (id: string) => invoke<HealthCheck[]>('health_fix', { id }),

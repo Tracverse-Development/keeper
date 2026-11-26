@@ -130,14 +130,21 @@ pub fn clean_maker(name: &str, link: &str) -> Option<Maker> {
     Some(Maker { name, link: if link_ok { link.to_string() } else { String::new() } })
 }
 
-/// The text of a pack (pretty JSON), ready to save as `<name>.keeper.json`, with its maker's
-/// name when the person gave one.
-pub fn write(pack: &Pack, maker: Option<&Maker>) -> String {
+/// The text of a pack (pretty JSON), ready to save as `<name>.keeper.json`: its maker's name when
+/// the person gave one, and signed with this person's key (`pack_sign`).
+pub fn write(pack: &Pack, maker: Option<&Maker>) -> crate::kernel::Result<String> {
     let mut value = serde_json::to_value(pack).unwrap_or_default();
     if let (Some(maker), Some(object)) = (maker, value.as_object_mut()) {
         object.insert("maker".into(), serde_json::to_value(maker).unwrap_or_default());
     }
-    serde_json::to_string_pretty(&value).unwrap_or_default()
+    super::pack_sign::sign(&mut value)?;
+    Ok(serde_json::to_string_pretty(&value).unwrap_or_default())
+}
+
+/// The maker a pack's text names, if any (read without trusting it; cleaned).
+pub fn maker_of(text: &str) -> Option<Maker> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    clean_maker(v["maker"]["name"].as_str()?, v["maker"]["link"].as_str().unwrap_or(""))
 }
 
 #[cfg(test)]
@@ -152,7 +159,7 @@ mod tests {
         let Pack::Keeper { keeper, .. } = read(&text).unwrap() else { panic!() };
         assert_eq!((keeper.name.as_str(), keeper.species.as_str(), keeper.wearables[0].part.as_str()), ("Halo Dog", "puppy", "memory-halo"));
         let maker = clean_maker("  Amos   Thomas ", "https://umojaark.com/amos").unwrap();
-        let text = write(&Pack::Keeper { format: FORMAT.into(), keeper }, Some(&maker));
+        let text = write(&Pack::Keeper { format: FORMAT.into(), keeper }, Some(&maker)).unwrap();
         assert!(read(&text).is_ok(), "a pack with a maker still reads");
         assert!(text.contains("\"maker\"") && text.contains("Amos Thomas") && text.contains("https://umojaark.com/amos"));
         assert_eq!(clean_maker("Amos", "javascript:alert(1)").unwrap().link, "", "only https links are kept");
@@ -172,7 +179,7 @@ mod tests {
         assert_eq!(keeper.habits.get("chase-tail"), Some(&3.0));
         assert_eq!(keeper.habits.get("sleep"), Some(&3.0), "clamped");
         assert!(!keeper.habits.contains_key("hum"), "humming is the robot's");
-        let again = read(&write(&Pack::Keeper { format: FORMAT.into(), keeper: keeper.clone() }, None)).unwrap();
+        let again = read(&write(&Pack::Keeper { format: FORMAT.into(), keeper: keeper.clone() }, None).unwrap()).unwrap();
         assert_eq!(again, Pack::Keeper { format: FORMAT.into(), keeper });
     }
 

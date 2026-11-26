@@ -24,6 +24,27 @@ export function HealthSection() {
   };
   useEffect(() => run('all', core.healthCheck), []);
 
+  // The report holds the version, the system, these checks and Keeper's recent problems: no
+  // conversation, fact or key. Copied, or shown to copy by hand when the clipboard says no.
+  const [copied, setCopied] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(null);
+  const copyReport = async () => {
+    setCopied(null);
+    try {
+      const text = await core.supportReport();
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied('Copied. Paste it into a message to support.');
+        setReport(null);
+      } catch {
+        setReport(text);
+        setCopied('Select it below and copy it.');
+      }
+    } catch (e) {
+      setError(sentence(e));
+    }
+  };
+
   if (!checks) return <p className="muted small">{error ?? 'Checking…'}</p>;
   return (
     <div className="health">
@@ -50,6 +71,13 @@ export function HealthSection() {
           </li>
         ))}
       </ul>
+      <div className="health-support">
+        <button type="button" className="btn btn-ghost btn-small" disabled={busy !== ''} onClick={() => void copyReport()}>
+          Copy a report for support
+        </button>
+        {copied && <span className="muted small">{copied}</span>}
+      </div>
+      {report && <textarea className="field health-report" readOnly value={report} aria-label="Report for support" onFocus={(e) => e.currentTarget.select()} />}
       {error && <p className="error-line">{error}</p>}
     </div>
   );
