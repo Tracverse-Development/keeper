@@ -93,7 +93,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         brain::Progress::Step(step) => phase(app, "acting", step),
         // Work on the computer shows its steps live; its panels wait for the finished answer
         // and arrive together (founder 2026-11-26: panels with no data yet felt wrong).
-        brain::Progress::Panel(_) if ctx.may_act => {}
+        // (A live dashboard is the exception: it carries real readings the moment it appears.)
+        brain::Progress::Panel(ref panel) if ctx.may_act && !matches!(panel, crate::stage::Panel::Live { .. }) => {}
         brain::Progress::Panel(panel) => {
             seen();
             if let Ok(mut f) = panel_ms.lock() {

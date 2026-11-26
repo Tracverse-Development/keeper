@@ -114,7 +114,7 @@ fn reply_turn(req: Request, app: &AppHandle, said: &str, result: crate::kernel::
                 crate::stage::Panel::Approval { token, steps, .. } => Some(json!({ "token": token, "steps": steps })),
                 _ => None,
             });
-            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "chat": result.chat, "panels": result.panels.len(), "timings": result.timings, "plan": plan, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
+            json_reply(req, 200, json!({ "reply": result.reply, "mind": result.mind.label, "chat": result.chat, "panels": result.panels.len(), "panelSpecs": result.panels, "mode": result.mode, "switched": result.switched, "timings": result.timings, "plan": plan, "learned": result.learned.iter().map(|f| &f.text).collect::<Vec<_>>() }));
         }
         Err(e) => json_reply(req, 400, json!({ "error": e.to_string() })),
     }

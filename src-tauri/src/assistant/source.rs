@@ -68,13 +68,28 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
     let settings = state.settings();
     let can_act = brain::engines::spec(&keeper.brain).is_some_and(|s| s.can_act);
     let mode = crate::keepers::kit::roles::get(&keeper.role);
+    // A question that only looks goes straight to a read-only look: one engine call, not a plan
+    // and then a look (nothing changes, so there is nothing to approve).
+    if ctx.may_act && ctx.can_act && can_act && !approved && super::intent::only_looks(&ctx.said) {
+        // First words at once (typed and spoken); the look's own answer replaces them when done.
+        let opening = super::approval::opening_line(&ctx.said);
+        progress(Progress::ReplyText(opening.clone()));
+        progress(Progress::Reply(opening));
+        // A health or network question shows its live dashboard at once, while the look runs.
+        if let Some(live) = approval::live_panel_for(&ctx.said) {
+            progress(Progress::Panel(live));
+        }
+        let quiet = |p: Progress| if matches!(p, Progress::Step(_)) { progress(p) };
+        return approval::look(keeper, ctx, &quiet).await;
+    }
     if ctx.may_act && can_act && mode.may_act() && settings.ask_before_acting && !approved {
         return approval::plan(state, keeper, ctx, chat, progress).await;
     }
     // Pointing at a panel, or a short conversational turn, goes to the quick helper model when
     // one is set: about 1 s to the first words against about 2 s (measured 2026-11-25).
     let quick_turn = ctx.said.starts_with(FOLLOW_UP) || (settings.quick_replies && conversational(&ctx.said));
-    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && style.quick && mode.tools != crate::keepers::kit::roles::Tools::Web;
+    // A tutor teaches with panels every turn: never the quick model.
+    let quick = !settings.fast_model.is_empty() && keeper.brain == "claude" && quick_turn && !ctx.may_act && style.quick && mode.tools != crate::keepers::kit::roles::Tools::Web && mode.id != "tutor";
     let thinker = if quick { KeeperProfile { model: settings.fast_model.clone(), ..keeper.clone() } } else { keeper.clone() };
     let (thought, mut mind) = brain::think(&thinker, ctx, progress).await;
     // Taken as conversation, but the engine says it is computer work: run it again with tools
@@ -98,7 +113,8 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
 /// A short conversational turn: not a lesson, a comparison or anything to build. These words
 /// keep a turn on the keeper's own model, where depth matters more than speed.
 pub fn conversational(said: &str) -> bool {
-    const DEEP: [&str; 16] = ["explain", "teach", "show me", "compare", "analy", "plan ", "write ", "draft", "code", "step by step", "visual", "diagram", "lesson", "quiz", "why does", "how does"];
+    // "Why are leaves green?" is a lesson question, not small talk (scenario bench 2026-11-26).
+    const DEEP: [&str; 21] = ["explain", "teach", "show me", "compare", "analy", "plan ", "write ", "draft", "code", "step by step", "visual", "diagram", "lesson", "quiz", "why ", "how does", "how do ", "how can", "how come", "what makes", "go back"];
     let s = said.to_lowercase();
     s.chars().count() <= 160 && !DEEP.iter().any(|w| s.contains(w))
 }
@@ -111,6 +127,8 @@ mod tests {
         assert!(super::conversational("Remind me to call Maya at 5"));
         assert!(!super::conversational("Explain fractions to me"));
         assert!(!super::conversational("Compare the iPhone and the Pixel"));
+        assert!(!super::conversational("Why are leaves green and not black?"), "a lesson follow-up");
+        assert!(super::conversational("How are you?"), "a greeting stays quick");
         assert!(!super::conversational(&"tell me a story ".repeat(20)));
     }
 }

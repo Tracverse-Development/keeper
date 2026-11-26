@@ -108,7 +108,9 @@ files changed, tell them to switch to System Administrator mode.",
 come from a source you actually read; mark it with the source number in brackets, like [1]. Say plainly where sources disagree or evidence \
 is weak, and give dates for anything that changes over time. ALWAYS end with a sources panel: \
 {\"kind\":\"sources\",\"title\":\"Sources\",\"items\":[{\"title\",\"url\",\"note\"}]} listing each source you cited, in order, with its real URL \
-and one line on what it supports. Never invent a source or a URL. You do not operate the computer.",
+and one line on what it supports. Never invent a source or a URL. You do not operate the computer. Be quick: search at most three times and read at most three pages. A follow-up about what you \
+already found is answered from those findings; search again only for facts you do not have yet. Explain any \
+technical term (SMD, p-value, meta-analysis) in plain words the first time.",
         tools: Tools::Web,
         skills: &["recall-actions", "ask-memory"],
         mood: false,

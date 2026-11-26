@@ -16,9 +16,12 @@ const STRONG: [&str; 8] = ["install", "uninstall", "unzip", "zip", "compress", "
 const VERBS: [&str; 15] = ["move", "delete", "copy", "tidy", "organise", "organize", "run", "edit", "save", "sort", "clean", "backup", "archive", "convert", "create"];
 
 /// Things on the computer a request is about.
-const THINGS: [&str; 19] = [
+const THINGS: [&str; 33] = [
     "file", "files", "folder", "folders", "document", "documents", "pdf", "pdfs", "desktop", "downloads", "directory", "disk",
     "screenshot", "screenshots", "terminal", "script", "app", "apps", "spreadsheet",
+    // The machine and its connections (founder 2026-11-26: "show me my home network" was taken
+    // for chat, then escalated: three engine calls for one look).
+    "network", "wifi", "router", "internet", "battery", "storage", "computer", "mac", "laptop", "devices", "cpu", "processor", "ram", "bluetooth",
 ];
 
 /// Words that ask to see or open something.
@@ -34,13 +37,42 @@ pub fn wants_computer(said: &str) -> bool {
     }
     let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
     let has = |list: &[&str]| words.iter().any(|w| list.contains(w));
-    let mine = words.contains(&"my");
-    has(&STRONG) || (has(&VERBS) && (has(&THINGS) || mine)) || (has(&THINGS) && (has(&LOOKING) || mine))
+    // The person's own: "my"/"our"; with a computer thing named, "I" too ("how much storage do
+    // I have"), but never with a verb alone ("I want to run a marathon").
+    let mine = words.iter().any(|w| matches!(*w, "my" | "our" | "mine"));
+    let owner = mine || words.contains(&"i");
+    has(&STRONG) || (has(&VERBS) && (has(&THINGS) || mine)) || (has(&THINGS) && (has(&LOOKING) || owner))
+}
+
+/// Questions that only ask what IS (no change): these words, or a question word, with no verb
+/// that changes anything. "Open" is not here: opening an app changes what is on screen.
+const ASKING: [&str; 12] = ["show", "find", "list", "look", "check", "search", "where", "what", "whats", "which", "how", "is"];
+
+/// True for computer work that only looks: it goes straight to a read-only look (one engine call,
+/// under the read-only guard and the look hook) instead of a plan and then a look.
+pub fn only_looks(said: &str) -> bool {
+    if !wants_computer(said) {
+        return false;
+    }
+    let lower = said.to_lowercase();
+    let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
+    let has = |list: &[&str]| words.iter().any(|w| list.contains(w));
+    !has(&STRONG) && !has(&VERBS) && !words.contains(&"open") && has(&ASKING)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::wants_computer;
+    use super::{only_looks, wants_computer};
+
+    #[test]
+    fn looking_questions_skip_the_plan_and_changes_never_do() {
+        for said in ["How much storage do I have left?", "Show me my home network.", "Which devices are on my network?", "How is my computer doing?", "What's in my Downloads?", "find the PDF Maya sent", "How much storage is left on my mac?", "check my battery"] {
+            assert!(only_looks(said), "{said}");
+        }
+        for said in ["Move my tax PDFs into a folder", "Delete the screenshots on my desktop", "Open the budget spreadsheet", "install ffmpeg", "clean up my files", "Explain how home networks work", "hello"] {
+            assert!(!only_looks(said), "{said}");
+        }
+    }
 
     #[test]
     fn conversation_and_lessons_are_not_computer_work() {

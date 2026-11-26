@@ -57,7 +57,20 @@ const LOOK_ACTIONS: [&str; 6] = ["look", "list", "read", "search", "find", "chec
 
 /// Said with a look at the computer: show what IS, not a lesson (founder 2026-11-26: "not
 /// everything is an explainer").
-const LOOKING: &str = "\n\n(You are LOOKING at this computer for the person. Show what you found as it is: tables of what you saw (devices, interfaces, folders, apps) and a live panel if it helps. No quiz, no flashcards, no lesson unless they asked you to explain. Use plain read commands joined with ; or | only: no loops (for, while), no $( ) or backticks, no subshells, no writing to files: the safety guard stops those and the look ends.)";
+const LOOKING: &str = "\n\n(You are LOOKING at this computer for the person. Show what you found as it is: tables of what you saw (devices, interfaces, folders, apps) and a live panel if it helps. No quiz, no flashcards, no lesson unless they asked you to explain. Use plain read commands joined with ; or | only: no loops (for, while), no $( ) or backticks, no subshells, no writing to files: the safety guard refuses those. Be QUICK: use commands that answer at once (df, not a scan of the whole disk; du only one level deep in the home folder, e.g. du -sh ~/* ; never du on / or ~/Library as a whole) and finish within a few commands.)";
+
+/// The instant first words of a look, by what it is about.
+pub(super) fn opening_line(said: &str) -> String {
+    let s = said.to_lowercase();
+    let line = if ["network", "wifi", "router", "internet", "devices"].iter().any(|w| s.contains(w)) {
+        "Let me look at your network."
+    } else if ["battery", "storage", "disk", "cpu", "processor", "ram", "computer", "mac", "laptop"].iter().any(|w| s.contains(w)) {
+        "Let me check on your computer."
+    } else {
+        "Let me take a look."
+    };
+    line.to_string()
+}
 
 /// The note for a look's second try: what the guard refused, in its own plain words.
 fn retry_note(why: &str) -> String {
@@ -69,6 +82,11 @@ fn retry_note(why: &str) -> String {
 pub(super) fn live_panel_for(said: &str) -> Option<Panel> {
     let s = said.to_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| s.contains(w));
+    // Only questions about how things are doing get a dashboard: "is my Wi-Fi secure?" does not.
+    let status = ["show", "how is", "how's", "doing", "status", "speed", "slow", "usage", "live", "look", "check", "going on", "left", "how much", "busy", "health"];
+    if !has(&status) {
+        return None;
+    }
     let mut metrics = vec![];
     if has(&["network", "wi-fi", "wifi", "internet", "router", "bandwidth", "connection"]) {
         metrics.push("network".to_string());
@@ -128,24 +146,7 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
         // The plan's opening line ("I'll take a look…") stays on screen; the look's own words
         // come with the finished answer, so the chat never repeats itself mid-way.
         let quiet = |p: Progress| if matches!(p, Progress::Step(_)) { progress(p) };
-        let progress: &(dyn Fn(Progress) + Sync) = &quiet;
-        let home = dirs::home_dir().unwrap_or_default();
-        let said = format!("{}{LOOKING}", ctx.said);
-        let guard = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
-        let looking = Context { said: said.clone(), may_act: true, guard: Some(guard.clone()), ..ctx.clone() };
-        let (mut thought, mut mind) = brain::think(keeper, &looking, progress).await;
-        // A look the guard stopped gets ONE more try with simpler commands, told why (the guard
-        // stays strict; the engine adapts). A second stop is reported as before.
-        if let Some(why) = guard.stopped() {
-            let retry = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
-            let again = Context { said: format!("{said}{}", retry_note(&why)), may_act: true, guard: Some(retry), ..ctx.clone() };
-            (thought, mind) = brain::think(keeper, &again, progress).await;
-        }
-        let engine_has_live = thought.panels.to_string().contains("\"kind\":\"live\"");
-        if let Some(live) = live_panel_for(&ctx.said).filter(|_| !engine_has_live) {
-            thought.core_panels.insert(0, live);
-        }
-        return Answer { thought, mind, cached: false, switched: None };
+        return look(keeper, ctx, &quiet).await;
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };
     // The person reads the plan for a few seconds: start the acting process now, so Approve
@@ -156,6 +157,30 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     let token = state.plans.keep(PendingPlan { keeper: keeper.id.clone(), mode: keeper.role.clone(), chat: chat.to_string(), said: ctx.said.clone(), steps: steps.clone() });
     let panel = Panel::Approval { id: format!("plan-{token}"), title: "My plan".into(), summary: summary.clone(), steps, token };
     Answer { thought: Thought { reply: summary, core_panels: vec![panel], ..Thought::default() }, mind: MindUsed { label: format!("{} (plan)", mind.label), ..mind }, cached: false, switched: None }
+}
+
+/// A read-only look at the computer, in one engine call: under the read-only guard and the look
+/// hook (a refused command is denied and the engine carries on), with a live panel for health
+/// questions. Used straight away for questions that only look (`intent::only_looks`) and after a
+/// plan made only of looks.
+pub(super) async fn look(keeper: &KeeperProfile, ctx: &Context, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
+    let home = dirs::home_dir().unwrap_or_default();
+    let said = format!("{}{LOOKING}", ctx.said);
+    let guard = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
+    let looking = Context { said: said.clone(), may_act: true, guard: Some(guard.clone()), ..ctx.clone() };
+    let (mut thought, mut mind) = brain::think(keeper, &looking, progress).await;
+    // A look the guard stopped gets ONE more try with simpler commands, told why (the guard
+    // stays strict; the engine adapts). A second stop is reported as before.
+    if let Some(why) = guard.stopped() {
+        let retry = std::sync::Arc::new(crate::brain::guard::PlanGuard::read_only(&home));
+        let again = Context { said: format!("{said}{}", retry_note(&why)), may_act: true, guard: Some(retry), ..ctx.clone() };
+        (thought, mind) = brain::think(keeper, &again, progress).await;
+    }
+    let engine_has_live = thought.panels.to_string().contains("\"kind\":\"live\"");
+    if let Some(live) = live_panel_for(&ctx.said).filter(|_| !engine_has_live) {
+        thought.core_panels.insert(0, live);
+    }
+    Answer { thought, mind, cached: false, switched: None }
 }
 
 /// Approve (run the acting turn under the plan) or deny (record it and say so).
@@ -200,7 +225,10 @@ mod tests {
         let Some(Panel::Live { metrics, .. }) = super::live_panel_for("How is my computer doing?") else { panic!("whole computer → live") };
         assert!(metrics.is_empty(), "all metrics");
         assert!(super::live_panel_for("find my tax letter").is_none(), "a file search gets no dashboard");
+        assert!(super::live_panel_for("Is my Wi-Fi secure?").is_none(), "security is not a speed dashboard");
         assert!(super::retry_note("I only look.").contains("I only look."), "the retry says why");
+        assert_eq!(super::opening_line("Which devices are on my network?"), "Let me look at your network.");
+        assert_eq!(super::opening_line("What's in my Downloads?"), "Let me take a look.");
         assert!(!only_looks(&[look("look"), look("move")]), "any change needs approval");
     }
 }

@@ -12,10 +12,18 @@ use crate::stage::Panel;
 use super::records::Record;
 use super::Memory;
 
-/// Case, spacing and final punctuation don't make a different question.
+/// Case, spacing and final punctuation don't make a different question. The key also carries a
+/// hash of the Stage's lesson rules, so a lesson cached under older rules is never replayed after
+/// the rules improve (scenario bench 2026-11-26: a stale lesson came back "from memory").
 pub fn key(question: &str) -> String {
     let norm = question.split_whitespace().collect::<Vec<_>>().join(" ").trim_end_matches(['.', '!', '?']).to_lowercase();
-    short_hash(&norm, 16)
+    short_hash(&format!("{norm}\u{0}{}", rules_version()), 16)
+}
+
+/// A short fingerprint of the rules lessons are made under.
+fn rules_version() -> &'static str {
+    static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    VERSION.get_or_init(|| short_hash(crate::stage::RULES, 8))
 }
 
 /// Only lessons and panel follow-ups are kept and replayed: the same explanation is right next
@@ -111,6 +119,12 @@ impl Memory {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_key_follows_the_lesson_rules() {
+        assert_eq!(super::key("Explain rainbows."), super::key("explain   rainbows"));
+        assert_ne!(super::key("Explain rainbows"), crate::kernel::slug::short_hash("explain rainbows", 16), "old keys (no rules fingerprint) never match");
+    }
+
     #[test]
     fn the_same_question_is_the_same_key() {
         assert_eq!(super::key("Explain addition."), super::key("  explain   ADDITION "));

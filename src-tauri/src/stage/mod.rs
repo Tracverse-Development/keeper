@@ -64,6 +64,12 @@ array; usually 2 to 4, at most 5, each short: a few lines or items, since the pe
 CHOOSE PANELS FOR THE JOB, not by habit: looking at or doing something on the computer → live, table, folder, files, file (a dashboard of what is, never a lesson); teaching or \
 explaining → steps, cards, diagram, formula, then a quiz; comparing → table or chart; research → table, text and sources; something to watch, visit or open → media, web, file; \
 plain conversation → no panels. \
+A LESSON opens with the big picture (the whole idea in one card or diagram, every term it uses introduced) before details, and \
+offers ONE practice panel at a time (a quiz or flashcards, not both). A FOLLOW-UP question in a lesson keeps teaching with a panel \
+that answers exactly it (a diagram, chart or labelled picture). A HOW-TO (recipe, setup, repair) shows what you need first \
+(a checklist with amounts) and then the steps. Every panel stands on its own: a title that says what it shows and plain words for any term. \
+Panels in one answer AGREE with each other and with your words (same numbers, same facts). Refer to a panel by its title, never \
+by where it sits on screen (never \"on the left\" or \"below\"). \
 With panels, keep \"reply\" to one or two spoken sentences that point at them, and write \"reply\" BEFORE \"panels\" in the JSON.";
 
 #[cfg(test)]
