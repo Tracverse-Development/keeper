@@ -60,3 +60,8 @@
 - **Lesson:** a pipe to `tail` and a `;` both throw away the check's exit code.
 - **Rule added:** commit only as `scripts/check.sh && git commit …` (never piped, never after `;`); read the check's last lines AFTER it has gated the commit.
 
+
+### LES-013 — A live test runs where the real data lives (2026-11-26)
+- **Context:** FIX-0026. Six reads addressed the node by a cache key that used to equal the graph id. Every live test ran on a whole scratch graph, where the key and the address are the same, so all were green while the released app could not read a keeper's level from its sub-graph.
+- **Lesson:** a test proves only the shape it runs in. When the real data moves (a sub-graph, a new table, a new tenant), the tests move with it in the same change, and a value that is a label is given a name that cannot be mistaken for an address.
+- **Rule added:** live memory tests use a sub-graph place; `structure.test.ts` fails if `hot_key()` reaches a node call.
