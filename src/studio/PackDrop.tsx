@@ -68,6 +68,13 @@ export function PackDrop({ onImported }: { onImported: (i: Imported) => void }) 
         <div className="pack-preview" role="group" aria-label="The pack you chose">
           <span className="tag">{pending.preview.title}</span>
           <strong className="pack-preview-name">{pending.preview.name}</strong>
+          {pending.preview.maker && (
+            <p className="pack-maker small">
+              Made by <strong>{pending.preview.maker.name}</strong>
+              {pending.preview.maker.link && <span className="muted selectable"> · {pending.preview.maker.link}</span>}
+              <span className="muted"> (the name on the file; not checked)</span>
+            </p>
+          )}
           <ul className="pack-carries">
             {pending.preview.carries.map((c) => <li key={c}>{c}</li>)}
             <li className="muted">No memories, no code</li>

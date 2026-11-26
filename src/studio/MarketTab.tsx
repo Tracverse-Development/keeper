@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { core, sentence, type Imported, type KeeperProfile, type StudioInfo, type Wardrobe } from '../kernel/ipc';
 import { ItemCard } from './ItemCard';
 import { earningOrder, filtered, listingAction, listings, MARKET_FILTERS, standing, type MarketFilter } from './market-view';
+import { MakerFields } from './MakerFields';
 import { PackDrop } from './PackDrop';
 
 interface Props {
@@ -112,6 +113,7 @@ function Community({ keeper, soulName, onImported }: { keeper: KeeperProfile; so
             <button type="button" className="btn btn-block" onClick={() => void share('keeper', keeper.id)}>Share {keeper.name}</button>
             <button type="button" className="btn btn-ghost btn-block" onClick={() => void share('soul', keeper.soul)}>Share only its soul ({soulName})</button>
           </div>
+          <MakerFields />
           {note && <p className={note.bad ? 'error-line' : 'ok-text small'} role="status">{note.words}</p>}
         </section>
       </div>

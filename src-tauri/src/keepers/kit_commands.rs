@@ -110,7 +110,7 @@ pub fn pack_export(state: State<'_, AppState>, kind: String, id: String) -> Resu
         _ => return Err(DeskError::Invalid("Choose a keeper or a soul to share.".into())),
     };
     let path = downloads_file(&name);
-    std::fs::write(&path, packs::write(&pack))?;
+    std::fs::write(&path, packs::write(&pack, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref()))?;
     platform::reveal(&path);
     Ok(path.display().to_string())
 }

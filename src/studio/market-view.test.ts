@@ -3,7 +3,17 @@ import { test } from 'node:test';
 
 import type { Wardrobe, WardrobeItem } from '../kernel/ipc';
 import type { StudioInfo } from '../kernel/ipc-studio';
-import { filtered, listingAction, listings, packPreview, earningOrder, standing } from './market-view.ts';
+import { filtered, listingAction, listings, packMaker, packPreview, earningOrder, standing } from './market-view.ts';
+
+test('market: a pack shows who it says made it, and a link only when it is plain https', () => {
+  const made = packPreview(JSON.stringify({ kind: 'soul', format: 'keeper-pack/1', soul: { name: 'Calm' }, maker: { name: '  Amos   Thomas ', link: 'https://umojaark.com/amos' } }));
+  assert.deepEqual(made.ok && made.maker, { name: 'Amos Thomas', link: 'https://umojaark.com/amos' });
+  assert.equal(packMaker({ name: 'X', link: 'javascript:alert(1)' })?.link, '');
+  assert.equal(packMaker({ name: 'X', link: 'https://a.example/"><script>' })?.link, '');
+  assert.equal(packMaker({ link: 'https://a.example' }), null, 'no name, no maker');
+  const plain = packPreview(JSON.stringify({ kind: 'soul', format: 'keeper-pack/1', soul: { name: 'Calm' } }));
+  assert.equal(plain.ok && plain.maker, null);
+});
 
 const info = {
   experience: { level: 4 },
@@ -65,9 +75,9 @@ test('the button says why an item cannot be worn', () => {
 
 test('a pack is described before it is added', () => {
   const keeper = packPreview(JSON.stringify({ kind: 'keeper', format: 'keeper-pack/1', keeper: { name: 'Halo  Dog', species: 'puppy', role: 'companion', soul: { name: 'Sunny' }, wearables: [{}, {}], look: { ears: {} } } }));
-  assert.deepEqual(keeper, { ok: true, kind: 'keeper', title: 'A keeper', name: 'Halo Dog', carries: ['Its body (puppy) and job (companion)', 'Its soul (Sunny)', '2 outfit items', 'Its own colours'] });
+  assert.deepEqual(keeper, { ok: true, kind: 'keeper', title: 'A keeper', name: 'Halo Dog', maker: null, carries: ['Its body (puppy) and job (companion)', 'Its soul (Sunny)', '2 outfit items', 'Its own colours'] });
   const soul = packPreview(JSON.stringify({ kind: 'soul', format: 'keeper-pack/1', soul: { name: 'Calm', traits: ['kind'] } }));
-  assert.deepEqual(soul, { ok: true, kind: 'soul', title: 'A soul', name: 'Calm', carries: ['How it speaks and what it is like', '1 trait'] });
+  assert.deepEqual(soul, { ok: true, kind: 'soul', title: 'A soul', name: 'Calm', maker: null, carries: ['How it speaks and what it is like', '1 trait'] });
   const variant = packPreview(JSON.stringify({ kind: 'variant', format: 'keeper-pack/1', variant: { name: 'Ruby Halo', part: 'memory-halo' } }));
   assert.equal(variant.ok && variant.carries[0], 'One item for the wardrobe (memory halo)');
 });

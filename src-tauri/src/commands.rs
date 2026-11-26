@@ -37,6 +37,8 @@ pub struct SettingsChange {
     pub quick_replies: Option<bool>,
     /// The monthly spending limit in dollars (0 = none).
     pub monthly_cap_usd: Option<f64>,
+    /// The maker's name and link put on shared packs (both given together; an empty name clears them).
+    pub maker: Option<(String, String)>,
 }
 
 #[tauri::command]
@@ -68,6 +70,12 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         }
         if let Some(q) = change.quick_replies {
             s.quick_replies = q;
+        }
+        if let Some((name, link)) = &change.maker {
+            // Kept as cleaned (a link that is not a plain https address is dropped).
+            let maker = crate::keepers::kit::packs::clean_maker(name, link);
+            s.maker_name = maker.as_ref().map(|m| m.name.clone()).unwrap_or_default();
+            s.maker_link = maker.map(|m| m.link).unwrap_or_default();
         }
         if let Some(cap) = change.monthly_cap_usd.filter(|c| c.is_finite() && (0.0..=10_000.0).contains(c)) {
             s.monthly_cap_usd = cap;

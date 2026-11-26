@@ -108,9 +108,36 @@ pub fn read(text: &str) -> Result<Pack, String> {
     }
 }
 
-/// The text of a pack (pretty JSON), ready to save as `<name>.keeper.json`.
-pub fn write(pack: &Pack) -> String {
-    serde_json::to_string_pretty(pack).unwrap_or_default()
+/// Who made a pack: a name and, optionally, a link to them. Travels beside the pack's data as
+/// a `maker` field and is shown before a pack is added; it is a label, never a proof of who
+/// made it (packs are not signed).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Maker {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub link: String,
+}
+
+/// A maker from what the person typed: a cleaned name (none: no maker) and a link that is kept
+/// only when it is a plain https address.
+pub fn clean_maker(name: &str, link: &str) -> Option<Maker> {
+    let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().filter(|c| !c.is_control()).take(40).collect();
+    if name.is_empty() {
+        return None;
+    }
+    let link = link.trim();
+    let link_ok = link.len() > 8 && link.len() <= 200 && link.starts_with("https://") && !link.chars().any(|c| c.is_whitespace() || c.is_control() || ['"', '<', '>', '\\'].contains(&c));
+    Some(Maker { name, link: if link_ok { link.to_string() } else { String::new() } })
+}
+
+/// The text of a pack (pretty JSON), ready to save as `<name>.keeper.json`, with its maker's
+/// name when the person gave one.
+pub fn write(pack: &Pack, maker: Option<&Maker>) -> String {
+    let mut value = serde_json::to_value(pack).unwrap_or_default();
+    if let (Some(maker), Some(object)) = (maker, value.as_object_mut()) {
+        object.insert("maker".into(), serde_json::to_value(maker).unwrap_or_default());
+    }
+    serde_json::to_string_pretty(&value).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -124,7 +151,13 @@ mod tests {
             "soul": {"id": "sunny-pup", "name": "Sunny Pup", "builtin": true}, "wearables": [{"part": "memory-halo", "effects": {"color": "#ff0000"}}]}}).to_string();
         let Pack::Keeper { keeper, .. } = read(&text).unwrap() else { panic!() };
         assert_eq!((keeper.name.as_str(), keeper.species.as_str(), keeper.wearables[0].part.as_str()), ("Halo Dog", "puppy", "memory-halo"));
-        assert!(read(&write(&Pack::Keeper { format: FORMAT.into(), keeper })).is_ok());
+        let maker = clean_maker("  Amos   Thomas ", "https://umojaark.com/amos").unwrap();
+        let text = write(&Pack::Keeper { format: FORMAT.into(), keeper }, Some(&maker));
+        assert!(read(&text).is_ok(), "a pack with a maker still reads");
+        assert!(text.contains("\"maker\"") && text.contains("Amos Thomas") && text.contains("https://umojaark.com/amos"));
+        assert_eq!(clean_maker("Amos", "javascript:alert(1)").unwrap().link, "", "only https links are kept");
+        assert_eq!(clean_maker("Amos", "http://plain.example").unwrap().link, "");
+        assert!(clean_maker("   ", "https://x.example").is_none(), "no name, no maker");
     }
 
     #[test]
@@ -139,7 +172,7 @@ mod tests {
         assert_eq!(keeper.habits.get("chase-tail"), Some(&3.0));
         assert_eq!(keeper.habits.get("sleep"), Some(&3.0), "clamped");
         assert!(!keeper.habits.contains_key("hum"), "humming is the robot's");
-        let again = read(&write(&Pack::Keeper { format: FORMAT.into(), keeper: keeper.clone() })).unwrap();
+        let again = read(&write(&Pack::Keeper { format: FORMAT.into(), keeper: keeper.clone() }, None)).unwrap();
         assert_eq!(again, Pack::Keeper { format: FORMAT.into(), keeper });
     }
 

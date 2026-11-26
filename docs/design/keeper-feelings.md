@@ -41,8 +41,8 @@ Sources: OpenAI/MIT Media Lab affective-use study (Mar 2025), APA health advisor
 5. It is off in modes that look at or change the computer (enforced when a mode is saved), on by default only in Companion, and has a per-keeper off switch.
 6. Only the keeper's own state changes. Nothing about the person's emotions is stored.
 7. Distress overrides mood.
-9. On a child profile (Settings, locked by a parent's passcode) there is no mood at all, in any mode.
 8. Nothing is tuned to increase time spent.
+9. On a child profile (Settings, locked by a parent's passcode) there is no mood at all, in any mode.
 
 ## Not built yet
 - An optional daily mood summary on the DKG.

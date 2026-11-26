@@ -98,10 +98,27 @@ export function listingAction(l: Listing): { label: string; can: boolean } {
 export const PACK_MAX_BYTES = 64 * 1024;
 const PACK_FORMAT = 'keeper-pack/1';
 
-export type PackPreview = { ok: true; kind: 'keeper' | 'soul' | 'variant'; title: string; name: string; carries: string[] } | { ok: false; why: string };
+/** Who a pack says made it: a label from the file, never a proof (packs are not signed). */
+export interface PackMaker {
+  name: string;
+  /** A plain https address, or '' when the file gives none that is. */
+  link: string;
+}
+
+export type PackPreview = { ok: true; kind: 'keeper' | 'soul' | 'variant'; title: string; name: string; carries: string[]; maker: PackMaker | null } | { ok: false; why: string };
 
 const text = (v: unknown, max = 40): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The maker a pack names, cleaned: a name, and its link only when it is a plain https address. */
+export function packMaker(value: unknown): PackMaker | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const name = text(raw.name);
+  if (!name) return null;
+  const link = typeof raw.link === 'string' ? raw.link.trim() : '';
+  return { name, link: /^https:\/\/[^\s"<>\\]{1,192}$/.test(link) ? link : '' };
+}
 
 /** What a pack file says it is and carries, in plain words, before anything is added. */
 export function packPreview(fileText: string): PackPreview {
@@ -116,18 +133,19 @@ export function packPreview(fileText: string): PackPreview {
   }
   if (pack.format !== PACK_FORMAT) return { ok: false, why: `This pack is for a different Keeper version (${text(pack.format) || 'unknown'}).` };
   const body = (key: string) => (pack[key] && typeof pack[key] === 'object' ? (pack[key] as Record<string, unknown>) : null);
+  const maker = packMaker(pack.maker);
   if (pack.kind === 'soul') {
     const soul = body('soul');
     const name = text(soul?.name);
     if (!soul || !name) return { ok: false, why: 'The soul in this pack has no name.' };
     const traits = Array.isArray(soul.traits) ? soul.traits.length : 0;
-    return { ok: true, kind: 'soul', title: 'A soul', name, carries: ['How it speaks and what it is like', ...(traits ? [count(traits, 'trait', 'traits')] : [])] };
+    return { ok: true, kind: 'soul', title: 'A soul', name, maker, carries: ['How it speaks and what it is like', ...(traits ? [count(traits, 'trait', 'traits')] : [])] };
   }
   if (pack.kind === 'variant') {
     const variant = body('variant');
     const name = text(variant?.name);
     if (!variant || !name) return { ok: false, why: 'The item in this pack has no name.' };
-    return { ok: true, kind: 'variant', title: 'A wardrobe item', name, carries: [`One item for the wardrobe${text(variant.part) ? ` (${text(variant.part).replace(/-/g, ' ')})` : ''}`] };
+    return { ok: true, kind: 'variant', title: 'A wardrobe item', name, maker, carries: [`One item for the wardrobe${text(variant.part) ? ` (${text(variant.part).replace(/-/g, ' ')})` : ''}`] };
   }
   if (pack.kind === 'keeper') {
     const keeper = body('keeper');
@@ -141,6 +159,7 @@ export function packPreview(fileText: string): PackPreview {
       kind: 'keeper',
       title: 'A keeper',
       name,
+      maker,
       carries: [
         `Its body${text(keeper.species) ? ` (${text(keeper.species)})` : ''} and job${text(keeper.role) ? ` (${text(keeper.role)})` : ''}`,
         ...(soul ? [`Its soul (${soul})`] : []),

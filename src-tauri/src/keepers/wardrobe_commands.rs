@@ -128,7 +128,7 @@ pub async fn wardrobe_share(state: State<'_, AppState>, item: String) -> Result<
     let chosen = items.iter().find(|i| i.id == item).ok_or_else(|| DeskError::Invalid("That item isn't in your wardrobe.".into()))?;
     let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None }, one_of_a_kind: chosen.one_of_a_kind };
     let path = super::kit_commands::downloads_file(&chosen.name);
-    std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }))?;
+    std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref()))?;
     crate::platform::reveal(&path);
     Ok(path.display().to_string())
 }

@@ -135,6 +135,9 @@ export interface Settings {
   askBeforeActing: boolean;
   /** Short conversational turns go to the quick helper model. */
   quickReplies: boolean;
+  /** The name and https link put on packs the person shares (absent = none). */
+  makerName?: string;
+  makerLink?: string;
   /** The monthly limit on cloud minds, in dollars (absent or 0 = none). */
   monthlyCapUsd?: number;
   autoUpdate: boolean;
@@ -346,7 +349,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd'>>;
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd'>> & { /** The maker's [name, link] for shared packs; an empty name clears both. */ maker?: [string, string] };
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
 
