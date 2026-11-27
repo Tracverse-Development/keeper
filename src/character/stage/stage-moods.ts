@@ -140,6 +140,13 @@ export const SET_MOODS: Readonly<Record<string, StageMood>> = {
   'wild-trail': 'dawn',
   'ark-pilgrim': 'celestial',
   'celestial-regalia': 'celestial',
+  // The 0.16.0 sets (`collection/hero_sets.rs`).
+  'harbour-watch': 'lamplight',
+  clockwork: 'lamplight',
+  'test-match': 'dawn',
+  'sky-pilot': 'dawn',
+  'ark-sentinel': 'starfield',
+  'good-shepherd': 'dawn',
 };
 
 export function isStageMood(value: unknown): value is StageMood {

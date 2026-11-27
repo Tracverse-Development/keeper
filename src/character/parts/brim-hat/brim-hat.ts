@@ -122,8 +122,8 @@ function buildVisor(group: Group, head: Head, cloth: MeshPhysicalMaterial, trim:
   group.add(named(new Mesh(piping(ringPoints(band[0], shape.squareness, 0, Math.PI * 2, 64), BAND_PIPING, true), cloth), 'visor-piping'));
 }
 
-/** The crown ring at height `y` (between two of its rings). */
-function crownAt(rings: readonly GarmentRing[], y: number): GarmentRing {
+/** The crown ring at height `y` (between two of its rings); the top hat reads its crown the same way. */
+export function crownAt(rings: readonly GarmentRing[], y: number): GarmentRing {
   for (let i = 0; i < rings.length - 1; i++) {
     const a = rings[i];
     const b = rings[i + 1];

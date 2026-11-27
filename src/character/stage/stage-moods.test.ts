@@ -38,7 +38,7 @@ test('the contract offers exactly the moods the data defines', () => {
 
 test('every set in the map is a real official set, and its mood a real mood', () => {
   const core = new URL('../../../src-tauri/src/keepers/kit/collection/', import.meta.url);
-  const ids = ['robot', 'dog', 'man', 'woman', 'owl', 'shared', 'divine'].flatMap((f) => [...readFileSync(new URL(`${f}.rs`, core), 'utf8').matchAll(/ItemSet \{ id: "([^"]+)"/g)].map((m) => m[1]));
+  const ids = ['robot', 'dog', 'man', 'woman', 'owl', 'shared', 'divine', 'hero_sets'].flatMap((f) => [...readFileSync(new URL(`${f}.rs`, core), 'utf8').matchAll(/ItemSet \{ id: "([^"]+)"/g)].map((m) => m[1]));
   for (const [set, mood] of Object.entries(SET_MOODS)) {
     assert.ok(ids.includes(set), `${set} is a set`);
     assert.ok(isStageMood(mood), `${set} -> ${mood}`);
