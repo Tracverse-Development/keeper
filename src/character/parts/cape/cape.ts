@@ -12,9 +12,10 @@
  * and builds itself to it. The cloak follows the body's own rings with ease all round the back half
  * (the arms and the front stay clear) and keeps falling below the shape's reach; the wings root just
  * behind the deepest point of the upper back. Effects: `color` (outside / feathers), `trim` (lining /
- * second feather colour), `glow`, `sway` (how much it moves), `style`.
+ * second feather colour), `glow`, `sway` (how much it moves), `style`. The cloak also swings and
+ * twists with the body's motion and the Studio's turn (`sway/drape-sway.ts`), its glowing edges with it.
  */
-import { Color, Group, Mesh, SphereGeometry, type BufferAttribute } from 'three';
+import { Color, Group, Mesh, SphereGeometry, Vector3, type BufferAttribute } from 'three';
 import { disposeTree } from '../../dispose-tree.ts';
 import { clothMaterial, trimMaterial } from '../cloth.ts';
 import { effectColour, effectNumber, type EffectValues } from '../effects.ts';
@@ -22,6 +23,7 @@ import { garmentRings, radiusAt, surfaceDepth, widestBetween, type BodyShape, ty
 import { edgePoints, fittedShell, piping, ringPoints } from '../fitted-shell.ts';
 import { lightMaterial } from '../glow-kit.ts';
 import type { PartFrame, PartInstance } from '../part';
+import { createDrapeSway } from '../../sway/drape-sway.ts';
 import { buildWings, type Wings } from './feathers.ts';
 
 /** The lining stands this far off the body, the outside this far (a jacket fits under both). */
@@ -40,6 +42,8 @@ const MANTLE_OPENING = 0.9;
 const SEGMENTS = 48;
 /** Hem swing at full sway (world units). */
 const SWING = 0.05;
+/** The widest the hem swings with the body's motion (world units). */
+const DRAPE_LAG = 0.14;
 const STYLES = 3;
 
 export function createCape(effects: EffectValues, fit: PartFit): PartInstance {
@@ -103,9 +107,11 @@ function cloakPart(group: Group, shape: BodyShape, colour: number, trim: number,
   const edge = lightMaterial(trim, 1.3, 0.6);
   const right = OPENING / 2;
   const left = Math.PI * 2 - OPENING / 2;
-  for (const points of [edgePoints(rings, shape.squareness, right), edgePoints(rings, shape.squareness, left), ringPoints(rings[rings.length - 1], shape.squareness, right, left, 48)]) {
-    group.add(Object.assign(new Mesh(piping(points, 0.008), edge), { name: 'cloak-edge' }));
-  }
+  const edges = [edgePoints(rings, shape.squareness, right), edgePoints(rings, shape.squareness, left), ringPoints(rings[rings.length - 1], shape.squareness, right, left, 48)].map((points) => {
+    const geometry = piping(points, 0.008);
+    group.add(Object.assign(new Mesh(geometry, edge), { name: 'cloak-edge' }));
+    return geometry;
+  });
   // The clasp: two gold discs where the cloak's edges meet the shoulders.
   const top = cloakRings(shape, OUTER_EASE)[1];
   const gold = trimMaterial(0xd39744);
@@ -118,25 +124,39 @@ function cloakPart(group: Group, shape: BodyShape, colour: number, trim: number,
     disc.name = 'cloak-clasp';
     group.add(disc);
   }
-  const moving = [outer, inner].map((g) => ({ positions: g.getAttribute('position') as BufferAttribute, rest: Float32Array.from(g.getAttribute('position').array as Float32Array) }));
+  // The edges swing with the cloth they trim, so the swing never parts them (they never billowed:
+  // the billow lays the cloth over them a little, as it always has).
+  const moving = [outer, inner, ...edges].map((g, i) => ({ billows: i < 2, positions: g.getAttribute('position') as BufferAttribute, rest: Float32Array.from(g.getAttribute('position').array as Float32Array) }));
   const crown = shape.profile[0][1];
   const hem = shape.reach - Math.abs(shape.reach - crown) * FALL;
+  // It swings and twists as the body moves and turns (`sway/drape-sway.ts`), round the body or
+  // out from it, never into it; `sway` scales that as it does the billow.
+  const hemRing = rings[rings.length - 1];
+  const drape = createDrapeSway(group, { top: crown, bottom: hem, radius: hemRing.rz, maxLag: DRAPE_LAG, frequency: 1.1, gain: Math.min(sway, 1.5) });
+  const swung = new Vector3();
+  let dirty = false;
 
   function update(frame: PartFrame): void {
     const t = frame.time * frame.motion.speed;
     const reach = SWING * sway * frame.motion.amplitude * (1 + 0.8 * frame.work);
     lining.emissiveIntensity = 0.06 * glow * (1 + frame.work + frame.gotIt);
     edge.opacity = Math.min(1, 0.4 + 0.3 * glow * (1 + frame.work));
-    if (reach <= 0) return;
-    for (const { positions, rest } of moving) {
+    drape.step(frame.dt, frame.motion.amplitude);
+    const swinging = drape.moving;
+    if (reach <= 0 && !swinging && !dirty) return;
+    const restore = dirty;
+    dirty = swinging;
+    for (const { billows, positions, rest } of moving) {
+      if (!billows && !swinging && !restore) continue;
       const array = positions.array as Float32Array;
       for (let k = 0; k < array.length; k += 3) {
         const x = rest[k], y = rest[k + 1], z = rest[k + 2];
         const hang = Math.max(0, (crown - y) / (crown - hem)) ** 2;
         // Billows outward only (never into the body), more at the hem, in slow waves round it.
-        const push = 1 + (reach * hang * (0.55 + 0.45 * Math.sin(t * 1.2 + y * 3 + Math.atan2(x, z) * 1.5))) / Math.max(Math.hypot(x, z), 0.1);
-        array[k] = x * push;
-        array[k + 2] = z * push;
+        const push = billows && reach > 0 ? 1 + (reach * hang * (0.55 + 0.45 * Math.sin(t * 1.2 + y * 3 + Math.atan2(x, z) * 1.5))) / Math.max(Math.hypot(x, z), 0.1) : 1;
+        drape.displace(x * push, y, z * push, x * push, z * push, swung);
+        array[k] = swung.x;
+        array[k + 2] = swung.z;
       }
       positions.needsUpdate = true;
     }

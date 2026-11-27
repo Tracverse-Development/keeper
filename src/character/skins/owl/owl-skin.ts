@@ -20,6 +20,7 @@ import { PaintableMaterial } from '../../look/zone-paint';
 import { zonesOf, type ResolvedLook } from '../../look/zones';
 import { profilePoint } from '../../parts/fit.ts';
 import { PALETTE } from '../../palette';
+import { addSwayBone } from '../../sway/sway-bone';
 import { addSlotAnchors } from '../anchors';
 import { slotsOf } from '../catalog';
 import { addHitProxy } from '../hit-proxy';
@@ -120,6 +121,8 @@ export function createOwlSkin(): Skin {
 
   addOwlPlumage(body, head, [rightWing, leftWing], tufts, { body: m.body, belly: m.belly, head: m.head, face: m.face, wings: m.wings, beak: m.beak, claw: clawMaterial() });
   const moments = createItemMoments(OWL_MOMENTS);
+  // The ear tufts are springy: they trail the head's motion and settle (`sway/sway-bone.ts`).
+  const tuftSway = tufts.map((tuft, i) => addSwayBone(tuft, { tip: [(i === 0 ? -1 : 1) * 0.12, 0.32, -0.02], frequency: 2.6, damping: 0.3, maxAngle: 0.24 }));
 
   const slots = addSlotAnchors(root, slotsOf('owl'), { body, head, leftArm: leftWing, rightArm: rightWing });
   const zoneMaterials: Record<OwlZone, MeshPhysicalMaterial> = { head: m.head, face: m.face, eyes: m.eyes, body: m.body, belly: m.belly, wings: m.wings, beak: m.beak };
@@ -149,6 +152,7 @@ export function createOwlSkin(): Skin {
     tufts.forEach((tuft, i) => {
       const side = i === 0 ? -1 : 1;
       tuft.rotation.z = -side * (0.45 - 0.25 * perk) + Math.sin(pose.t * 1.3 + i) * 0.02 * a;
+      tuftSway[i].update(f.dt, a);
     });
     // Wings: a wave lifts the left wing; a cheer flaps both.
     const flap = pose.cheer * Math.abs(Math.sin(pose.t * 9)) * a;

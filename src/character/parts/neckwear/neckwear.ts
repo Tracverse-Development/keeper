@@ -10,7 +10,7 @@
  * below it), never the species. Hanging pieces are laid ON the chest as fitted panels that narrow
  * toward their point (`taperPanel`), `EASE` off the surface, and only as long as the shape has a
  * surface to lie on; the band and collar follow the neck ring. The hanging tip and the shawl's edge
- * sway softly, outward only.
+ * sway softly, outward only; the shawl also swings and twists as the body moves (`sway/drape-sway.ts`).
  *
  * Effects: `color` (the cloth), `trim` (the dots, the tie's pattern, the shawl's sparkles),
  * `sway` (how much the hanging parts move), `style`.
@@ -22,11 +22,14 @@ import { effectColour, effectNumber, type EffectValues } from '../effects.ts';
 import { crossSection, garmentRings, radiusAt, type BodyShape, type PartFit } from '../fit.ts';
 import { fittedShell, piping, ringPoints } from '../fitted-shell.ts';
 import { garmentSway, outward, pushOut, scatterQuads } from '../garment.ts';
+import { createDrapeSway } from '../../sway/drape-sway.ts';
 import type { PartFrame, PartInstance } from '../part';
 
 const EASE = 0.03;
 const STYLE_COUNT = 3;
 const SWAY = 0.018;
+/** The widest the shawl's edge swings with the body's motion (world units). */
+const SHAWL_DRAPE = 0.07;
 /** The band round the neck (bandana) and the collar line (tie): tube radius. */
 const BAND = 0.032;
 const COLLAR = 0.014;
@@ -81,7 +84,9 @@ export function createNeckwear(effects: EffectValues, fit: PartFit): PartInstanc
     const bottom = neckTop - reachDown(SHAWL_LENGTH);
     const rings = garmentRings(shape, neckTop, bottom, EASE + 0.015, 18).map((r, i) => ({ y: r.y, rx: r.rx + 0.03 * (i / 17) ** 2, rz: r.rz + 0.03 * (i / 17) ** 2 }));
     const geometry = add(fittedShell(rings, { segments: 64, opening: 0.9, squareness: shape.squareness }), sheer, 'shawl');
-    sways.push(garmentSway(geometry, neckTop, bottom, SWAY * 1.4 * sway));
+    // The shawl also swings and twists with the body (`sway/drape-sway.ts`), its sparkles with it.
+    const drape = createDrapeSway(group, { top: neckTop, bottom, radius: rings[rings.length - 1].rz, maxLag: SHAWL_DRAPE, frequency: 1.6, gain: Math.min(sway, 1.5) });
+    sways.push((frame) => drape.step(frame.dt, frame.motion.amplitude), garmentSway(geometry, neckTop, bottom, SWAY * 1.4 * sway, drape));
     const sparkle = new MeshPhysicalMaterial({ color: trimColour, emissive: new Color(trimColour), emissiveIntensity: 1.2, metalness: 0.8, roughness: 0.2, side: DoubleSide });
     const pieces = Array.from({ length: 90 }, (_, i) => {
       const ring = rings[1 + Math.floor(((i * 0.618034) % 1) * (rings.length - 2))];
@@ -89,7 +94,7 @@ export function createNeckwear(effects: EffectValues, fit: PartFit): PartInstanc
       const [x, z] = crossSection(angle, ring.rx + 0.004, ring.rz + 0.004, shape.squareness);
       return { at: new Vector3(x, ring.y, z), normal: outward(shape, x, z), spin: i };
     });
-    add(scatterQuads(pieces, 0.018), sparkle, 'shawl-sparkles');
+    sways.push(garmentSway(add(scatterQuads(pieces, 0.018), sparkle, 'shawl-sparkles'), neckTop, bottom, 0, drape)); // swing only, as before no billow
     sways.push((frame) => (sparkle.emissiveIntensity = 0.8 + 0.6 * Math.sin(frame.time * 2.7)));
   }
 

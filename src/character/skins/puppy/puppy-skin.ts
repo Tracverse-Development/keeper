@@ -45,6 +45,7 @@ import { hasFur, momentDials, PUPPY_MOMENTS } from './puppy-moments';
 import { blendPuppyDials, puppyDials } from './puppy-moods';
 import { PUPPY_HEAD_Y } from './puppy-shape';
 import { addPuppySweat } from './puppy-sweat';
+import { addPuppySway } from './puppy-sway';
 import { addPuppyThinking } from './puppy-thinking';
 import { PUPPY_REACTIONS as R } from './reactions';
 
@@ -71,6 +72,7 @@ export function createPuppySkin(): Skin {
   // Real fur on every coat zone, unless its look asks for another material (smooth, gloss, metal...).
   const fur = createFur(root, furZones(kit), { lighter: new Map([[kit.blobGeometry, kit.furGeometry]]) });
   const moments = createItemMoments(PUPPY_MOMENTS);
+  const sway = addPuppySway(parts.tail, face.ears, face.earTips);
 
   const headProxy = addHitProxy(head, { radii: [1.06, 0.9, 0.95], centre: [0, 0, 0.05] });
   const bodyProxy = addHitProxy(body, { radii: [0.72, 0.8, 0.66], centre: [0, -1.2, 0.05] });
@@ -167,6 +169,7 @@ export function createPuppySkin(): Skin {
     const sweep = drama > 0 ? drama * T.tailSweep * Math.sin(t * T.tailSweepSpeed) : 0;
     const wag = (Math.sin(tailPhase) * (mo.tailWag + d.tailWag + R.pat.tailWag * pat + R.work.tailWag * w + 0.5 * cheer + 0.3 * e.paw + 0.5 * e.chase) + sweep) * a;
     parts.tail.rotation.set(0.15 + d.curl * 0.5, wag * 0.35, -0.38 - d.curl * 0.7 + wag);
+    sway.update(frame.dt, a); // ears and tail trail the motion (`puppy-sway.ts`)
 
     parts.tag.rotation.x = Math.sin(t * 1.1 + 0.4) * 0.05 * a - body.rotation.x * 0.6 + R.poke.tagSwing * poke;
     parts.tag.rotation.z = Math.sin(t * 0.9) * 0.07 * a - body.rotation.z;

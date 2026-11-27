@@ -65,3 +65,8 @@
 - **Context:** FIX-0026. Six reads addressed the node by a cache key that used to equal the graph id. Every live test ran on a whole scratch graph, where the key and the address are the same, so all were green while the released app could not read a keeper's level from its sub-graph.
 - **Lesson:** a test proves only the shape it runs in. When the real data moves (a sub-graph, a new table, a new tenant), the tests move with it in the same change, and a value that is a label is given a name that cannot be mistaken for an address.
 - **Rule added:** live memory tests use a sub-graph place; `structure.test.ts` fails if `hot_key()` reaches a node call.
+
+### LES-014 — Motion layered on cloth moves its trim too, and never eats what lies over the trim (2026-11-27)
+- **Context:** the 0.16 cloth sway. The cloak's billow had always pushed the shell out over its glowing edge piping, which stayed put. The first sway build moved the piping with the shell and clamped every vertex to its un-billowed rest radius: the swing ate the billow and bared a bright outline all round the cloak (seen only in a before/after frame sequence; stills looked fine).
+- **Lesson:** a new motion layer on a garment moves every piece attached to that cloth by the same rule (trim, sparkles, edges), and the collision floor is the place before the new motion (billow included), not the build-time rest. Motion is judged on frame sequences beside the old build, never on one still.
+- **Rule added:** `sway/drape-sway.ts` `displace` takes the pre-swing place as its floor; garments pass their trim through the same `garmentSway` with amount 0 (swing only).

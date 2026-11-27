@@ -43,6 +43,9 @@ export interface EarPose {
 export interface PuppyHead {
   readonly head: Group;
   readonly eyes: PuppyEyes;
+  /** The ear pivots, left (-x) then right (+x), and where each ear's tip hangs from its pivot. */
+  readonly ears: readonly Group[];
+  readonly earTips: readonly (readonly [number, number, number])[];
   /** Jaw opening 0..1 and tongue 0..1. */
   setMouth(open: number, tongue: number): void;
   /** Ear poses, left (-x) then right (+x). */
@@ -85,6 +88,8 @@ export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): 
   return {
     head,
     eyes,
+    ears,
+    earTips: [-1, 1].map((side) => [side * 0.13, -EAR.length * 1.8, 0.04] as const),
     setMouth(open, tongueOut) {
       const o = Math.min(Math.max(open, 0), 1);
       const t = Math.min(Math.max(tongueOut, 0), 1) * Math.min(1, 0.25 + o * 1.5);
