@@ -8,6 +8,14 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.16.1] - 2026-11-27
+
+### Fixed
+- When a keeper moves to another mode to answer ("Switching to Tutor mode for this."), the mode
+  picker now changes the moment it switches, and a message you send while it is still answering
+  goes in the new mode. Before, the picker stayed on the old mode until the answer finished and
+  your next message made it switch again (FIX-0032).
+
 ## [0.16.0] - 2026-11-27
 
 ### Added

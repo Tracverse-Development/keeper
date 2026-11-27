@@ -25,5 +25,8 @@ pub const STAGE_PANEL: &str = "stage://panel";
 pub const EARLY_REPLY: &str = "assistant://early-reply";
 /// New words of the reply as it is written (the chat types them live).
 pub const REPLY_DELTA: &str = "assistant://reply-delta";
+/// A turn moved to another mode to answer: { keeper, mode }. The mode picker follows at once,
+/// before the answer is finished, so a message sent meanwhile goes in the new mode.
+pub const MODE_SWITCHED: &str = "assistant://mode-switched";
 /// A keeper reached a new level: { keeper, level, from, unlocked: [Unlock] } (`kit::levels::check_level_up`).
 pub const LEVEL_UP: &str = "keeper://level-up";

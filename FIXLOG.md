@@ -257,3 +257,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** a nose shape per frame (the man's slimmer, longer bridge, smaller tip, tucked wings; the woman and the God Keeper keep theirs); the mouth moved to `human-mouth.ts` with a fine seam only as wide as the lips whose smile depth stays inside them and an upper lip that rises out of the skin; the beard is one shell over a per-vertex region (moustache, mouth corners, chin, jaw, sideburns; lips bare) with a noise edge, crisp at the moustache and feathered up the cheeks.
 - **Guard:** `human-beard.test.ts` (no bare point beside the mouth from moustache to chin; lips, nose, eyes and cheekbones bare; the cheek edge feathers). The nose and mouth have no numeric guard (taste, proven by eye): before/after shots in `misc/studio-preview/lineup/faces-man-*.png`.
 - **Evidence:** window tests 468/468, `tsc` clean; shots compared side by side with the woman.
+
+### FIX-0032 — The keeper said "Switching to Tutor mode" again on the next message (2026-11-27)
+- **Area:** `src/conversation/useAssistant.ts` (the chat's mode), `src-tauri/src/assistant/source.rs` (the mode handoff), `kernel/events.rs` `MODE_SWITCHED`
+- **Symptom:** asked about algebra in System Administrator mode, the keeper answered "Switching to Tutor mode for this." and taught; the mode picker still said System Administrator for the whole answer, and the next message switched to Tutor again.
+- **Root cause:** the window moved the chat to the new mode only when the whole turn returned, and only through React state. A message sent while the answer was still coming was queued, and the queue ran it straight after the turn returned, before React re-rendered: `modeRef` still held the old mode, so the core was asked in System Administrator mode again.
+- **Fix:** the core emits `assistant://mode-switched` the moment it decides to answer in another mode (the picker follows at once); every change of the chat's mode goes through `follow()`, which updates the ref immediately as well as the state.
+- **Guard:** none automatic: the race lives in a React hook and this repo's window tests are node tests with no React renderer. The ref-and-state helper is the single path (`setMode` is no longer exported raw), and the comment on `follow()` names why.
+- **Evidence:** `scripts/check.sh` (below in the commit).

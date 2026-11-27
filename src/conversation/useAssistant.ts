@@ -48,6 +48,12 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   const [mode, setMode] = useState('');
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  /** Moves the chat to a mode. The ref changes at once: a queued message is sent before React
+   *  re-renders, and it must go in the new mode (else the keeper announces the switch again). */
+  const follow = (to: string) => {
+    modeRef.current = to;
+    setMode(to);
+  };
 
   useEffect(
     () =>
@@ -75,6 +81,15 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     [],
   );
 
+  // The core decided to answer in another mode: the picker follows before the answer is done.
+  useEffect(
+    () =>
+      on<{ keeper: string; mode: string }>(EVENTS.modeSwitched, (e) => {
+        if (e.keeper === keeperRef.current && e.mode) follow(e.mode);
+      }),
+    [],
+  );
+
   // Another keeper is a fresh page; its chats are its own.
   useEffect(() => {
     setExchanges([]);
@@ -97,7 +112,7 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
       } else {
         setChatId(result.chat);
         // A turn that moved to another mode leaves the chat in that mode (the picker follows).
-        if (result.switched && result.mode) setMode(result.mode);
+        if (result.switched && result.mode) follow(result.mode);
         setExchanges((list) => list.map((x) => (x.id === id ? { ...x, result, at: Date.now() } : x)));
         replyRef.current(result, said);
       }
@@ -170,15 +185,15 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   /** Show a chat loaded from the keeper's graph and continue it. */
   const showChat = (chat: string, turns: Turn[]) => {
     setChatId(chat);
-    setMode(chatMode(turns, ''));
+    follow(chatMode(turns, ''));
     setExchanges(turns.slice(-KEEP).map((t) => fromTurn(nextId.current++, t, keeper ?? '')));
   };
 
   const newChat = () => {
     setChatId('');
     setExchanges([]);
-    setMode('');
+    follow('');
   };
 
-  return { exchanges, chatId, mode, setMode, phase, detail, busy, send, decide, brief, announce, celebrate, record, showChat, newChat };
+  return { exchanges, chatId, mode, setMode: follow, phase, detail, busy, send, decide, brief, announce, celebrate, record, showChat, newChat };
 }

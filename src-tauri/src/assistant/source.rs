@@ -4,7 +4,11 @@
 //! 3. `approval`  the keeper would act on the computer: show the plan, wait for Approve
 //! 4. the engine  the keeper's brain; panel follow-ups use the quick helper model when set
 
+use serde_json::json;
+use tauri::Emitter;
+
 use crate::brain::{self, Context, MindUsed, Progress, Thought};
+use crate::kernel::events;
 use crate::kernel::settings::KeeperProfile;
 use crate::memory::Memory;
 use crate::state::AppState;
@@ -33,6 +37,9 @@ fn mind(id: &str, label: &str) -> MindUsed {
 pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, progress).await;
     let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m) && super::child_mode(m, crate::kernel::child_lock::on()) == *m) else { return answer };
+    // The window's picker (and the mode its next message is sent in) follows now, not when the
+    // answer is done: a message typed meanwhile was sent in the old mode and switched again.
+    let _ = app.emit(events::MODE_SWITCHED, json!({ "keeper": keeper.id, "mode": target }));
     let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
     let base = super::turn::base_context(state, &moved, &ctx.said);
     let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), attached: ctx.attached.clone(), may_act: base.may_act && ctx.attached.is_none(), ..base };
