@@ -9,6 +9,9 @@
  * Framing: the character (halo top to wave rings) is ~4.3 units tall. `resize` picks a
  * camera distance so it fills ~60% of the viewport height (or fits the width on a narrow
  * window) and aims slightly below it, leaving the bottom of the window for the chat bar.
+ *
+ * Cost: `setQuality` takes a tier from the frame governor (`frame-governor.ts`): fewer MSAA
+ * samples on the HDR buffers, or no bloom. The pixel ratio is the caller's (`resize`).
  */
 import {
   ACESFilmicToneMapping,
@@ -32,6 +35,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PALETTE } from '../palette';
+import type { QualityTier } from './frame-governor';
 
 /** Height of the framed subject (world units) and the share of the viewport it fills. */
 const SUBJECT_HEIGHT = 4.3;
@@ -43,6 +47,11 @@ const AIM_DROP_SHARE = 0.12;
 /** Shared with the zone focus maths (`look/zone-focus.ts` FOCUS_FIELD_OF_VIEW). */
 export const FIELD_OF_VIEW = 30;
 const MAX_PIXEL_RATIO = 2;
+/** A photo (`Character.photo`) frames the keeper larger and centred: no room kept for a chat bar. */
+const PORTRAIT = { share: 0.8, drop: 0 } as const;
+
+/** How `resize` frames the subject: `stage` (the window, room for the chat bar) or `portrait` (a photo). */
+export type Framing = 'stage' | 'portrait';
 
 export interface Stage {
   readonly renderer: WebGLRenderer;
@@ -57,8 +66,10 @@ export interface Stage {
   readonly lights: { readonly ambient: AmbientLight; readonly key: DirectionalLight; readonly fill: DirectionalLight };
   /** Where the camera stands and looks to frame the whole character (set by `resize`). */
   readonly home: { readonly position: Vector3; readonly target: Vector3 };
-  /** Resize to CSS pixels; `pixelRatio` is capped at 2. */
-  resize(width: number, height: number, pixelRatio: number): void;
+  /** Resize to CSS pixels; `pixelRatio` is capped at 2. `framing` defaults to `stage`. */
+  resize(width: number, height: number, pixelRatio: number, framing?: Framing): void;
+  /** Draw with this tier's MSAA samples and bloom (the HDR buffers are remade only on a change). */
+  setQuality(tier: QualityTier): void;
   render(): void;
   dispose(): void;
 }
@@ -94,7 +105,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
-  function resize(width: number, height: number, pixelRatio: number): void {
+  function resize(width: number, height: number, pixelRatio: number, framing: Framing = 'stage'): void {
     const w = Math.max(1, Math.floor(width));
     const h = Math.max(1, Math.floor(height));
     const ratio = Math.min(Math.max(pixelRatio, 1), MAX_PIXEL_RATIO);
@@ -102,7 +113,18 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     renderer.setSize(w, h, false);
     composer.setPixelRatio(ratio);
     composer.setSize(w, h);
-    frameSubject(camera, w / h, home);
+    frameSubject(camera, w / h, home, framing === 'portrait' ? PORTRAIT : { share: VIEWPORT_SHARE, drop: AIM_DROP_SHARE });
+  }
+
+  function setQuality(tier: QualityTier): void {
+    bloom.enabled = tier.bloom;
+    const samples = Math.max(0, Math.floor(tier.samples));
+    // Both of the composer's buffers carry the samples; a disposed buffer is remade at its next use.
+    for (const buffer of [composer.renderTarget1, composer.renderTarget2]) {
+      if (buffer.samples === samples) continue;
+      buffer.samples = samples;
+      buffer.dispose();
+    }
   }
 
   return {
@@ -115,6 +137,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     lights,
     home,
     resize,
+    setQuality,
     render: () => composer.render(),
     dispose() {
       composer.dispose();
@@ -152,14 +175,17 @@ function addLights(scene: Scene): { faceLight: PointLight; rimLights: Directiona
   return { faceLight, rimLights: [rimLeft, rimRight], lights: { ambient, key, fill } };
 }
 
-/** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width; writes the pose into `home`. */
-function frameSubject(camera: PerspectiveCamera, aspect: number, home: { position: Vector3; target: Vector3 }): void {
+/**
+ * Places the camera so the subject fills `fit.share` of the height, or fits the width, aiming
+ * `fit.drop` of the view below its centre; writes the pose into `home`.
+ */
+function frameSubject(camera: PerspectiveCamera, aspect: number, home: { position: Vector3; target: Vector3 }, fit: { share: number; drop: number }): void {
   const halfFov = (FIELD_OF_VIEW * Math.PI) / 360;
-  const distanceForHeight = SUBJECT_HEIGHT / VIEWPORT_SHARE / (2 * Math.tan(halfFov));
+  const distanceForHeight = SUBJECT_HEIGHT / fit.share / (2 * Math.tan(halfFov));
   const distanceForWidth = SUBJECT_WIDTH / 0.9 / (2 * Math.tan(halfFov) * aspect);
   const distance = Math.max(distanceForHeight, distanceForWidth);
   const visibleHeight = 2 * distance * Math.tan(halfFov);
-  const aimY = SUBJECT_CENTRE_Y - visibleHeight * AIM_DROP_SHARE;
+  const aimY = SUBJECT_CENTRE_Y - visibleHeight * fit.drop;
   camera.aspect = aspect;
   camera.position.set(0, aimY + 0.4, distance);
   camera.lookAt(0, aimY, 0);

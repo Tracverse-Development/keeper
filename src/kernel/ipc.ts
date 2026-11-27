@@ -9,7 +9,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { Chat, ChatFound } from './ipc-chats';
 import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, Fact, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
-import type { FeelingsInfo, FocusSession, HealthCheck, PackTrust, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
+import type { FeelingsInfo, FocusSession, HealthCheck, PackTrust, PhotoSaved, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { ChangeEntry, Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
@@ -136,8 +136,11 @@ export const core = {
   seasonClaim: (keeper: string, item: string) => invoke<SeasonNow>('season_claim', { keeper, item }),
   /** This month's spending on cloud minds and the limit set for it. */
   usageMonth: () => invoke<Spending>('usage_month'),
-  /** Save a keeper card the Studio drew (PNG bytes in base64) to Downloads; resolves to its path. */
-  cardSave: (name: string, data: string) => invoke<string>('card_save', { name, data }),
+  /**
+   * Photo mode: save a still of keeper `keeper` (its id) the Studio drew (PNG bytes in base64) to
+   * ~/Pictures/Keeper on this Mac; the core checks the PNG and names the file. Resolves to where it went.
+   */
+  photoSave: (keeper: string, data: string) => invoke<PhotoSaved>('photo_save', { keeper, data }),
   /** Save every keeper, its memory and the kit as one sealed file in Downloads. */
   backupSave: (passphrase: string) => invoke<{ path: string; keepers: number; records: number }>('backup_save', { passphrase }),
   /** Bring a backup in (`data`: the file's bytes in base64): adds and merges, never removes. */

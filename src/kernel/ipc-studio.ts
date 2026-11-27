@@ -94,6 +94,12 @@ export interface PersonalPicture {
   dataUrl: string;
 }
 
+/** Where photo mode saved a still (`photo_save`): the full path, and `Pictures/Keeper/<file>` to show. */
+export interface PhotoSaved {
+  path: string;
+  shown: string;
+}
+
 /** A mode (stored as a keeper's `role`): Keeper's built-in, an edited built-in, or the person's own. */
 export interface RoleInfo {
   id: string;

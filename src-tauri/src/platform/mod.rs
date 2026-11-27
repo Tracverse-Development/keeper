@@ -5,6 +5,7 @@
 
 #[cfg(target_os = "macos")]
 mod macos;
+mod pictures;
 pub mod read_commands;
 #[cfg(target_os = "macos")]
 mod spotlight_macos;
@@ -20,6 +21,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::kernel::Result;
+
+pub use pictures::{save_png, PICTURES_FOLDER};
 
 pub fn open_app(name: &str) -> Result<()> {
     os::open_app(name)

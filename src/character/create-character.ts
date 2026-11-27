@@ -6,8 +6,11 @@
  * Pattern: Facade. Callers see a handful of methods; the scene graph, the skins, the animator and the
  * browser plumbing stay behind it. The facade also owns the plumbing every host would
  * otherwise repeat: it follows the canvas size (ResizeObserver) and the screen's pixel
- * ratio (capped at 2), pauses the loop while the window is hidden, honours
- * `prefers-reduced-motion` live, and `dispose()` frees every GPU resource it made.
+ * ratio (capped at 2), pauses the loop while the window is hidden (minimised, covered, another
+ * space: `visibilitychange`) and resumes without a jump (`stage/frame-pace.ts`), draws at 30 fps
+ * while the window is shown but not focused, steps the render cost down and back up with the
+ * frame times (`stage/frame-governor.ts`), honours `prefers-reduced-motion` live, draws photos
+ * offscreen (`photo`), and `dispose()` frees every GPU resource it made.
  */
 import { Raycaster, Vector2, type Camera } from 'three';
 import { Animator } from './animator';
@@ -18,9 +21,12 @@ import { isMood } from './moods';
 import { DEFAULT_WEARABLES } from './parts';
 import { SkinSwitcher } from './skin-switcher';
 import { DEFAULT_SKIN_ID, createSkin, resolveSkinId } from './skins';
+import { photoSize } from './photo';
 import { createBackdrop } from './stage/backdrop';
+import { FrameGovernor, QUALITY_TIERS, tierPixelRatio } from './stage/frame-governor';
+import { FramePacer, frameStep } from './stage/frame-pace';
 import { createMemorySparks } from './stage/memory-spark';
-import { createStage } from './stage/scene';
+import { createStage, type Framing } from './stage/scene';
 import { createMoodRig } from './stage/stage-mood';
 import { isStageMood, moodOfWear } from './stage/stage-moods';
 import { createTouchSparkles } from './stage/touch-sparkles';
@@ -40,6 +46,10 @@ export interface CreateCharacterOptions {
   habits?: Habits;
   /** The stage's mood (default `auto`: a glowing set's mood, else the classic night). */
   stageMood?: StageMood | 'auto';
+  /** Step the render cost with the frame times (default true; false = always the full look, for measuring). */
+  governor?: boolean;
+  /** Told each time the governor picks a quality tier (0 = full look; `QUALITY_TIERS`). */
+  onQuality?: (tier: number) => void;
 }
 
 export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharacterOptions = {}): Character {
@@ -74,15 +84,14 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
   onMotionChange();
   reducedMotion?.addEventListener('change', onMotionChange);
 
-  let lastSize = { width: 0, height: 0, ratio: 0 };
-  const fitToCanvas = (): void => {
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    if (width === lastSize.width && height === lastSize.height && ratio === lastSize.ratio) return;
-    if (width === 0 || height === 0) return;
-    lastSize = { width, height, ratio };
-    stage.resize(width, height, ratio);
+  const governed = options.governor !== false;
+  const governor = new FrameGovernor();
+  const pacer = new FramePacer();
+  stage.setQuality(QUALITY_TIERS[governor.tier]);
+
+  /** Sizes the drawing buffer, the framing, the backdrop and every point sprite together. */
+  const applySize = (width: number, height: number, ratio: number, framing: Framing): void => {
+    stage.resize(width, height, ratio, framing);
     backdrop.setAspect(width / height);
     const pixelsPerUnit = (height * ratio) / (2 * Math.tan((stage.camera.fov * Math.PI) / 360));
     wardrobe.setPointScale(pixelsPerUnit);
@@ -90,28 +99,62 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     touchSparkles.setPointScale(pixelsPerUnit);
     effects.setPointScale(pixelsPerUnit);
   };
+  let lastSize = { width: 0, height: 0, ratio: 0 };
+  const fitToCanvas = (): void => {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const ratio = tierPixelRatio(window.devicePixelRatio, QUALITY_TIERS[governor.tier]);
+    if (width === lastSize.width && height === lastSize.height && ratio === lastSize.ratio) return;
+    if (width === 0 || height === 0) return;
+    lastSize = { width, height, ratio };
+    applySize(width, height, ratio, 'stage');
+  };
   const resizeObserver = new ResizeObserver(fitToCanvas);
   resizeObserver.observe(canvas);
   fitToCanvas();
 
   let lastTimestamp: number | undefined;
   const tick = (timestamp: number): void => {
-    fitToCanvas(); // cheap; catches a pixel-ratio change when the window moves screens
-    const seconds = lastTimestamp === undefined ? 0 : (timestamp - lastTimestamp) / 1000;
+    if (!pacer.due(timestamp)) return;
+    // Measured only at the full rate: the background rate's long frames are by design.
+    if (governed && lastTimestamp !== undefined && !pacer.inBackground) {
+      const tier = governor.sample(timestamp - lastTimestamp, timestamp);
+      if (tier !== null) {
+        stage.setQuality(QUALITY_TIERS[tier]);
+        options.onQuality?.(tier);
+      }
+    }
+    fitToCanvas(); // cheap; catches a pixel-ratio change (the screen's or the governor's)
+    const seconds = frameStep(lastTimestamp, timestamp);
     lastTimestamp = timestamp;
     moods.update(seconds);
     animator.frame(seconds);
   };
 
   let disposed = false;
+  /** Forget the last frame: the next one advances nothing and is not measured. */
+  const restartClock = (): void => {
+    lastTimestamp = undefined;
+    pacer.reset();
+    governor.reset();
+  };
   const start = (): void => {
     if (disposed) return;
-    lastTimestamp = undefined;
+    restartClock();
     stage.renderer.setAnimationLoop(tick);
   };
   const stop = (): void => stage.renderer.setAnimationLoop(null);
   const onVisibility = (): void => (document.hidden ? stop() : start());
   document.addEventListener('visibilitychange', onVisibility);
+  // Focus is plain DOM in the Tauri window too (the same as its focus-changed event); it has no
+  // event for being covered, which WebKit already reports as `visibilitychange`.
+  const onFocus = (): void => {
+    pacer.setBackground(!document.hasFocus());
+    restartClock();
+  };
+  window.addEventListener('focus', onFocus);
+  window.addEventListener('blur', onFocus);
+  pacer.setBackground(!document.hasFocus());
   if (!document.hidden) start();
 
   return {
@@ -165,14 +208,25 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       else if (command.kind === 'by') t.by(command.delta);
       else if (command.kind === 'around') t.around();
     },
-    snapshot() {
-      if (disposed) return null;
+    photo(request) {
+      if (disposed || !request || typeof request !== 'object') return null;
+      const size = photoSize(request, stage.renderer.capabilities.maxTextureSize);
       try {
+        // Offscreen in all but name: the canvas's CSS size never changes, and the screen is
+        // drawn again before this task ends, so the photo's size is never seen.
+        stage.setQuality(QUALITY_TIERS[0]);
+        applySize(size.width, size.height, size.ratio, 'portrait');
         // Drawn and read in the same task: the drawing buffer is still there to read.
         animator.frame(0);
         return canvas.toDataURL('image/png');
       } catch {
         return null;
+      } finally {
+        stage.setQuality(QUALITY_TIERS[governor.tier]);
+        lastSize = { width: 0, height: 0, ratio: 0 };
+        fitToCanvas();
+        animator.frame(0);
+        restartClock();
       }
     },
     hitTest,
@@ -187,6 +241,8 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       disposed = true;
       stop();
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onFocus);
       reducedMotion?.removeEventListener('change', onMotionChange);
       resizeObserver.disconnect();
       skins.dispose();

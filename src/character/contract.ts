@@ -10,6 +10,8 @@
  *   happy     - a short smile/bounce after something was remembered or done
  *   asleep    - eyes closed, dim (setup not finished, or muted)
  */
+import type { PhotoRequest } from './photo';
+
 export type Mood = 'idle' | 'listening' | 'thinking' | 'speaking' | 'happy' | 'asleep';
 
 /**
@@ -202,12 +204,18 @@ export interface Character {
 // A picture of the character (appended by declaration merging).
 export interface Character {
   /**
-   * The character as it looks this instant: one frame is drawn and the canvas is returned as a
-   * PNG data URL (its own size, the stage's backdrop included). Null when it cannot be read
-   * (disposed, or the browser refuses). For a keeper card, never for anything automatic.
+   * Photo mode: a still of the character drawn finer than the screen, at its own size and shape
+   * (`PhotoRequest`: CSS width × height, `scale` pixels per CSS pixel, default 2), framed whole and
+   * centred, in its stage mood, outfit, pose and turn of this instant, at the full look whatever the
+   * frame governor chose. The stage is drawn again at its own size before this returns, so nothing
+   * on screen changes. Returns a PNG data URL, or null when it cannot be read. Only ever on a
+   * person's press (the Studio's Photo button), never for anything automatic.
    */
-  snapshot(): string | null;
+  photo(request: PhotoRequest): string | null;
 }
+
+/** A photo's size: CSS pixels and the density it is drawn at (`photo.ts`). */
+export type { PhotoRequest };
 
 // The stage's light (appended by declaration merging).
 /**

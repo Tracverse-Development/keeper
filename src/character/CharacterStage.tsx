@@ -21,7 +21,7 @@
  * render causes nothing.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, Feeling, Habits, HitRegion, Look, Mood, StageMood, TouchKind, WornPart, Emote } from './contract';
+import type { Character, Feeling, Habits, HitRegion, Look, Mood, PhotoRequest, StageMood, TouchKind, WornPart, Emote } from './contract';
 import { createCharacter } from './create-character';
 import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
@@ -52,8 +52,8 @@ export interface CharacterStageProps {
   focusZone?: string | null;
   /** Its simulated mood for the body (`Feeling`); null or absent = none. Compared by content. */
   feeling?: Feeling | null;
-  /** Filled with a function that takes a picture of the character (`Character.snapshot`) while it is mounted. */
-  snapshotRef?: { current: (() => string | null) | null };
+  /** Filled with a function that takes a photo of the character (`Character.photo`) while it is mounted. */
+  photoRef?: { current: ((request: PhotoRequest) => string | null) | null };
   /**
    * The Studio's back view: drag around the keeper to turn round it, double click to face front,
    * arrow keys and T on the focused stage (`turn-gesture.ts`). Read once, at mount.
@@ -110,8 +110,8 @@ export function CharacterStage(props: CharacterStageProps) {
     character.setWork(initial.current.work);
     character.focusZone(initial.current.focusZone);
     character.setFeeling(initial.current.feeling);
-    const snapshotRef = props.snapshotRef;
-    if (snapshotRef) snapshotRef.current = () => character.snapshot();
+    const photoRef = props.photoRef;
+    if (photoRef) photoRef.current = (request) => character.photo(request);
 
     const onPointerMove = (event: PointerEvent): void => {
       const x = (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
@@ -125,7 +125,7 @@ export function CharacterStage(props: CharacterStageProps) {
       window.removeEventListener('pointermove', onPointerMove);
       detachTouch();
       detachTurn();
-      if (snapshotRef) snapshotRef.current = null;
+      if (photoRef) photoRef.current = null;
       character.dispose();
       characterRef.current = null;
     };
