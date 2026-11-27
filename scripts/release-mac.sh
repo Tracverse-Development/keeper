@@ -34,7 +34,10 @@ for target in aarch64-apple-darwin x86_64-apple-darwin; do
   if [ "${SKIP_BUILD:-}" != "1" ]; then
     echo "== building $target"
     bash scripts/build-voice-helper.sh "$target"
-    TAURI_SIGNING_PRIVATE_KEY="$(cat "$key")" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npx tauri build --target "$target"
+    # CI=true: the disk image skips Finder's window styling, an AppleScript macOS may refuse to run
+    # from a terminal without Automation permission (0.13.0's build failed on it). The image still
+    # opens with Keeper and the Applications link; updates use the signed archive, not the image.
+    CI=true TAURI_SIGNING_PRIVATE_KEY="$(cat "$key")" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npx tauri build --target "$target"
   fi
   # Never publish a half build: the signed updater archive and the disk image must both exist.
   [ -f "$bundle/macos/Keeper.app.tar.gz" ] && [ -f "$bundle/macos/Keeper.app.tar.gz.sig" ] || { echo "$target: no signed updater archive"; exit 1; }
