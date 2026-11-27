@@ -202,7 +202,7 @@ export function createGodSkin(): Skin {
   lamp.position.set(0, HUMAN_NECK_Y - 0.4, 1.3);
   body.add(lamp);
 
-  const slots = addSlotAnchors(root, slotsOf('god'), { body, head, leftArm: rig.leftArm, rightArm: rig.rightArm });
+  const slots = addSlotAnchors(root, slotsOf('god'), { body, head, leftArm: rig.leftArm, rightArm: rig.rightArm, leftForearm: rig.leftForearm, rightForearm: rig.rightForearm });
   const zoneMaterials = { skin: g.mask, body: g.armour, robe: g.robe, eyes: g.iris };
   const zones: Record<GodZone, ZoneTarget> = {
     skin: new PaintableMaterial(g.mask),
@@ -231,7 +231,7 @@ export function createGodSkin(): Skin {
     poseArms(rig, GOD_FRAME, e.paw, e.swing * a, Math.sin(pose.t * 0.9) * a, pose.cheer * a);
     head.position.y = HUMAN_HEAD_Y;
     const moment = moments.step(f);
-    poseHumanMoment(rig, moment);
+    poseHumanMoment(rig, GOD_FRAME, moment);
     poseGodMoment(rig, moment);
     const blaze = crownFlare(moment);
     const flare = 1 + 1.5 * f.gotIt + 0.6 * pose.cheer + FLARE.light * blaze;
@@ -279,6 +279,7 @@ export function createGodSkin(): Skin {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
     wearing: (parts) => moments.setWorn(parts),
+    playMoment: (id) => moments.play(id),
     setPointScale: (scale) => motes.setPointScale(scale),
     dispose: () => disposeTree(root),
   };

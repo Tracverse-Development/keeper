@@ -224,6 +224,11 @@ export interface Character {
    * nothing glowing is `night`.
    */
   setStageMood(mood: StageMood | 'auto'): void;
+  /**
+   * Plays one of the keeper's item moments now (checking the watch, nudging the spectacles) when
+   * what it wears offers it; false otherwise. For previews: the keeper plays them on its own when idle.
+   */
+  playMoment(id: string): boolean;
 }
 
 // The mood in the body (appended by declaration merging).

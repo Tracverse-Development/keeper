@@ -173,6 +173,7 @@ export function createRobotSkin(): Skin {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
     wearing: (parts) => moments.setWorn(parts),
+    playMoment: (id) => moments.play(id),
     setPointScale: (scale) => embers.setPointScale(scale),
     dispose() {
       face.dispose();

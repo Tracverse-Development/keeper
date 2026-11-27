@@ -30,7 +30,9 @@ export function createMoodRig(stage: Stage, backdrop: Backdrop): MoodRig {
     // Directional, so the mood lights the whole keeper evenly at stage distance (it aims at the
     // origin from its position; points would fall off before they reached the body).
     const light = new DirectionalLight(0x000000, 0);
-    scene.add(light, light.target);
+    // On the stage's light rig, so a mood's lights turn with the camera too (the target stays at the origin).
+    stage.lightRig.add(light);
+    scene.add(light.target);
     return light;
   });
   let current: StageMood = 'night';

@@ -24,7 +24,7 @@ import { PUPPY_HAT_FORWARD, PUPPY_HEAD_SHAPE, PUPPY_NECK_SHAPE, PUPPY_NECK_Y, PU
 import { ROBOT_FACE_SHAPE, ROBOT_HEAD_SHAPE, ROBOT_NECK_SHAPE, ROBOT_NECK_Y, ROBOT_TORSO_SHAPE } from './robot/robot-shape.ts';
 import { PUPPY_FACE_SHAPE } from './puppy/puppy-shape.ts';
 import { OWL_FACE_SHAPE, OWL_FEET_SHAPE, OWL_HEAD_SHAPE, OWL_NECK_SHAPE, OWL_NECK_Y, OWL_TORSO_SHAPE } from './owl/owl-shape.ts';
-import { HUMAN_NECK_Y, MAN_FRAME, WOMAN_FRAME, handY, humanShapes, wristY } from './human/human-shape.ts';
+import { HUMAN_NECK_Y, MAN_FRAME, WOMAN_FRAME, elbowAt, handY, humanShapes, wristY } from './human/human-shape.ts';
 import { GOD_FRAME } from './god/god-shape.ts';
 
 /**
@@ -32,7 +32,7 @@ import { GOD_FRAME } from './god/god-shape.ts';
  * the puppy's waving front paw and scratching hind paw, and a person's arms (the watch rides the
  * left, what is held rides the right).
  */
-export type Bone = 'body' | 'head' | 'paw' | 'hindPaw' | 'leftArm' | 'rightArm';
+export type Bone = 'body' | 'head' | 'paw' | 'hindPaw' | 'leftArm' | 'rightArm' | 'leftForearm' | 'rightForearm';
 
 /**
  * Where one slot sits on a body. Floating slots: relative to the rig root at rest (parts float
@@ -68,11 +68,19 @@ export interface SkinInfo {
  * A shape whose limbs ride the rig's bones: limb `i` takes `bones[i]` (sleeves on it follow that
  * bone). The shape files measure the limbs; which joint moves each is the rig's business, named here.
  */
-function riding(shape: BodyShape, bones: readonly (Bone | null)[]): BodyShape {
-  return { ...shape, limbs: (shape.limbs ?? []).map((limb, i) => (bones[i] ? { ...limb, bone: bones[i] } : limb)) };
+function riding(shape: BodyShape, bones: readonly (Bone | null)[], forearms: readonly (Bone | null)[] = []): BodyShape {
+  return {
+    ...shape,
+    limbs: (shape.limbs ?? []).map((limb, i) => {
+      const out = bones[i] ? { ...limb, bone: bones[i] } : limb;
+      return out.elbow && forearms[i] ? { ...out, elbow: { ...out.elbow, bone: forearms[i] } } : out;
+    }),
+  };
 }
 /** A person's limbs are listed right (-x) then left (+x); the puppy's front legs the same, its screen-right (+x) one waves. */
 const ARMS: readonly Bone[] = ['rightArm', 'leftArm'];
+/** A person's forearms, in the same order: below the elbow a sleeve follows these. */
+const FOREARMS: readonly Bone[] = ['rightForearm', 'leftForearm'];
 
 /** The human frames' published shapes (the man's and the woman's own). */
 const MAN = { frame: MAN_FRAME, shapes: humanShapes(MAN_FRAME) };
@@ -87,12 +95,13 @@ function humanSlots(human: typeof MAN) {
     head: worn('head', [0, 0.02, 0], shapes.head),
     face: worn('head', [0, 0, 0], shapes.face),
     neck: worn('body', [0, HUMAN_NECK_Y, 0], shapes.neck),
-    torso: worn('body', [0, HUMAN_NECK_Y, 0], riding(shapes.torso, ARMS)),
+    torso: worn('body', [0, HUMAN_NECK_Y, 0], riding(shapes.torso, ARMS, FOREARMS)),
     legs: worn('body', [0, 0, 0], shapes.legs),
     back: worn('body', [0, HUMAN_NECK_Y, 0], shapes.torso),
     paws: worn('body', [0, 0, 0], shapes.feet),
-    wrist: worn('leftArm', [0, wristY(frame), 0], shapes.wrist),
-    held: worn('rightArm', [0, handY(frame), 0], shapes.held),
+    // The watch and what is held ride the forearms, below the elbow.
+    wrist: worn('leftForearm', [0, wristY(frame) + elbowAt(frame), 0], shapes.wrist),
+    held: worn('rightForearm', [0, handY(frame) + elbowAt(frame), 0], shapes.held),
     base: { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 },
     aura: { position: [0, -0.5, 0], rotation: [0, 0, 0], scale: 1 },
     thinking: MOMENT,

@@ -34,6 +34,8 @@ export interface SlotAnchor {
    * the limb's top with the anchor's turn at rest: sleeves follow an arm that waves.
    */
   readonly limbs?: readonly Object3D[];
+  /** One joint per limb that bends (`limb.elbow`), riding the forearm's bone, at the bend; null otherwise. */
+  readonly elbows?: readonly (Object3D | null)[];
 }
 
 export type SlotAnchors = Readonly<Partial<Record<SlotId, SlotAnchor>>>;
@@ -61,7 +63,8 @@ export function addSlotAnchors(
     const shape = placement.follow ? placement.shape : undefined;
     const feet = shape?.feet ? addFootJoints(root, object, shape, bones) : undefined;
     const limbs = shape?.limbs?.some((l) => l.bone) ? addLimbJoints(root, object, shape, bones) : undefined;
-    anchors[slot] = { object, scale: placement.scale, shape, feet, limbs };
+    const elbows = limbs && shape?.limbs?.some((l) => l.elbow) ? addElbowJoints(root, object, shape, bones) : undefined;
+    anchors[slot] = { object, scale: placement.scale, shape, feet, limbs, elbows };
   }
   return anchors;
 }
@@ -74,6 +77,18 @@ function addFootJoints(root: Object3D, anchor: Object3D, shape: BodyShape, bones
 /** One joint per limb, under the limb's bone (else the slot's), at the limb's top and the anchor's turn. */
 function addLimbJoints(root: Object3D, anchor: Object3D, shape: BodyShape, bones: Readonly<Partial<Record<Bone, Object3D>>>): Object3D[] {
   return (shape.limbs ?? []).map((limb, i) => addJoint(root, anchor, (limb.bone && bones[limb.bone as Bone]) || anchor, limb.position, `limb-${i}`));
+}
+
+/** One joint per bending limb, under its forearm's bone, at the bend (straight down the limb's tilt). */
+function addElbowJoints(root: Object3D, anchor: Object3D, shape: BodyShape, bones: Readonly<Partial<Record<Bone, Object3D>>>): (Object3D | null)[] {
+  return (shape.limbs ?? []).map((limb, i) => {
+    const bend = limb.elbow;
+    const parent = bend?.bone && bones[bend.bone as Bone];
+    if (!bend || !parent) return null;
+    const [x, y, z] = limb.position;
+    const at: [number, number, number] = [x, y - bend.at * Math.cos(limb.tilt), z - bend.at * Math.sin(limb.tilt)];
+    return addJoint(root, anchor, parent, at, `elbow-${i}`);
+  });
 }
 
 /**

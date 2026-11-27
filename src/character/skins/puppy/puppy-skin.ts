@@ -222,6 +222,7 @@ export function createPuppySkin(): Skin {
       fur.sync();
     },
     wearing: (parts) => moments.setWorn(parts),
+    playMoment: (id) => moments.play(id),
     covered(slots) {
       for (const [zone, under] of Object.entries(FUR_UNDER)) fur.trim(zone, under.slots.some((slot) => slots.includes(slot)) ? under.share : 1);
     },

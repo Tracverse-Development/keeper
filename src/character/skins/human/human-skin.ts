@@ -128,7 +128,7 @@ export function createHumanSkin(variant: HumanVariant): Skin {
   const frame = style.frame;
   const rig = buildHumanRig(style);
   rig.body.scale.setScalar(HUMAN_SCALE);
-  const slots = addSlotAnchors(rig.root, slotsOf(variant), { body: rig.body, head: rig.head, leftArm: rig.leftArm, rightArm: rig.rightArm });
+  const slots = addSlotAnchors(rig.root, slotsOf(variant), { body: rig.body, head: rig.head, leftArm: rig.leftArm, rightArm: rig.rightArm, leftForearm: rig.leftForearm, rightForearm: rig.rightForearm });
   const zones = humanZones(materials);
   const focus = measureZones(rig.root, zoneParts(rig.root, materials));
 
@@ -157,9 +157,10 @@ export function createHumanSkin(variant: HumanVariant): Skin {
     },
     apply(frame) {
       applyHuman(rig, style.frame, frame, leanSide);
-      poseHumanMoment(rig, moments.step(frame));
+      poseHumanMoment(rig, style.frame, moments.step(frame));
     },
     wearing: (parts) => moments.setWorn(parts),
+    playMoment: (id) => moments.play(id),
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },

@@ -9,8 +9,10 @@
  *   root
  *   └ body            - leans and sways (the torso, arms, legs)
  *     ├ head          - turns with the gaze (face, hair, eyes)
- *     ├ leftArm       - the character's own left (+x, screen right): waves hello, wears the watch
- *     ├ rightArm      - its right (-x): holds what it carries
+ *     ├ leftArm       - the character's own left (+x, screen right): waves hello
+ *     │ └ leftForearm - below the elbow: bends forward, wears the watch
+ *     ├ rightArm      - its right (-x)
+ *     │ └ rightForearm - holds what it carries
  *     └ legs
  *
  * Every soft form is one shared sphere scaled into an ellipsoid (`blob`), so the rig is a handful of
@@ -32,7 +34,7 @@ import {
 import { profilePoint, type Ring } from '../../parts/fit.ts';
 import { addSoftEyes, type SoftEyes } from '../soft-eyes';
 import { addBrowStrokes, addFaceDetail, buildHand, sculptedHead, surfaceZ } from './human-face';
-import { HUMAN_EYES, HUMAN_HEAD_Y, HUMAN_NECK_Y, HUMAN_SOLE_Y, handY, type HumanFrame } from './human-shape';
+import { HUMAN_EYES, HUMAN_HEAD_Y, HUMAN_NECK_Y, HUMAN_SOLE_Y, elbowAt, handY, type HumanFrame } from './human-shape';
 
 export interface HumanMaterials {
   skin: MeshPhysicalMaterial;
@@ -70,6 +72,9 @@ export interface HumanRig {
   /** The character's own left arm (+x, screen right: it waves and wears the watch) and right arm (-x: it holds). */
   readonly leftArm: Group;
   readonly rightArm: Group;
+  /** The elbows: each forearm (with its hand) bends about its local x, negative = forward. */
+  readonly leftForearm: Group;
+  readonly rightForearm: Group;
   readonly eyes: SoftEyes;
   /** Where memory sparks leave (the chest). */
   readonly heart: Object3D;
@@ -80,6 +85,9 @@ export interface HumanRig {
 
 /** How far a waving arm lifts (radians about z) and how much it waves. */
 const WAVE_LIFT = 1.95;
+/** The relaxed elbow's bend (radians, forward) and the extra bend of a waving forearm. */
+const REST_BEND = 0.14;
+const WAVE_BEND = 0.55;
 /** The brows' length (head units): the soft eyes' brow capsule and the hair strokes on it. */
 const BROW_LENGTH = 0.13;
 /** The mouth's height on the face (head space). */
@@ -121,7 +129,7 @@ export function buildHumanRig(style: HumanStyle): HumanRig {
   heart.position.set(0, HUMAN_NECK_Y - 0.3, frame.torso[4][0] * frame.depth * 0.9);
   body.add(heart);
 
-  const [rightArm, leftArm] = [-1, 1].map((side) => addArm(body, frame, m, side));
+  const [right, left] = [-1, 1].map((side) => addArm(body, frame, m, side));
   if (style.legs !== 'hidden') addLegs(body, frame, m, style.legs);
 
   const head = new Group();
@@ -172,8 +180,10 @@ export function buildHumanRig(style: HumanStyle): HumanRig {
     root,
     body,
     head,
-    leftArm,
-    rightArm,
+    leftArm: left.shoulder,
+    rightArm: right.shoulder,
+    leftForearm: left.forearm,
+    rightForearm: right.forearm,
     eyes,
     heart,
     blob,
@@ -207,8 +217,11 @@ function splitProfile(profile: readonly Ring[], waist: number): [Ring[], Ring[]]
   return [samples.slice(0, at + 1), samples.slice(at)];
 }
 
-/** One arm hanging from the shoulder: a sleeve, the bare arm and a hand. Returns the shoulder joint. */
-function addArm(body: Object3D, frame: HumanFrame, m: HumanMaterials, side: number): Group {
+/**
+ * One arm hanging from the shoulder: a sleeve and the upper arm on the shoulder joint, then the
+ * forearm and a hand on an elbow joint below it. Returns both joints.
+ */
+function addArm(body: Object3D, frame: HumanFrame, m: HumanMaterials, side: number): { shoulder: Group; forearm: Group } {
   const { arm, shoulder } = frame;
   const joint = new Group();
   joint.name = side < 0 ? 'arm-right' : 'arm-left';
@@ -219,12 +232,24 @@ function addArm(body: Object3D, frame: HumanFrame, m: HumanMaterials, side: numb
   const sleeve = new Mesh(new CapsuleGeometry(arm.sleeve, sleeveLength, 6, 18), m.top);
   sleeve.position.y = -sleeveLength / 2;
   joint.add(sleeve);
-  const limb = new Mesh(new CapsuleGeometry(arm.radius, arm.length * 0.82, 6, 16), m.skin);
-  limb.position.y = -arm.length * 0.5;
-  joint.add(limb);
+  const elbow = elbowAt(frame);
+  // The upper arm runs into the elbow; a small ball rounds the joint so a bend never shows a seam.
+  const upper = new Mesh(new CapsuleGeometry(arm.radius, elbow - arm.radius * 0.4, 6, 16), m.skin);
+  upper.position.y = -elbow / 2;
+  joint.add(upper);
+  const forearm = new Group();
+  forearm.name = side < 0 ? 'forearm-right' : 'forearm-left';
+  forearm.position.y = -elbow;
+  joint.add(forearm);
+  const knob = new Mesh(new SphereGeometry(arm.radius * 0.98, 20, 14), m.skin);
+  forearm.add(knob);
+  const lowerLength = arm.length * 0.92 - elbow;
+  const lower = new Mesh(new CapsuleGeometry(arm.radius * 0.94, lowerLength, 6, 16), m.skin);
+  lower.position.y = -lowerLength / 2;
+  forearm.add(lower);
   // A hand with fingers and a thumb (`human-face.ts`), centred where held things sit.
-  joint.add(buildHand(m.skin, frame, side, handY(frame)));
-  return joint;
+  forearm.add(buildHand(m.skin, frame, side, handY(frame) + elbow));
+  return { shoulder: joint, forearm };
 }
 
 function addLegs(body: Object3D, frame: HumanFrame, m: HumanMaterials, legs: 'trousers' | 'bare'): void {
@@ -244,4 +269,7 @@ function addLegs(body: Object3D, frame: HumanFrame, m: HumanMaterials, legs: 'tr
 export function poseArms(rig: HumanRig, frame: HumanFrame, wave: number, swing: number, sway: number, cheer: number): void {
   rig.rightArm.rotation.set(sway * 0.06, 0, -frame.arm.spread - 0.5 * cheer);
   rig.leftArm.rotation.set(-sway * 0.06 - 0.3 * wave, 0, frame.arm.spread + WAVE_LIFT * wave + 0.5 * cheer + 0.5 * swing * wave);
+  // Relaxed elbows keep a soft bend that breathes with the sway; a wave bends the forearm up and in.
+  rig.rightForearm.rotation.set(-REST_BEND - 0.04 * sway - 0.5 * cheer, 0, 0);
+  rig.leftForearm.rotation.set(-REST_BEND + 0.04 * sway - WAVE_BEND * wave - 0.5 * cheer, 0, 0);
 }

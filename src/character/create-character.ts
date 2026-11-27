@@ -182,6 +182,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     emote(name: Emote) {
       if (!disposed && isEmote(name)) animator.emote(name);
     },
+    playMoment: (id) => !disposed && typeof id === 'string' && animator.playMoment(id),
     dispose() {
       if (disposed) return;
       disposed = true;

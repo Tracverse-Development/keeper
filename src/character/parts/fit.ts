@@ -32,6 +32,12 @@ export interface Limb {
    * `paw`), so a sleeve on it moves when the arm waves. Absent: the limb never moves on its own.
    */
   readonly bone?: string;
+  /**
+   * Where the limb bends (a person's elbow): `at` is how far down the limb from its top, `bone` the
+   * rig joint the part below the bend rides (`leftForearm`). A sleeve's lower half follows it
+   * (`limb-follow.ts`). Absent: the limb is one rigid piece.
+   */
+  readonly elbow?: { readonly at: number; readonly bone?: string };
 }
 
 /**
@@ -93,6 +99,11 @@ export interface PartFit {
      * limb's top with the anchor's own turn at rest: a sleeve follows `limbs[i]` (`limb-follow.ts`).
      */
     readonly limbs?: readonly Object3D[];
+    /**
+     * One live joint per limb that bends (`shape.limbs[i].elbow`), riding the forearm's bone, placed
+     * at the bend with the anchor's own turn at rest; null for a limb that does not bend.
+     */
+    readonly elbows?: readonly (Object3D | null)[];
   };
 }
 

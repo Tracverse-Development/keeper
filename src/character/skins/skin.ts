@@ -109,6 +109,8 @@ export interface Skin {
    * watch. Called with the same timing as `covered`. Optional.
    */
   wearing?(parts: readonly string[]): void;
+  /** Starts one of its item moments now if what it wears offers it (previews); false otherwise. Optional. */
+  playMoment?(id: string): boolean;
   /** Device pixels per world unit, for skins that draw glowing point sprites. */
   setPointScale?(scale: number): void;
   /** Turns one frame of shared dials into this skin's pose, materials and lights. */

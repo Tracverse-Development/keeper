@@ -25,6 +25,7 @@ import {
   Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
+  Group,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -53,6 +54,13 @@ export interface Stage {
   readonly faceLight: PointLight;
   /** The gold rim lights, dimmed together when the character sleeps. */
   readonly rimLights: readonly DirectionalLight[];
+  /**
+   * The key, fill and rim lights (and a mood's own lights) on one rig that turns with the camera
+   * (`turnLights`), so a keeper turned round in the Studio is lit like its front, rims and all.
+   */
+  readonly lightRig: Group;
+  /** Turns the light rig to the camera's yaw round the keeper (radians; 0 = the front). */
+  turnLights(yaw: number): void;
   /** The ambient, key and fill lights (a stage mood tints them: `stage-mood.ts`). */
   readonly lights: { readonly ambient: AmbientLight; readonly key: DirectionalLight; readonly fill: DirectionalLight };
   /** Where the camera stands and looks to frame the whole character (set by `resize`). */
@@ -84,7 +92,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100);
   const home = { position: new Vector3(), target: new Vector3() };
 
-  const { faceLight, rimLights, lights } = addLights(scene);
+  const { faceLight, rimLights, lights, lightRig } = addLights(scene);
 
   // MSAA on the HDR buffers keeps the glossy silhouette smooth even with post-processing.
   const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
@@ -112,6 +120,10 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     bloom,
     faceLight,
     rimLights,
+    lightRig,
+    turnLights(yaw: number) {
+      lightRig.rotation.y = yaw;
+    },
     lights,
     home,
     resize,
@@ -126,30 +138,36 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   };
 }
 
-/** Key, fill and two gold rim lights from behind, plus the eye-glow light on the face. */
-function addLights(scene: Scene): { faceLight: PointLight; rimLights: DirectionalLight[]; lights: Stage['lights'] } {
+/**
+ * Key, fill and two gold rim lights from behind (on a rig that turns with the camera), plus the
+ * eye-glow light on the face (which stays with the face: it is the eyes' own light).
+ */
+function addLights(scene: Scene): { faceLight: PointLight; rimLights: DirectionalLight[]; lights: Stage['lights']; lightRig: Group } {
   const ambient = new AmbientLight(PALETTE.navy500, 0.35);
   scene.add(ambient);
+  const lightRig = new Group();
+  lightRig.name = 'light-rig';
+  scene.add(lightRig);
 
   const key = new DirectionalLight(PALETTE.cream50, 1.25);
   key.position.set(-3, 4, 5);
-  scene.add(key);
+  lightRig.add(key);
 
   const fill = new DirectionalLight(PALETTE.navy500, 0.9);
   fill.position.set(4, -1, 3);
-  scene.add(fill);
+  lightRig.add(fill);
 
   const rimLeft = new DirectionalLight(PALETTE.gold400, 2.6);
   rimLeft.position.set(-4.5, 2.5, -4);
   const rimRight = new DirectionalLight(PALETTE.gold500, 2.2);
   rimRight.position.set(4.5, 1.5, -4.5);
-  scene.add(rimLeft, rimRight);
+  lightRig.add(rimLeft, rimRight);
 
   const faceLight = new PointLight(PALETTE.gold300, 0.5, 2.5, 2);
   faceLight.position.set(0, 0.6, 1.6);
   scene.add(faceLight);
 
-  return { faceLight, rimLights: [rimLeft, rimRight], lights: { ambient, key, fill } };
+  return { faceLight, rimLights: [rimLeft, rimRight], lights: { ambient, key, fill }, lightRig };
 }
 
 /** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width; writes the pose into `home`. */

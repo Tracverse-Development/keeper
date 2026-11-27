@@ -195,7 +195,7 @@ export class Wardrobe {
       if (slot.outgoing) this.release(slot.outgoing);
       slot.outgoing = instant ? null : slot.current;
       if (instant && slot.current) this.release(slot.current);
-      const follow = anchor?.feet || anchor?.limbs ? { base: anchor.object, feet: anchor.feet ?? [], limbs: anchor.limbs } : undefined;
+      const follow = anchor?.feet || anchor?.limbs ? { base: anchor.object, feet: anchor.feet ?? [], limbs: anchor.limbs, elbows: anchor.elbows } : undefined;
       slot.current =
         next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow }), next.rarity, divine, next.set !== null) : null;
       slot.swapStartedAt = this.time;

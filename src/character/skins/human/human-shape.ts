@@ -89,6 +89,13 @@ export function handY(frame: HumanFrame): number {
 export function wristY(frame: HumanFrame): number {
   return -(frame.arm.length + frame.arm.radius * 0.2);
 }
+/**
+ * Where the elbow sits down the arm (arm-bone space, positive): a little past half the bare arm, so
+ * the forearm and hand together are a touch longer than the upper arm, as a real arm's are.
+ */
+export function elbowAt(frame: HumanFrame): number {
+  return frame.arm.length * 0.55;
+}
 
 /** The slots a human frame publishes (anchor spaces named in `skins/catalog.ts`). */
 export interface HumanShapes {
@@ -111,6 +118,7 @@ export function humanShapes(frame: HumanFrame, eyes: FaceEyes = faceEyes(frame))
     radius: frame.arm.sleeve,
     length: frame.arm.length,
     tilt: 0,
+    elbow: { at: elbowAt(frame) },
   }));
   return {
     head: { profile: domeProfile(frame.hat[0], frame.hat[1], 17), depth: frame.hat[2] / frame.hat[0], squareness: 2, reach: 0.3 },

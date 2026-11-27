@@ -12,13 +12,20 @@ import { HUMAN_MOMENTS, poseHumanMoment } from './human-moments.ts';
 import { GOD_MOMENTS, crownFlare, poseGodMoment } from '../god/god-moments.ts';
 import { ROBOT_MOMENTS, poseRobotMoment } from '../robot/robot-moments.ts';
 import type { HumanRig } from './human-body.ts';
+import { HUMAN_HEAD_Y, HUMAN_NECK_Y, MAN_FRAME, elbowAt, handY } from './human-shape.ts';
+import { Vector3 } from 'three';
 
 const partIds = new Set(PARTS.map((p) => p.id as string));
 const playing = (id: string, progress = 0.5): ActiveMoment => ({ id, progress, envelope: 1, elapsed: 0.37 });
 
 function rig(): HumanRig {
-  return { leftArm: new Group(), rightArm: new Group(), head: new Group() } as unknown as HumanRig;
+  const r = { leftArm: new Group(), rightArm: new Group(), leftForearm: new Group(), rightForearm: new Group(), head: new Group() };
+  r.leftArm.position.set(MAN_FRAME.shoulder.x, HUMAN_NECK_Y + MAN_FRAME.shoulder.y, 0);
+  r.rightArm.position.set(-MAN_FRAME.shoulder.x, HUMAN_NECK_Y + MAN_FRAME.shoulder.y, 0);
+  r.head.position.set(0, HUMAN_HEAD_Y, 0);
+  return r as unknown as HumanRig;
 }
+const moved = (o: Group) => Math.abs(o.rotation.x) + Math.abs(o.rotation.y) + Math.abs(o.rotation.z) > 0.05;
 
 test('every moment names catalogue parts and has a sane length and rest', () => {
   for (const table of [HUMAN_MOMENTS, ROBOT_MOMENTS, GOD_MOMENTS] as readonly (readonly ItemMoment[])[]) {
@@ -38,22 +45,47 @@ test('every moment names catalogue parts and has a sane length and rest', () => 
 test('each people gesture moves the rig while it plays, and nothing moves when none plays', () => {
   for (const row of HUMAN_MOMENTS) {
     const r = rig();
-    poseHumanMoment(r, playing(row.id));
-    const moved = [r.leftArm, r.rightArm, r.head].some((o) => Math.abs(o.rotation.x) + Math.abs(o.rotation.y) + Math.abs(o.rotation.z) > 0.05);
-    assert.ok(moved, `${row.id} moves the rig`);
+    poseHumanMoment(r, MAN_FRAME, playing(row.id));
+    assert.ok([r.leftArm, r.rightArm, r.head].some(moved), `${row.id} moves the rig`);
   }
   const still = rig();
-  poseHumanMoment(still, null);
+  poseHumanMoment(still, MAN_FRAME, null);
   assert.deepEqual([still.leftArm.rotation.x, still.rightArm.rotation.x, still.head.rotation.x], [0, 0, 0]);
 });
 
-test('checking the watch lifts the left arm (it wears the watch) forward, and the head looks down at it', () => {
+/** Where the hand's centre is (body space) for the rig's arm pose. */
+function handAt(arm: Group, forearm: Group): Vector3 {
+  arm.updateMatrixWorld(true);
+  forearm.position.set(0, -elbowAt(MAN_FRAME), 0);
+  arm.add(forearm);
+  arm.updateMatrixWorld(true);
+  return forearm.localToWorld(new Vector3(0, handY(MAN_FRAME) + elbowAt(MAN_FRAME), 0));
+}
+
+test('checking the watch brings the left forearm up in front of the chest, the elbow bent, the head looking down', () => {
   const r = rig();
-  poseHumanMoment(r, playing('check-watch'));
-  assert.ok(r.leftArm.rotation.x < -0.5, 'the left arm comes forward');
-  assert.ok(r.leftArm.rotation.z < 0, 'and in toward the body');
+  poseHumanMoment(r, MAN_FRAME, playing('check-watch'));
+  const hand = handAt(r.leftArm, r.leftForearm);
+  assert.ok(hand.z > 0.4, 'the hand is out in front');
+  assert.ok(hand.y > -0.85 && hand.y < -0.55, 'at chest height');
+  assert.ok(r.leftForearm.rotation.x < -0.8, 'the elbow bends');
   assert.ok(r.head.rotation.x > 0.1, 'the head tips down');
   assert.equal(r.rightArm.rotation.x, 0, 'the other arm stays');
+});
+
+test('tugging the tie puts the right hand on the knot at the collar', () => {
+  const r = rig();
+  poseHumanMoment(r, MAN_FRAME, { ...playing('tug-tie'), elapsed: 0 });
+  const hand = handAt(r.rightArm, r.rightForearm);
+  assert.ok(hand.distanceTo(new Vector3(-0.03, -0.56, 0.31)) < 0.01, `hand at the knot (${hand.toArray().map((n) => n.toFixed(2))})`);
+});
+
+test('a half-played moment is half-way: the arm blends from its rest pose', () => {
+  const full = rig();
+  const half = rig();
+  poseHumanMoment(full, MAN_FRAME, playing('raise-lantern'));
+  poseHumanMoment(half, MAN_FRAME, { ...playing('raise-lantern'), envelope: 0.5 });
+  assert.ok(Math.abs(half.rightForearm.rotation.x - full.rightForearm.rotation.x / 2) < 1e-9);
 });
 
 test('the robot bobs to the beat with head gear on; the God Keeper flares its crown and smooths its robe', () => {

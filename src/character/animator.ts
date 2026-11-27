@@ -201,6 +201,11 @@ export class Animator {
   }
 
   /** Plays an emote on top of the mood (the director runs its timeline and effects). */
+  /** Starts an item moment on the worn skin now (previews): false when nothing worn offers it. */
+  playMoment(id: string): boolean {
+    return this.parts.skins.active.playMoment?.(id) ?? false;
+  }
+
   emote(name: Emote): void {
     this.director.emote(name, this.time);
   }
@@ -316,6 +321,8 @@ export class Animator {
       const target = this.camera.busy ? this.camera.target : stage.home.target;
       if (!this.camera.busy) stage.camera.position.copy(stage.home.position);
       this.turn.apply(stage.camera, stage.camera.position, target);
+      // The lights walk round with the camera: the back is lit like the front.
+      stage.turnLights(this.turn.yaw);
       this.turned = this.turn.active;
     }
     stage.render();
