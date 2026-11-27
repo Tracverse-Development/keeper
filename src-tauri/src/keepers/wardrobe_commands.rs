@@ -25,6 +25,8 @@ pub struct Listed {
     pub worn_by: Vec<String>,
     /// Who may wear it: species or race ids (empty = everyone), for "Only for humans".
     pub who: &'static [&'static str],
+    /// The colours it can be worn in (`kit::colours`), each with the effect values it sets.
+    pub colours: Vec<kit::colours::Choice>,
 }
 
 #[derive(Serialize)]
@@ -67,7 +69,7 @@ pub(super) async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
 fn listing(items: Vec<Item>, keepers: &[KeeperProfile], complete: bool) -> Wardrobe {
     let listed = items
         .iter()
-        .map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items), who: if i.who.is_empty() { parts::get(&i.part).map(|p| p.species).unwrap_or(&[]) } else { i.who } })
+        .map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items), who: if i.who.is_empty() { parts::get(&i.part).map(|p| p.species).unwrap_or(&[]) } else { i.who }, colours: kit::colours::choices(&i.id, &i.part) })
         .collect();
     let bodies = keepers
         .iter()
@@ -106,7 +108,7 @@ pub async fn wardrobe_list(state: State<'_, AppState>) -> Result<Wardrobe> {
 }
 
 #[tauri::command]
-pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: String) -> Result<Wardrobe> {
+pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: String, colour: Option<String>) -> Result<Wardrobe> {
     // Rarity is earned: a keeper wears an item only once its level reaches the item's rarity.
     let profile = state.keeper_or_active(&keeper)?;
     let experience = super::kit::levels::experience_or_why(&state.memory_for(&profile)?).await.map_err(|e| super::kit::levels::unread(&profile.name, &e))?;
@@ -115,9 +117,22 @@ pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: Str
         if !experience.may_wear(rarity) {
             return Err(format!("{} is {}: {} needs level {} to wear it (now level {}).", chosen.name, rarity.name.to_lowercase(), profile.name, rarity.level, experience.level));
         }
-        wardrobe::wear(keepers, &keeper, chosen, items)
+        wardrobe::wear(keepers, &keeper, chosen, items)?;
+        // Put on in the colour picked while trying it on (left out: the colour it is worn in).
+        match &colour {
+            Some(c) => wardrobe::recolour(keepers, &keeper, chosen, Some(c).filter(|c| !c.is_empty()).map(String::as_str), items),
+            None => Ok(()),
+        }
     })
     .await
+}
+
+/// Wear `item` (which keeper `keeper` has on) in `colour`, a swatch of its palette (None, "" or a
+/// colour not in its palette: its own colours). Refused when the keeper isn't wearing it.
+#[tauri::command]
+pub async fn wardrobe_colour(state: State<'_, AppState>, keeper: String, item: String, colour: Option<String>) -> Result<Wardrobe> {
+    let colour = colour.filter(|c| !c.is_empty());
+    change(&state, &item, |keepers, chosen, items| wardrobe::recolour(keepers, &keeper, chosen, colour.as_deref(), items)).await
 }
 
 /// Put on every piece of `set` that keeper `keeper` can wear now (its body and race fit, its level
@@ -175,7 +190,7 @@ pub async fn wardrobe_share(state: State<'_, AppState>, item: String) -> Result<
     let (own, _) = own_items(&state).await;
     let items = wardrobe::items(&own);
     let chosen = items.iter().find(|i| i.id == item).ok_or_else(|| DeskError::Invalid("That item isn't in your wardrobe.".into()))?;
-    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None, rarity: None, set: None }, one_of_a_kind: chosen.one_of_a_kind };
+    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None, rarity: None, set: None, colour: None }, one_of_a_kind: chosen.one_of_a_kind };
     let path = super::kit_commands::downloads_file(&chosen.name);
     std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref())?)?;
     crate::platform::reveal(&path);
@@ -227,7 +242,7 @@ pub async fn design(description: &str, model: &str) -> Result<Designed> {
     let raw = crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await?;
     let part = raw["part"].as_str().unwrap_or_default().to_string();
     let effects: BTreeMap<String, serde_json::Value> = raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None, colour: None }).map_err(DeskError::Invalid)?;
     let name = packs::clean_name(raw["name"].as_str().unwrap_or("My item")).unwrap_or_else(|_| "My item".into());
     Ok(Designed { name, part: worn.part, effects: worn.effects })
 }
@@ -251,7 +266,7 @@ mod design_tests {
 #[tauri::command]
 pub async fn wardrobe_add(state: State<'_, AppState>, name: String, part: String, effects: BTreeMap<String, serde_json::Value>, one_of_a_kind: bool) -> Result<Wardrobe> {
     let name = packs::clean_name(&name).map_err(DeskError::Invalid)?;
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None, colour: None }).map_err(DeskError::Invalid)?;
     let variant = Variant { id: packs::slug(&name), name, worn, one_of_a_kind };
     let client = state.client()?;
     inventory::save_variant(&client, &inventory::kit(&client, &state.kit_place()).await?, &variant).await?;

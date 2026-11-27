@@ -48,7 +48,9 @@ export function useWardrobe(open: boolean, onChanged: () => void) {
     wardrobe,
     error,
     busy,
-    wear: (keeper: string, item: string) => run(core.wardrobeWear(keeper, item)),
+    wear: (keeper: string, item: string, colour?: string) => run(core.wardrobeWear(keeper, item, colour)),
+    /** Wear an item the keeper has on in another colour ('' = its own colours). */
+    colour: (keeper: string, item: string, colour: string) => run(core.wardrobeColour(keeper, item, colour)),
     takeOff: (keeper: string, item: string) => run(core.wardrobeTakeOff(keeper, item)),
     /** Put on every piece of a set the keeper can wear now. */
     wearSet: (keeper: string, set: string) => run(core.wardrobeWearSet(keeper, set)),

@@ -7,6 +7,8 @@
 import { useMemo, useState } from 'react';
 
 import { core, sentence, type KeeperProfile, type StudioInfo, type Wardrobe, type WardrobeItem } from '../kernel/ipc';
+import { effectsIn, shownColour, swatchesOf } from './colour-choice';
+import { ColourSwatches } from './ColourSwatches';
 import { FILTERS, inventory, type InventoryFilter } from './inventory-view';
 import { ItemCard } from './ItemCard';
 import { coloursOf, fitsKeeper, misfit } from './market-view';
@@ -17,16 +19,22 @@ interface Props {
   keeper: KeeperProfile;
   wardrobe: Wardrobe | null;
   busy: boolean;
-  onWear: (item: string) => void;
+  /** Put an item on, in the colour picked for it ('' = its own; left out = as it is worn). */
+  onWear: (item: string, colour?: string) => void;
+  /** Wear an item this keeper has on in another colour. */
+  onColour: (item: string, colour: string) => void;
   onTakeOff: (item: string) => void;
   onGive: (item: string, to: string, mode: 'move' | 'share') => void;
-  onTry: (item: WardrobeItem | null) => void;
+  /** Try an item on the stage, in a colour (null: stop). */
+  onTry: (item: WardrobeItem | null, colour?: string) => void;
 }
 
-export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, onGive, onTry }: Props) {
+export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onColour, onTakeOff, onGive, onTry }: Props) {
   const [filter, setFilter] = useState<InventoryFilter>('all');
   const [search, setSearch] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  // Colours picked on cards this visit (item id → swatch id), for items not worn yet.
+  const [picked, setPicked] = useState<Record<string, string>>({});
   const items = useMemo(() => (wardrobe ? inventory(wardrobe, keeper.id, filter, search, (i) => rarityOf(info, i).id) : []), [wardrobe, keeper.id, filter, search, info]);
   const others = (wardrobe?.keepers ?? []).filter((k) => k.id !== keeper.id);
   const share = (item: WardrobeItem) =>
@@ -62,6 +70,12 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, 
           const wearing = item.wornBy.includes(keeper.id);
           const fits = wardrobe ? fitsKeeper(wardrobe, keeper.id, item) : false;
           const slotName = wardrobe?.slots.find((s) => s.id === item.slot)?.name ?? item.slot;
+          const colour = shownColour(item, picked, keeper.wearables);
+          const pick = (id: string) => {
+            setPicked((p) => ({ ...p, [item.id]: id }));
+            if (wearing) onColour(item.id, id);
+            onTry(item, id);
+          };
           const wornElsewhere = item.wornBy.filter((id) => id !== keeper.id).map((id) => wardrobe?.keepers.find((k) => k.id === id)?.name).filter(Boolean);
           return (
             <ItemCard
@@ -69,17 +83,18 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, 
               name={item.name}
               rarity={rarity}
               slotName={slotName}
-              colours={coloursOf(item)}
+              colours={coloursOf({ effects: effectsIn(item, colour) })}
               locked={locked}
               worn={wearing}
               tags={item.source === 'yours' ? ['Forged'] : []}
               line={wearing ? `${keeper.name} is wearing it` : wornElsewhere.length ? `Worn by ${wornElsewhere.join(', ')}` : fits ? 'In your inventory' : (wardrobe && misfit(wardrobe, keeper.id, item)) || `${keeper.name} has no ${slotName.toLowerCase()}`}
-              onTry={(on) => onTry(on ? item : null)}
+              onTry={(on) => onTry(on ? item : null, colour)}
+              swatches={<ColourSwatches label={item.name} swatches={swatchesOf(item)} chosen={colour} onPick={pick} onPreview={(id) => onTry(item, id ?? colour)} />}
             >
               {wearing ? (
                 <button type="button" className="btn btn-small" disabled={busy} onClick={() => onTakeOff(item.id)}>Take off</button>
               ) : (
-                <button type="button" className="btn btn-primary btn-small" disabled={busy || !fits || locked !== null} onClick={() => onWear(item.id)}>
+                <button type="button" className="btn btn-primary btn-small" disabled={busy || !fits || locked !== null} onClick={() => onWear(item.id, item.id in picked ? colour : undefined)}>
                   {locked !== null ? `Level ${locked}` : 'Equip'}
                 </button>
               )}

@@ -145,7 +145,7 @@ fn starter_wearables(starter: Option<&kit::starters::Starter>) -> Vec<crate::ker
     let piece = starter.and_then(|s| kit::collection::get(s.piece));
     if let Some(o) = piece {
         let effects = serde_json::from_str(o.effects).unwrap_or_default();
-        let raw = crate::kernel::settings::WornPart { part: o.part.into(), effects, item: Some(format!("official:{}", o.id)), rarity: None, set: None };
+        let raw = crate::kernel::settings::WornPart { part: o.part.into(), effects, item: Some(format!("official:{}", o.id)), rarity: None, set: None, colour: None };
         if let Ok(ok) = kit::parts::check(&raw, starter.map(|s| s.skin).unwrap_or("")) {
             let slot = kit::parts::takes(&ok.part);
             worn.retain(|w| !kit::parts::takes(&w.part).iter().any(|s| slot.contains(s)));
@@ -193,7 +193,7 @@ pub async fn keepers_create(state: State<'_, AppState>, mut keeper: NewKeeper) -
         // Every keeper lives in the ONE home graph, in its own sub-graph.
         graph_id: graph_id_for(&seed, true),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default()
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
@@ -271,7 +271,8 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
         }
     }
     let outfit = match &change.wearables {
-        Some(w) => Some(kit::parts::check_outfit(w, change.skin.as_deref().unwrap_or(&current.skin)).map_err(DeskError::Invalid)?),
+        // Saved without colours, each piece keeps the colour it is worn in (LES-039).
+        Some(w) => Some(kit::colours::carried(&current.wearables, kit::parts::check_outfit(w, change.skin.as_deref().unwrap_or(&current.skin)).map_err(DeskError::Invalid)?)),
         None => None,
     };
     if let Some(m) = &change.style {

@@ -6,9 +6,11 @@
 //! - `rarity`  common to mythical               - `levels`  experience earned by use, and what it unlocks
 //! - `seasons` a small set open for a few weeks, each item earned by a quest of useful things done
 //! - `collection` the official items and their sets   - `starters` the starter keepers
+//! - `colours` the few colours each item can be worn in (palettes per part kind, per-item overrides)
 //! - `look`    paint zones, finishes and habits per keeper (`docs/design/keeper-ecosystem.md`)
 
 pub mod collection;
+pub mod colours;
 pub mod finishes;
 pub mod inventory;
 pub mod levels;

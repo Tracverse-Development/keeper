@@ -112,7 +112,7 @@ mod tests {
             assert!(!s.items.is_empty());
             for i in s.items {
                 let effects: std::collections::BTreeMap<String, serde_json::Value> = serde_json::from_str(i.effects).expect(i.id);
-                let worn = super::super::parts::check_effects(&super::super::parts::WornPart { part: i.part.into(), effects: effects.clone(), item: None, rarity: None, set: None }).expect(i.id);
+                let worn = super::super::parts::check_effects(&super::super::parts::WornPart { part: i.part.into(), effects: effects.clone(), item: None, rarity: None, set: None, colour: None }).expect(i.id);
                 assert_eq!(worn.effects.len(), effects.len(), "{}: every effect is in its part's schema and range", i.id);
                 assert!(i.quest.goal >= 1 && i.quest.goal <= 30, "{}: a quest a person can finish in the season", i.id);
                 // The only things a quest may count: finished, useful things. Adding a kind

@@ -66,7 +66,7 @@ pub struct Item {
 impl Item {
     /// What a keeper wears when it puts this item on.
     pub fn worn(&self) -> WornPart {
-        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()), rarity: None, set: None }
+        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()), rarity: None, set: None, colour: None }
     }
 }
 
@@ -79,13 +79,13 @@ pub fn items(variants: &[Variant]) -> Vec<Item> {
         .collect();
     for s in STOCK {
         let effects = s.effects.iter().map(|(k, v)| (k.to_string(), Value::String(v.to_string()))).collect();
-        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None, rarity: None, set: None }, false, "built-in") {
+        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None, rarity: None, set: None, colour: None }, false, "built-in") {
             out.push(item);
         }
     }
     for o in super::collection::all() {
         let effects: BTreeMap<String, Value> = serde_json::from_str(o.effects).unwrap_or_default();
-        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None, rarity: None, set: None }, false, "official") {
+        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None, rarity: None, set: None, colour: None }, false, "official") {
             item.rarity = super::rarity::get(o.rarity).map(|r| r.id).unwrap_or(item.rarity);
             item.blurb = o.blurb;
             item.set = o.set;
@@ -149,7 +149,9 @@ pub fn wear(keepers: &mut [KeeperProfile], id: &str, item: &Item, items: &[Item]
     if !species::offers(&who.skin, &item.slot) {
         return Err(format!("{} has no {} to wear the {} on.", who.name, slots::word(&item.slot), item.name));
     }
-    let worn = parts::check(&item.worn(), &who.skin)?;
+    let mut worn = parts::check(&item.worn(), &who.skin)?;
+    // Put on again, it keeps the colour it is worn in (LES-039).
+    worn = super::colours::carried(&who.wearables, vec![worn]).remove(0);
     // Whatever shares a slot with it comes off (a gown takes the legs, so trousers come off, and
     // trousers take a gown off).
     let takes = parts::takes(&item.part);
@@ -169,6 +171,16 @@ pub fn take_off(keepers: &mut [KeeperProfile], id: &str, item: &Item, items: &[I
     if who.wearables.len() == before {
         return Err(format!("{} isn't wearing the {}.", who.name, item.name));
     }
+    Ok(())
+}
+
+/// Wear `item` (which keeper `id` has on) in `colour` (None or a colour not in its palette: its own
+/// colours; `colours.rs`). Refused when the keeper isn't wearing it.
+pub fn recolour(keepers: &mut [KeeperProfile], id: &str, item: &Item, colour: Option<&str>, items: &[Item]) -> Result<(), String> {
+    let who = keeper(keepers, id)?;
+    let name = who.name.clone();
+    let worn = who.wearables.iter_mut().find(|w| wears(w, item, items)).ok_or_else(|| format!("{name} isn't wearing the {}.", item.name))?;
+    super::colours::recolour(worn, colour, &item.effects);
     Ok(())
 }
 
@@ -203,7 +215,12 @@ pub fn give(keepers: &mut [KeeperProfile], item: &Item, from: &str, to: &str, ho
     if how == Give::Share && item.one_of_a_kind {
         return Err(format!("The {} is one of a kind: move it instead.", item.name));
     }
+    // The colour goes with it: the receiver wears it in the giver's colour.
+    let colour = keepers.iter().find(|k| k.id == from).and_then(|k| k.wearables.iter().find(|w| wears(w, item, items))).and_then(|w| w.colour.clone());
     wear(keepers, to, item, items)?;
+    if colour.is_some() {
+        recolour(keepers, to, item, colour.as_deref(), items)?;
+    }
     if how == Give::Move && !item.one_of_a_kind {
         take_off(keepers, from, item, items)?;
     }

@@ -89,6 +89,7 @@ fn clean_profile(p: &KeeperProfile) -> Result<KeeperProfile> {
         // A restored keeper keeps only loadouts naming a real mode and a real set.
         loadouts: crate::keepers::kit::loadout::checked(&p.loadouts),
         home_outfit: None,
+        mode_outfits: Default::default(),
     })
 }
 

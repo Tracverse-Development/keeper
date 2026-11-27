@@ -118,11 +118,17 @@ pub fn check_level_up(app: &tauri::AppHandle, keeper: String, memory: Memory) {
     tauri::async_runtime::spawn(async move {
         let Some(e) = experience(&memory).await else { return };
         if let Some(before) = record_level(&keeper, e.level) {
-            let unlocked: Vec<&Unlock> = UNLOCKS.iter().filter(|u| u.level > before && u.level <= e.level).collect();
             use tauri::Emitter;
-            let _ = app.emit(crate::kernel::events::LEVEL_UP, serde_json::json!({ "keeper": keeper, "level": e.level, "unlocked": unlocked }));
+            let _ = app.emit(crate::kernel::events::LEVEL_UP, level_up_event(&keeper, before, e.level));
         }
     });
+}
+
+/// The level-up event's payload: the new `level`, the level it came `from` (several levels can be
+/// gained at once, e.g. a long focus session), and everything opened on the way.
+pub fn level_up_event(keeper: &str, from: u32, level: u32) -> serde_json::Value {
+    let unlocked: Vec<&Unlock> = UNLOCKS.iter().filter(|u| u.level > from && u.level <= level).collect();
+    serde_json::json!({ "keeper": keeper, "level": level, "from": from, "unlocked": unlocked })
 }
 
 const PREFIXES: &str = "PREFIX desk: <https://umojaark.com/ns/desk#> ";
@@ -168,6 +174,15 @@ mod tests {
         assert_eq!(record_level("lvl-test", 3), None);
         assert_eq!(record_level("lvl-test", 4), Some(3));
         assert_eq!(record_level("lvl-test", 4), None);
+    }
+
+    #[test]
+    fn a_jump_of_several_levels_says_where_it_came_from_and_opens_everything_between() {
+        let e = level_up_event("k", 2, 10);
+        assert_eq!((e["level"].as_u64(), e["from"].as_u64()), (Some(10), Some(2)));
+        let opened: Vec<u64> = e["unlocked"].as_array().unwrap().iter().map(|u| u["level"].as_u64().unwrap()).collect();
+        assert!(!opened.is_empty() && opened.iter().all(|l| *l > 2 && *l <= 10), "{opened:?}");
+        assert_eq!(opened.len(), UNLOCKS.iter().filter(|u| u.level > 2 && u.level <= 10).count());
     }
 
     #[test]

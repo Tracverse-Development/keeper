@@ -225,3 +225,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** reminders read newest first and every repeating one comes round however long Keeper was closed; automatic replacement only for certain cases (name, address, phone, email, birthday, a favourite, "you live in <Place>"), the broad guess only SUGGESTS ("tidy my memory"); a keeper from another computer is restored as a new keeper; a random fence per turn and no forget or skills on material turns; regular files only, never Keeper's or the node's folders, web pages read as text; the built-in modes only and no editing on a child profile, the lock kept twice, the phone link stopped, pools per profile, child rules on copied text; the Studio takes the saved values, does not retry a failed draft, and Done sends the latest; "routine" required to save one; routine replace through the outbox; timers count the wall clock; listing filtered by place and refused at the limit; outbox flushed before the move; refill marks only when it will run; phone clipboard requests refused; stale chat lists dropped.
 - **Guard:** tests in `memory/meaning.rs` (the review's sentences replace nothing), `assistant/attach.rs` (a fresh tag, only the real end closes it, /dev/zero refused, tags stripped), `backup/mod.rs` (another computer's keeper-1 gets its own id, the same backup twice lands once), `assistant/mod.rs` (a child's chats use built-in modes without tools), `fastlane/routines.rs` ("save that as a PDF" is not a routine), `skills/reminder_actions.rs`.
 - **Evidence:** `scripts/check.sh` green; `scripts/proof.sh` and the end-to-end smoke green.
+
+### FIX-0028 — A level-up of several levels at once named only the last level's set progress (2026-11-27)
+- **Area:** `src/studio/SetProgressToasts.tsx`, `src/studio/useLevelUp.ts`, `keepers/kit/levels.rs` (the level-up event).
+- **Symptom:** after a jump of several levels (a long focus session, a burst of quizzes) the corner note counted only the pieces opened by the final level: from level 3 to 10, "Island Linen: every piece ready" never showed.
+- **Root cause:** the window computed the notes from `level - 1` to `level`; the event did not carry the level the keeper came from, though the core knew it (`record_level`).
+- **Fix:** the event carries `from` (`levels::level_up_event`); the window reads it through `levelBefore` (an older core without it still means one level).
+- **Guard:** `levels.rs` test `a_jump_of_several_levels_says_where_it_came_from_and_opens_everything_between`; `set-progress.test.ts` "a jump of several levels counts every piece opened on the way".
+- **Evidence:** cargo test (226 passed), node tests 462 passed.
+
+### FIX-0029 — Outfit changes made by hand in a mode with a loadout were lost on the next mode change (2026-11-27)
+- **Area:** `keepers/kit/loadout.rs`, `keepers/loadout_commands.rs`, `kernel/settings.rs` (`ModeOutfits`).
+- **Symptom:** in a mode tied to a set the person swapped a piece or added one; after visiting another mode and coming back, the keeper was dressed from the set again and the change was gone.
+- **Root cause:** a loadout was only "mode → set"; nothing remembered what was worn in that mode, so every arrival re-dressed from the set.
+- **Fix:** changes made while in mode X belong to X: the profile keeps `modeOutfits` (the mode dressed for, and the outfit last worn in each loadout mode); leaving X saves what is worn as X's outfit, coming back puts it on (`loadout::change_mode`). The everyday outfit is untouched; tying another set to X forgets X's outfit; a remembered outfit that no longer fits is dropped. Pieces a set puts on that are already worn keep their colour.
+- **Guard:** `loadout.rs` tests `changes_made_by_hand_in_a_loadout_mode_are_that_modes_and_come_back_with_it`, `a_set_piece_already_worn_keeps_its_colour`, `an_older_profile_has_no_mode_outfits_and_an_empty_one_is_not_written`.
+- **Evidence:** cargo test (226 passed).

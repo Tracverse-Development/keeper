@@ -50,7 +50,10 @@ export const core = {
   /** Where a pack comes from (its signature and maker), before it is added. */
   checkPack: (text: string) => invoke<PackTrust>('pack_check', { text }),
   wardrobe: () => invoke<Wardrobe>('wardrobe_list'),
-  wardrobeWear: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_wear', { keeper, item }),
+  /** Put `item` on `keeper`, in `colour` when given (a swatch id; '' = its own colours; left out = as it is worn). */
+  wardrobeWear: (keeper: string, item: string, colour?: string) => invoke<Wardrobe>('wardrobe_wear', { keeper, item, colour: colour ?? null }),
+  /** Wear an item `keeper` has on in `colour` (a swatch id; '' = its own colours). */
+  wardrobeColour: (keeper: string, item: string, colour: string) => invoke<Wardrobe>('wardrobe_colour', { keeper, item, colour }),
   wardrobeWearSet: (keeper: string, set: string) => invoke<Wardrobe>('wardrobe_wear_set', { keeper, set }),
   wardrobeTakeOff: (keeper: string, item: string) => invoke<Wardrobe>('wardrobe_take_off', { keeper, item }),
   wardrobeGive: (item: string, from: string, to: string, mode: GiveMode) => invoke<Wardrobe>('wardrobe_give', { item, from, to, mode }),

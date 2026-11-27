@@ -2,6 +2,8 @@
 //! the keeper for the mode it is in now. The window calls `keeper_wear_mode` whenever the mode on
 //! screen changes (the person picked one, a turn switched, a chat in another mode opened, the
 //! keeper's default changed); only the pieces the keeper may wear now go on (body, race, level).
+//! What the person changes by hand while in a loadout mode is remembered for that mode
+//! (`loadout::change_mode`).
 
 use tauri::State;
 
@@ -29,6 +31,13 @@ pub fn keeper_set_loadout(state: State<'_, AppState>, keeper: String, mode: Stri
     }
     state.update_settings(|s| {
         if let Some(k) = s.keeper_mut(&profile.id) {
+            // Another set (or none) for this mode: its remembered outfit was made from the old one.
+            if k.loadouts.get(&mode) != set.as_ref() {
+                k.mode_outfits.worn.remove(&mode);
+                if k.mode_outfits.on.as_deref() == Some(mode.as_str()) {
+                    k.mode_outfits.on = None;
+                }
+            }
             match &set {
                 Some(id) => {
                     k.loadouts.insert(mode.clone(), id.clone());
@@ -61,20 +70,30 @@ pub async fn keeper_wear_mode(state: State<'_, AppState>, keeper: String, mode: 
             Some(loadout::one_per_slot(candidates))
         }
     };
-    let (outfit, home) = match loadout::plan(&profile.wearables, profile.home_outfit.as_deref(), pieces.as_deref()) {
-        loadout::Plan::Keep => return Ok(false),
-        loadout::Plan::Wear { outfit, home } => (outfit, Some(home)),
-        loadout::Plan::Restore { outfit } => (outfit, None),
+    // A remembered outfit that no longer fits (the body changed) is forgotten: the set dresses anew.
+    let mut memory = profile.mode_outfits.clone();
+    memory.worn.retain(|_, outfit| parts::check_outfit(outfit, &profile.skin).is_ok());
+    let (plan, memory) = loadout::change_mode(&profile.wearables, profile.home_outfit.as_deref(), &memory, &mode, pieces.as_deref());
+    let change = match plan {
+        loadout::Plan::Keep => None,
+        loadout::Plan::Wear { outfit, home } => Some((outfit, Some(home))),
+        loadout::Plan::Restore { outfit } => Some((outfit, None)),
     };
-    state.update_settings(|s| {
-        if let Some(k) = s.keeper_mut(&profile.id) {
-            k.wearables = outfit;
-            k.home_outfit = home;
-        }
-    })?;
-    Ok(true)
+    let changed = change.is_some();
+    if changed || memory != profile.mode_outfits {
+        state.update_settings(|s| {
+            if let Some(k) = s.keeper_mut(&profile.id) {
+                if let Some((outfit, home)) = change {
+                    k.wearables = outfit;
+                    k.home_outfit = home;
+                }
+                k.mode_outfits = memory;
+            }
+        })?;
+    }
+    Ok(changed)
 }
 
 fn official_worn(o: &kit::collection::Official) -> parts::WornPart {
-    parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{}", o.id)), rarity: None, set: None }
+    parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{}", o.id)), rarity: None, set: None, colour: None }
 }

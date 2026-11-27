@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { Rarity, Wardrobe } from '../kernel/ipc';
-import { levelUpNotes, loadoutChanges, modesWearing, newPieces, openPieces } from './set-progress.ts';
+import { levelBefore, levelUpNotes, loadoutChanges, modesWearing, newPieces, openPieces } from './set-progress.ts';
 
 const rarities: Rarity[] = [
   { id: 'common', name: 'Common', level: 1, color: '#999999' },
@@ -39,4 +39,15 @@ test('tying a set to a mode unties its old mode first, and picking none unties i
   assert.deepEqual(loadoutChanges(loadouts, 'explorer', ''), [{ mode: 'researcher', set: null }]);
   assert.deepEqual(loadoutChanges(loadouts, 'explorer', 'researcher'), [], 'already tied: nothing to save');
   assert.deepEqual(loadoutChanges(loadouts, 'gala', 'tutor'), [{ mode: 'tutor', set: 'gala' }], 'taking a mode from another set replaces it (one set per mode)');
+});
+
+test('a jump of several levels counts every piece opened on the way', () => {
+  // Level 3 to 10 at once: b (rare, 4) and c (legendary, 10) open together, x (rare) too.
+  const from = levelBefore({ level: 10, from: 3 });
+  assert.equal(from, 3);
+  assert.deepEqual(levelUpNotes(wardrobe, rarities, 'k1', from, 10), ['Gala Night: every piece ready', 'Island Linen: every piece ready']);
+  assert.deepEqual(levelUpNotes(wardrobe, rarities, 'k1', 10 - 1, 10), ['Gala Night: every piece ready'], 'the old one-level guess missed Island Linen');
+  assert.equal(levelBefore({ level: 5 }), 4, 'an event without from: the level below');
+  assert.equal(levelBefore({ level: 5, from: 'x' }), 4);
+  assert.equal(levelBefore({ level: 5, from: 7 }), 4, 'a from above the level is not believed');
 });

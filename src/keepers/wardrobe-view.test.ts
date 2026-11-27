@@ -46,3 +46,10 @@ test('trying a whole set on: one piece per slot, its slots cleared, glowing as a
   const two = tryOnSet([], pieces.slice(0, 1).concat(pieces.slice(2, 3)), w, 'park');
   assert.ok(two.every((p) => p.set === undefined), 'two pieces do not glow');
 });
+
+test('trying on in a colour applies that swatch over the item, and an unknown colour is its own', () => {
+  const jacket = { ...wardrobe.items[2], colours: [{ id: 'navy', name: 'Navy', effects: { color: '#151c33', trim: '#d39744' } }] } as never;
+  const navy = tryOn([{ part: 'memory-halo' }], jacket, w, 'navy');
+  assert.deepEqual(navy[1], { part: 'ark-jacket', effects: { color: '#151c33', trim: '#d39744' }, item: 'kit:trini-jacket', colour: 'navy' });
+  assert.deepEqual(tryOn([], jacket, w, 'crimson')[0], { part: 'ark-jacket', effects: { color: '#e2425f' }, item: 'kit:trini-jacket' });
+});

@@ -19,12 +19,14 @@ interface Props {
   tags?: string[];
   /** One line under the name. */
   line?: string;
+  /** Its colour choices (`ColourSwatches`), shown above the buttons. */
+  swatches?: ReactNode;
   /** The card's buttons. */
   children: ReactNode;
   onTry: (on: boolean) => void;
 }
 
-export function ItemCard({ name, rarity, slotName, colours, locked, worn = false, tags = [], line, children, onTry }: Props) {
+export function ItemCard({ name, rarity, slotName, colours, locked, worn = false, tags = [], line, swatches, children, onTry }: Props) {
   const paint = { '--rarity': rarity.color, '--art-a': colours[0] ?? 'var(--navy-500)', '--art-b': colours[1] ?? colours[0] ?? 'var(--gold-600)' } as CSSProperties;
   return (
     <article className={`item-card rarity-${rarity.id} ${worn ? 'is-worn' : ''} ${locked !== null ? 'is-locked' : ''}`} style={paint} onMouseEnter={() => onTry(true)} onMouseLeave={() => onTry(false)} onFocus={() => onTry(true)} onBlur={() => onTry(false)}>
@@ -41,6 +43,7 @@ export function ItemCard({ name, rarity, slotName, colours, locked, worn = false
           {tags.map((t) => <span key={t} className="tag">{t}</span>)}
         </span>
         {line && <span className="item-line muted">{line}</span>}
+        {swatches}
         <span className="item-actions">{children}</span>
       </div>
     </article>
