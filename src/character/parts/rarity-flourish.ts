@@ -15,7 +15,9 @@
  * knows. Surfaces a part already lights itself (a watch dial, a visor's glass) are left alone, so
  * the two never fight over one value. `light` drops the rings and rays: for parts that float round
  * the whole body (a halo, an aura, the ark), where a ring round the ring would be noise. `restrained`
- * (the God Keeper) casts no light and halves the surface glow (`RESTRAINED_GLOW`).
+ * (the God Keeper) casts no light and halves the surface glow, the flare and most of the sparkle
+ * (`RESTRAINED_GLOW`, `RESTRAINED_SPARKLE`): its own divine light is the radiance, and a haze of
+ * tier light over it hid the engraving and folds beneath.
  *
  * Positions are written into preallocated buffers each frame (no allocation).
  */
@@ -56,6 +58,8 @@ const LARGEST_FLARE = 0.4;
  * grand pieces each lighting the body washed the whole stage white.
  */
 const RESTRAINED_GLOW = 0.5;
+/** The share of sparkle brightness a restrained tier keeps (they still twinkle; they no longer fog). */
+const RESTRAINED_SPARKLE = 0.7;
 
 export interface Flourish {
   readonly group: Group;
@@ -138,6 +142,8 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
     group.add(lamp);
   }
 
+  const sparkleShare = restrained ? RESTRAINED_SPARKLE : 1;
+  const flareShare = restrained ? RESTRAINED_GLOW : 1;
   let clock = 0;
   return {
     group,
@@ -155,7 +161,7 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
       const burst = spec.burstEvery > 0 ? Math.max(0, 1 - ((clock % spec.burstEvery) / 0.5)) : 0;
       for (let i = 0; i < spec.sparkles; i++) {
         const tw = Math.max(0, Math.sin(clock * (2 + (i % 5) * 0.7) + i * 1.7));
-        sparkles.brights[i] = 0.25 + 1.5 * tw ** 3 + 1.8 * burst;
+        sparkles.brights[i] = (0.25 + 1.5 * tw ** 3 + 1.8 * burst) * sparkleShare;
       }
       sparkles.geometry.getAttribute('aBright').needsUpdate = true;
       for (const [i, ring] of rings.entries()) {
@@ -180,7 +186,7 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
         motes.geometry.getAttribute('aBright').needsUpdate = true;
       }
       if (spec.flare > 0) {
-        flare.brights[0] = 0.5 + 0.35 * breathe + 0.8 * burst;
+        flare.brights[0] = (0.5 + 0.35 * breathe + 0.8 * burst) * flareShare;
         flare.geometry.getAttribute('aBright').needsUpdate = true;
       }
       if (lamp) {

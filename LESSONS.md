@@ -70,3 +70,8 @@
 - **Context:** the 0.16 cloth sway. The cloak's billow had always pushed the shell out over its glowing edge piping, which stayed put. The first sway build moved the piping with the shell and clamped every vertex to its un-billowed rest radius: the swing ate the billow and bared a bright outline all round the cloak (seen only in a before/after frame sequence; stills looked fine).
 - **Lesson:** a new motion layer on a garment moves every piece attached to that cloth by the same rule (trim, sparkles, edges), and the collision floor is the place before the new motion (billow included), not the build-time rest. Motion is judged on frame sequences beside the old build, never on one still.
 - **Rule added:** `sway/drape-sway.ts` `displace` takes the pre-swing place as its floor; garments pass their trim through the same `garmentSway` with amount 0 (swing only).
+
+### LES-015 — Under bloom, a surface is either a light or it is not (2026-11-27)
+- **Context:** the God Keeper's glow work kept raising emissive and lights on the body; the bloom pass then took the ivory robe and polished gold as lights and every detail made for them vanished.
+- **Lesson:** with a luminance-threshold bloom, radiance belongs to emitters (halos, rays, rims, motes); a lit surface that must show detail is held under the threshold by construction, not by tuning each light.
+- **Rule added:** bodies meant to look radiant wear `parts/divine-light.ts` (soft ceiling + rim); a flare multiplies emitters freely but the body's lights through a cap.

@@ -3,7 +3,9 @@
  * `divine`, `skins/races.ts`) wears pieces from every race, and each is drawn in its own way:
  *
  *   - a light from within: every lit surface gains a rim of white-gold light at its edges (a fresnel
- *     glow added in the material's shader), breathing slowly, so the piece looks lit by the keeper;
+ *     glow added in the material's shader), breathing slowly, so the piece looks lit by the keeper,
+ *     while the surface itself keeps its shading under a soft ceiling and never blooms to white
+ *     (`divine-light.ts`, the same light the God Keeper's own body wears);
  *   - a pearl sheen: physical materials gain iridescence and a clear coat, so cloth and metal alike
  *     shimmer like the keeper's own armour;
  *   - a trail of gold motes rising off the piece.
@@ -11,13 +13,13 @@
  * Pattern: Decorator, like the rarity flourish (`rarity-flourish.ts`), and it stacks with it: a
  * mythical watch on the God Keeper has its tier's vortex AND the divine light. The part never knows.
  */
-import { BufferAttribute, BufferGeometry, Color, Group, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Points, Box3, Sphere, type Object3D } from 'three';
+import { BufferAttribute, BufferGeometry, Group, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Points, Box3, Sphere, type Object3D } from 'three';
 import { disposeTree } from '../dispose-tree';
 import { createGlowPointsMaterial } from '../stage/glow-points-material';
+import { addDivineLight, DIVINE_GOLD, divineRim } from './divine-light';
 import type { PartFrame } from './part';
 
-/** The divine light's colour and how strong the rim is at its brightest. */
-const DIVINE_GOLD = new Color(1.0, 0.86, 0.55);
+/** How strong the rim is at its brightest. */
 const RIM_STRENGTH = 0.55;
 const MOTES = 14;
 
@@ -29,8 +31,7 @@ export interface DivineFinish {
 }
 
 export function applyDivineFinish(target: Object3D): DivineFinish {
-  const rim = { value: 0.8 };
-  const rimColour = { value: DIVINE_GOLD.clone() };
+  const rim = divineRim(0.8);
   const seen = new Set<MeshStandardMaterial>();
   target.traverse((node) => {
     const material = (node as Mesh).material as MeshStandardMaterial | undefined;
@@ -41,18 +42,7 @@ export function applyDivineFinish(target: Object3D): DivineFinish {
       material.iridescenceIOR = 1.6;
       material.clearcoat = Math.max(material.clearcoat, 0.4);
     }
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.uDivineRim = rim;
-      shader.uniforms.uDivineColour = rimColour;
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform float uDivineRim;\nuniform vec3 uDivineColour;')
-        .replace(
-          '#include <emissivemap_fragment>',
-          '#include <emissivemap_fragment>\n  float divineEdge = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);\n  totalEmissiveRadiance += uDivineColour * divineEdge * uDivineRim;',
-        );
-    };
-    material.customProgramCacheKey = () => 'divine-finish';
-    material.needsUpdate = true;
+    addDivineLight(material, rim);
   });
 
   // Gold motes rising off the piece.
@@ -82,7 +72,7 @@ export function applyDivineFinish(target: Object3D): DivineFinish {
     group,
     update(frame) {
       clock += frame.dt * frame.motion.speed;
-      rim.value = RIM_STRENGTH * (0.6 + 0.4 * Math.sin(clock * 1.4)) * (0.6 + 0.4 * frame.mood.presence);
+      rim.strength.value = RIM_STRENGTH * (0.6 + 0.4 * Math.sin(clock * 1.4)) * (0.6 + 0.4 * frame.mood.presence);
       for (let i = 0; i < MOTES; i++) {
         const rise = (seeds[i].start + clock * 0.18) % 1;
         const a = seeds[i].angle + clock * 0.5;
