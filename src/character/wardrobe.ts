@@ -24,6 +24,10 @@
  * Effect slots (`thinking`, `celebrate`) draw nothing here: the wardrobe only resolves which
  * moment effect is worn (`moment`) for the emote director to play. Parts worn on feet (the
  * paws slot) get the live foot joints of the anchor, so they follow a paw that waves.
+ *
+ * Every drawn part is decorated for its rarity (`parts/rarity-flourish.ts`: grander from common to
+ * mythical) and, on a body whose race wears everything (the God Keeper), in the divine finish
+ * (`parts/divine-finish.ts`). Both are part of the key, so a new tier or a new body redraws them.
  */
 import { Group, type Vector3 } from 'three';
 import type { WornPart } from './contract';
@@ -43,7 +47,12 @@ import {
 import type { Skin } from './skins';
 import type { SlotAnchor } from './skins/anchors';
 import { slotsOf, type SkinId } from './skins/catalog';
+import { raceOf, WEARS_EVERYTHING } from './skins/races';
+import { createFlourish } from './parts/rarity-flourish';
+import { applyDivineFinish } from './parts/divine-finish';
+import { isWornSlot } from './parts/slots';
 import { swapPose } from './skins/skin-transition';
+import type { RarityId } from './parts/rarity';
 import type { MemorySparks } from './stage/memory-spark';
 
 /** How fast slot holders glide to a new species' anchors (1/s), and when they snap. */
@@ -54,6 +63,16 @@ interface Worn {
   readonly key: string;
   readonly instance: PartInstance;
   readonly presence: Group;
+  /** What wraps the part: its rarity flourish and, on the God Keeper, the divine finish. */
+  readonly decorations: readonly Decoration[];
+}
+
+/** A decorator drawn beside a worn part (`parts/rarity-flourish.ts`, `parts/divine-finish.ts`). */
+interface Decoration {
+  readonly group: Group;
+  update(frame: PartFrame): void;
+  setPointScale(scale: number): void;
+  dispose(): void;
 }
 
 interface Slot {
@@ -123,8 +142,10 @@ export class Wardrobe {
     this.pointScale = scale;
     this.sparks.setPointScale(scale);
     for (const slot of this.slots) {
-      slot.current?.instance.setPointScale?.(scale);
-      slot.outgoing?.instance.setPointScale?.(scale);
+      for (const worn of [slot.current, slot.outgoing]) {
+        worn?.instance.setPointScale?.(scale);
+        worn?.decorations.forEach((d) => d.setPointScale(scale));
+      }
     }
   }
 
@@ -135,8 +156,11 @@ export class Wardrobe {
     for (const slot of this.slots) {
       if (!slot.settled) this.place(slot, blend);
       this.stepSwap(slot);
-      slot.outgoing?.instance.update(frame);
-      slot.current?.instance.update(frame);
+      for (const worn of [slot.outgoing, slot.current]) {
+        if (!worn) continue;
+        worn.instance.update(frame);
+        for (const d of worn.decorations) d.update(frame);
+      }
     }
     this.sparks.update(frame.time, frame.mood.haloGlow);
   }
@@ -155,6 +179,7 @@ export class Wardrobe {
   private reconcile(instant: boolean): void {
     const species = this.species;
     const wanted = resolveWearables(this.worn, species.id);
+    const divine = raceOf(species.id) === WEARS_EVERYTHING;
     const offered = new Set(Object.keys(slotsOf(species.id as SkinId)));
     this.moments = {};
     for (const slot of SLOT_IDS) if (isEffectSlot(slot) && offered.has(slot) && wanted[slot]) this.moments[slot] = wanted[slot];
@@ -162,13 +187,14 @@ export class Wardrobe {
       const anchor = species.slots[slot.id];
       const next = anchor ? wanted[slot.id] : undefined;
       // A fitted part is cut for one body: another species needs a new one.
-      const key = next && anchor?.shape ? `${next.key}|${species.id}` : next?.key;
+      const key = next && (anchor?.shape ? `${next.key}|${species.id}` : `${next.key}${divine ? '|divine' : ''}`);
       if ((key ?? null) === (slot.current?.key ?? null)) continue;
       if (slot.outgoing) this.release(slot.outgoing);
       slot.outgoing = instant ? null : slot.current;
       if (instant && slot.current) this.release(slot.current);
       const follow = anchor?.feet ? { base: anchor.object, feet: anchor.feet } : undefined;
-      slot.current = next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow })) : null;
+      slot.current =
+        next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow }), next.rarity, divine) : null;
       slot.swapStartedAt = this.time;
       slot.swapping = !instant;
       setPresence(slot.current, instant ? 1 : 0);
@@ -210,18 +236,30 @@ export class Wardrobe {
     }
   }
 
-  /** Puts `instance` on: on the anchor itself for a worn slot, in the gliding holder otherwise. */
-  private wear(slot: Slot, anchor: SlotAnchor, key: string, instance: PartInstance): Worn {
+  /**
+   * Puts `instance` on: on the anchor itself for a worn slot, in the gliding holder otherwise, with
+   * its rarity flourish (measured from the part before it is placed) and, on a divine body, the
+   * divine finish. Parts floating round the whole body get the light flourish (no rings or rays).
+   */
+  private wear(slot: Slot, anchor: SlotAnchor, key: string, instance: PartInstance, rarity: RarityId, divine: boolean): Worn {
     const presence = new Group();
-    presence.add(instance.group);
+    const decorations: Decoration[] = [];
+    const flourish = createFlourish(instance.group, rarity, !isWornSlot(slot.id));
+    if (flourish) decorations.push(flourish);
+    if (divine) decorations.push(applyDivineFinish(instance.group));
+    presence.add(instance.group, ...decorations.map((d) => d.group));
     (anchor.shape ? anchor.object : slot.holder).add(presence);
-    if (this.pointScale > 0) instance.setPointScale?.(this.pointScale);
-    return { key, instance, presence };
+    if (this.pointScale > 0) {
+      instance.setPointScale?.(this.pointScale);
+      decorations.forEach((d) => d.setPointScale(this.pointScale));
+    }
+    return { key, instance, presence, decorations };
   }
 
   private release(worn: Worn): void {
     if (worn.instance.sparkTarget) this.sparks.forget(worn.instance.sparkTarget);
     worn.instance.dispose();
+    worn.decorations.forEach((d) => d.dispose());
     worn.presence.removeFromParent();
   }
 

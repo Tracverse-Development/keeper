@@ -49,6 +49,17 @@ pub fn of_part(part_id: &str) -> &'static Rarity {
     PART_RARITY.iter().find(|(p, _)| *p == part_id).and_then(|(_, r)| get(r)).unwrap_or(&RARITIES[0])
 }
 
+/// The rarity of a worn item: an official item's own (`official:<id>`), else its part's.
+pub fn of_worn(worn: &super::parts::WornPart) -> &'static Rarity {
+    let official = worn.item.as_deref().and_then(|i| i.strip_prefix("official:")).and_then(|id| super::official::OFFICIAL.iter().find(|o| o.id == id));
+    official.and_then(|o| get(o.rarity)).unwrap_or_else(|| of_part(&worn.part))
+}
+
+/// The same wear list with each item's rarity filled in (what the window draws the tiers from).
+pub fn stamped(worn: &[super::parts::WornPart]) -> Vec<super::parts::WornPart> {
+    worn.iter().map(|w| super::parts::WornPart { rarity: Some(of_worn(w).id.to_string()), ..w.clone() }).collect()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -62,5 +73,16 @@ mod tests {
         assert_eq!(super::of_part("memory-halo").id, "rare");
         assert_eq!(super::of_part("think-vortex").id, "mythical");
         assert_eq!(super::of_part("cheer-fireworks").id, "rare");
+    }
+
+    #[test]
+    fn a_worn_item_carries_its_own_rarity_and_a_stored_one_is_never_trusted() {
+        use super::super::parts::WornPart;
+        let official: WornPart = serde_json::from_str(r#"{"part":"ark-jacket","item":"official:phoenix-jacket","rarity":"common"}"#).unwrap();
+        assert_eq!(official.rarity, None, "a rarity written on disk or in a pack is not read");
+        assert_eq!(super::of_worn(&official).id, "mythical");
+        let plain: WornPart = serde_json::from_str(r#"{"part":"memory-halo","item":"part:memory-halo"}"#).unwrap();
+        let out = super::stamped(&[official, plain]);
+        assert_eq!(out.iter().map(|w| w.rarity.as_deref().unwrap()).collect::<Vec<_>>(), ["mythical", "rare"]);
     }
 }

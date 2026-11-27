@@ -8,6 +8,18 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.13.0] - 2026-11-26
+
+### Added
+- Four new keepers to choose from: a man, a woman, a wise owl and the God Keeper. The God Keeper hovers over the ark with a golden mask, eyes of light, a crown of rays, turning rings and crystal shards, and gets brighter as it works.
+- Races: every keeper is human, robot, animal or divine, and every item says who may wear it. Pieces for humans fit the man and the woman, never the robot, the dog or the owl. The God Keeper wears anything from any race, each piece in its own golden light.
+- Rarity you can see: an item's effect grows with its tier. Uncommon shimmers, rare glows and wears a halo ring, legendary adds crossed rings, rays and a light of its own, and mythical shifts through every colour inside a vortex of particles that bursts now and then.
+- New places to wear things: the face, the wrist and the hand. New items: Round Spectacles (every face), a Welder's Visor (robots), a Trail Watch that keeps the real time (humans) and a Star Lantern carried in the hand (humans).
+- In the Marketplace: the Trail Watch at every tier (Field, Tide, Sky, Sun and Nebula), Scholar Spectacles, the First Light Lantern and the Arc Visor.
+
+### Changed
+- The Studio says why a keeper cannot wear something ("Only for humans", "Bolt has no wrist") instead of offering it and then refusing.
+
 ## [0.12.0] - 2026-11-26
 
 ### Added

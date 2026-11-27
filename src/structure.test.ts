@@ -108,9 +108,22 @@ test('slots: the core and the character list the same slots (in order, with thei
   const { SKINS } = await import('./character/skins/catalog.ts');
   const rustSlots = [...readFileSync(join(core, 'keepers/kit/slots.rs'), 'utf8').matchAll(/Slot \{ id: "([^"]+)", name: "[^"]+", kind: "([^"]+)" \}/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(rustSlots, SLOTS.map((s: { id: string; kind: string }) => [s.id, s.kind]), 'slots differ');
-  const rustSpecies = Object.fromEntries([...readFileSync(join(core, 'keepers/kit/species.rs'), 'utf8').matchAll(/Species \{ id: "([^"]+)", name: "[^"]+", slots: &\[([^\]]*)\] \}/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1]).sort()]));
+  const rustSpecies = Object.fromEntries([...readFileSync(join(core, 'keepers/kit/species.rs'), 'utf8').matchAll(/Species \{ id: "([^"]+)", name: "[^"]+", race: "[^"]+", slots: &\[([^\]]*)\] \}/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1]).sort()]));
   assert.deepEqual(Object.keys(rustSpecies).sort(), SKINS.map((s: { id: string }) => s.id).sort(), 'species differ');
   for (const skin of SKINS as unknown as readonly { id: string; slots: Record<string, unknown> }[]) assert.deepEqual(rustSpecies[skin.id], Object.keys(skin.slots).sort(), `${skin.id} slots`);
+});
+
+test('races and rarities: the core and the character agree on every race, each species\' race, and the rarity ids and colours', async () => {
+  const { RACES, SPECIES_RACE } = await import('./character/skins/races.ts');
+  const { RARITIES } = await import('./character/parts/rarity.ts');
+  const species = readFileSync(join(core, 'keepers/kit/species.rs'), 'utf8');
+  const rustRaces = [...species.slice(species.indexOf('pub const RACES')).split('];')[0].matchAll(/\("([a-z]+)", "[^"]+"\)/g)].map((m) => m[1]);
+  assert.deepEqual(rustRaces, RACES.map((r: { id: string }) => r.id), 'races differ');
+  const rustSpeciesRace = Object.fromEntries([...species.matchAll(/Species \{ id: "([^"]+)", name: "[^"]+", race: "([^"]+)"/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(rustSpeciesRace, SPECIES_RACE, "each species' race differs");
+  const rarity = readFileSync(join(core, 'keepers/kit/rarity.rs'), 'utf8');
+  const rustRarities = [...rarity.matchAll(/Rarity \{ id: "([a-z]+)", name: "[^"]+", level: \d+, color: "(#[0-9a-f]{6})" \}/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(rustRarities, RARITIES.map((r: { id: string; color: string }) => [r.id, r.color]), 'rarities differ');
 });
 
 test('look: the core and the character list the same paint zones per species, and the same materials', async () => {

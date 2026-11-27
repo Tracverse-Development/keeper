@@ -27,6 +27,10 @@ const fn zone(id: &'static str, name: &'static str) -> Zone {
 pub const ZONES: &[(&str, &[Zone])] = &[
     ("robot", &[zone("head", "Head"), zone("face", "Face screen"), zone("eyes", "Eyes"), zone("body", "Body"), zone("core", "Chest core"), zone("antenna", "Ear antennas")]),
     ("puppy", &[zone("head", "Head"), zone("ears", "Ears"), zone("muzzle", "Muzzle"), zone("eyes", "Eyes"), zone("body", "Body"), zone("legs", "Legs"), zone("paws", "Paws"), zone("tail", "Tail")]),
+    ("man", &[zone("skin", "Skin"), zone("hair", "Hair"), zone("eyes", "Eyes"), zone("top", "Shirt"), zone("bottom", "Trousers"), zone("shoes", "Shoes")]),
+    ("woman", &[zone("skin", "Skin"), zone("hair", "Hair"), zone("eyes", "Eyes"), zone("top", "Top"), zone("bottom", "Skirt"), zone("shoes", "Shoes")]),
+    ("owl", &[zone("head", "Head"), zone("face", "Face disc"), zone("eyes", "Eyes"), zone("body", "Body"), zone("belly", "Chest"), zone("wings", "Wings"), zone("beak", "Beak and feet")]),
+    ("god", &[zone("skin", "Mask and hands"), zone("body", "Armour"), zone("robe", "Robe"), zone("eyes", "Eyes"), zone("crown", "Crown of light"), zone("rings", "Rings")]),
 ];
 
 pub const MATERIALS: &[(&str, &str)] = &[("matte", "Matte"), ("gloss", "Gloss"), ("metal", "Metal"), ("fur", "Fur"), ("glow", "Glow")];

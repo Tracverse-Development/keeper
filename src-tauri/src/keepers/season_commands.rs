@@ -49,7 +49,7 @@ fn today() -> chrono::NaiveDate {
 
 fn worn(item: &SeasonItem) -> Option<parts::WornPart> {
     let effects: BTreeMap<String, serde_json::Value> = serde_json::from_str(item.effects).ok()?;
-    parts::check_effects(&parts::WornPart { part: item.part.into(), effects, item: None }).ok()
+    parts::check_effects(&parts::WornPart { part: item.part.into(), effects, item: None, rarity: None }).ok()
 }
 
 /// One item with the keeper's progress; `claimed_ids` are the season items already in the kit.

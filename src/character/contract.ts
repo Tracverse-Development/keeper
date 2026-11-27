@@ -29,6 +29,11 @@ export type HitRegion = 'head' | 'body';
 export interface WornPart {
   part: string;
   effects?: Record<string, number | string>;
+  /**
+   * How rare the item is (`common`, `uncommon`, `rare`, `legendary`, `mythical`): the core fills it
+   * in from the item. It sets how grand the item's effect is (`parts/rarity.ts`); left out = common.
+   */
+  rarity?: string;
 }
 
 export interface Character {

@@ -6,9 +6,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SKINS } from '../skins/catalog.ts';
 import { DEFAULT_WEARABLES, PARTS, SLOT_IDS, findPart, fitsSpecies, resolveWearables } from './catalog.ts';
+import { RACES } from '../skins/races.ts';
 import { resolveEffects } from './effects.ts';
 
-test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap, pack, a dog nail set and collar) and the moment effects', () => {
+test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap, pack, a dog nail set and collar, spectacles, a robot visor, a watch and a lantern) and the moment effects', () => {
   assert.deepEqual(
     PARTS.map((part) => [part.id, part.slot]),
     [
@@ -21,6 +22,10 @@ test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap,
       ['trail-pack', 'back'],
       ['paw-nails', 'paws'],
       ['dog-collar', 'neck'],
+      ['round-spectacles', 'face'],
+      ['welder-visor', 'face'],
+      ['trail-watch', 'wrist'],
+      ['star-lantern', 'held'],
       ['think-classic', 'thinking'],
       ['think-pulse', 'thinking'],
       ['think-orbit', 'thinking'],
@@ -48,7 +53,7 @@ test('every row is well formed: kebab id, name, known slot, species, effects sch
     assert.ok(part.description.length > 10 && part.description.length <= 120, `${part.id} description`);
     assert.ok((SLOT_IDS as readonly string[]).includes(part.slot));
     const species = part.species as 'any' | readonly string[];
-    if (species !== 'any') for (const s of species) assert.ok(skinIds.includes(s), `${part.id} names unknown species ${s}`);
+    if (species !== 'any') for (const s of species) assert.ok(skinIds.includes(s) || RACES.some((r) => r.id === s), `${part.id} names unknown species or race ${s}`);
     assert.ok(Object.keys(part.effects).length > 0, `${part.id} has effects`);
     for (const [key, spec] of Object.entries(part.effects)) {
       assert.match(key, /^[a-z][a-zA-Z]*$/, `${part.id}.${key}`);
@@ -119,4 +124,22 @@ test('species fit: "any" fits every species; a listed part only its own', () => 
   const robotOnly = { ...halo, species: ['robot'] as const };
   assert.equal(fitsSpecies(robotOnly, 'robot'), true);
   assert.equal(fitsSpecies(robotOnly, 'puppy'), false);
+});
+
+test('races decide who wears what, and the God Keeper wears everything (mirrors species::may_wear)', () => {
+  const watch = findPart('trail-watch')!;
+  assert.ok(fitsSpecies(watch, 'man') && fitsSpecies(watch, 'woman'), 'a human piece fits the man and the woman');
+  for (const body of ['robot', 'puppy', 'owl']) assert.ok(!fitsSpecies(watch, body), `a human piece never fits the ${body}`);
+  assert.ok(!fitsSpecies(findPart('welder-visor')!, 'man') && fitsSpecies(findPart('welder-visor')!, 'robot'));
+  assert.ok(!fitsSpecies(findPart('dog-collar')!, 'owl'), "a dog's collar is not an owl's");
+  for (const part of PARTS) assert.ok(fitsSpecies(part, 'god'), `the God Keeper wears ${part.id}`);
+  assert.ok(!fitsSpecies(watch, 'dragon'), 'an unknown body fits only items for everyone');
+});
+
+test('a worn item carries its rarity; anything unknown is common', () => {
+  const worn = resolveWearables([{ part: 'trail-watch', rarity: 'mythical' }, { part: 'crew-cap', rarity: 'shiny' }, { part: 'knit-scarf' }], 'man');
+  assert.equal(worn.wrist?.rarity, 'mythical');
+  assert.equal(worn.head?.rarity, 'common');
+  assert.equal(worn.neck?.rarity, 'common');
+  assert.notEqual(resolveWearables([{ part: 'trail-watch', rarity: 'rare' }], 'man').wrist?.key, worn.wrist?.key, 'a new tier redraws the item');
 });

@@ -19,6 +19,8 @@ import type { WornPart } from '../contract';
 import { effectsKey, resolveEffects, type EffectSchema, type EffectValues } from './effects.ts';
 import { MOMENT_PARTS, type MomentPartId } from './moment-catalog.ts';
 import type { SlotId } from './slots.ts';
+import { raceOf, WEARS_EVERYTHING } from '../skins/races.ts';
+import { resolveRarity, type RarityId } from './rarity.ts';
 
 export { SLOT_IDS, SLOTS, isEffectSlot, isWornSlot, type SlotId, type SlotKind } from './slots.ts';
 export type { MomentPartId } from './moment-catalog.ts';
@@ -28,7 +30,7 @@ export interface PartInfo {
   readonly id: string;
   readonly name: string;
   readonly slot: SlotId;
-  /** `'any'`, or the species (skin ids) it fits. */
+  /** `'any'`, or who may wear it: species ids and race ids (`skins/catalog.ts` `RACES`). */
   readonly species: 'any' | readonly string[];
   /** One short sentence for a kit screen. */
   readonly description: string;
@@ -141,6 +143,53 @@ const WEARABLE_PARTS = [
       tag: { kind: 'colour', label: 'Tag', default: '#d39744' },
     },
   },
+  {
+    id: 'round-spectacles',
+    name: 'Round Spectacles',
+    slot: 'face',
+    species: 'any',
+    description: 'Round wire spectacles that sit at eye level on any face, lenses catching the light.',
+    effects: {
+      color: { kind: 'colour', label: 'Frame', default: '#d39744' },
+      lens: { kind: 'colour', label: 'Lens', default: '#bfe6ff' },
+      shine: { kind: 'number', label: 'Shine', min: 0, max: 1, default: 0.6 },
+    },
+  },
+  {
+    id: 'welder-visor',
+    name: "Welder's Visor",
+    slot: 'face',
+    species: ['robot'],
+    description: 'A riveted brass visor band with a glowing tinted glass, for a robot at work.',
+    effects: {
+      color: { kind: 'colour', label: 'Brass', default: '#b57b2c' },
+      lens: { kind: 'colour', label: 'Glass', default: '#1fd2d6' },
+    },
+  },
+  {
+    id: 'trail-watch',
+    name: 'Trail Watch',
+    slot: 'wrist',
+    species: ['human'],
+    description: 'A round field watch on a strap, its dial lit softly from inside.',
+    effects: {
+      color: { kind: 'colour', label: 'Strap', default: '#7f4a24' },
+      face: { kind: 'colour', label: 'Dial', default: '#f4eee2' },
+      glow: { kind: 'number', label: 'Dial light', min: 0, max: 2, default: 0.6 },
+    },
+  },
+  {
+    id: 'star-lantern',
+    name: 'Star Lantern',
+    slot: 'held',
+    species: ['human'],
+    description: 'A small brass lantern carried in the hand, a star of light turning inside its glass.',
+    effects: {
+      color: { kind: 'colour', label: 'Brass', default: '#d39744' },
+      light: { kind: 'colour', label: 'Light', default: '#ffcf5a' },
+      glow: { kind: 'number', label: 'Brightness', min: 0, max: 2, default: 1 },
+    },
+  },
 ] as const satisfies readonly PartInfo[];
 
 export const PARTS = [...WEARABLE_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
@@ -157,9 +206,15 @@ export function findPart(id: unknown): PartInfo | undefined {
   return PARTS.find((part) => part.id === id);
 }
 
-/** True when `part` may be worn by `species`. */
+/**
+ * True when `part` may be worn by `species`: everyone's items, items naming the species, items
+ * naming its race (`['human']` fits the man and the woman), and anything at all on a body whose
+ * race wears everything (the God Keeper). Mirrors the core's `species::may_wear`.
+ */
 export function fitsSpecies(part: PartInfo, species: string): boolean {
-  return part.species === 'any' || part.species.includes(species);
+  if (part.species === 'any' || part.species.includes(species)) return true;
+  const race = raceOf(species);
+  return part.species.includes(race) || race === WEARS_EVERYTHING;
 }
 
 /** One worn part, resolved: its row, clamped effects and a key that changes with either. */
@@ -167,6 +222,8 @@ export interface ResolvedWear {
   readonly info: PartInfo;
   readonly id: PartId;
   readonly effects: EffectValues;
+  /** How rare the worn item is (the core fills it in; anything unknown is common). */
+  readonly rarity: RarityId;
   readonly key: string;
 }
 
@@ -183,7 +240,8 @@ export function resolveWearables(worn: unknown, species: string): Partial<Record
     const info = findPart((item as WornPart).part);
     if (!info || !fitsSpecies(info, species) || out[info.slot]) continue;
     const effects = resolveEffects(info.effects, (item as WornPart).effects);
-    out[info.slot] = { info, id: info.id as PartId, effects, key: `${info.id}|${effectsKey(effects)}` };
+    const rarity = resolveRarity((item as WornPart).rarity);
+    out[info.slot] = { info, id: info.id as PartId, effects, rarity, key: `${info.id}|${effectsKey(effects)}|${rarity}` };
   }
   return out;
 }

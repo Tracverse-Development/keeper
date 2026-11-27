@@ -15,6 +15,8 @@ use crate::state::AppState;
 #[derive(Serialize)]
 pub struct Catalog {
     pub species: &'static [species::Species],
+    /// The races (human, robot, animal, divine) species belong to and items are worn by.
+    pub races: &'static [(&'static str, &'static str)],
     pub parts: &'static [parts::Part],
     pub roles: Vec<roles::Role>,
     pub souls: Vec<souls::Soul>,
@@ -30,7 +32,7 @@ pub async fn kit_catalog(state: State<'_, AppState>) -> Result<Catalog> {
     };
     let mut all = souls::builtin();
     all.extend(state.custom_souls());
-    Ok(Catalog { species: species::SPECIES, parts: parts::PARTS, roles: roles::all(), souls: all, variants })
+    Ok(Catalog { species: species::SPECIES, races: species::RACES, parts: parts::PARTS, roles: roles::all(), souls: all, variants })
 }
 
 /// Save (create or update) one of the person's own souls in their kit graph.

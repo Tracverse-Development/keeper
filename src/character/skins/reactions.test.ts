@@ -10,8 +10,11 @@ import { SKINS } from './catalog.ts';
 import { PUPPY_REACTIONS } from './puppy/reactions.ts';
 import { REACTION_FIELDS, type ReactionTable } from './reactions-table.ts';
 import { ROBOT_REACTIONS } from './robot/reactions.ts';
+import { HUMAN_REACTIONS } from './human/reactions.ts';
+import { OWL_REACTIONS } from './owl/reactions.ts';
+import { GOD_REACTIONS } from './god/reactions.ts';
 
-const TABLES: Record<string, ReactionTable> = { robot: ROBOT_REACTIONS, puppy: PUPPY_REACTIONS };
+const TABLES: Record<string, ReactionTable> = { robot: ROBOT_REACTIONS, puppy: PUPPY_REACTIONS, man: HUMAN_REACTIONS, woman: HUMAN_REACTIONS, owl: OWL_REACTIONS, god: GOD_REACTIONS };
 
 test('every species in the catalogue has a reaction table', () => {
   assert.deepEqual(Object.keys(TABLES).sort(), SKINS.map((skin) => skin.id as string).sort());

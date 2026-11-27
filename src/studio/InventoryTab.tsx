@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { core, sentence, type KeeperProfile, type StudioInfo, type Wardrobe, type WardrobeItem } from '../kernel/ipc';
 import { FILTERS, inventory, type InventoryFilter } from './inventory-view';
 import { ItemCard } from './ItemCard';
-import { coloursOf } from './market-view';
+import { coloursOf, fitsKeeper, misfit } from './market-view';
 import { lockedUntil, rarityOf } from './studio-view';
 
 interface Props {
@@ -28,7 +28,6 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, 
   const [search, setSearch] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const items = useMemo(() => (wardrobe ? inventory(wardrobe, keeper.id, filter, search, (i) => rarityOf(info, i).id) : []), [wardrobe, keeper.id, filter, search, info]);
-  const slots = new Set(wardrobe?.keepers.find((k) => k.id === keeper.id)?.slots ?? []);
   const others = (wardrobe?.keepers ?? []).filter((k) => k.id !== keeper.id);
   const share = (item: WardrobeItem) =>
     core
@@ -61,7 +60,7 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, 
           const rarity = rarityOf(info, item);
           const locked = lockedUntil(rarity, info.experience.level);
           const wearing = item.wornBy.includes(keeper.id);
-          const fits = slots.has(item.slot);
+          const fits = wardrobe ? fitsKeeper(wardrobe, keeper.id, item) : false;
           const slotName = wardrobe?.slots.find((s) => s.id === item.slot)?.name ?? item.slot;
           const wornElsewhere = item.wornBy.filter((id) => id !== keeper.id).map((id) => wardrobe?.keepers.find((k) => k.id === id)?.name).filter(Boolean);
           return (
@@ -74,7 +73,7 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onTakeOff, 
               locked={locked}
               worn={wearing}
               tags={item.source === 'yours' ? ['Forged'] : []}
-              line={wearing ? `${keeper.name} is wearing it` : wornElsewhere.length ? `Worn by ${wornElsewhere.join(', ')}` : fits ? 'In your inventory' : `${keeper.name} has no ${slotName.toLowerCase()}`}
+              line={wearing ? `${keeper.name} is wearing it` : wornElsewhere.length ? `Worn by ${wornElsewhere.join(', ')}` : fits ? 'In your inventory' : (wardrobe && misfit(wardrobe, keeper.id, item)) || `${keeper.name} has no ${slotName.toLowerCase()}`}
               onTry={(on) => onTry(on ? item : null)}
             >
               {wearing ? (

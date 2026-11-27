@@ -23,7 +23,7 @@ pub struct Part {
     pub id: &'static str,
     pub name: &'static str,
     pub slot: &'static str,
-    /// Species ids it fits; empty = any species.
+    /// Who may wear it: species or race ids (`species::may_wear`); empty = everyone.
     pub species: &'static [&'static str],
     pub effects: &'static [Effect],
 }
@@ -46,6 +46,12 @@ pub const PARTS: &[Part] = &[
     // Species-only: a dog's nails and collar.
     Part { id: "paw-nails", name: "Nail Set", slot: "paws", species: &["puppy"], effects: &[color("color"), num("shine", 0.0, 1.0)] },
     Part { id: "dog-collar", name: "Collar", slot: "neck", species: &["puppy"], effects: &[color("color"), color("tag")] },
+    // The face, the wrist and the hand: spectacles for every face, a robot's visor, a watch and a
+    // lantern for humans (the God Keeper wears all of them).
+    Part { id: "round-spectacles", name: "Round Spectacles", slot: "face", species: &[], effects: &[color("color"), color("lens"), num("shine", 0.0, 1.0)] },
+    Part { id: "welder-visor", name: "Welder's Visor", slot: "face", species: &["robot"], effects: &[color("color"), color("lens")] },
+    Part { id: "trail-watch", name: "Trail Watch", slot: "wrist", species: &["human"], effects: &[color("color"), color("face"), num("glow", 0.0, 2.0)] },
+    Part { id: "star-lantern", name: "Star Lantern", slot: "held", species: &["human"], effects: &[color("color"), color("light"), num("glow", 0.0, 2.0)] },
     // Effects for moments (slot kind "effect"): how thinking and a celebration look.
     Part { id: "think-classic", name: "Classic Thinking", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "think-pulse", name: "Pulse", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
@@ -95,7 +101,7 @@ pub fn check_effects(worn: &WornPart) -> Result<WornPart, String> {
             }
         }
     }
-    Ok(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item) })
+    Ok(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item), rarity: None })
 }
 
 /// Validate a worn part for a species: as `check_effects`, and the part fits that body (its
@@ -104,7 +110,7 @@ pub fn check(worn: &WornPart, species: &str) -> Result<WornPart, String> {
     let ok = check_effects(worn)?;
     let part = get(&ok.part).ok_or_else(|| format!("There is no part called {}.", worn.part))?;
     let body = super::species::get(species).ok_or_else(|| "There is no such body.".to_string())?;
-    if !part.species.is_empty() && !part.species.contains(&species) {
+    if !super::species::may_wear(part.species, species) {
         return Err(format!("The {} doesn't fit this body.", part.name));
     }
     if !body.slots.contains(&part.slot) {
@@ -138,11 +144,11 @@ mod tests {
         assert_eq!(ok.effects.get("color"), Some(&json!("#e2425f")));
         assert_eq!(ok.effects.get("spinWork"), Some(&json!(8.0)));
         assert!(!ok.effects.contains_key("evil") && !ok.effects.contains_key("nodes"));
-        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None }, "robot").is_err());
+        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None }, "robot").is_err());
     }
 
     fn worn(part: &str) -> WornPart {
-        WornPart { part: part.into(), effects: BTreeMap::new(), item: None }
+        WornPart { part: part.into(), effects: BTreeMap::new(), item: None, rarity: None }
     }
 
     #[test]
@@ -158,7 +164,7 @@ mod tests {
         for p in PARTS {
             assert!(super::super::slots::get(p.slot).is_some(), "{} names an unknown slot", p.id);
             for s in super::super::species::SPECIES {
-                let fits = s.slots.contains(&p.slot) && (p.species.is_empty() || p.species.contains(&s.id));
+                let fits = s.slots.contains(&p.slot) && super::super::species::may_wear(p.species, s.id);
                 assert_eq!(check(&worn(p.id), s.id).is_ok(), fits, "{} on {}", p.id, s.id);
             }
         }
@@ -172,6 +178,21 @@ mod tests {
         assert!(check(&worn("dog-collar"), "robot").unwrap_err().contains("doesn't fit"));
         // A collar and a scarf both go round the neck: one at a time.
         assert!(check_outfit(&[worn("dog-collar"), worn("knit-scarf")], "puppy").unwrap_err().contains("neck"));
+    }
+
+    #[test]
+    fn a_watch_is_for_humans_and_the_god_keeper_and_spectacles_for_every_face() {
+        for body in ["man", "woman", "god"] {
+            assert!(check(&worn("trail-watch"), body).is_ok() && check(&worn("star-lantern"), body).is_ok(), "{body}");
+        }
+        assert!(check(&worn("trail-watch"), "robot").unwrap_err().contains("doesn't fit"));
+        assert!(check(&worn("trail-watch"), "owl").unwrap_err().contains("doesn't fit"));
+        assert!(check(&worn("welder-visor"), "robot").is_ok() && check(&worn("welder-visor"), "god").is_ok());
+        assert!(check(&worn("welder-visor"), "man").unwrap_err().contains("doesn't fit"));
+        for body in ["robot", "puppy", "man", "woman", "owl", "god"] {
+            assert!(check(&worn("round-spectacles"), body).is_ok(), "{body}");
+        }
+        assert!(check(&worn("paw-nails"), "god").is_ok() && check(&worn("dog-collar"), "god").is_ok(), "the God Keeper wears a dog's pieces too");
     }
 
     #[test]

@@ -25,7 +25,7 @@ use crate::platform;
 use crate::state::AppState;
 
 /// Skins the window offers (`src/character/skins/catalog.ts`); anything else is refused.
-pub const SKINS: &[&str] = &["robot", "puppy"];
+pub const SKINS: &[&str] = &["robot", "puppy", "man", "woman", "owl", "god"];
 const MAX_KEEPERS: usize = 12;
 
 /// A short, safe name (it is also a wake word and a graph label).
@@ -114,7 +114,9 @@ pub struct KeeperList {
 fn list(state: &AppState) -> KeeperList {
     let s = state.settings();
     let active = s.active().map(|k| k.id.clone()).unwrap_or_default();
-    KeeperList { keepers: s.keepers, active, roles: kit::roles::all() }
+    // Each worn item goes to the window with its rarity, so the character draws its tier.
+    let keepers = s.keepers.into_iter().map(|k| KeeperProfile { wearables: kit::rarity::stamped(&k.wearables), ..k }).collect();
+    KeeperList { keepers, active, roles: kit::roles::all() }
 }
 
 #[tauri::command]

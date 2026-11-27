@@ -8,6 +8,9 @@
 import { resolveSkinId, type SkinId } from './catalog';
 import { createPuppySkin } from './puppy/puppy-skin';
 import { createRobotSkin } from './robot/robot-skin';
+import { createHumanSkin } from './human/human-skin';
+import { createOwlSkin } from './owl/owl-skin';
+import { createGodSkin } from './god/god-skin';
 import type { Skin, SkinFactory } from './skin';
 
 export { DEFAULT_SKIN_ID, SKINS, isSkinId, resolveSkinId, type SkinId, type SkinInfo } from './catalog';
@@ -16,6 +19,10 @@ export type { Skin, SkinFactory, SkinFrame } from './skin';
 const FACTORIES: Readonly<Record<SkinId, SkinFactory>> = {
   robot: createRobotSkin,
   puppy: createPuppySkin,
+  man: () => createHumanSkin('man'),
+  woman: () => createHumanSkin('woman'),
+  owl: createOwlSkin,
+  god: createGodSkin,
 };
 
 /** Builds the skin for `id` (unknown ids get the default skin). */

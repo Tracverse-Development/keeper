@@ -8,7 +8,7 @@
  * rig at rest (once, at build) and turns it into a camera distance that frames it with a margin.
  * The character's world transform at rest is the identity, so these are world coordinates.
  */
-import { Box3, Sphere, type Object3D } from 'three';
+import { Box3, Sphere, type Material, type Mesh, type Object3D } from 'three';
 import type { ZoneFocus } from '../contract';
 
 export type { ZoneFocus } from '../contract';
@@ -46,3 +46,16 @@ export function measureZones(root: Object3D, zones: Readonly<Record<string, Zone
 }
 
 
+
+/**
+ * Each zone's meshes found by material: every visible mesh under `root` wearing that zone's
+ * material, framed from `yaw[zone]` (default the front). For bodies whose zones are their materials.
+ */
+export function zonesByMaterial(root: Object3D, materials: Readonly<Record<string, Material>>, yaw: Readonly<Record<string, number>> = {}): Record<string, ZoneParts> {
+  const meshes: Record<string, Object3D[]> = {};
+  root.traverse((node) => {
+    const material = (node as Mesh).material;
+    for (const [zone, m] of Object.entries(materials)) if (material === m && node.visible) (meshes[zone] ??= []).push(node);
+  });
+  return Object.fromEntries(Object.entries(meshes).map(([zone, list]) => [zone, { meshes: list, yaw: yaw[zone] ?? 0 }]));
+}

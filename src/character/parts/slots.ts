@@ -9,7 +9,9 @@
  *    on the torso, a backpack on the back). It rides on a bone of the rig (it turns with the
  *    head, leans with the body) and is FITTED to the shape the species publishes for that
  *    slot (`fit.ts`), so one jacket fits a robot and a puppy alike. `paws` is worn on every foot
- *    the body publishes (only the puppy has feet to offer).
+ *    the body publishes (the puppy's paws, the God Keeper's feet); `face` sits at eye level on the
+ *    head (spectacles, a visor); `wrist` wraps the left wrist and `held` sits in the right hand,
+ *    so only bodies with arms offer them.
  *  - `effect`: nothing is drawn on the body. The part worn there changes how a MOMENT looks
  *    (`thinking`: the aura while it thinks; `celebrate`: the burst when it cheers). None worn =
  *    the classic look (`effects/moments.ts`).
@@ -21,10 +23,13 @@
 export const SLOTS = [
   { id: 'halo', name: 'Halo', kind: 'floating' },
   { id: 'head', name: 'Head', kind: 'worn' },
+  { id: 'face', name: 'Face', kind: 'worn' },
   { id: 'neck', name: 'Neck', kind: 'worn' },
   { id: 'torso', name: 'Torso', kind: 'worn' },
   { id: 'back', name: 'Back', kind: 'worn' },
   { id: 'paws', name: 'Paws', kind: 'worn' },
+  { id: 'wrist', name: 'Wrist', kind: 'worn' },
+  { id: 'held', name: 'Held', kind: 'worn' },
   { id: 'base', name: 'Base', kind: 'floating' },
   { id: 'aura', name: 'Aura', kind: 'floating' },
   { id: 'thinking', name: 'Thinking', kind: 'effect' },

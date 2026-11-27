@@ -61,7 +61,7 @@ pub struct Item {
 impl Item {
     /// What a keeper wears when it puts this item on.
     pub fn worn(&self) -> WornPart {
-        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()) }
+        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()), rarity: None }
     }
 }
 
@@ -74,13 +74,13 @@ pub fn items(variants: &[Variant]) -> Vec<Item> {
         .collect();
     for s in STOCK {
         let effects = s.effects.iter().map(|(k, v)| (k.to_string(), Value::String(v.to_string()))).collect();
-        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None }, false, "built-in") {
+        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None, rarity: None }, false, "built-in") {
             out.push(item);
         }
     }
     for o in super::official::OFFICIAL {
         let effects: BTreeMap<String, Value> = serde_json::from_str(o.effects).unwrap_or_default();
-        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None }, false, "official") {
+        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None, rarity: None }, false, "official") {
             item.rarity = super::rarity::get(o.rarity).map(|r| r.id).unwrap_or(item.rarity);
             item.blurb = o.blurb;
             out.push(item);

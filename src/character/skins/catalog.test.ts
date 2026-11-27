@@ -3,14 +3,15 @@
  * Run: node --test --experimental-strip-types src/character/skins/catalog.test.ts
  */
 import { test } from 'node:test';
+import { raceOf } from './races.ts';
 import assert from 'node:assert/strict';
 import { SLOT_IDS } from '../parts/catalog.ts';
 import { DEFAULT_SKIN_ID, SKINS, isSkinId, resolveSkinId, slotsOf } from './catalog.ts';
 
-test('the catalogue lists the robot (default) and the puppy', () => {
+test('the catalogue lists the robot (default), the puppy, the man, the woman, the owl and the God Keeper', () => {
   assert.deepEqual(
     SKINS.map((skin) => skin.id),
-    ['robot', 'puppy'],
+    ['robot', 'puppy', 'man', 'woman', 'owl', 'god'],
   );
   assert.equal(DEFAULT_SKIN_ID, 'robot', 'the robot stays the default look');
 });
@@ -46,7 +47,10 @@ test('every species declares the halo, base and aura slots with finite placement
     const slots = Object.keys(skin.slots);
     for (const slot of slots) assert.ok((SLOT_IDS as readonly string[]).includes(slot), `${skin.id} offers unknown ${slot}`);
     for (const slot of ['halo', 'base', 'aura', 'head', 'neck', 'torso', 'back', 'thinking', 'celebrate']) assert.ok(slots.includes(slot), `${skin.id} offers ${slot}`);
-    assert.equal(slots.includes('paws'), skin.id === 'puppy', 'only the puppy has paws');
+    assert.equal(slots.includes('paws'), skin.id === 'puppy' || skin.id === 'god', 'only the puppy and the God Keeper have feet to wear things on');
+    assert.equal(slots.includes('wrist') && slots.includes('held'), ['man', 'woman', 'god'].includes(skin.id), 'only bodies with arms and hands offer the wrist and held slots');
+    assert.ok(slots.includes('face'), `${skin.id} has a face for spectacles`);
+    assert.ok(raceOf(skin.id) !== '', `${skin.id} has a race`);
     for (const [slot, placement] of Object.entries(skin.slots)) {
       assert.equal(placement.position.length, 3, `${skin.id}.${slot}`);
       assert.equal(placement.rotation.length, 3, `${skin.id}.${slot}`);

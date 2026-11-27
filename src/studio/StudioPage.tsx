@@ -9,6 +9,7 @@
  * top bar, the keepers panel and the ⌘K palette. Design: docs/design/keeper-ecosystem.md.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SKINS } from '../character';
 
 import { CharacterStage } from '../character';
 import { core, sentence, type KeeperProfile, type KeeperVoice, type Soul, type ZoneLook } from '../kernel/ipc';
@@ -282,7 +283,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             {info && tab === 'level' && (
               <>
                 <LevelTab info={info} name={keeper.name} />
-                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: keeper.skin }} snapshot={() => snapshot.current?.() ?? null} />
+                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: SKINS.find((s) => s.id === keeper.skin)?.name ?? keeper.skin }} snapshot={() => snapshot.current?.() ?? null} />
               </>
             )}
             {info && tab === 'market' && (

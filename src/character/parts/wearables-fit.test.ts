@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Mesh, Vector3, type Object3D } from 'three';
 import { SKINS } from '../skins/catalog.ts';
-import { PARTS, findPart, resolveWearables } from './catalog.ts';
+import { PARTS, findPart, fitsSpecies, resolveWearables } from './catalog.ts';
 import { resolveEffects } from './effects.ts';
 import { bodyLevel, clearance, footClearance, footLevel, radiusAt, type BodyShape, type Foot, type Limb } from './fit.ts';
 import { isWornSlot, type SlotId } from './slots.ts';
@@ -73,7 +73,7 @@ const inSleeve = (mesh: Object3D): boolean => {
 function fittings(part: (typeof WORN)[number]): { body: string; slot: SlotId; shape: BodyShape }[] {
   const out: { body: string; slot: SlotId; shape: BodyShape }[] = [];
   for (const skin of SKINS) {
-    if (part.species !== 'any' && !(part.species as readonly string[]).includes(skin.id)) continue;
+    if (!fitsSpecies(part, skin.id)) continue;
     for (const [slot, placement] of Object.entries(skin.slots) as [SlotId, { shape?: BodyShape }][]) if (placement.shape) out.push({ body: skin.id, slot, shape: placement.shape });
   }
   for (const slot of ['torso', 'back', 'neck'] as const) out.push({ body: 'boxy', slot, shape: BOXY });
@@ -90,13 +90,14 @@ for (const part of WORN) {
       assert.ok(all.length > 50, 'it has geometry');
       for (const v of all) assert.ok(Number.isFinite(v.x + v.y + v.z), 'finite');
 
-      // Nothing sinks into the body (sleeves are measured against their limbs below).
+      // Nothing sinks into the body (sleeves are measured against their limbs below). A hand closes
+      // round what it holds, so a held piece may pass inside the hand.
       let worst = Infinity;
       for (const v of vertices(instance.group, (m) => !inSleeve(m))) {
         const off = offBody(shape, v);
         if (off !== null) worst = Math.min(worst, off);
       }
-      assert.ok(worst >= -TOLERANCE, `${part.id} sinks ${(-worst).toFixed(4)} into the ${body}`);
+      if (slot !== 'held') assert.ok(worst >= -TOLERANCE, `${part.id} sinks ${(-worst).toFixed(4)} into the ${body}`);
 
       // Fitted, not floating: the closest piece sits close to the body.
       assert.ok(worst <= SNUG, `${part.id} floats ${worst.toFixed(3)} off the ${body}`);
@@ -114,7 +115,7 @@ for (const part of WORN) {
       });
       instance.update({ dt: 1 / 60, time: 3.2, motion: { amplitude: 1, speed: 1 }, mood: {}, voice: 0, work: 1, thinking: 0, gotIt: 0, dramaFloor: 0, head: new Vector3() } as never);
       const level = (v: Vector3): number => (shape.feet ? Math.min(...shape.feet.map((f) => footLevel(f, v.x, v.y, v.z))) : bodyLevel(shape, v.x, v.y, v.z));
-      for (const v of vertices(instance.group, (m) => !inSleeve(m))) assert.ok(level(v) >= 1 - 4 * TOLERANCE, 'moving cloth never passes into the body');
+      if (slot !== 'held') for (const v of vertices(instance.group, (m) => !inSleeve(m))) assert.ok(level(v) >= 1 - 4 * TOLERANCE, 'moving cloth never passes into the body');
       instance.dispose();
     });
   }
@@ -131,7 +132,7 @@ test('nails sit on every paw: four per foot, and none on a body without feet', (
 
 test('every worn part has a body to go on, and a body without a slot simply goes without', () => {
   for (const part of WORN) {
-    const fits = SKINS.filter((skin) => part.slot in skin.slots && (part.species === 'any' || (part.species as readonly string[]).includes(skin.id)));
+    const fits = SKINS.filter((skin) => part.slot in skin.slots && fitsSpecies(part, skin.id));
     assert.ok(fits.length > 0, `${part.id} fits some species`);
   }
   // A wear list naming a part for a slot the body lacks resolves (the wardrobe then leaves it empty).

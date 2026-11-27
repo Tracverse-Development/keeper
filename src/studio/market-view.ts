@@ -25,12 +25,14 @@ export interface Listing {
   rarity: Rarity;
   /** The level it still needs, or null when the keeper's level is high enough. */
   locked: number | null;
-  /** The keeper's body has the slot this item goes in. */
+  /** The keeper's body has the slot this item goes in, and its race may wear it (`fitsKeeper`). */
   fits: boolean;
   wearing: boolean;
   slotName: string;
   /** The item's own colours, for its picture (empty when it has none). */
   colours: string[];
+  /** When its race rule keeps it off this keeper: "Only for humans" (null otherwise). */
+  onlyFor: string | null;
 }
 
 /** The colours an item is made of (its effect values that are colours). */
@@ -38,9 +40,41 @@ export function coloursOf(item: { effects: Record<string, number | string> }): s
   return Object.values(item.effects).filter((v): v is string => typeof v === 'string' && v.startsWith('#'));
 }
 
+/**
+ * True when `keeper` can put `item` on: its body offers the item's slot AND the item is for its
+ * species or race (a human piece never fits the robot; the God Keeper wears everything). The core
+ * decides (`wears`, from the same `parts::check` that `wear` applies); an older core without it
+ * falls back to the slot alone.
+ */
+export function fitsKeeper(w: Wardrobe, keeper: string, item: Pick<WardrobeItem, 'id' | 'slot'>): boolean {
+  const body = w.keepers.find((k) => k.id === keeper);
+  if (!body || !body.slots.includes(item.slot)) return false;
+  return body.wears ? body.wears.includes(item.id) : true;
+}
+
+/** How a species or race reads in "Only for robots" (plural, plain words). */
+const WHO_WORDS: Readonly<Record<string, string>> = { human: 'humans', robot: 'robots', animal: 'animals', divine: 'the God Keeper', puppy: 'dogs', man: 'men', woman: 'women', owl: 'owls', god: 'the God Keeper' };
+
+/**
+ * Why `keeper` cannot wear `item`, in a few words ("Biscuit has no wrist", "Only for humans"), or
+ * null when it can.
+ */
+export function misfit(w: Wardrobe, keeper: string, item: Pick<WardrobeItem, 'id' | 'slot' | 'who'>): string | null {
+  if (fitsKeeper(w, keeper, item)) return null;
+  const body = w.keepers.find((k) => k.id === keeper);
+  const slotName = (w.slots.find((s) => s.id === item.slot)?.name ?? item.slot).toLowerCase();
+  return onlyFor(w, keeper, item) ?? `${body?.name ?? 'This keeper'} has no ${slotName}`;
+}
+
+/** "Only for humans" when the body has the slot but its race may not wear the item; null otherwise. */
+function onlyFor(w: Wardrobe, keeper: string, item: Pick<WardrobeItem, 'id' | 'slot' | 'who'>): string | null {
+  const body = w.keepers.find((k) => k.id === keeper);
+  if (!body || !body.slots.includes(item.slot) || fitsKeeper(w, keeper, item)) return null;
+  return item.who?.length ? `Only for ${item.who.map((id) => WHO_WORDS[id] ?? id).join(' and ')}` : null;
+}
+
 /** Every official item, as a listing for `keeper` (unfiltered, catalogue order). */
 export function listings(w: Wardrobe, info: StudioInfo, keeper: string): Listing[] {
-  const slots = new Set(w.keepers.find((k) => k.id === keeper)?.slots ?? []);
   return w.items
     .filter((item) => item.source === 'official')
     .map((item) => {
@@ -49,7 +83,8 @@ export function listings(w: Wardrobe, info: StudioInfo, keeper: string): Listing
         item,
         rarity,
         locked: lockedUntil(rarity, info.experience.level),
-        fits: slots.has(item.slot),
+        fits: fitsKeeper(w, keeper, item),
+        onlyFor: onlyFor(w, keeper, item),
         wearing: item.wornBy.includes(keeper),
         slotName: w.slots.find((s) => s.id === item.slot)?.name ?? item.slot,
         colours: coloursOf(item),
@@ -90,7 +125,7 @@ export function standing(info: StudioInfo, all: Listing[]): { open: number; tota
 export function listingAction(l: Listing): { label: string; can: boolean } {
   if (l.wearing) return { label: 'Wearing', can: false };
   if (l.locked !== null) return { label: `Unlocks at level ${l.locked}`, can: false };
-  if (!l.fits) return { label: `No ${l.slotName.toLowerCase()} to wear it on`, can: false };
+  if (!l.fits) return { label: l.onlyFor ?? `No ${l.slotName.toLowerCase()} to wear it on`, can: false };
   return { label: 'Wear', can: true };
 }
 

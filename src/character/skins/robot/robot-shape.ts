@@ -4,7 +4,7 @@
  * jacket or cap follows the very curves the body is built from. Pure data (no three.js).
  */
 import type { BodyShape, Ring } from '../../parts/fit.ts';
-import { domeProfile } from '../../parts/fit.ts';
+import { domeProfile, ellipsoidProfile } from '../../parts/fit.ts';
 
 /** Half-extents of the head ellipsoid (x wide, y tall, z deep). */
 export const ROBOT_HEAD_RADII = { x: 1, y: 0.9, z: 0.92 } as const;
@@ -61,4 +61,13 @@ export const ROBOT_TORSO_SHAPE: BodyShape = {
   depth: 1,
   squareness: 2,
   reach: -0.86,
+};
+
+/** The face (anchor: the head's centre): the whole head, and the glowing eyes on the visor. */
+export const ROBOT_FACE_SHAPE: BodyShape = {
+  profile: ellipsoidProfile(ROBOT_HEAD_RADII.x, ROBOT_HEAD_RADII.y),
+  depth: ROBOT_HEAD_RADII.z / ROBOT_HEAD_RADII.x,
+  squareness: 2,
+  reach: -0.4,
+  eyes: { x: 0.3, y: 0.08, radius: 0.17, front: 0.93 },
 };

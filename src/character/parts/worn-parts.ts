@@ -1,5 +1,5 @@
 /**
- * The factories of the parts worn ON the body (head, neck, torso, back, paws), kept apart from the
+ * The factories of the parts worn ON the body (head, face, neck, torso, back, paws, wrist, held), kept apart from the
  * floating ones so the wearables-fit test can build every one of them, for every species, in
  * plain Node (no GPU): these files import with explicit `.ts` paths for that reason.
  *
@@ -12,6 +12,10 @@ import { createArkJacket } from './jacket/jacket.ts';
 import { createTrailPack } from './backpack/backpack.ts';
 import { createDogCollar } from './dog-collar/dog-collar.ts';
 import { createPawNails } from './paw-nails/paw-nails.ts';
+import { createSpectacles } from './spectacles/spectacles.ts';
+import { createWelderVisor } from './welder-visor/welder-visor.ts';
+import { createTrailWatch } from './trail-watch/trail-watch.ts';
+import { createStarLantern } from './star-lantern/star-lantern.ts';
 import type { PartFactory } from './part';
 
 export const WORN_FACTORIES = {
@@ -21,4 +25,8 @@ export const WORN_FACTORIES = {
   'trail-pack': createTrailPack,
   'paw-nails': createPawNails,
   'dog-collar': createDogCollar,
+  'round-spectacles': createSpectacles,
+  'welder-visor': createWelderVisor,
+  'trail-watch': createTrailWatch,
+  'star-lantern': createStarLantern,
 } as const satisfies Readonly<Record<string, PartFactory>>;

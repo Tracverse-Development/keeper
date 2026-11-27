@@ -23,6 +23,8 @@ pub struct Listed {
     pub item: Item,
     /// Keeper ids wearing it.
     pub worn_by: Vec<String>,
+    /// Who may wear it: species or race ids (empty = everyone), for "Only for humans".
+    pub who: &'static [&'static str],
 }
 
 #[derive(Serialize)]
@@ -33,6 +35,9 @@ pub struct KeeperBody {
     pub species: String,
     /// The slots its body offers.
     pub slots: Vec<&'static str>,
+    /// The item ids this keeper can put on: its body offers the slot and its race may wear it
+    /// (`parts::check`, the same rule `wear` applies). The window shows fit from this, never its own.
+    pub wears: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -58,10 +63,19 @@ async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
 }
 
 fn listing(items: Vec<Item>, keepers: &[KeeperProfile], complete: bool) -> Wardrobe {
-    let listed = items.iter().map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items) }).collect();
+    let listed = items
+        .iter()
+        .map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items), who: parts::get(&i.part).map(|p| p.species).unwrap_or(&[]) })
+        .collect();
     let bodies = keepers
         .iter()
-        .map(|k| KeeperBody { id: k.id.clone(), name: k.name.clone(), species: k.skin.clone(), slots: species::get(&k.skin).map(|s| s.slots.to_vec()).unwrap_or_default() })
+        .map(|k| KeeperBody {
+            id: k.id.clone(),
+            name: k.name.clone(),
+            species: k.skin.clone(),
+            slots: species::get(&k.skin).map(|s| s.slots.to_vec()).unwrap_or_default(),
+            wears: items.iter().filter(|i| parts::check(&i.worn(), &k.skin).is_ok()).map(|i| i.id.clone()).collect(),
+        })
         .collect();
     Wardrobe { slots: slots::SLOTS, items: listed, keepers: bodies, complete }
 }
@@ -124,7 +138,7 @@ pub async fn wardrobe_share(state: State<'_, AppState>, item: String) -> Result<
     let (own, _) = own_items(&state).await;
     let items = wardrobe::items(&own);
     let chosen = items.iter().find(|i| i.id == item).ok_or_else(|| DeskError::Invalid("That item isn't in your wardrobe.".into()))?;
-    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None }, one_of_a_kind: chosen.one_of_a_kind };
+    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None, rarity: None }, one_of_a_kind: chosen.one_of_a_kind };
     let path = super::kit_commands::downloads_file(&chosen.name);
     std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref())?)?;
     crate::platform::reveal(&path);
@@ -176,7 +190,7 @@ pub async fn design(description: &str, model: &str) -> Result<Designed> {
     let raw = crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await?;
     let part = raw["part"].as_str().unwrap_or_default().to_string();
     let effects: BTreeMap<String, serde_json::Value> = raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None }).map_err(DeskError::Invalid)?;
     let name = packs::clean_name(raw["name"].as_str().unwrap_or("My item")).unwrap_or_else(|_| "My item".into());
     Ok(Designed { name, part: worn.part, effects: worn.effects })
 }
@@ -200,7 +214,7 @@ mod design_tests {
 #[tauri::command]
 pub async fn wardrobe_add(state: State<'_, AppState>, name: String, part: String, effects: BTreeMap<String, serde_json::Value>, one_of_a_kind: bool) -> Result<Wardrobe> {
     let name = packs::clean_name(&name).map_err(DeskError::Invalid)?;
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None }).map_err(DeskError::Invalid)?;
     let variant = Variant { id: packs::slug(&name), name, worn, one_of_a_kind };
     let client = state.client()?;
     inventory::save_variant(&client, &inventory::kit(&client, &state.kit_place()).await?, &variant).await?;

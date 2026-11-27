@@ -30,6 +30,11 @@ pub struct WornPart {
     pub effects: std::collections::BTreeMap<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub item: Option<String>,
+    /// How rare the worn item is (`keepers::kit::rarity`), filled in by the core whenever it hands
+    /// a keeper to the window, so the character draws the item's tier. Never read back from disk
+    /// or a pack (`skip_deserializing`): it is always worked out from `item` and `part`.
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub rarity: Option<String>,
 }
 
 /// One paint zone's look (`keepers::kit::look`): a colour (#rrggbb) and a material, either optional.
@@ -52,7 +57,7 @@ pub struct KeeperVoice {
 
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
-    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")) }).collect()
+    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None }).collect()
 }
 
 /// One keeper: soul (who), role (what it can do), body (species + wearables) and its own graph (memory).

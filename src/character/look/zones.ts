@@ -17,6 +17,10 @@ import { isHexColour } from '../parts/effects.ts';
 export const LOOK_ZONES = {
   robot: ['head', 'face', 'eyes', 'body', 'core', 'antenna'],
   puppy: ['head', 'ears', 'muzzle', 'eyes', 'body', 'legs', 'paws', 'tail'],
+  man: ['skin', 'hair', 'eyes', 'top', 'bottom', 'shoes'],
+  woman: ['skin', 'hair', 'eyes', 'top', 'bottom', 'shoes'],
+  owl: ['head', 'face', 'eyes', 'body', 'belly', 'wings', 'beak'],
+  god: ['skin', 'body', 'robe', 'eyes', 'crown', 'rings'],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
 export const MATERIALS = ['matte', 'gloss', 'metal', 'fur', 'glow'] as const;

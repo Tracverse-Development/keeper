@@ -5,7 +5,7 @@
  * legs, and a cap follows its skull. Pure data (no three.js).
  */
 import type { BodyShape, Foot, Limb, Ring } from '../../parts/fit.ts';
-import { domeProfile } from '../../parts/fit.ts';
+import { domeProfile, ellipsoidProfile } from '../../parts/fit.ts';
 
 /** World height of the neck (top of the torso), of the seat, and of the head centre. */
 export const PUPPY_NECK_Y = -0.5;
@@ -104,3 +104,12 @@ const FEET: Foot[] = [
 
 /** The paws slot: no surface ring, only the feet. */
 export const PUPPY_PAWS_SHAPE: BodyShape = { profile: [], depth: 1, squareness: 2, reach: PUPPY_SEAT_Y, feet: FEET };
+
+/** The face (anchor: the head's centre): the skull, and the big eyes either side of the blaze. */
+export const PUPPY_FACE_SHAPE: BodyShape = {
+  profile: ellipsoidProfile(PUPPY_SKULL[0], PUPPY_SKULL[1]),
+  depth: PUPPY_SKULL[2] / PUPPY_SKULL[0],
+  squareness: 2,
+  reach: -0.3,
+  eyes: { x: 0.36, y: 0.08, radius: 0.21, front: 0.8 },
+};

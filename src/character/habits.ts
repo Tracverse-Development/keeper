@@ -43,6 +43,10 @@ export const MAX_HABIT = 3;
 export const SPECIES_HABITS: Readonly<Record<string, Readonly<Record<string, number>>>> = {
   robot: { sleep: 1, stretch: 1, 'look-around': 2, wink: 0.5, nod: 0.5, hum: 1 },
   puppy: { sleep: 1, stretch: 1, 'look-around': 2, wink: 0.5, nod: 0.5, 'chase-tail': 0.8, scratch: 0.8 },
+  man: { sleep: 1, stretch: 1, 'look-around': 2, wink: 0.5, nod: 0.5 },
+  woman: { sleep: 1, stretch: 1, 'look-around': 2, wink: 0.5, nod: 0.5 },
+  owl: { sleep: 1.4, stretch: 1, 'look-around': 3, wink: 0.5, nod: 0.5 },
+  god: { sleep: 0.4, stretch: 0.6, 'look-around': 2, wink: 0.3, nod: 0.8 },
 };
 
 /** Seconds of quiet before a keeper with `sleep` weight 1 dozes; heavier sleepers doze sooner. */

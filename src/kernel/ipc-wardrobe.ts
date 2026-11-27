@@ -30,6 +30,8 @@ export interface WardrobeItem {
   blurb?: string;
   /** Keeper ids wearing it. */
   wornBy: string[];
+  /** Who may wear it: species or race ids (empty = everyone). */
+  who?: string[];
 }
 
 export interface WardrobeKeeper {
@@ -38,6 +40,8 @@ export interface WardrobeKeeper {
   species: string;
   /** The slots its body offers. */
   slots: string[];
+  /** The item ids it can put on (the core decides: slot and race). */
+  wears?: string[];
 }
 
 export interface Wardrobe {

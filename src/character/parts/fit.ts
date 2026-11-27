@@ -55,6 +55,19 @@ export interface BodyShape {
   readonly limbs?: readonly Limb[];
   /** The feet a paws slot is worn on (empty `profile` then: there is no surface ring to follow). */
   readonly feet?: readonly Foot[];
+  /**
+   * Where the eyes are, for the face slot (spectacles, a visor): half the distance between their
+   * centres, their height, their radius, and how far forward the face's surface is at that height.
+   */
+  readonly eyes?: FaceEyes;
+}
+
+/** The eyes a face publishes (anchor space): see `BodyShape.eyes`. */
+export interface FaceEyes {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly front: number;
 }
 
 /** What a part is told about the body it is built for. */
@@ -194,6 +207,14 @@ export function garmentRings(shape: BodyShape, top: number, bottom: number, ease
 /** The body's half-depth at the front or back of height `y` (the surface a backpack meets). */
 export function surfaceDepth(shape: BodyShape, y: number): number {
   return radiusAt(shape, y) * shape.depth;
+}
+
+/** A whole ellipsoid's profile, crown to chin (what a face publishes for a visor to wrap). */
+export function ellipsoidProfile(rx: number, ry: number, rings = 17): Ring[] {
+  return Array.from({ length: rings }, (_, i) => {
+    const phi = (i / (rings - 1)) * Math.PI;
+    return [Math.max(rx * Math.sin(phi), 0.001), ry * Math.cos(phi)] as const;
+  });
 }
 
 /**

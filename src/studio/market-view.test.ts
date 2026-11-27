@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import type { Wardrobe, WardrobeItem } from '../kernel/ipc';
 import type { StudioInfo } from '../kernel/ipc-studio';
-import { filtered, listingAction, listings, packMaker, packPreview, earningOrder, standing } from './market-view.ts';
+import { filtered, fitsKeeper, listingAction, listings, misfit, packMaker, packPreview, earningOrder, standing } from './market-view.ts';
 
 test('market: a pack shows who it says made it, and a link only when it is plain https', () => {
   const made = packPreview(JSON.stringify({ kind: 'soul', format: 'keeper-pack/1', soul: { name: 'Calm' }, maker: { name: '  Amos   Thomas ', link: 'https://umojaark.com/amos' } }));
@@ -89,4 +89,22 @@ test('a file that is not a pack is refused in plain words', () => {
   assert.deepEqual(packPreview(JSON.stringify({ kind: 'script', format: 'keeper-pack/1' })), { ok: false, why: "That isn't a keeper pack (or it's damaged)." });
   assert.deepEqual(packPreview(JSON.stringify({ kind: 'keeper', format: 'keeper-pack/1', keeper: { name: ' ' } })), { ok: false, why: 'The keeper in this pack has no name.' });
   assert.equal(packPreview('x'.repeat(64 * 1024 + 1)).ok, false);
+});
+
+test('the race rule: a human piece is only for humans, the God Keeper wears it, a slot it lacks says so', () => {
+  const w = {
+    ...wardrobe,
+    keepers: [
+      { id: 'bot', name: 'Bolt', species: 'robot', slots: ['halo', 'head', 'face', 'neck', 'torso', 'back', 'base', 'aura'], wears: ['part:welder-visor'] },
+      { id: 'man', name: 'Malik', species: 'man', slots: ['halo', 'head', 'face', 'neck', 'torso', 'back', 'wrist', 'held', 'base', 'aura'], wears: ['part:trail-watch'] },
+      { id: 'god', name: 'Radiance', species: 'god', slots: ['halo', 'head', 'face', 'neck', 'torso', 'back', 'paws', 'wrist', 'held', 'base', 'aura'], wears: ['part:welder-visor', 'part:trail-watch', 'part:paw-nails'] },
+    ],
+  } as never;
+  const visor = { id: 'part:welder-visor', slot: 'face', who: ['robot'] };
+  const watch = { id: 'part:trail-watch', slot: 'wrist', who: ['human'] };
+  assert.ok(fitsKeeper(w, 'bot', visor) && !fitsKeeper(w, 'man', visor) && fitsKeeper(w, 'god', visor));
+  assert.equal(misfit(w, 'man', visor), 'Only for robots');
+  assert.equal(misfit(w, 'bot', watch), 'Bolt has no wrist');
+  assert.ok(fitsKeeper(w, 'man', watch) && fitsKeeper(w, 'god', watch));
+  assert.equal(misfit(w, 'god', { id: 'part:paw-nails', slot: 'paws', who: ['puppy'] }), null, 'the God Keeper wears a dog\'s nails');
 });
