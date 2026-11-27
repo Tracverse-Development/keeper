@@ -17,6 +17,7 @@
  */
 import type { WornPart } from '../contract';
 import { effectsKey, resolveEffects, type EffectSchema, type EffectValues } from './effects.ts';
+import { COVERS, KIT_PARTS } from './kit-parts.ts';
 import { MOMENT_PARTS, type MomentPartId } from './moment-catalog.ts';
 import type { SlotId } from './slots.ts';
 import { raceOf, WEARS_EVERYTHING } from '../skins/races.ts';
@@ -119,6 +120,8 @@ const WEARABLE_PARTS = [
       color: { kind: 'colour', label: 'Canvas', default: '#1e2848' },
       trim: { kind: 'colour', label: 'Trim', default: '#d39744' },
       sway: { kind: 'number', label: 'Bounce', min: 0, max: 2, default: 1 },
+      glow: { kind: 'number', label: 'Glow', min: 0, max: 2, default: 0.6 },
+      style: { kind: 'number', label: 'Style', min: 0, max: 4, default: 0, step: 1 },
     },
   },
   {
@@ -136,8 +139,8 @@ const WEARABLE_PARTS = [
     id: 'dog-collar',
     name: 'Collar',
     slot: 'neck',
-    species: ['puppy'],
-    description: 'A soft leather collar with a round name tag hanging at the front.',
+    species: ['animal'],
+    description: 'A soft leather collar with a round name tag hanging at the front, for any animal.',
     effects: {
       color: { kind: 'colour', label: 'Leather', default: '#b57b2c' },
       tag: { kind: 'colour', label: 'Tag', default: '#d39744' },
@@ -153,6 +156,7 @@ const WEARABLE_PARTS = [
       color: { kind: 'colour', label: 'Frame', default: '#d39744' },
       lens: { kind: 'colour', label: 'Lens', default: '#bfe6ff' },
       shine: { kind: 'number', label: 'Shine', min: 0, max: 1, default: 0.6 },
+      style: { kind: 'number', label: 'Style', min: 0, max: 1, default: 0, step: 1 },
     },
   },
   {
@@ -192,7 +196,7 @@ const WEARABLE_PARTS = [
   },
 ] as const satisfies readonly PartInfo[];
 
-export const PARTS = [...WEARABLE_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
+export const PARTS = [...WEARABLE_PARTS, ...KIT_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
 
 export type PartId = (typeof PARTS)[number]['id'];
 /** The parts drawn on (or round) the body: every part but the moment effects. */
@@ -224,24 +228,32 @@ export interface ResolvedWear {
   readonly effects: EffectValues;
   /** How rare the worn item is (the core fills it in; anything unknown is common). */
   readonly rarity: RarityId;
+  /** The set it glows with (three pieces of one set worn together; the core fills it in), or null. */
+  readonly set: string | null;
   readonly key: string;
 }
 
 /**
  * Resolves an untrusted wear list for `species`: unknown parts and parts that do not fit the
  * species are skipped, effects are clamped, and each slot holds at most one part (the first
- * listed wins). Returned in slot order.
+ * listed wins; a part that covers another slot, like the gown, takes that one too). Returned in slot order.
  */
 export function resolveWearables(worn: unknown, species: string): Partial<Record<SlotId, ResolvedWear>> {
   const out: Partial<Record<SlotId, ResolvedWear>> = {};
   if (!Array.isArray(worn)) return out;
+  // Slots already taken, including those a part covers (a gown takes the legs).
+  const taken = new Set<SlotId>();
   for (const item of worn) {
     if (item === null || typeof item !== 'object') continue;
     const info = findPart((item as WornPart).part);
-    if (!info || !fitsSpecies(info, species) || out[info.slot]) continue;
+    if (!info || !fitsSpecies(info, species)) continue;
+    const takes = [info.slot, ...(COVERS[info.id] ?? [])] as SlotId[];
+    if (takes.some((slot) => taken.has(slot))) continue;
+    for (const slot of takes) taken.add(slot);
     const effects = resolveEffects(info.effects, (item as WornPart).effects);
     const rarity = resolveRarity((item as WornPart).rarity);
-    out[info.slot] = { info, id: info.id as PartId, effects, rarity, key: `${info.id}|${effectsKey(effects)}|${rarity}` };
+    const set = typeof (item as WornPart).set === 'string' ? ((item as WornPart).set as string) : null;
+    out[info.slot] = { info, id: info.id as PartId, effects, rarity, set, key: `${info.id}|${effectsKey(effects)}|${rarity}|${set ?? ''}` };
   }
   return out;
 }

@@ -8,7 +8,8 @@
  *  - `worn`: the part is worn ON the body (a cap on the head, a scarf round the neck, a jacket
  *    on the torso, a backpack on the back). It rides on a bone of the rig (it turns with the
  *    head, leans with the body) and is FITTED to the shape the species publishes for that
- *    slot (`fit.ts`), so one jacket fits a robot and a puppy alike. `paws` is worn on every foot
+ *    slot (`fit.ts`), so one jacket fits a robot and a puppy alike. `legs` is worn over a person's legs and hips (trousers, a skirt); `paws` (named Feet: the id
+ *    stays for stored outfits) is worn on every foot
  *    the body publishes (the puppy's paws, the God Keeper's feet); `face` sits at eye level on the
  *    head (spectacles, a visor); `wrist` wraps the left wrist and `held` sits in the right hand,
  *    so only bodies with arms offer them.
@@ -26,8 +27,9 @@ export const SLOTS = [
   { id: 'face', name: 'Face', kind: 'worn' },
   { id: 'neck', name: 'Neck', kind: 'worn' },
   { id: 'torso', name: 'Torso', kind: 'worn' },
+  { id: 'legs', name: 'Legs', kind: 'worn' },
   { id: 'back', name: 'Back', kind: 'worn' },
-  { id: 'paws', name: 'Paws', kind: 'worn' },
+  { id: 'paws', name: 'Feet', kind: 'worn' },
   { id: 'wrist', name: 'Wrist', kind: 'worn' },
   { id: 'held', name: 'Held', kind: 'worn' },
   { id: 'base', name: 'Base', kind: 'floating' },

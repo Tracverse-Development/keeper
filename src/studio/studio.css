@@ -173,3 +173,16 @@
 .pack-trust.is-warn { color: var(--warning, var(--gold-300)); }
 .pack-trust.is-bad { color: var(--danger, var(--text)); }
 .season-quest { flex: 1 1 100%; display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Marketplace: one shelf per set in the Shop; set and starter cards. */
+.market-shelf { display: flex; flex-direction: column; gap: var(--space-3); }
+.market-shelf-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
+.set-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius); background: linear-gradient(160deg, color-mix(in srgb, var(--rarity, var(--gold-500)) 14%, transparent), transparent 60%), var(--surface); border: 1px solid color-mix(in srgb, var(--rarity, var(--gold-500)) 45%, var(--border)); min-width: 0; }
+.set-card p { margin: 0; line-height: 1.5; }
+.set-card-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.set-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.set-pieces li { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.set-others { display: flex; flex-direction: column; gap: var(--space-3); }
+.set-others summary { cursor: pointer; color: var(--text-muted); padding-block: var(--space-2); }
+.studio-chip:disabled { opacity: .55; cursor: not-allowed; }

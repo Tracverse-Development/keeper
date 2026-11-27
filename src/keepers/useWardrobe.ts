@@ -1,6 +1,7 @@
 /**
  * The person's wardrobe as the window sees it, and the four things you can do with it: put an
- * item on a keeper, take it off, give it to another keeper (move or share), make your own. Every
+ * item (or a whole set) on a keeper, take it off, give it to another keeper (move or share), make
+ * your own. Every
  * change comes back as the whole wardrobe (who wears what), and `onChanged` reloads the keepers so
  * the character on the stage is redressed at once. Loads when `open` turns true.
  */
@@ -49,6 +50,8 @@ export function useWardrobe(open: boolean, onChanged: () => void) {
     busy,
     wear: (keeper: string, item: string) => run(core.wardrobeWear(keeper, item)),
     takeOff: (keeper: string, item: string) => run(core.wardrobeTakeOff(keeper, item)),
+    /** Put on every piece of a set the keeper can wear now. */
+    wearSet: (keeper: string, set: string) => run(core.wardrobeWearSet(keeper, set)),
     /** Read the wardrobe again (an item was forged elsewhere). */
     reload: () => run(core.wardrobe()),
     give: (item: string, from: string, to: string, mode: GiveMode) => run(core.wardrobeGive(item, from, to, mode)),

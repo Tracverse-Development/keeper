@@ -14,15 +14,22 @@
  *   spark     - a hot point thrown every way at once (fireworks, the starburst)
  *   flare     - one big bright star that blooms and fades (the starburst's flash)
  *   orb       - a soft round glow (the thinking aura's orbits, clouds and vortex: `thinking-aura.ts`)
+ *   ember     - a hot welding spark thrown high in a fountain that rains back down (Spark Shower)
+ *   petal     - a flower petal or leaf that flutters down in a slow spiral (Petal Fall)
+ *   ball      - a shaded bouncy ball with a seam, thrown out and tumbling down (Ball Burst)
+ *   ring      - a thin ring of light that grows outward and fades (Ripple)
+ *   page      - a fluttering book page with lines of text (Page Flutter, while thinking)
+ *   band      - a still, painted soft disc placed exactly (the rainbow's bands keep their colours)
+ *   glow      - a still soft glow placed exactly, adding light (the shooting star's trail)
  *
  * Pure data (no three.js): read by `particle-pool.ts` (motion) and `effect-layer.ts` (drawing).
  */
 import { PALETTE } from '../palette.ts';
 
-export type EffectKind = 'sparkle' | 'heart' | 'puff' | 'mote' | 'confetti' | 'zzz' | 'note' | 'spark' | 'flare';
+export type EffectKind = 'sparkle' | 'heart' | 'puff' | 'mote' | 'confetti' | 'zzz' | 'note' | 'spark' | 'flare' | 'ember' | 'petal' | 'ball' | 'ring' | 'page' | 'band' | 'glow';
 
 /** The shape the effect shader draws for a kind (a `#define SHAPE` per material). */
-export const SHAPES: Readonly<Record<EffectKind, number>> = { sparkle: 0, heart: 1, puff: 2, mote: 3, confetti: 4, zzz: 5, note: 6, spark: 7, flare: 9 };
+export const SHAPES: Readonly<Record<EffectKind, number>> = { sparkle: 0, heart: 1, puff: 2, mote: 3, confetti: 4, zzz: 5, note: 6, spark: 7, flare: 9, ember: 14, petal: 10, ball: 11, ring: 12, page: 13, band: 15, glow: 8 };
 /** The thinking aura's soft orb (`thinking-aura.ts`; not a pooled kind). */
 export const AURA_SHAPE = 8;
 
@@ -59,6 +66,91 @@ export interface KindSpec {
 }
 
 const UP = [0, 1, 0] as const;
+/** A burst-only kind that stays where it is put (its spawn point is exact). */
+const STILL = { speed: [0, 0], direction: UP, cone: 0, scatter: 0, gravity: 0, drag: 0, angle: [0, 0], spin: [0, 0], sway: 0, swayRate: 0 } as const;
+
+/** The kinds the newer moment effects throw (`moments.ts`): embers, petals, balls, rings, pages, glows. */
+const MOMENT_KINDS: Readonly<Record<'ember' | 'petal' | 'ball' | 'ring' | 'page' | 'band' | 'glow', KindSpec>> = {
+  ember: {
+    capacity: 128,
+    life: [1.1, 1.7],
+    speed: [1.7, 2.6],
+    direction: UP,
+    cone: 0.85,
+    scatter: 0.08,
+    gravity: -6.5,
+    drag: 0.7,
+    size: [0.14, 0.2],
+    grow: 0.45,
+    angle: [0, 0],
+    spin: [0, 0],
+    sway: 0,
+    swayRate: 0,
+    bright: 5,
+    additive: true,
+    colours: [PALETTE.heatCore, PALETTE.heatAmber, PALETTE.gold300],
+  },
+  petal: {
+    capacity: 96,
+    life: [2.8, 3.8],
+    speed: [1.6, 2.6],
+    direction: UP,
+    cone: 1.65,
+    scatter: 0.3,
+    gravity: -0.7,
+    drag: 2.4,
+    size: [0.22, 0.3],
+    grow: 1,
+    angle: [0, Math.PI * 2],
+    spin: [-2.4, 2.4],
+    sway: 0.32,
+    swayRate: 2.1,
+    bright: 1.3,
+    additive: false,
+    colours: [PALETTE.tongue400, PALETTE.gold300, PALETTE.cream50],
+  },
+  ball: {
+    capacity: 32,
+    life: [1.9, 2.5],
+    speed: [1.9, 2.7],
+    direction: UP,
+    cone: 1.35,
+    scatter: 0.15,
+    gravity: -6.8,
+    drag: 0.35,
+    size: [0.24, 0.32],
+    grow: 1,
+    angle: [0, Math.PI * 2],
+    spin: [-5, 5],
+    sway: 0,
+    swayRate: 0,
+    bright: 1.35,
+    additive: false,
+    colours: [PALETTE.gold300, PALETTE.workCyanEdge, PALETTE.tongue400],
+  },
+  ring: { ...STILL, capacity: 12, life: [1.3, 1.5], size: [0.5, 0.55], grow: 6.5, bright: 1.1, additive: true, colours: [PALETTE.workCyanEdge] },
+  page: {
+    capacity: 24,
+    life: [1.8, 2.4],
+    speed: [0.45, 0.8],
+    direction: UP,
+    cone: 1.4,
+    scatter: 1.5,
+    gravity: 0.12,
+    drag: 1,
+    size: [0.34, 0.42],
+    grow: 1,
+    angle: [0, Math.PI * 2],
+    spin: [-4, 4],
+    sway: 0.22,
+    swayRate: 3,
+    bright: 1.6,
+    additive: false,
+    colours: [PALETTE.cream50, PALETTE.cream100],
+  },
+  band: { ...STILL, capacity: 128, life: [2, 2.4], size: [0.36, 0.38], grow: 1.08, bright: 1.15, additive: false, colours: [PALETTE.cream50] },
+  glow: { ...STILL, capacity: 128, life: [1.9, 2.3], size: [0.3, 0.33], grow: 1.15, bright: 1.7, additive: true, colours: [PALETTE.cream50] },
+};
 
 export const EFFECT_KINDS: Readonly<Record<EffectKind, KindSpec>> = {
   sparkle: {
@@ -232,4 +324,5 @@ export const EFFECT_KINDS: Readonly<Record<EffectKind, KindSpec>> = {
     additive: true,
     colours: [PALETTE.cream50],
   },
+  ...MOMENT_KINDS,
 };

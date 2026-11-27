@@ -32,6 +32,20 @@ export interface WardrobeItem {
   wornBy: string[];
   /** Who may wear it: species or race ids (empty = everyone). */
   who?: string[];
+  /** The official set it belongs to ('' or absent for none). */
+  set?: string;
+}
+
+/** An official set (`kit/collection/mod.rs` `ItemSet`). */
+export interface ItemSet {
+  id: string;
+  name: string;
+  /** Who may wear its pieces: species or race ids (empty = everyone). */
+  who: string[];
+  theme: string;
+  bonus: string;
+  /** Its signature piece: an official item id (`official:<reward>` in the wardrobe). */
+  reward: string;
 }
 
 export interface WardrobeKeeper {
@@ -48,6 +62,8 @@ export interface Wardrobe {
   slots: SlotInfo[];
   items: WardrobeItem[];
   keepers: WardrobeKeeper[];
+  /** The official sets (absent from an older core). */
+  sets?: ItemSet[];
   /** False when the memory node could not be read (only built-in items are listed). */
   complete: boolean;
 }

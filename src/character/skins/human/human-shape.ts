@@ -98,6 +98,10 @@ export interface HumanShapes {
   readonly torso: BodyShape;
   readonly wrist: BodyShape;
   readonly held: BodyShape;
+  /** Hips and both legs, in BODY space (the anchor is the body's origin): trousers and skirts. */
+  readonly legs: BodyShape;
+  /** Both shoes, in body space: what the feet slot is worn on. */
+  readonly feet: BodyShape;
 }
 
 export function humanShapes(frame: HumanFrame, eyes: FaceEyes = faceEyes(frame)): HumanShapes {
@@ -120,7 +124,24 @@ export function humanShapes(frame: HumanFrame, eyes: FaceEyes = faceEyes(frame))
     torso: { profile: torsoRings, depth: frame.depth, squareness: 2.2, reach: frame.waist - 0.08, limbs },
     wrist: { profile: [[frame.arm.radius * 1.05, 0.06], [frame.arm.radius * 1.05, -0.06]], depth: 1, squareness: 2, reach: -0.06 },
     held: { profile: [[0.001, frame.arm.hand], [frame.arm.hand, 0], [0.001, -frame.arm.hand]], depth: 1, squareness: 2, reach: -frame.arm.hand },
+    legs: legsShape(frame),
+    feet: { profile: [], depth: 1, squareness: 2, reach: HUMAN_SOLE_Y, feet: humanFeet(frame) },
   };
+}
+
+/**
+ * The hips and legs (body space): the torso's rings from the waist down (moved from neck space to
+ * body space), then the two legs as limbs hanging to the shoes. `reach` is the top of the shoes,
+ * where a trouser hem stops.
+ */
+export function legsShape(frame: HumanFrame): BodyShape {
+  // The torso's own rings from the waist down, then a soft taper into the legs (the torso closes
+  // abruptly, which left trousers with a ledge at the seat).
+  const open = frame.torso.filter(([r, y]) => y <= frame.waist + 0.04 && r > 0.01).map(([r, y]) => [r, y + HUMAN_NECK_Y] as const);
+  const [lastR, lastY] = open[open.length - 1];
+  const hips: Ring[] = [...open.slice(0, -1), [lastR * 0.96, lastY], [lastR * 0.82, lastY - 0.035], [0.001, lastY - 0.06]];
+  const limbs: Limb[] = [-1, 1].map((side) => ({ position: [side * frame.leg.x, frame.leg.top, 0], radius: frame.leg.radius, length: frame.leg.length, tilt: 0 }));
+  return { profile: hips, depth: frame.depth, squareness: 2.2, reach: HUMAN_SOLE_Y + frame.shoe[1] * 2, limbs };
 }
 
 /** The eyes a human face publishes (head space). */

@@ -108,3 +108,33 @@ test('the race rule: a human piece is only for humans, the God Keeper wears it, 
   assert.ok(fitsKeeper(w, 'man', watch) && fitsKeeper(w, 'god', watch));
   assert.equal(misfit(w, 'god', { id: 'part:paw-nails', slot: 'paws', who: ['puppy'] }), null, 'the God Keeper wears a dog\'s nails');
 });
+
+test('sets: each set with its pieces, what this keeper may wear and has on, its reward; its own sets first', async () => {
+  const { setViews, shopShelves, setFor } = await import('./market-view.ts');
+  const w = {
+    ...wardrobe,
+    keepers: [{ id: 'k1', name: 'Pup', species: 'puppy', slots: ['neck', 'halo', 'paws'], wears: ['official:bandana', 'official:visor', 'official:balls', 'official:scarf'] }],
+    items: [
+      item('official:bandana', 'neck', 'common', { set: 'park', wornBy: ['k1'] }),
+      item('official:visor', 'halo', 'rare', { set: 'park' }),
+      item('official:balls', 'paws', 'legendary', { set: 'park' }),
+      item('official:shirt', 'neck', 'common', { set: 'linen' }),
+      item('official:scarf', 'neck', 'common'),
+    ],
+    sets: [
+      { id: 'linen', name: 'Island Linen', who: ['man'], theme: 'Summer.', bonus: 'Ripple.', reward: 'shirt' },
+      { id: 'park', name: 'Park Day', who: ['puppy'], theme: 'Sun.', bonus: 'Balls.', reward: 'balls' },
+    ],
+  } as unknown as Wardrobe;
+  const views = setViews(w, listings(w, info, 'k1'));
+  assert.deepEqual(views.map((v) => v.set.id), ['park', 'linen'], "the dog's own set comes first");
+  const park = views[0];
+  assert.deepEqual([park.fits, park.ready, park.wearing], [3, 2, 1], 'three fit, two are open at level 4, one is on');
+  assert.equal(park.reward?.item.id, 'official:balls');
+  assert.equal(views[1].forThisKeeper, false);
+  const shelves = shopShelves(w, listings(w, info, 'k1'));
+  assert.deepEqual(shelves.map((s) => s.id), ['park', 'linen', 'more'], 'one shelf per set, loose pieces last');
+  assert.equal(shelves[0].sub, 'For dogs. Sun.');
+  assert.equal(setFor([]), 'For everyone');
+  assert.equal(setFor(['human']), 'For any human');
+});

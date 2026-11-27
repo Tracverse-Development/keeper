@@ -38,6 +38,25 @@ pub const PART_RARITY: &[(&str, &str)] = &[
     ("cheer-confetti", "common"),
     ("cheer-fireworks", "rare"),
     ("cheer-starburst", "mythical"),
+    // The shape kits (as plain designs) and the newer moments.
+    ("crown", "rare"),
+    ("cape", "rare"),
+    ("gown", "legendary"),
+    ("emblem-halo", "uncommon"),
+    ("platform", "uncommon"),
+    ("drift-aura", "uncommon"),
+    ("think-comet", "legendary"),
+    ("think-beacon", "rare"),
+    ("think-dream", "rare"),
+    ("think-wave", "uncommon"),
+    ("think-compass", "rare"),
+    ("think-pages", "uncommon"),
+    ("cheer-sparks", "rare"),
+    ("cheer-petals", "uncommon"),
+    ("cheer-balls", "uncommon"),
+    ("cheer-ripple", "rare"),
+    ("cheer-rainbow", "mythical"),
+    ("cheer-shooting-star", "legendary"),
 ];
 
 pub fn get(id: &str) -> Option<&'static Rarity> {
@@ -51,13 +70,19 @@ pub fn of_part(part_id: &str) -> &'static Rarity {
 
 /// The rarity of a worn item: an official item's own (`official:<id>`), else its part's.
 pub fn of_worn(worn: &super::parts::WornPart) -> &'static Rarity {
-    let official = worn.item.as_deref().and_then(|i| i.strip_prefix("official:")).and_then(|id| super::official::OFFICIAL.iter().find(|o| o.id == id));
-    official.and_then(|o| get(o.rarity)).unwrap_or_else(|| of_part(&worn.part))
+    super::collection::of_ref(worn.item.as_deref()).and_then(|o| get(o.rarity)).unwrap_or_else(|| of_part(&worn.part))
 }
 
-/// The same wear list with each item's rarity filled in (what the window draws the tiers from).
+/// The same wear list with each item's rarity filled in, and its set while that set glows (three
+/// pieces worn together): what the window draws the tiers and the set glow from.
 pub fn stamped(worn: &[super::parts::WornPart]) -> Vec<super::parts::WornPart> {
-    worn.iter().map(|w| super::parts::WornPart { rarity: Some(of_worn(w).id.to_string()), ..w.clone() }).collect()
+    let glowing = super::collection::glowing(worn);
+    worn.iter()
+        .map(|w| {
+            let set = super::collection::of_ref(w.item.as_deref()).map(|o| o.set).filter(|s| glowing.contains(s)).map(str::to_string);
+            super::parts::WornPart { rarity: Some(of_worn(w).id.to_string()), set, ..w.clone() }
+        })
+        .collect()
 }
 
 #[cfg(test)]

@@ -133,10 +133,36 @@ pub struct NewKeeper {
     /// A soul id; empty = the role's default soul.
     #[serde(default)]
     pub soul: String,
+    /// A starter keeper's id (`kit::starters`): its body, role and soul, wearing its starter piece.
+    #[serde(default)]
+    pub starter: String,
+}
+
+/// What a new keeper wears: the default halo and ark, plus a starter keeper's own piece.
+fn starter_wearables(starter: Option<&kit::starters::Starter>) -> Vec<crate::kernel::settings::WornPart> {
+    let mut worn = crate::kernel::settings::default_wearables();
+    let piece = starter.and_then(|s| kit::collection::get(s.piece));
+    if let Some(o) = piece {
+        let effects = serde_json::from_str(o.effects).unwrap_or_default();
+        let raw = crate::kernel::settings::WornPart { part: o.part.into(), effects, item: Some(format!("official:{}", o.id)), rarity: None, set: None };
+        if let Ok(ok) = kit::parts::check(&raw, starter.map(|s| s.skin).unwrap_or("")) {
+            let slot = kit::parts::takes(&ok.part);
+            worn.retain(|w| !kit::parts::takes(&w.part).iter().any(|s| slot.contains(s)));
+            worn.push(ok);
+        }
+    }
+    worn
 }
 
 #[tauri::command]
-pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Result<KeeperList> {
+pub async fn keepers_create(state: State<'_, AppState>, mut keeper: NewKeeper) -> Result<KeeperList> {
+    let starter = if keeper.starter.is_empty() { None } else { Some(kit::starters::get(&keeper.starter).ok_or_else(|| DeskError::Invalid("There is no such starter keeper.".into()))?) };
+    if let Some(s) = starter {
+        (keeper.skin, keeper.role, keeper.soul) = (s.skin.into(), s.role.into(), s.soul.into());
+        if keeper.name.trim().is_empty() {
+            keeper.name = s.name.into();
+        }
+    }
     if !valid_name(&keeper.name) {
         return Err(DeskError::Invalid("Give your keeper a short name (letters and numbers).".into()));
     }
@@ -162,7 +188,7 @@ pub async fn keepers_create(state: State<'_, AppState>, keeper: NewKeeper) -> Re
         skin: keeper.skin,
         role: keeper.role,
         soul: soul.id.clone(),
-        wearables: crate::kernel::settings::default_wearables(),
+        wearables: starter_wearables(starter),
         // Every keeper lives in the ONE home graph, in its own sub-graph.
         graph_id: graph_id_for(&seed, true),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),

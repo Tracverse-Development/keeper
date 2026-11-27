@@ -103,6 +103,14 @@ test('parts: the core and the character list the same parts, slots, effects and 
   }
 });
 
+test('parts: the core and the character agree on which parts cover more than their own slot (the gown takes the legs)', async () => {
+  const { COVERS } = await import('./character/parts/kit-parts.ts');
+  const rust = readFileSync(join(core, 'keepers/kit/parts.rs'), 'utf8');
+  const block = rust.slice(rust.indexOf('pub const COVERS'), rust.indexOf('];', rust.indexOf('pub const COVERS')));
+  const fromRust = Object.fromEntries([...block.matchAll(/\("([a-z-]+)", &\[([^\]]*)\]\)/g)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((s) => s[1])]));
+  assert.deepEqual(fromRust, COVERS);
+});
+
 test('slots: the core and the character list the same slots (in order, with their kind) and each species offers the same ones', async () => {
   const { SLOTS } = await import('./character/parts/slots.ts');
   const { SKINS } = await import('./character/skins/catalog.ts');

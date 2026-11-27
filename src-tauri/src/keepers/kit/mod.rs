@@ -5,12 +5,14 @@
 //! - `packs`   shareable `.keeper.json` files   - `inventory` the person's souls and variants on the DKG
 //! - `rarity`  common to mythical               - `levels`  experience earned by use, and what it unlocks
 //! - `seasons` a small set open for a few weeks, each item earned by a quest of useful things done
-//! - `look`    paint zones and habits per keeper (`docs/design/keeper-ecosystem.md`)
+//! - `collection` the official items and their sets   - `starters` the starter keepers
+//! - `look`    paint zones, finishes and habits per keeper (`docs/design/keeper-ecosystem.md`)
 
+pub mod collection;
+pub mod finishes;
 pub mod inventory;
 pub mod levels;
 pub mod look;
-pub mod official;
 pub mod pack_sign;
 pub mod packs;
 pub mod parts;
@@ -21,4 +23,5 @@ pub mod seasons;
 pub mod slots;
 pub mod souls;
 pub mod species;
+pub mod starters;
 pub mod wardrobe;

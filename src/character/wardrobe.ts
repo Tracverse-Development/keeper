@@ -27,7 +27,8 @@
  *
  * Every drawn part is decorated for its rarity (`parts/rarity-flourish.ts`: grander from common to
  * mythical) and, on a body whose race wears everything (the God Keeper), in the divine finish
- * (`parts/divine-finish.ts`). Both are part of the key, so a new tier or a new body redraws them.
+ * (`parts/divine-finish.ts`), and three pieces of one set glow together (`parts/set-glow.ts`). All
+ * three are part of the key, so a new tier, a new body or a set completed redraws them.
  */
 import { Group, type Vector3 } from 'three';
 import type { WornPart } from './contract';
@@ -50,6 +51,7 @@ import { slotsOf, type SkinId } from './skins/catalog';
 import { raceOf, WEARS_EVERYTHING } from './skins/races';
 import { createFlourish } from './parts/rarity-flourish';
 import { applyDivineFinish } from './parts/divine-finish';
+import { createSetGlow } from './parts/set-glow';
 import { isWornSlot } from './parts/slots';
 import { swapPose } from './skins/skin-transition';
 import type { RarityId } from './parts/rarity';
@@ -194,7 +196,7 @@ export class Wardrobe {
       if (instant && slot.current) this.release(slot.current);
       const follow = anchor?.feet ? { base: anchor.object, feet: anchor.feet } : undefined;
       slot.current =
-        next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow }), next.rarity, divine) : null;
+        next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow }), next.rarity, divine, next.set !== null) : null;
       slot.swapStartedAt = this.time;
       slot.swapping = !instant;
       setPresence(slot.current, instant ? 1 : 0);
@@ -239,14 +241,16 @@ export class Wardrobe {
   /**
    * Puts `instance` on: on the anchor itself for a worn slot, in the gliding holder otherwise, with
    * its rarity flourish (measured from the part before it is placed) and, on a divine body, the
-   * divine finish. Parts floating round the whole body get the light flourish (no rings or rays).
+   * divine finish, and the set glow while three pieces of its set are worn (`parts/set-glow.ts`).
+   * Parts floating round the whole body get the light flourish (no rings or rays).
    */
-  private wear(slot: Slot, anchor: SlotAnchor, key: string, instance: PartInstance, rarity: RarityId, divine: boolean): Worn {
+  private wear(slot: Slot, anchor: SlotAnchor, key: string, instance: PartInstance, rarity: RarityId, divine: boolean, setGlow: boolean): Worn {
     const presence = new Group();
     const decorations: Decoration[] = [];
-    const flourish = createFlourish(instance.group, rarity, !isWornSlot(slot.id));
+    const flourish = createFlourish(instance.group, rarity, !isWornSlot(slot.id), Math.random, divine);
     if (flourish) decorations.push(flourish);
     if (divine) decorations.push(applyDivineFinish(instance.group));
+    if (setGlow) decorations.push(createSetGlow(instance.group, divine ? 0 : undefined));
     presence.add(instance.group, ...decorations.map((d) => d.group));
     (anchor.shape ? anchor.object : slot.holder).add(presence);
     if (this.pointScale > 0) {

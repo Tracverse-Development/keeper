@@ -3,7 +3,7 @@
  * it publishes for wearables (`skins/catalog.ts`), so a fitted jacket follows the egg of its body and
  * spectacles sit on its great eyes. Pure data (no three.js).
  */
-import type { BodyShape, Ring } from '../../parts/fit.ts';
+import type { BodyShape, Foot, Ring } from '../../parts/fit.ts';
 import { domeProfile, ellipsoidProfile } from '../../parts/fit.ts';
 
 export const OWL_HEAD_Y = 0.26;
@@ -49,3 +49,9 @@ export const OWL_NECK_SHAPE: BodyShape = {
 };
 
 export const OWL_TORSO_SHAPE: BodyShape = { profile: OWL_BODY_PROFILE, depth: OWL_BODY_DEPTH, squareness: 2, reach: -0.95 };
+
+/** The two feet of talons (body space): where the owl's gold talons grip the ark (`owl-skin.ts`). */
+export const OWL_TALONS_Y = -1.93;
+const OWL_FEET: Foot[] = [-1, 1].map((side) => ({ position: [side * 0.22, OWL_TALONS_Y + 0.02, 0.46], radii: [0.13, 0.05, 0.11] }));
+/** The feet slot: no surface ring, only the two feet of talons. */
+export const OWL_FEET_SHAPE: BodyShape = { profile: [], depth: 1, squareness: 2, reach: OWL_TALONS_Y - 0.05, feet: OWL_FEET };

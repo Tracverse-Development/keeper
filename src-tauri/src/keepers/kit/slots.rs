@@ -1,6 +1,6 @@
 //! Slots: WHERE a wearable goes on a body. Mirrors the window's `src/character/parts/slots.ts`
 //! (`structure.test.ts` keeps the two lists equal, in order). Floating slots (halo, base, aura)
-//! hold parts that float steady around the body; worn slots (head, face, neck, torso, back, paws, wrist, held) hold
+//! hold parts that float steady around the body; worn slots (head, face, neck, torso, legs, back, paws (feet), wrist, held) hold
 //! parts worn ON it, which the window fits to the shape each species publishes for that slot;
 //! effect slots (thinking, celebrate) hold no thing on the body at all: the part worn there
 //! changes how that moment looks (the thinking aura, the celebration burst). Whether a species
@@ -22,8 +22,9 @@ pub const SLOTS: &[Slot] = &[
     Slot { id: "face", name: "Face", kind: "worn" },
     Slot { id: "neck", name: "Neck", kind: "worn" },
     Slot { id: "torso", name: "Torso", kind: "worn" },
+    Slot { id: "legs", name: "Legs", kind: "worn" },
     Slot { id: "back", name: "Back", kind: "worn" },
-    Slot { id: "paws", name: "Paws", kind: "worn" },
+    Slot { id: "paws", name: "Feet", kind: "worn" },
     Slot { id: "wrist", name: "Wrist", kind: "worn" },
     Slot { id: "held", name: "Held", kind: "worn" },
     Slot { id: "base", name: "Base", kind: "floating" },

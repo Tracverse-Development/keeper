@@ -14,7 +14,8 @@
  * Pattern: Decorator. The wardrobe builds the part, then wraps it (`createFlourish`); the part never
  * knows. Surfaces a part already lights itself (a watch dial, a visor's glass) are left alone, so
  * the two never fight over one value. `light` drops the rings and rays: for parts that float round
- * the whole body (a halo, an aura, the ark), where a ring round the ring would be noise.
+ * the whole body (a halo, an aura, the ark), where a ring round the ring would be noise. `restrained`
+ * (the God Keeper) casts no light and halves the surface glow (`RESTRAINED_GLOW`).
  *
  * Positions are written into preallocated buffers each frame (no allocation).
  */
@@ -37,13 +38,24 @@ import {
   Box3,
   type Object3D,
 } from 'three';
-import { disposeTree } from '../dispose-tree';
-import { createGlowPointsMaterial, type GlowPointsMaterial } from '../stage/glow-points-material';
-import type { PartFrame } from './part';
-import { FLOURISH, RARITIES, type RarityId } from './rarity';
+import { disposeTree } from '../dispose-tree.ts';
+import { createGlowPointsMaterial, type GlowPointsMaterial } from '../stage/glow-points-material.ts';
+import type { PartFrame } from './part.ts';
+import { FLOURISH, RARITIES, type RarityId } from './rarity.ts';
 
 /** The least radius an effect is drawn at (world units): a watch's tier must read at a glance. */
 const SMALLEST_EFFECT = 0.24;
+/**
+ * The largest radius the flare and the cast light are sized from: a big piece (wings, the Halo of
+ * Ages) keeps a flare the size of a jewel's, not one that fills the stage and washes it white.
+ */
+const LARGEST_FLARE = 0.4;
+/**
+ * On a body that glows by itself (the God Keeper, whose divine finish already lights every piece),
+ * a tier keeps its rings, sparkles and motes but casts no light and glows at this share: five
+ * grand pieces each lighting the body washed the whole stage white.
+ */
+const RESTRAINED_GLOW = 0.5;
 
 export interface Flourish {
   readonly group: Group;
@@ -60,7 +72,7 @@ interface GlowingSurface {
 }
 
 /** Builds the flourish for `target` at `rarity` (null for common: nothing to add). */
-export function createFlourish(target: Object3D, rarity: RarityId, light = false, random: () => number = Math.random): Flourish | null {
+export function createFlourish(target: Object3D, rarity: RarityId, light = false, random: () => number = Math.random, restrained = false): Flourish | null {
   const spec = FLOURISH[rarity];
   if (spec.glow === 0 && spec.sparkles === 0) return null;
   const bounds = boundsOf(target);
@@ -118,9 +130,9 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
   // The flare: one big soft point at the item's heart; and the light it casts on the body.
   const flare = makePoints(spec.flare > 0 ? 1 : 0, 0);
   flare.positions.set([centre.x, centre.y, centre.z]);
-  flare.sizes[0] = radius * spec.flare;
+  flare.sizes[0] = Math.min(radius, LARGEST_FLARE) * spec.flare;
   if (spec.flare > 0) group.add(flare.points);
-  const lamp = spec.light > 0 ? new PointLight(colour, 0, radius * 9, 2) : null;
+  const lamp = spec.light > 0 && !restrained ? new PointLight(colour, 0, Math.min(radius, LARGEST_FLARE) * 9, 2) : null;
   if (lamp) {
     lamp.position.copy(centre);
     group.add(lamp);
@@ -137,7 +149,7 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
       const breathe = 0.65 + 0.35 * Math.sin(clock * 2.1);
       for (const s of surfaces) {
         s.material.emissive.copy(s.rest).lerp(colour, 0.7);
-        s.material.emissiveIntensity = s.restIntensity + spec.glow * breathe * (0.6 + 0.4 * frame.mood.presence);
+        s.material.emissiveIntensity = s.restIntensity + spec.glow * (restrained ? RESTRAINED_GLOW : 1) * breathe * (0.6 + 0.4 * frame.mood.presence);
       }
       // Sparkles twinkle; a burst flares them all now and then.
       const burst = spec.burstEvery > 0 ? Math.max(0, 1 - ((clock % spec.burstEvery) / 0.5)) : 0;
@@ -191,7 +203,7 @@ export function createFlourish(target: Object3D, rarity: RarityId, light = false
  * The bounding sphere of `target` in its parent's space. It is measured before it is put on (no
  * parent yet), so its world space IS that space, and the flourish sits beside it in the same group.
  */
-function boundsOf(target: Object3D): Sphere {
+export function boundsOf(target: Object3D): Sphere {
   target.updateMatrixWorld(true);
   const box = new Box3().setFromObject(target, true);
   const sphere = new Sphere();
@@ -213,7 +225,7 @@ function glowingSurfaces(target: Object3D): GlowingSurface[] {
   return out;
 }
 
-function makePoints(count: number, twinkle: number): { points: Points; geometry: BufferGeometry; material: GlowPointsMaterial; positions: Float32Array; sizes: Float32Array; brights: Float32Array } {
+export function makePoints(count: number, twinkle: number): { points: Points; geometry: BufferGeometry; material: GlowPointsMaterial; positions: Float32Array; sizes: Float32Array; brights: Float32Array } {
   const positions = new Float32Array(Math.max(count, 1) * 3);
   const sizes = new Float32Array(Math.max(count, 1));
   const brights = new Float32Array(Math.max(count, 1));

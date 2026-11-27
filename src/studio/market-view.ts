@@ -5,7 +5,7 @@
  * `market-view.test.ts`. The core still validates every pack on import; the preview only tells
  * the person what they are about to add.
  */
-import type { Wardrobe, WardrobeItem } from '../kernel/ipc';
+import type { ItemSet, Wardrobe, WardrobeItem } from '../kernel/ipc';
 import type { Rarity, StudioInfo } from '../kernel/ipc-studio';
 import { lockedUntil, rarityOf } from './studio-view.ts';
 
@@ -127,6 +127,55 @@ export function listingAction(l: Listing): { label: string; can: boolean } {
   if (l.locked !== null) return { label: `Unlocks at level ${l.locked}`, can: false };
   if (!l.fits) return { label: l.onlyFor ?? `No ${l.slotName.toLowerCase()} to wear it on`, can: false };
   return { label: 'Wear', can: true };
+}
+
+/** "For men", "For any human", "For everyone": who a set is for, in plain words. */
+export function setFor(who: readonly string[]): string {
+  if (!who.length) return 'For everyone';
+  const words = who.map((id) => (id === 'human' || id === 'animal' ? `any ${id}` : WHO_WORDS[id] ?? id));
+  return `For ${words.join(' and ')}`;
+}
+
+/** One set as the Marketplace shows it for one keeper. */
+export interface SetView {
+  set: ItemSet;
+  pieces: Listing[];
+  /** Pieces this keeper's body and race may wear. */
+  fits: number;
+  /** Pieces it may wear now (fits, and its level opens the rarity). */
+  ready: number;
+  wearing: number;
+  /** The set's signature piece. */
+  reward: Listing | null;
+  /** True when this keeper's body may wear the set at all. */
+  forThisKeeper: boolean;
+}
+
+/** Every set with its pieces (catalogue order), the sets this keeper may wear first. */
+export function setViews(w: Wardrobe, all: Listing[]): SetView[] {
+  const views = (w.sets ?? []).map((set) => {
+    const pieces = all.filter((l) => l.item.set === set.id);
+    return {
+      set,
+      pieces,
+      fits: pieces.filter((l) => l.fits).length,
+      ready: pieces.filter((l) => l.fits && l.locked === null).length,
+      wearing: pieces.filter((l) => l.wearing).length,
+      reward: pieces.find((l) => l.item.id === `official:${set.reward}`) ?? null,
+      forThisKeeper: pieces.some((l) => l.fits),
+    };
+  });
+  return [...views.filter((v) => v.forThisKeeper), ...views.filter((v) => !v.forThisKeeper)];
+}
+
+/** The Shop's shelves: one per set (in `setViews` order), then the pieces that belong to no set. */
+export function shopShelves(w: Wardrobe, shown: Listing[]): { id: string; title: string; sub: string; items: Listing[] }[] {
+  const shelves = setViews(w, shown)
+    .filter((v) => v.pieces.length)
+    .map((v) => ({ id: v.set.id, title: v.set.name, sub: `${setFor(v.set.who)}. ${v.set.theme}`, items: v.pieces }));
+  const loose = shown.filter((l) => !l.item.set);
+  if (loose.length) shelves.push({ id: 'more', title: 'More from the collection', sub: 'Pieces that belong to no set.', items: loose });
+  return shelves;
 }
 
 /** A pack is small text; the core refuses anything bigger (`packs.rs` MAX_BYTES). */

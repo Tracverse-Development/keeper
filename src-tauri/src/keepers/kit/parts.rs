@@ -42,16 +42,33 @@ pub const PARTS: &[Part] = &[
     Part { id: "ark-jacket", name: "Ark Jacket", slot: "torso", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0)] },
     Part { id: "knit-scarf", name: "Knit Scarf", slot: "neck", species: &[], effects: &[color("color"), color("stripe"), num("sway", 0.0, 2.0)] },
     Part { id: "crew-cap", name: "Crew Cap", slot: "head", species: &[], effects: &[color("color"), color("trim")] },
-    Part { id: "trail-pack", name: "Trail Pack", slot: "back", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0)] },
-    // Species-only: a dog's nails and collar.
+    Part { id: "trail-pack", name: "Trail Pack", slot: "back", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0), num("glow", 0.0, 2.0), num("style", 0.0, 4.0)] },
+    // Species-only: a dog's nails, and a collar for any animal (the dog's, or the owl's).
     Part { id: "paw-nails", name: "Nail Set", slot: "paws", species: &["puppy"], effects: &[color("color"), num("shine", 0.0, 1.0)] },
-    Part { id: "dog-collar", name: "Collar", slot: "neck", species: &["puppy"], effects: &[color("color"), color("tag")] },
+    Part { id: "dog-collar", name: "Collar", slot: "neck", species: &["animal"], effects: &[color("color"), color("tag")] },
     // The face, the wrist and the hand: spectacles for every face, a robot's visor, a watch and a
     // lantern for humans (the God Keeper wears all of them).
-    Part { id: "round-spectacles", name: "Round Spectacles", slot: "face", species: &[], effects: &[color("color"), color("lens"), num("shine", 0.0, 1.0)] },
+    Part { id: "round-spectacles", name: "Round Spectacles", slot: "face", species: &[], effects: &[color("color"), color("lens"), num("shine", 0.0, 1.0), num("style", 0.0, 1.0)] },
     Part { id: "welder-visor", name: "Welder's Visor", slot: "face", species: &["robot"], effects: &[color("color"), color("lens")] },
     Part { id: "trail-watch", name: "Trail Watch", slot: "wrist", species: &["human"], effects: &[color("color"), color("face"), num("glow", 0.0, 2.0)] },
     Part { id: "star-lantern", name: "Star Lantern", slot: "held", species: &["human"], effects: &[color("color"), color("light"), num("glow", 0.0, 2.0)] },
+    // The shape kits: one factory each in the window, `style` picks the shape; the official
+    // collection (`collection/`) is data over them.
+    Part { id: "brim-hat", name: "Brimmed Hat", slot: "head", species: &[], effects: &[color("color"), color("trim"), num("style", 0.0, 3.0)] },
+    Part { id: "soft-hat", name: "Soft Hat", slot: "head", species: &[], effects: &[color("color"), color("trim"), num("style", 0.0, 3.0)] },
+    Part { id: "head-gear", name: "Head Gear", slot: "head", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 2.0)] },
+    Part { id: "crown", name: "Crown", slot: "head", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 3.0)] },
+    Part { id: "neckwear", name: "Neckwear", slot: "neck", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0), num("style", 0.0, 2.0)] },
+    Part { id: "top", name: "Top", slot: "torso", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 10.0)] },
+    Part { id: "gown", name: "Gown", slot: "torso", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0)] },
+    Part { id: "trousers", name: "Trousers", slot: "legs", species: &[], effects: &[color("color"), color("trim"), num("style", 0.0, 3.0)] },
+    Part { id: "bangles", name: "Bangles", slot: "wrist", species: &["human"], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 1.0)] },
+    Part { id: "tote", name: "Tote", slot: "held", species: &["human"], effects: &[color("color"), color("trim"), num("style", 0.0, 1.0)] },
+    Part { id: "cape", name: "Cape", slot: "back", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("sway", 0.0, 2.0), num("style", 0.0, 2.0)] },
+    Part { id: "shoes", name: "Shoes", slot: "paws", species: &[], effects: &[color("color"), color("trim"), num("style", 0.0, 7.0)] },
+    Part { id: "emblem-halo", name: "Emblem Halo", slot: "halo", species: &[], effects: &[color("color"), num("glow", 0.0, 2.0), num("speed", 0.0, 4.0), num("style", 0.0, 4.0)] },
+    Part { id: "platform", name: "Platform", slot: "base", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 6.0)] },
+    Part { id: "drift-aura", name: "Drift Aura", slot: "aura", species: &[], effects: &[color("color"), num("count", 8.0, 120.0), num("speed", 0.0, 4.0), num("style", 0.0, 3.0)] },
     // Effects for moments (slot kind "effect"): how thinking and a celebration look.
     Part { id: "think-classic", name: "Classic Thinking", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "think-pulse", name: "Pulse", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
@@ -61,7 +78,31 @@ pub const PARTS: &[Part] = &[
     Part { id: "cheer-confetti", name: "Confetti", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "cheer-fireworks", name: "Fireworks", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "cheer-starburst", name: "Starburst", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-comet", name: "Comet", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-beacon", name: "Beacon", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-dream", name: "Dream", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-wave", name: "Waveform", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-compass", name: "Compass", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "think-pages", name: "Page Flutter", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-sparks", name: "Spark Shower", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-petals", name: "Petal Fall", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-balls", name: "Ball Burst", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-ripple", name: "Ripple", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-rainbow", name: "Rainbow", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
+    Part { id: "cheer-shooting-star", name: "Shooting Star", slot: "celebrate", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
 ];
+
+/// Parts that take more than their own slot (the gown covers the legs): nothing else may be worn
+/// there with them. Mirrors the window's `kit-parts.ts` `COVERS`.
+pub const COVERS: &[(&str, &[&str])] = &[("gown", &["legs"])];
+
+/// The slots part `id` takes: its own and any it covers.
+pub fn takes(id: &str) -> Vec<&'static str> {
+    let Some(p) = get(id) else { return vec![] };
+    let mut out = vec![p.slot];
+    out.extend(COVERS.iter().filter(|(c, _)| *c == p.id).flat_map(|(_, s)| s.iter().copied()));
+    out
+}
 
 pub fn get(id: &str) -> Option<&'static Part> {
     PARTS.iter().find(|p| p.id == id)
@@ -101,7 +142,7 @@ pub fn check_effects(worn: &WornPart) -> Result<WornPart, String> {
             }
         }
     }
-    Ok(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item), rarity: None })
+    Ok(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item), rarity: None, set: None })
 }
 
 /// Validate a worn part for a species: as `check_effects`, and the part fits that body (its
@@ -113,6 +154,12 @@ pub fn check(worn: &WornPart, species: &str) -> Result<WornPart, String> {
     if !super::species::may_wear(part.species, species) {
         return Err(format!("The {} doesn't fit this body.", part.name));
     }
+    // An official piece also follows its set's rule (a man's shirt never fits the woman).
+    if let Some(o) = super::collection::of_ref(ok.item.as_deref()) {
+        if !super::species::may_wear(super::collection::who(o), species) {
+            return Err(format!("The {} is not made for this body.", o.name));
+        }
+    }
     if !body.slots.contains(&part.slot) {
         return Err(format!("A {} has no {} to wear the {} on.", body.name.to_lowercase(), super::slots::word(part.slot), part.name));
     }
@@ -122,12 +169,17 @@ pub fn check(worn: &WornPart, species: &str) -> Result<WornPart, String> {
 /// A whole outfit for a species: each part valid and fitting, and never two in one slot.
 pub fn check_outfit(worn: &[WornPart], species: &str) -> Result<Vec<WornPart>, String> {
     let mut by_slot: BTreeMap<&str, WornPart> = BTreeMap::new();
+    let mut taken: Vec<&str> = Vec::new();
     for w in worn {
         let ok = check(w, species)?;
         let slot = get(&ok.part).map(|p| p.slot).unwrap_or("");
-        if by_slot.insert(slot, ok).is_some() {
-            return Err(format!("Only one thing can be worn on the {} at a time.", super::slots::word(slot)));
+        for s in takes(&ok.part) {
+            if taken.contains(&s) {
+                return Err(format!("Only one thing can be worn on the {} at a time.", super::slots::word(s)));
+            }
+            taken.push(s);
         }
+        by_slot.insert(slot, ok);
     }
     Ok(by_slot.into_values().collect())
 }
@@ -144,11 +196,11 @@ mod tests {
         assert_eq!(ok.effects.get("color"), Some(&json!("#e2425f")));
         assert_eq!(ok.effects.get("spinWork"), Some(&json!(8.0)));
         assert!(!ok.effects.contains_key("evil") && !ok.effects.contains_key("nodes"));
-        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None }, "robot").is_err());
+        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }, "robot").is_err());
     }
 
     fn worn(part: &str) -> WornPart {
-        WornPart { part: part.into(), effects: BTreeMap::new(), item: None, rarity: None }
+        WornPart { part: part.into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }
     }
 
     #[test]

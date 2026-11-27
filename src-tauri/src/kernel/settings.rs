@@ -35,6 +35,10 @@ pub struct WornPart {
     /// or a pack (`skip_deserializing`): it is always worked out from `item` and `part`.
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub rarity: Option<String>,
+    /// The set this piece glows with, filled in by the core (like `rarity`) only while enough
+    /// pieces of that set are worn together (`keepers::kit::collection::glowing`). Never read back.
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub set: Option<String>,
 }
 
 /// One paint zone's look (`keepers::kit::look`): a colour (#rrggbb) and a material, either optional.
@@ -57,7 +61,7 @@ pub struct KeeperVoice {
 
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
-    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None }).collect()
+    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None, set: None }).collect()
 }
 
 /// One keeper: soul (who), role (what it can do), body (species + wearables) and its own graph (memory).

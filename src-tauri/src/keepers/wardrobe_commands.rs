@@ -11,7 +11,7 @@ use tauri::State;
 
 use super::kit::packs::{self, Variant};
 use super::kit::wardrobe::{self, Give, Item};
-use super::kit::{inventory, parts, slots, species};
+use super::kit::{self, inventory, parts, slots, species};
 use crate::kernel::settings::KeeperProfile;
 use crate::kernel::{DeskError, Result};
 use crate::state::AppState;
@@ -46,6 +46,8 @@ pub struct Wardrobe {
     pub slots: &'static [slots::Slot],
     pub items: Vec<Listed>,
     pub keepers: Vec<KeeperBody>,
+    /// The official sets (each item names its own in `set`).
+    pub sets: Vec<&'static kit::collection::ItemSet>,
     /// False when the memory node could not be read: only the built-in items are listed.
     pub complete: bool,
 }
@@ -65,7 +67,7 @@ async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
 fn listing(items: Vec<Item>, keepers: &[KeeperProfile], complete: bool) -> Wardrobe {
     let listed = items
         .iter()
-        .map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items), who: parts::get(&i.part).map(|p| p.species).unwrap_or(&[]) })
+        .map(|i| Listed { item: i.clone(), worn_by: wardrobe::worn_by(i, keepers, &items), who: if i.who.is_empty() { parts::get(&i.part).map(|p| p.species).unwrap_or(&[]) } else { i.who } })
         .collect();
     let bodies = keepers
         .iter()
@@ -77,7 +79,7 @@ fn listing(items: Vec<Item>, keepers: &[KeeperProfile], complete: bool) -> Wardr
             wears: items.iter().filter(|i| parts::check(&i.worn(), &k.skin).is_ok()).map(|i| i.id.clone()).collect(),
         })
         .collect();
-    Wardrobe { slots: slots::SLOTS, items: listed, keepers: bodies, complete }
+    Wardrobe { slots: slots::SLOTS, items: listed, keepers: bodies, sets: kit::collection::sets().collect(), complete }
 }
 
 /// Runs a wardrobe rule over the keepers and saves each keeper's new outfit.
@@ -118,6 +120,41 @@ pub async fn wardrobe_wear(state: State<'_, AppState>, keeper: String, item: Str
     .await
 }
 
+/// Put on every piece of `set` that keeper `keeper` can wear now (its body and race fit, its level
+/// opens the rarity), the set's first piece winning a slot two pieces share. Refused, in plain
+/// words, when none can be worn yet.
+#[tauri::command]
+pub async fn wardrobe_wear_set(state: State<'_, AppState>, keeper: String, set: String) -> Result<Wardrobe> {
+    let profile = state.keeper_or_active(&keeper)?;
+    let experience = super::kit::levels::experience_or_why(&state.memory_for(&profile)?).await.map_err(|e| super::kit::levels::unread(&profile.name, &e))?;
+    let the_set = kit::collection::set(&set).ok_or_else(|| DeskError::Invalid("There is no such set.".into()))?;
+    let (own, complete) = own_items(&state).await;
+    let items = wardrobe::items(&own);
+    let mut keepers = state.settings().keepers;
+    let mut taken: Vec<&str> = Vec::new();
+    let mut worn = 0;
+    for item in items.iter().filter(|i| i.set == the_set.id) {
+        let rarity = kit::rarity::get(item.rarity).unwrap_or_else(|| kit::rarity::of_part(&item.part));
+        let takes = parts::takes(&item.part);
+        if !experience.may_wear(rarity) || takes.iter().any(|s| taken.contains(s)) {
+            continue;
+        }
+        if wardrobe::wear(&mut keepers, &profile.id, item, &items).is_ok() {
+            taken.extend(takes);
+            worn += 1;
+        }
+    }
+    if worn == 0 {
+        return Err(DeskError::Invalid(format!("{} can't wear any piece of {} yet.", profile.name, the_set.name)));
+    }
+    let saved = state.update_settings(|s| {
+        if let (Some(k), Some(changed)) = (s.keepers.iter_mut().find(|k| k.id == profile.id), keepers.iter().find(|c| c.id == profile.id)) {
+            k.wearables = changed.wearables.clone();
+        }
+    })?;
+    Ok(listing(items, &saved.keepers, complete))
+}
+
 #[tauri::command]
 pub async fn wardrobe_take_off(state: State<'_, AppState>, keeper: String, item: String) -> Result<Wardrobe> {
     change(&state, &item, |keepers, chosen, items| wardrobe::take_off(keepers, &keeper, chosen, items)).await
@@ -138,7 +175,7 @@ pub async fn wardrobe_share(state: State<'_, AppState>, item: String) -> Result<
     let (own, _) = own_items(&state).await;
     let items = wardrobe::items(&own);
     let chosen = items.iter().find(|i| i.id == item).ok_or_else(|| DeskError::Invalid("That item isn't in your wardrobe.".into()))?;
-    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None, rarity: None }, one_of_a_kind: chosen.one_of_a_kind };
+    let variant = Variant { id: packs::slug(&chosen.name), name: chosen.name.clone(), worn: parts::WornPart { part: chosen.part.clone(), effects: chosen.effects.clone(), item: None, rarity: None, set: None }, one_of_a_kind: chosen.one_of_a_kind };
     let path = super::kit_commands::downloads_file(&chosen.name);
     std::fs::write(&path, packs::write(&packs::Pack::Variant { format: packs::FORMAT.into(), variant }, packs::clean_maker(&state.settings().maker_name, &state.settings().maker_link).as_ref())?)?;
     crate::platform::reveal(&path);
@@ -190,7 +227,7 @@ pub async fn design(description: &str, model: &str) -> Result<Designed> {
     let raw = crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await?;
     let part = raw["part"].as_str().unwrap_or_default().to_string();
     let effects: BTreeMap<String, serde_json::Value> = raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None }).map_err(DeskError::Invalid)?;
     let name = packs::clean_name(raw["name"].as_str().unwrap_or("My item")).unwrap_or_else(|_| "My item".into());
     Ok(Designed { name, part: worn.part, effects: worn.effects })
 }
@@ -214,7 +251,7 @@ mod design_tests {
 #[tauri::command]
 pub async fn wardrobe_add(state: State<'_, AppState>, name: String, part: String, effects: BTreeMap<String, serde_json::Value>, one_of_a_kind: bool) -> Result<Wardrobe> {
     let name = packs::clean_name(&name).map_err(DeskError::Invalid)?;
-    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None }).map_err(DeskError::Invalid)?;
+    let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None }).map_err(DeskError::Invalid)?;
     let variant = Variant { id: packs::slug(&name), name, worn, one_of_a_kind };
     let client = state.client()?;
     inventory::save_variant(&client, &inventory::kit(&client, &state.kit_place()).await?, &variant).await?;

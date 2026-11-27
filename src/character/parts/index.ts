@@ -12,6 +12,9 @@ import type { PartFit } from './fit';
 import { createMemoryHalo } from './memory-halo/memory-halo';
 import type { PartFactory, PartInstance } from './part';
 import { createStarAura } from './star-aura/star-aura';
+import { createDriftAura } from './drift-aura/drift-aura';
+import { createEmblemHalo } from './emblem-halo/emblem-halo';
+import { createPlatform } from './platform/platform';
 import { WORN_FACTORIES } from './worn-parts';
 
 export { DEFAULT_WEARABLES, PARTS, SLOT_IDS, isEffectSlot, isWornSlot, resolveWearables, type DrawnPartId, type PartId, type PartInfo, type ResolvedWear, type SlotId } from './catalog';
@@ -23,6 +26,9 @@ const FACTORIES: Readonly<Record<DrawnPartId, PartFactory>> = {
   'memory-halo': (effects) => createMemoryHalo(effects),
   'ark-hull': (effects) => createArkHull(effects),
   'star-aura': (effects) => createStarAura(effects),
+  'emblem-halo': (effects) => createEmblemHalo(effects),
+  platform: (effects) => createPlatform(effects),
+  'drift-aura': (effects) => createDriftAura(effects),
   ...WORN_FACTORIES,
 };
 

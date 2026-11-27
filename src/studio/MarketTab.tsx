@@ -1,6 +1,9 @@
 /**
- * Marketplace. OFFICIAL: the collection Keeper ships, in the order a keeper earns it (common to mythical);
- * each item is worn once the keeper's level reaches its rarity (earned, never bought). COMMUNITY:
+ * Marketplace. SHOP: the official collection, one shelf per set (the sets this keeper may wear
+ * first), each shelf in the order a keeper earns it (common to mythical); each item is worn once
+ * the keeper's level reaches its rarity (earned, never bought). SETS: every set with this keeper's
+ * progress, its bonus and its reward, worn whole in one press (`SetsShelf`). KEEPERS: the starter
+ * keepers, added in one press (`StarterShelf`). COMMUNITY:
  * keepers, souls and items people share as `.keeper.json` packs: receive one (described before it
  * is added) or share this keeper. Packs are data only, checked by the core on the way in, and
  * never carry memories or personal photos. THIS SEASON: a small set open for a few weeks, each
@@ -8,12 +11,14 @@
  */
 import { useMemo, useState } from 'react';
 
-import { core, sentence, type Imported, type KeeperProfile, type StudioInfo, type Wardrobe, type WornPart } from '../kernel/ipc';
+import { core, sentence, type Imported, type KeeperProfile, type Starter, type StudioInfo, type Wardrobe, type WornPart } from '../kernel/ipc';
 import { ItemCard } from './ItemCard';
-import { earningOrder, filtered, listingAction, listings, MARKET_FILTERS, standing, type MarketFilter } from './market-view';
+import { earningOrder, filtered, listingAction, listings, MARKET_FILTERS, shopShelves, standing, type MarketFilter } from './market-view';
 import { MakerFields } from './MakerFields';
 import { PackDrop } from './PackDrop';
 import { SeasonShelf } from './SeasonShelf';
+import { SetsShelf } from './SetsShelf';
+import { StarterShelf } from './StarterShelf';
 
 interface Props {
   info: StudioInfo;
@@ -27,12 +32,27 @@ interface Props {
   /** Try a season item on the stage (null: stop), and reload the wardrobe after one was claimed. */
   onSeasonTry: (item: WornPart | null, name: string) => void;
   onClaimed: () => void;
+  /** Put on, or try on the stage (null: stop), every piece of a set. */
+  onWearSet: (set: string) => void;
+  onTrySet: (set: string | null) => void;
+  /** The names of the person's keepers, and showing or adding a starter keeper. */
+  keeperNames: string[];
+  onTryStarter: (starter: Starter | null) => void;
+  onStarterAdded: () => void;
 }
 
-type Side = 'official' | 'season' | 'community';
+type Side = 'shop' | 'sets' | 'season' | 'community' | 'keepers';
 
-export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed }: Props) {
-  const [side, setSide] = useState<Side>('official');
+const SIDES: { id: Side; name: string }[] = [
+  { id: 'shop', name: 'Shop' },
+  { id: 'sets', name: 'Sets' },
+  { id: 'season', name: 'This season' },
+  { id: 'community', name: 'Community' },
+  { id: 'keepers', name: 'Keepers' },
+];
+
+export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed, onWearSet, onTrySet, keeperNames, onTryStarter, onStarterAdded }: Props) {
+  const [side, setSide] = useState<Side>('shop');
   const [filter, setFilter] = useState<MarketFilter>('all');
   const [search, setSearch] = useState('');
   const all = useMemo(() => (wardrobe ? listings(wardrobe, info, keeper.id) : []), [wardrobe, info, keeper.id]);
@@ -55,14 +75,14 @@ export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTr
       </div>
 
       <div className="segmented market-sides" role="tablist" aria-label="Marketplace">
-        <button type="button" role="tab" aria-selected={side === 'official'} className={side === 'official' ? 'is-on' : ''} onClick={() => setSide('official')}>Official collection</button>
-        <button type="button" role="tab" aria-selected={side === 'season'} className={side === 'season' ? 'is-on' : ''} onClick={() => setSide('season')}>This season</button>
-        <button type="button" role="tab" aria-selected={side === 'community'} className={side === 'community' ? 'is-on' : ''} onClick={() => setSide('community')}>Community packs</button>
+        {SIDES.map((x) => (
+          <button key={x.id} type="button" role="tab" aria-selected={side === x.id} className={side === x.id ? 'is-on' : ''} onClick={() => setSide(x.id)}>{x.name}</button>
+        ))}
       </div>
 
       {side === 'season' && <SeasonShelf info={info} keeper={keeper} onTry={onSeasonTry} onClaimed={onClaimed} />}
 
-      {side === 'official' && (
+      {side === 'shop' && (
         <>
           <div className="toolbar">
             <div className="studio-chips" role="group" aria-label="Show">
@@ -80,20 +100,33 @@ export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTr
               <button type="button" className="btn btn-small" onClick={() => { setFilter('all'); setSearch(''); }}>Show everything</button>
             </div>
           )}
-          <div className="item-grid">
-            {earningOrder(info, shown).map((l) => {
-              const action = listingAction(l);
-              return (
-                <ItemCard key={l.item.id} name={l.item.name} rarity={l.rarity} slotName={l.slotName} colours={l.colours} locked={l.locked} worn={l.wearing} line={l.item.blurb} onTry={(on) => onTry(on ? l.item.id : null)}>
-                  <button type="button" className={`btn btn-small btn-block ${action.can ? 'btn-primary' : ''}`} disabled={busy || !action.can} onClick={() => onWear(l.item.id)}>{action.label}</button>
-                </ItemCard>
-              );
-            })}
-          </div>
+          {wardrobe &&
+            shopShelves(wardrobe, shown).map((shelf) => (
+              <section key={shelf.id} className="market-shelf" aria-label={shelf.title}>
+                <div className="market-shelf-head">
+                  <h3 className="panel-card-title">{shelf.title}</h3>
+                  <span className="muted small">{shelf.sub}</span>
+                </div>
+                <div className="item-grid">
+                  {earningOrder(info, shelf.items).map((l) => {
+                    const action = listingAction(l);
+                    return (
+                      <ItemCard key={l.item.id} name={l.item.name} rarity={l.rarity} slotName={l.slotName} colours={l.colours} locked={l.locked} worn={l.wearing} line={l.item.blurb} onTry={(on) => onTry(on ? l.item.id : null)}>
+                        <button type="button" className={`btn btn-small btn-block ${action.can ? 'btn-primary' : ''}`} disabled={busy || !action.can} onClick={() => onWear(l.item.id)}>{action.label}</button>
+                      </ItemCard>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
         </>
       )}
 
+      {side === 'sets' && wardrobe && <SetsShelf info={info} keeperId={keeper.id} keeperName={keeper.name} wardrobe={wardrobe} busy={busy} onWearSet={onWearSet} onTrySet={onTrySet} />}
+
       {side === 'community' && <Community keeper={keeper} soulName={soulName} onImported={onImported} />}
+
+      {side === 'keepers' && <StarterShelf info={info} names={keeperNames} onTry={onTryStarter} onAdded={onStarterAdded} />}
     </div>
   );
 }

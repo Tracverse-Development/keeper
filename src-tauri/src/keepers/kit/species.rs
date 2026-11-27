@@ -28,10 +28,10 @@ pub const WEARS_EVERYTHING: &str = "divine";
 pub const SPECIES: &[Species] = &[
     Species { id: "robot", name: "Robot", race: "robot", slots: &["halo", "head", "face", "neck", "torso", "back", "base", "aura", "thinking", "celebrate"] },
     Species { id: "puppy", name: "Dog", race: "animal", slots: &["halo", "head", "face", "neck", "torso", "back", "paws", "base", "aura", "thinking", "celebrate"] },
-    Species { id: "man", name: "Man", race: "human", slots: &["halo", "head", "face", "neck", "torso", "back", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
-    Species { id: "woman", name: "Woman", race: "human", slots: &["halo", "head", "face", "neck", "torso", "back", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
-    Species { id: "owl", name: "Owl", race: "animal", slots: &["halo", "head", "face", "neck", "torso", "back", "base", "aura", "thinking", "celebrate"] },
-    Species { id: "god", name: "God Keeper", race: "divine", slots: &["halo", "head", "face", "neck", "torso", "back", "paws", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
+    Species { id: "man", name: "Man", race: "human", slots: &["halo", "head", "face", "neck", "torso", "legs", "back", "paws", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
+    Species { id: "woman", name: "Woman", race: "human", slots: &["halo", "head", "face", "neck", "torso", "legs", "back", "paws", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
+    Species { id: "owl", name: "Owl", race: "animal", slots: &["halo", "head", "face", "neck", "torso", "back", "paws", "base", "aura", "thinking", "celebrate"] },
+    Species { id: "god", name: "God Keeper", race: "divine", slots: &["halo", "head", "face", "neck", "torso", "legs", "back", "paws", "wrist", "held", "base", "aura", "thinking", "celebrate"] },
 ];
 
 /// The race of species `id` ("" for an unknown species).
@@ -61,7 +61,8 @@ mod tests {
             assert!(s.slots.iter().all(|slot| super::super::slots::get(slot).is_some()), "{}", s.id);
         }
         assert!(super::offers("puppy", "back") && !super::offers("puppy", "wings") && !super::offers("dragon", "head"));
-        assert!(super::offers("puppy", "paws") && !super::offers("robot", "paws"), "only a dog has paws");
+        assert!(super::offers("puppy", "paws") && super::offers("owl", "paws") && super::offers("man", "paws") && !super::offers("robot", "paws"), "every body with feet has the feet slot; the robot floats");
+        assert!(super::offers("woman", "legs") && super::offers("god", "legs") && !super::offers("puppy", "legs") && !super::offers("owl", "legs"), "only people wear trousers");
         assert!(super::SPECIES.iter().all(|s| super::offers(s.id, "thinking") && super::offers(s.id, "celebrate")), "every body has the effect slots");
         assert!(super::SPECIES.iter().all(|s| super::RACES.iter().any(|(r, _)| *r == s.race)), "every species has a known race");
     }

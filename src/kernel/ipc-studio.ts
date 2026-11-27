@@ -56,6 +56,33 @@ export interface StudioInfo {
   rarities: Rarity[];
   partRarity: Record<string, string>;
   unlocks: Unlock[];
+  /** The finishes this keeper's body can wear (absent from an older core). */
+  finishes?: Finish[];
+  /** The starter keepers a person can add in one press (absent from an older core). */
+  starters?: Starter[];
+}
+
+/** A ready-made paint and material treatment for a body (`kit/finishes.rs`). */
+export interface Finish {
+  id: string;
+  name: string;
+  species: string;
+  rarity: string;
+  blurb: string;
+  /** [zone, colour, material] for every zone it paints. */
+  look: [string, string, string][];
+}
+
+/** A starter keeper (`kit/starters.rs`): a body, a role, a soul and its first piece. */
+export interface Starter {
+  id: string;
+  name: string;
+  skin: string;
+  role: string;
+  soul: string;
+  /** The official item id it starts wearing. */
+  piece: string;
+  blurb: string;
 }
 
 /** A personal item: a pendant or a T-shirt print with the person's own picture. */

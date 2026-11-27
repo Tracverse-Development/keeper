@@ -14,7 +14,7 @@ import { SKINS } from '../character';
 import { CharacterStage } from '../character';
 import { core, sentence, type KeeperProfile, type KeeperVoice, type Soul, type ZoneLook } from '../kernel/ipc';
 import { useEscape } from '../kernel/use-escape';
-import { tryOn } from '../keepers/wardrobe-view';
+import { tryOn, tryOnSet } from '../keepers/wardrobe-view';
 import { SoulSection } from '../keepers/SoulSection';
 import { useWardrobe } from '../keepers/useWardrobe';
 import { FeelingsTab } from './FeelingsTab';
@@ -39,7 +39,7 @@ const GROUPS: { name: string; tabs: { id: Tab; name: string; about: string }[] }
   {
     name: 'Appearance',
     tabs: [
-      { id: 'look', name: 'Look', about: 'Colour and material, one body part at a time.' },
+      { id: 'look', name: 'Look', about: 'A finish for the whole body, or colour and material one part at a time.' },
       { id: 'inventory', name: 'Inventory', about: 'Everything you own. Point at an item to try it on.' },
       { id: 'forge', name: 'Forge', about: 'Make your own items from a few words.' },
     ],
@@ -79,9 +79,11 @@ interface Props {
   onClose: () => void;
   /** Something was saved (keepers reload; the dashboard's stage redresses). */
   onSaved: () => void;
+  /** The names of all the person's keepers (the Marketplace's Keepers side). */
+  keeperNames: string[];
 }
 
-export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved }: Props) {
+export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved, keeperNames }: Props) {
   const { info, error, reload } = useStudio(keeper.id, open);
   const [tab, setTab] = useState<Tab>('look');
   const [zone, setZone] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
     onSaved();
     reload();
   });
-  const [outfit, setOutfit] = useState<{ wearables: KeeperProfile['wearables']; caption: string; slot?: string | null } | null>(null);
+  const [outfit, setOutfit] = useState<{ wearables: KeeperProfile['wearables']; caption: string; slot?: string | null; skin?: string } | null>(null);
 
   // A fresh draft whenever the Studio opens or the keeper changes.
   useEffect(() => {
@@ -219,9 +221,9 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
         <section className="studio-stage" aria-label={`${keeper.name}, as you are making it`}>
           <CharacterStage
             className="studio-character"
-            skin={keeper.skin}
+            skin={(usesWardrobe && outfit?.skin) || keeper.skin}
             wearables={usesWardrobe && outfit ? outfit.wearables : keeper.wearables}
-            look={look}
+            look={usesWardrobe && outfit?.skin ? {} : look}
             habits={habits}
             focusZone={tab === 'look' ? zone : null}
             mood={moment === 'thinking' ? 'thinking' : 'idle'}
@@ -311,6 +313,19 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
                 }}
                 onSeasonTry={(item, name) => setOutfit(item ? { wearables: wearDesigned(keeper.wearables, { name, part: item.part, effects: item.effects ?? {} }), caption: `Trying on the ${name}` } : null)}
                 onClaimed={() => void market.reload()}
+                onWearSet={(set) => void market.wearSet(keeper.id, set)}
+                onTrySet={(set) => {
+                  const w = market.wardrobe;
+                  const pieces = w && set ? w.items.filter((i) => i.set === set && (w.keepers.find((k) => k.id === keeper.id)?.wears ?? []).includes(i.id)) : [];
+                  const name = w?.sets?.find((x) => x.id === set)?.name ?? '';
+                  setOutfit(w && set && pieces.length ? { wearables: tryOnSet(keeper.wearables, pieces, w, set), caption: `Trying on ${name}` } : null);
+                }}
+                keeperNames={keeperNames}
+                onTryStarter={(s) => {
+                  const piece = s && market.wardrobe?.items.find((i) => i.id === `official:${s.piece}`);
+                  setOutfit(s ? { wearables: [{ part: 'memory-halo' }, { part: 'ark-hull' }, ...(piece ? [{ part: piece.part, effects: piece.effects, item: piece.id, rarity: piece.rarity }] : [])], caption: `Meet ${s.name}`, skin: s.skin } : null);
+                }}
+                onStarterAdded={onSaved}
               />
             )}
             {market.error && usesWardrobe && <p className="error-line">{market.error}</p>}

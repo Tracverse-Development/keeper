@@ -80,7 +80,10 @@ test('every species publishes a sound shape for each worn slot it offers, and no
       assert.ok(shape.profile.length >= 2, `${skin.id}.${slot.id} profile`);
       for (let i = 1; i < shape.profile.length; i++) assert.ok(shape.profile[i][1] < shape.profile[i - 1][1], `${skin.id}.${slot.id} runs top to bottom`);
       assert.ok(shape.depth > 0.3 && shape.depth <= 1.2 && shape.squareness >= 2, `${skin.id}.${slot.id} cross-section`);
-      assert.ok(shape.reach < shape.profile[0][1] && shape.reach >= shape.profile[shape.profile.length - 1][1], `${skin.id}.${slot.id} reach inside the profile`);
+      // A garment comes down inside the profile, or, where limbs hang below it (a person's legs), down
+      // along them to their end (trousers to the shoe tops).
+      const lowest = Math.min(shape.profile[shape.profile.length - 1][1], ...(shape.limbs ?? []).map((l) => l.position[1] - l.length - l.radius));
+      assert.ok(shape.reach < shape.profile[0][1] && shape.reach >= lowest, `${skin.id}.${slot.id} reach inside the profile or along its limbs`);
     }
   }
 });

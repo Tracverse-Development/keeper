@@ -32,6 +32,10 @@ pub struct Studio {
     /// Catalogue part id → rarity id (parts not listed are common).
     pub part_rarity: BTreeMap<&'static str, &'static str>,
     pub unlocks: &'static [levels::Unlock],
+    /// The finishes this keeper's body can wear (`kit::finishes`).
+    pub finishes: Vec<&'static super::kit::finishes::Finish>,
+    /// The starter keepers a person can add (`kit::starters`).
+    pub starters: &'static [super::kit::starters::Starter],
 }
 
 #[tauri::command]
@@ -50,6 +54,8 @@ pub async fn keeper_studio(state: State<'_, AppState>, keeper: Option<String>) -
         rarities: &rarity::RARITIES,
         part_rarity: super::kit::parts::PARTS.iter().map(|p| (p.id, rarity::of_part(p.id).id)).collect(),
         unlocks: levels::UNLOCKS,
+        finishes: super::kit::finishes::for_species(&profile.skin),
+        starters: super::kit::starters::STARTERS,
     })
 }
 

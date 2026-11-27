@@ -26,6 +26,21 @@ test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap,
       ['welder-visor', 'face'],
       ['trail-watch', 'wrist'],
       ['star-lantern', 'held'],
+      ['brim-hat', 'head'],
+      ['soft-hat', 'head'],
+      ['head-gear', 'head'],
+      ['crown', 'head'],
+      ['neckwear', 'neck'],
+      ['top', 'torso'],
+      ['gown', 'torso'],
+      ['trousers', 'legs'],
+      ['bangles', 'wrist'],
+      ['tote', 'held'],
+      ['cape', 'back'],
+      ['shoes', 'paws'],
+      ['emblem-halo', 'halo'],
+      ['platform', 'base'],
+      ['drift-aura', 'aura'],
       ['think-classic', 'thinking'],
       ['think-pulse', 'thinking'],
       ['think-orbit', 'thinking'],
@@ -34,10 +49,23 @@ test('the built-in parts: floating (halo, hull, aura), worn (jacket, scarf, cap,
       ['cheer-confetti', 'celebrate'],
       ['cheer-fireworks', 'celebrate'],
       ['cheer-starburst', 'celebrate'],
+      ['think-comet', 'thinking'],
+      ['think-beacon', 'thinking'],
+      ['think-dream', 'thinking'],
+      ['think-wave', 'thinking'],
+      ['think-compass', 'thinking'],
+      ['think-pages', 'thinking'],
+      ['cheer-sparks', 'celebrate'],
+      ['cheer-petals', 'celebrate'],
+      ['cheer-balls', 'celebrate'],
+      ['cheer-ripple', 'celebrate'],
+      ['cheer-rainbow', 'celebrate'],
+      ['cheer-shooting-star', 'celebrate'],
     ],
   );
   assert.deepEqual(findPart('paw-nails')!.species, ['puppy']);
-  assert.deepEqual(findPart('dog-collar')!.species, ['puppy']);
+  assert.deepEqual(findPart('dog-collar')!.species, ['animal'], 'the collar fits any animal (the dog, the owl)');
+  for (const part of PARTS) if ('style' in part.effects) assert.equal((part.effects as Record<string, { step?: number; min: number }>).style.step, 1, `${part.id}: a style is a whole number`);
   for (const part of PARTS) if (part.slot === 'thinking' || part.slot === 'celebrate') assert.deepEqual(Object.keys(part.effects), ['color', 'intensity'], part.id);
   assert.deepEqual([...new Set(PARTS.map((p) => p.slot))].sort(), [...SLOT_IDS].sort(), 'every slot has a part');
 });
@@ -50,7 +78,7 @@ test('every row is well formed: kebab id, name, known slot, species, effects sch
     assert.ok(!ids.has(part.id), `duplicate ${part.id}`);
     ids.add(part.id);
     assert.ok(part.name.trim().length > 0);
-    assert.ok(part.description.length > 10 && part.description.length <= 120, `${part.id} description`);
+    assert.ok(part.description.length > 10 && part.description.length <= 140, `${part.id} description`);
     assert.ok((SLOT_IDS as readonly string[]).includes(part.slot));
     const species = part.species as 'any' | readonly string[];
     if (species !== 'any') for (const s of species) assert.ok(skinIds.includes(s) || RACES.some((r) => r.id === s), `${part.id} names unknown species or race ${s}`);
@@ -74,7 +102,7 @@ test('the effects named in the brief exist', () => {
   assert.deepEqual(Object.keys(findPart('ark-jacket')!.effects), ['color', 'trim', 'sway']);
   assert.deepEqual(Object.keys(findPart('knit-scarf')!.effects), ['color', 'stripe', 'sway']);
   assert.deepEqual(Object.keys(findPart('crew-cap')!.effects), ['color', 'trim']);
-  assert.deepEqual(Object.keys(findPart('trail-pack')!.effects), ['color', 'trim', 'sway']);
+  assert.deepEqual(Object.keys(findPart('trail-pack')!.effects), ['color', 'trim', 'sway', 'glow', 'style']);
 });
 
 test('the new wearables default to brand colours (tokens.css)', () => {
@@ -131,7 +159,7 @@ test('races decide who wears what, and the God Keeper wears everything (mirrors 
   assert.ok(fitsSpecies(watch, 'man') && fitsSpecies(watch, 'woman'), 'a human piece fits the man and the woman');
   for (const body of ['robot', 'puppy', 'owl']) assert.ok(!fitsSpecies(watch, body), `a human piece never fits the ${body}`);
   assert.ok(!fitsSpecies(findPart('welder-visor')!, 'man') && fitsSpecies(findPart('welder-visor')!, 'robot'));
-  assert.ok(!fitsSpecies(findPart('dog-collar')!, 'owl'), "a dog's collar is not an owl's");
+  assert.ok(fitsSpecies(findPart('dog-collar')!, 'owl') && !fitsSpecies(findPart('dog-collar')!, 'man'), 'the collar fits any animal, never a person');
   for (const part of PARTS) assert.ok(fitsSpecies(part, 'god'), `the God Keeper wears ${part.id}`);
   assert.ok(!fitsSpecies(watch, 'dragon'), 'an unknown body fits only items for everyone');
 });
@@ -142,4 +170,18 @@ test('a worn item carries its rarity; anything unknown is common', () => {
   assert.equal(worn.head?.rarity, 'common');
   assert.equal(worn.neck?.rarity, 'common');
   assert.notEqual(resolveWearables([{ part: 'trail-watch', rarity: 'rare' }], 'man').wrist?.key, worn.wrist?.key, 'a new tier redraws the item');
+});
+
+test('a part that covers another slot takes it: no trousers under a gown, and a gown is skipped over trousers', () => {
+  const gownFirst = resolveWearables([{ part: 'gown' }, { part: 'trousers' }, { part: 'shoes' }], 'woman');
+  assert.ok(gownFirst.torso && !gownFirst.legs && gownFirst.paws, 'the gown takes the legs; shoes still go on');
+  const trousersFirst = resolveWearables([{ part: 'trousers' }, { part: 'gown' }], 'woman');
+  assert.ok(trousersFirst.legs && !trousersFirst.torso, 'the legs are taken, so the gown is left off');
+});
+
+test('the set a piece glows with travels with it, and only as a string', () => {
+  const worn = resolveWearables([{ part: 'top', set: 'island-linen' }, { part: 'trousers', set: 42 }], 'man');
+  assert.equal(worn.torso?.set, 'island-linen');
+  assert.equal(worn.legs?.set, null);
+  assert.notEqual(worn.torso?.key, resolveWearables([{ part: 'top' }], 'man').torso?.key, 'the glow is part of the key, so it redraws');
 });

@@ -1,9 +1,10 @@
 /**
- * Look: pick a paint zone (the stage zooms to it), then its colour and material. Changes are a
- * draft until the Studio saves them.
+ * Look: a ready-made FINISH for the whole body (Brushed Titanium, Moss Feathers…, opened by level
+ * like an item of its rarity), or pick a paint zone (the stage zooms to it), then its colour and
+ * material. Changes are a draft until the Studio saves them.
  */
 import type { StudioInfo, ZoneLook } from '../kernel/ipc-studio';
-import { setZone, SWATCHES } from './studio-view';
+import { applyFinish, lockedUntil, rarityOf, setZone, SWATCHES } from './studio-view';
 
 interface Props {
   info: StudioInfo;
@@ -17,6 +18,24 @@ export function LookTab({ info, look, zone, onZone, onLook }: Props) {
   const current = zone ? look[zone] ?? {} : {};
   return (
     <div className="studio-tab">
+      {(info.finishes ?? []).length > 0 && (
+        <>
+          <p className="eyebrow">Finishes</p>
+          <div className="studio-chips" role="group" aria-label="Finishes">
+            {(info.finishes ?? []).map((f) => {
+              const rarity = rarityOf(info, { part: '', rarity: f.rarity });
+              const locked = lockedUntil(rarity, info.experience.level);
+              return (
+                <button key={f.id} type="button" className="studio-chip" title={locked === null ? f.blurb : `${f.blurb} Opens at level ${locked}.`} disabled={locked !== null} onClick={() => onLook(applyFinish(look, f))}>
+                  <span className="studio-dot" style={{ background: rarity.color }} aria-hidden="true" />
+                  {f.name}
+                  <span className="muted small">{locked === null ? rarity.name : `Level ${locked}`}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
       <p className="eyebrow">Choose a part of the body</p>
       <div className="studio-chips" role="listbox" aria-label="Body parts">
         {info.zones.map((z) => (

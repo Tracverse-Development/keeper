@@ -8,6 +8,22 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.14.0] - 2026-11-27
+
+### Added
+- The first collection: 20 sets and over 100 items. Three sets for each starter keeper (Workshop, Deep Space and Circuit Garden for the robot; Park Day, Rescue Ranger and Cozy Den for the dog; Island Linen, Studio Producer and Sharp Suit for the man; Market Morning, Explorer and Gala Night for the woman; Scholar, Night Watch and Forest Keeper for the owl), sets for a whole race (Everyday Basics and Mas Band for humans, Wild Trail for animals), Ark Pilgrim for everyone, and Celestial Regalia for the God Keeper alone.
+- Sets: wear three pieces of one set and they glow together. Each set has a signature piece as its reward. The Marketplace has a Sets side with how far each keeper has got, and "Wear the set" puts on every piece it can wear in one press. Pointing at a set tries the whole set on.
+- New things to wear: hats, caps, headwraps, headphones, a headlamp, crowns and circlets, a monocle, bandanas, ties and a shawl, tees, shirts, hoodies, sweaters, blazers, vests, waistcoats, sequins, robot plating, blouses and a robe, an evening gown, trousers, jeans and a wrap skirt, shoes, boots, sandals, heels and booties, bracelets and arm bands, a tote and a book, a cloak, carnival wings and wings of light, packs, toolboxes, saddlebags, satchels and thrusters, halos (satellites, petals, a crescent moon, a compass rose, the Halo of Ages), platforms (a hover ring, a cushion, a branch, a stone, waves, a spotlight, a cloud) and drifting auras (pollen, a night sky, fireflies, lantern light).
+- New moments: Comet, Beacon, Dream, Waveform, Compass and Page Flutter while thinking; Spark Shower, Petal Fall, Ball Burst, Ripple, Rainbow and Shooting Star when celebrating.
+- People now wear trousers and shoes, and the owl wears things on its talons.
+- Finishes: a ready-made look for the whole body in the Look tab (Brushed Titanium and Solar Gold for the robot, Golden Coat and Snow Coat for the dog, Moss Feathers and Snowy Owl for the owl, Dawn and Obsidian Sovereign for the God Keeper), opened by level like items.
+- Starter keepers: Bolt, Biscuit, Malik, Amara, Sage and Seraph, each added in one press from the Marketplace's Keepers side, wearing its starter piece. Two new souls: Wise Owl and Radiant.
+
+### Changed
+- The Marketplace's Shop shows one shelf per set, the sets this keeper can wear first.
+- Trying an item on shows its rarity effect, even before the keeper's level opens it.
+- The collar fits any animal, so the owl can wear one too. The puppy is called the Dog in every list.
+
 ## [0.13.0] - 2026-11-26
 
 ### Added

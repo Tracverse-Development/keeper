@@ -34,6 +34,8 @@ export interface WornPart {
    * in from the item. It sets how grand the item's effect is (`parts/rarity.ts`); left out = common.
    */
   rarity?: string;
+  /** The set this piece glows with while three of its set are worn together (the core fills it in). */
+  set?: string;
 }
 
 export interface Character {

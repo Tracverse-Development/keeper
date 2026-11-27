@@ -14,8 +14,11 @@ export type VoiceEngine = 'system' | 'elevenlabs';
 export interface WornPart {
   part: string;
   effects?: Record<string, number | string>;
-  /** The wardrobe item it was put on from (`part:…`, `stock:…`, `kit:…`). */
+  /** The wardrobe item it was put on from (`part:…`, `stock:…`, `kit:…`, `official:…`). */
   item?: string;
+  /** Filled in by the core (never sent back): the item's rarity, and its set while three pieces glow. */
+  rarity?: string;
+  set?: string;
 }
 
 export interface KeeperProfile {

@@ -29,3 +29,20 @@ test('trying on replaces whatever was in that slot, keeps the rest, and records 
   assert.deepEqual(outfit, [{ part: 'memory-halo' }, { part: 'ark-jacket', effects: { color: '#e2425f' }, item: 'kit:trini-jacket' }]);
   assert.deepEqual(tryOn([{ part: 'memory-halo' }], null, w), [{ part: 'memory-halo' }]);
 });
+
+test('trying a piece on carries its rarity, so a mythical piece shows its tier before it is earned', () => {
+  const item = { ...wardrobe.items[1], rarity: 'mythical' } as never;
+  const out = tryOn([], item, w);
+  assert.equal(out[0].rarity, 'mythical');
+});
+
+test('trying a whole set on: one piece per slot, its slots cleared, glowing as a set from three pieces', async () => {
+  const { tryOnSet } = await import('./wardrobe-view.ts');
+  const piece = (id: string, slot: string, part: string) => ({ id, name: id, part, slot, effects: {}, oneOfAKind: false, source: 'official', rarity: 'rare', wornBy: [], set: 'park' });
+  const pieces = [piece('official:a', 'torso', 'ark-jacket'), piece('official:b', 'torso', 'ark-jacket'), piece('official:c', 'back', 'trail-pack'), piece('official:d', 'halo', 'memory-halo')] as never[];
+  const out = tryOnSet([{ part: 'memory-halo' }, { part: 'ark-jacket' }], pieces, w, 'park');
+  assert.deepEqual(out.map((p) => p.item), ['official:a', 'official:c', 'official:d'], 'the first torso piece wins; the old halo and jacket come off');
+  assert.ok(out.every((p) => p.set === 'park'), 'three pieces on: they glow together');
+  const two = tryOnSet([], pieces.slice(0, 1).concat(pieces.slice(2, 3)), w, 'park');
+  assert.ok(two.every((p) => p.set === undefined), 'two pieces do not glow');
+});

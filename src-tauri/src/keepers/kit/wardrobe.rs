@@ -56,12 +56,17 @@ pub struct Item {
     pub rarity: &'static str,
     /// One line about it (official items).
     pub blurb: &'static str,
+    /// The set an official item belongs to ("" for none).
+    pub set: &'static str,
+    /// Who may wear it beyond its part's own rule: its set's species or races (empty = no more).
+    #[serde(skip)]
+    pub who: &'static [&'static str],
 }
 
 impl Item {
     /// What a keeper wears when it puts this item on.
     pub fn worn(&self) -> WornPart {
-        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()), rarity: None }
+        WornPart { part: self.part.clone(), effects: self.effects.clone(), item: Some(self.id.clone()), rarity: None, set: None }
     }
 }
 
@@ -70,19 +75,21 @@ impl Item {
 pub fn items(variants: &[Variant]) -> Vec<Item> {
     let mut out: Vec<Item> = parts::PARTS
         .iter()
-        .map(|p| Item { id: format!("part:{}", p.id), name: p.name.into(), part: p.id.into(), slot: p.slot.into(), effects: BTreeMap::new(), one_of_a_kind: false, source: "built-in", rarity: super::rarity::of_part(p.id).id, blurb: "" })
+        .map(|p| Item { id: format!("part:{}", p.id), name: p.name.into(), part: p.id.into(), slot: p.slot.into(), effects: BTreeMap::new(), one_of_a_kind: false, source: "built-in", rarity: super::rarity::of_part(p.id).id, blurb: "", set: "", who: &[] })
         .collect();
     for s in STOCK {
         let effects = s.effects.iter().map(|(k, v)| (k.to_string(), Value::String(v.to_string()))).collect();
-        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None, rarity: None }, false, "built-in") {
+        if let Some(item) = item_from(format!("stock:{}", s.id), s.name, &WornPart { part: s.part.into(), effects, item: None, rarity: None, set: None }, false, "built-in") {
             out.push(item);
         }
     }
-    for o in super::official::OFFICIAL {
+    for o in super::collection::all() {
         let effects: BTreeMap<String, Value> = serde_json::from_str(o.effects).unwrap_or_default();
-        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None, rarity: None }, false, "official") {
+        if let Some(mut item) = item_from(format!("official:{}", o.id), o.name, &WornPart { part: o.part.into(), effects, item: None, rarity: None, set: None }, false, "official") {
             item.rarity = super::rarity::get(o.rarity).map(|r| r.id).unwrap_or(item.rarity);
             item.blurb = o.blurb;
+            item.set = o.set;
+            item.who = super::collection::who(o);
             out.push(item);
         }
     }
@@ -99,7 +106,7 @@ fn item_from(id: String, name: &str, worn: &WornPart, one_of_a_kind: bool, sourc
     let ok = parts::check_effects(worn).ok()?;
     let slot = parts::get(&ok.part)?.slot;
     let rarity = super::rarity::of_part(&ok.part).id;
-    Some(Item { id, name: name.to_string(), part: ok.part, slot: slot.into(), effects: ok.effects, one_of_a_kind, source, rarity, blurb: "" })
+    Some(Item { id, name: name.to_string(), part: ok.part, slot: slot.into(), effects: ok.effects, one_of_a_kind, source, rarity, blurb: "", set: "", who: &[] })
 }
 
 /// Which item a worn part came from: its reference, or (outfits from before the wardrobe) the
@@ -143,7 +150,10 @@ pub fn wear(keepers: &mut [KeeperProfile], id: &str, item: &Item, items: &[Item]
         return Err(format!("{} has no {} to wear the {} on.", who.name, slots::word(&item.slot), item.name));
     }
     let worn = parts::check(&item.worn(), &who.skin)?;
-    who.wearables.retain(|w| !matches!(parts::get(&w.part), Some(p) if p.slot == item.slot));
+    // Whatever shares a slot with it comes off (a gown takes the legs, so trousers come off, and
+    // trousers take a gown off).
+    let takes = parts::takes(&item.part);
+    who.wearables.retain(|w| !parts::takes(&w.part).iter().any(|s| takes.contains(s)));
     who.wearables.push(worn);
     if item.one_of_a_kind {
         take_off_everyone_but(keepers, id, item, items);

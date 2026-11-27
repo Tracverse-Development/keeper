@@ -366,7 +366,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         })}
       />
       {keeper && opened.memory && <Suspense fallback={null}><MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} /></Suspense>}
-      {keeper && opened.studio && <Suspense fallback={null}><StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} /></Suspense>}
+      {keeper && opened.studio && <Suspense fallback={null}><StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} keeperNames={(keepers.list?.keepers ?? []).map((k) => k.name)} /></Suspense>}
       {keeper && opened.settings && (
         <Suspense fallback={null}>
         <SettingsSheet

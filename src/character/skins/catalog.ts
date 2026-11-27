@@ -23,8 +23,8 @@ import type { SlotId } from '../parts/slots.ts';
 import { PUPPY_HAT_FORWARD, PUPPY_HEAD_SHAPE, PUPPY_NECK_SHAPE, PUPPY_NECK_Y, PUPPY_PAWS_SHAPE, PUPPY_TORSO_SHAPE } from './puppy/puppy-shape.ts';
 import { ROBOT_FACE_SHAPE, ROBOT_HEAD_SHAPE, ROBOT_NECK_SHAPE, ROBOT_NECK_Y, ROBOT_TORSO_SHAPE } from './robot/robot-shape.ts';
 import { PUPPY_FACE_SHAPE } from './puppy/puppy-shape.ts';
-import { OWL_FACE_SHAPE, OWL_HEAD_SHAPE, OWL_NECK_SHAPE, OWL_NECK_Y, OWL_TORSO_SHAPE } from './owl/owl-shape.ts';
-import { HUMAN_NECK_Y, MAN_FRAME, WOMAN_FRAME, handY, humanFeet, humanShapes, wristY } from './human/human-shape.ts';
+import { OWL_FACE_SHAPE, OWL_FEET_SHAPE, OWL_HEAD_SHAPE, OWL_NECK_SHAPE, OWL_NECK_Y, OWL_TORSO_SHAPE } from './owl/owl-shape.ts';
+import { HUMAN_NECK_Y, MAN_FRAME, WOMAN_FRAME, handY, humanShapes, wristY } from './human/human-shape.ts';
 import { GOD_FRAME } from './god/god-shape.ts';
 
 /**
@@ -69,7 +69,7 @@ const MAN = { frame: MAN_FRAME, shapes: humanShapes(MAN_FRAME) };
 const WOMAN = { frame: WOMAN_FRAME, shapes: humanShapes(WOMAN_FRAME) };
 const GOD = { frame: GOD_FRAME, shapes: humanShapes(GOD_FRAME) };
 
-/** A person's slots: everything but paws; the watch on their own left wrist, what is held in their right hand. */
+/** A person's slots: legs and feet (shoes) too; the watch on their own left wrist, what is held in their right hand. */
 function humanSlots(human: typeof MAN) {
   const { frame, shapes } = human;
   return {
@@ -78,7 +78,9 @@ function humanSlots(human: typeof MAN) {
     face: worn('head', [0, 0, 0], shapes.face),
     neck: worn('body', [0, HUMAN_NECK_Y, 0], shapes.neck),
     torso: worn('body', [0, HUMAN_NECK_Y, 0], shapes.torso),
+    legs: worn('body', [0, 0, 0], shapes.legs),
     back: worn('body', [0, HUMAN_NECK_Y, 0], shapes.torso),
+    paws: worn('body', [0, 0, 0], shapes.feet),
     wrist: worn('leftArm', [0, wristY(frame), 0], shapes.wrist),
     held: worn('rightArm', [0, handY(frame), 0], shapes.held),
     base: { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 },
@@ -114,7 +116,7 @@ export const SKINS = [
   },
   {
     id: 'puppy',
-    name: 'Puppy',
+    name: 'Dog',
     description: 'A soft caramel puppy with floppy ears and a wagging tail.',
     slots: {
       halo: HALO_RING,
@@ -153,6 +155,7 @@ export const SKINS = [
       neck: worn('body', [0, OWL_NECK_Y, 0], OWL_NECK_SHAPE),
       torso: worn('body', [0, OWL_NECK_Y, 0], OWL_TORSO_SHAPE),
       back: worn('body', [0, OWL_NECK_Y, 0], OWL_TORSO_SHAPE),
+      paws: worn('body', [0, 0, 0], OWL_FEET_SHAPE),
       base: ARK_BASE,
       aura: { position: [0, -0.5, 0], rotation: [0, 0, 0], scale: 1 },
       thinking: MOMENT,
@@ -166,7 +169,6 @@ export const SKINS = [
     slots: {
       ...humanSlots(GOD),
       halo: { position: [0, 0.3, 0], rotation: [0.32, 0, -0.1], scale: 1.05 },
-      paws: worn('body', [0, 0, 0], { profile: [], depth: 1, squareness: 2, reach: -2, feet: humanFeet(GOD_FRAME) }),
     },
   },
 ] as const satisfies readonly SkinInfo[];

@@ -16,6 +16,12 @@
  *   7 spark    - a hot round point with a bright core
  *   8 orb      - a soft round glow (the thinking aura)
  *   9 flare    - a blinding star: eight long rays round a white-hot core
+ *  10 petal    - a pointed petal (two arcs) with a darker vein, flipping as it falls
+ *  11 ball     - a shaded ball lit from above left, with a curved seam
+ *  12 ring     - a thin bright ring with a soft halo (it grows as the particle ages)
+ *  13 page     - a white page with lines of text, flipping as it flutters
+ *  14 ember    - a white-hot point stretched into a short streak
+ *  15 band     - a soft painted disc (its edge fades out, so a row of them is a smooth band)
  * Additive kinds add light (sparkles, hearts, motes); the others are painted over.
  */
 import { AdditiveBlending, NormalBlending, ShaderMaterial, type IUniform } from 'three';
@@ -107,6 +113,39 @@ const FRAGMENT = /* glsl */ `
   #elif SHAPE == 8
     float r2 = dot(p, p);
     shape = exp(-r2 * 4.0) * (1.0 - smoothstep(0.7, 1.0, r2));
+    alpha = 1.0;
+  #elif SHAPE == 10
+    vec2 q = vec2(p.x / max(abs(cos(vAngle * 1.3)), 0.25), p.y);
+    float lens = max(length(q - vec2(0.5, 0.0)), length(q + vec2(0.5, 0.0))) - 0.95;
+    float vein = 1.0 - smoothstep(0.0, 0.06, abs(q.x)) * 1.0;
+    shape = (1.0 - smoothstep(-0.04, 0.02, lens)) * (0.8 + 0.35 * (1.0 - abs(q.y)) - 0.25 * vein * step(abs(q.y), 0.7));
+    alpha = 1.0 - smoothstep(-0.04, 0.02, lens);
+  #elif SHAPE == 11
+    float r = length(p);
+    float disk = 1.0 - smoothstep(0.86, 0.94, r);
+    vec3 n = vec3(p * 1.05, sqrt(max(1.0 - r * r, 0.0)));
+    float lit = 0.45 + 0.75 * max(dot(n, normalize(vec3(-0.45, 0.55, 0.7))), 0.0) + 0.5 * pow(max(dot(n, normalize(vec3(-0.35, 0.45, 0.82))), 0.0), 24.0);
+    float seam = 1.0 - smoothstep(0.03, 0.07, min(abs(length(p - vec2(-1.15, 0.0)) - 0.85), abs(length(p - vec2(1.15, 0.0)) - 0.85)));
+    shape = disk * (lit + seam * 0.9);
+    alpha = disk;
+  #elif SHAPE == 12
+    float r = length(p);
+    shape = exp(-pow((r - 0.82) / 0.05, 2.0)) * 1.6 + exp(-pow((r - 0.8) / 0.18, 2.0)) * 0.35;
+    alpha = 1.0;
+  #elif SHAPE == 13
+    vec2 q = abs(vec2(p.x / max(abs(cos(vAngle * 1.5)), 0.2), p.y));
+    float page = (1.0 - smoothstep(0.62, 0.68, q.x)) * (1.0 - smoothstep(0.82, 0.88, q.y));
+    float lines = step(q.y, 0.62) * step(q.x, 0.5) * (1.0 - smoothstep(0.03, 0.06, abs(fract(p.y * 3.2) - 0.5) - 0.38));
+    shape = page * (1.05 - 0.55 * lines);
+    alpha = page;
+  #elif SHAPE == 15
+    float r2 = dot(p, p);
+    shape = 1.0 - smoothstep(0.25, 1.0, r2);
+    alpha = shape;
+  #elif SHAPE == 14
+    vec2 q = vec2(p.x * 2.4, p.y);
+    float r2 = dot(q, q);
+    shape = exp(-r2 * 5.0) * 1.6 + exp(-dot(p, p) * 3.0) * 0.3;
     alpha = 1.0;
   #else
     float r = length(p);

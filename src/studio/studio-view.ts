@@ -74,3 +74,13 @@ export function saveWords(dirty: boolean, saving: boolean): string {
   if (saving) return 'Saving…';
   return dirty ? 'Saving in a moment…' : 'Everything is saved';
 }
+
+/**
+ * The look with a finish applied (`kit/finishes.rs`): every zone the finish paints takes its colour
+ * and material; the other zones keep what the draft had. Saved like any look, so Cancel undoes it.
+ */
+export function applyFinish(look: Record<string, ZoneLook>, finish: { look: [string, string, string][] }): Record<string, ZoneLook> {
+  const out = { ...look };
+  for (const [zone, color, material] of finish.look) out[zone] = { color, material };
+  return out;
+}

@@ -47,7 +47,8 @@ test('every species declares the halo, base and aura slots with finite placement
     const slots = Object.keys(skin.slots);
     for (const slot of slots) assert.ok((SLOT_IDS as readonly string[]).includes(slot), `${skin.id} offers unknown ${slot}`);
     for (const slot of ['halo', 'base', 'aura', 'head', 'neck', 'torso', 'back', 'thinking', 'celebrate']) assert.ok(slots.includes(slot), `${skin.id} offers ${slot}`);
-    assert.equal(slots.includes('paws'), skin.id === 'puppy' || skin.id === 'god', 'only the puppy and the God Keeper have feet to wear things on');
+    assert.equal(slots.includes('paws'), skin.id !== 'robot', 'every body with feet has the feet slot (the robot floats)');
+    assert.equal(slots.includes('legs'), ['man', 'woman', 'god'].includes(skin.id), 'only people wear trousers');
     assert.equal(slots.includes('wrist') && slots.includes('held'), ['man', 'woman', 'god'].includes(skin.id), 'only bodies with arms and hands offer the wrist and held slots');
     assert.ok(slots.includes('face'), `${skin.id} has a face for spectacles`);
     assert.ok(raceOf(skin.id) !== '', `${skin.id} has a race`);

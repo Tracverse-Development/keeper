@@ -21,6 +21,7 @@ import type { Emote, Mood, TouchKind } from './contract';
 import type { EffectLayer } from './effects/effect-layer';
 import type { EffectKind } from './effects/particle-kinds';
 import { EMOTE_SPECS, sampleEmote, type CueOrigin } from './emotes';
+import { burstRainbow, burstShootingStar } from './effects/cheer-bursts';
 import { cheerMoment, scaled, SHELLS, thinkingMoment, type CheerStyle, type Moment, type ThinkStyle } from './effects/moments';
 import { addDrowsiness, addNap, restingExpression, type ExpressionFrame } from './expression-frame';
 import { DROWSY_AFTER, ExpressionMachine, PRIORITY, type Priority } from './expression';
@@ -166,8 +167,20 @@ export class EmoteDirector {
     const head = this.origin('head', skin);
     if (moteRate > 0.05) this.effects.emit('mote', head, time, moteRate * this.share(), dt, input.drama > 0 ? think.colour : null);
     this.effects.aura.update(think, input.drama, head, time * this.motion.speed, this.motion.amplitude);
+    this.thinkStreams(think, input.drama, skin, time, dt);
     this.effects.update(time);
     return this.frame;
+  }
+
+  /** The worn thinking effect's streams from the head: sleepy z letters, stars and fluttering pages. */
+  private thinkStreams(think: Moment<ThinkStyle>, drama: number, skin: Skin, time: number, dt: number): void {
+    const { zzz, stars, pages } = think.style;
+    if (drama < 0.05 || zzz + stars + pages === 0) return;
+    const rate = (perSecond: number): number => perSecond * drama * think.intensity * this.share();
+    const top = this.origin('top', skin);
+    if (zzz > 0) this.effects.emit('zzz', top, time, rate(zzz), dt, think.colour);
+    if (stars > 0) this.effects.emit('sparkle', top, time, rate(stars), dt, think.colour);
+    if (pages > 0) this.effects.emit('page', this.origin('head', skin), time, rate(pages), dt, think.colour);
   }
 
   /** Fires each cue of the playing emote once, the first frame its moment has passed. */
@@ -192,7 +205,7 @@ export class EmoteDirector {
     }
   }
 
-  /** The worn celebrate effect's burst: confetti, firework shells, a starburst (`moments.ts`). */
+  /** The worn celebrate effect's burst: confetti, shells, a starburst, embers, rings, petals, balls, a rainbow, a shooting star (`moments.ts`). */
   private celebrate(cheer: Moment<CheerStyle>, skin: Skin, time: number): void {
     const { style, colour, intensity } = cheer;
     const n = (count: number): number => Math.max(scaled(count, intensity * this.share()), count > 0 ? 1 : 0);
@@ -200,7 +213,14 @@ export class EmoteDirector {
     if (style.sparkles > 0) this.effects.burst('sparkle', this.origin('head', skin), time, n(style.sparkles), 0.01, colour);
     if (style.flare) this.effects.burst('flare', this.origin('head', skin), time, 1, 0, colour);
     if (style.rays > 0) this.effects.burst('spark', this.origin('head', skin), time, n(style.rays), 0.002, colour);
+    if (style.embers > 0) this.effects.burst('ember', this.origin('top', skin), time, n(style.embers), 0.006, colour);
+    if (style.ripples > 0) this.effects.burst('ring', this.origin('head', skin), time, n(style.ripples), 0.26, colour);
+    if (style.notes > 0) this.effects.burst('note', this.origin('top', skin), time, n(style.notes), 0.12, colour);
+    if (style.petals > 0) this.effects.burst('petal', this.origin('top', skin), time, n(style.petals), 0.012, colour);
+    if (style.balls > 0) this.effects.burst('ball', this.origin('top', skin), time, n(style.balls), 0.035, colour);
     const top = this.origin('top', skin);
+    if (style.rainbow) burstRainbow(this.effects, top, this.shellAt, time, n, colour);
+    if (style.shootingStar) burstShootingStar(this.effects, top, this.shellAt, time, n, colour);
     for (let s = 0; s < Math.min(style.shells, SHELLS.length); s++) {
       const shell = SHELLS[s];
       this.shellAt.set(top.x + shell.at[0], top.y + shell.at[1], top.z + shell.at[2]);

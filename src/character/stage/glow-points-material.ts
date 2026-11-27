@@ -7,7 +7,7 @@
  * in front of and behind the body.
  */
 import { AdditiveBlending, Color, ShaderMaterial, type IUniform } from 'three';
-import { PALETTE } from '../palette';
+import { PALETTE } from '../palette.ts';
 
 export interface GlowPointsUniforms extends Record<string, IUniform> {
   uTime: { value: number };
