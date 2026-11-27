@@ -57,5 +57,5 @@ async fn ask_memory(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
 fn switch_engine(input: &serde_json::Value) -> Result<Done> {
     let id = input::optional(input, "engine").unwrap_or_default();
     let spec = crate::brain::engines::spec(id).ok_or_else(|| DeskError::Invalid(format!("I don't know an engine called {id}.")))?;
-    Ok(Done { summary: format!("Switched to {}.", spec.label), effect: Some(Effect::SwitchEngine(spec.id.into())) })
+    Ok(Done { effect: Some(Effect::SwitchEngine(spec.id.into())), ..Done::said(format!("Switched to {}.", spec.label)) })
 }

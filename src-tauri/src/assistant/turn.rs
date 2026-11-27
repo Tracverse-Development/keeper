@@ -160,7 +160,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         for request in thought.actions.iter().take(4) {
             // A role only uses the skills it is allowed (a companion does not open apps).
             if !role.allows(&request.skill) {
-                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None });
+                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None, panels: Vec::new() });
                 continue;
             }
             let mut outcome = sdk::run(request, &cx).await;
@@ -205,8 +205,10 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 
     let mut panels = crate::stage::read(&thought.panels);
     panels.extend(thought.core_panels.iter().cloned());
+    // What the abilities show (a draft, a video, an agenda) follows the mind's own panels.
+    panels.extend(outcomes.iter().flat_map(|o| o.panels.iter().cloned()));
     // A fresh visual answer is kept under its question; a lesson's cards are prepared next.
-    if !answer.cached && ctx.attached.is_none() && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && crate::memory::scene_cache::cacheable(said) {
+    if !answer.cached && ctx.attached.is_none() && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && outcomes.is_empty() && crate::memory::scene_cache::cacheable(said) {
         if let Some(scene) = CachedScene::new(said, &reply, &panels) {
             later.add(&scene, "scene");
         }
@@ -299,7 +301,7 @@ mod tests {
 
     #[test]
     fn skill_outcomes_are_always_told() {
-        let o = Outcome { skill: "open-app".into(), input: "{}".into(), summary: "Opened Notes.".into(), succeeded: true, effect: None };
+        let o = Outcome { skill: "open-app".into(), input: "{}".into(), summary: "Opened Notes.".into(), succeeded: true, effect: None, panels: Vec::new() };
         assert_eq!(compose_reply("", &[o.clone()], &[], false), "Opened Notes.");
         assert_eq!(compose_reply("Sure.", &[o], &[], false), "Sure. Opened Notes.");
         assert_eq!(compose_reply("", &[], &[], true), "I couldn't find that in your memory graph.");

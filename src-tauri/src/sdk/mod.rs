@@ -65,19 +65,29 @@ pub struct Outcome {
     pub succeeded: bool,
     #[serde(skip)]
     pub effect: Option<Effect>,
+    /// What it shows on the Stage (a draft, a video, an agenda), after the mind's own panels.
+    #[serde(skip)]
+    pub panels: Vec<crate::stage::Panel>,
 }
 
-/// What a finished ability hands back: the sentence to say and, rarely, an [`Effect`].
-#[derive(Debug, Clone, PartialEq)]
+/// What a finished ability hands back: the sentence to say, the panels to show, rarely an [`Effect`].
+#[derive(Debug, Clone, Default)]
 pub struct Done {
     pub summary: String,
     pub effect: Option<Effect>,
+    pub panels: Vec<crate::stage::Panel>,
 }
 
 impl Done {
-    /// The usual answer: one sentence, no effect.
+    /// The usual answer: one sentence, nothing to show.
     pub fn said(summary: impl Into<String>) -> Done {
-        Done { summary: summary.into(), effect: None }
+        Done { summary: summary.into(), ..Done::default() }
+    }
+
+    /// Adds a panel to show with the sentence (`Done::said("…").showing(panel)`).
+    pub fn showing(mut self, panel: crate::stage::Panel) -> Done {
+        self.panels.push(panel);
+        self
     }
 }
 

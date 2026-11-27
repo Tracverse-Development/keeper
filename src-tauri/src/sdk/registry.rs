@@ -36,8 +36,8 @@ pub async fn run(req: &ActionRequest, cx: &Cx<'_>) -> Outcome {
         None => Err(crate::kernel::DeskError::Invalid(format!("I don't have a skill called {} yet.", req.skill))),
     };
     match result {
-        Ok(done) => Outcome { skill: req.skill.clone(), input, summary: done.summary, succeeded: true, effect: done.effect },
-        Err(e) => Outcome { skill: req.skill.clone(), input, summary: e.to_string(), succeeded: false, effect: None },
+        Ok(done) => Outcome { skill: req.skill.clone(), input, summary: done.summary, succeeded: true, effect: done.effect, panels: done.panels },
+        Err(e) => Outcome { skill: req.skill.clone(), input, summary: e.to_string(), succeeded: false, effect: None, panels: Vec::new() },
     }
 }
 
