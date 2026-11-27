@@ -13,7 +13,8 @@
  *
  * Effects: `color` (the silk), `trim` (neckline, sash, hem, straps and sparkles), `glow` (the
  * shimmer: the silk's own sheen and how bright the sparkles glint). The skirt sways softly with the
- * breath, more toward the hem, always outward.
+ * breath, more toward the hem, always outward, and swings and twists as the body moves and turns
+ * (`sway/drape-sway.ts`), its trim and sparkles riding with it.
  */
 import { Color, DoubleSide, Group, Mesh, MeshPhysicalMaterial, Vector3, type BufferGeometry, type Material } from 'three';
 import { disposeTree } from '../../dispose-tree.ts';
@@ -23,6 +24,7 @@ import { crossSection, radiusAt, type GarmentRing, type PartFit } from '../fit.t
 import { fittedShell, piping, ringPoints } from '../fitted-shell.ts';
 import { garmentSway, glowTrim, hemOf, longRings, outward, pushOut, scatterQuads, waistOf } from '../garment.ts';
 import { necklineOf } from '../jacket/jacket.ts';
+import { createDrapeSway } from '../../sway/drape-sway.ts';
 import type { PartFrame, PartInstance } from '../part';
 
 const EASE = 0.04;
@@ -33,6 +35,8 @@ const SKIRT_FLARE = 0.42;
 const HEM_DROP = 1;
 const PIPING = 0.012;
 const SWAY = 0.022;
+/** The widest the hem swings with the body's motion (world units). */
+const DRAPE_LAG = 0.1;
 const SPARKLES = 140;
 const SPARKLE_SIZE = 0.022;
 /** The neckline sits this far lower than a jacket's (a gown shows the collarbones). */
@@ -49,20 +53,24 @@ export function createGown(effects: EffectValues, fit: PartFit): PartInstance {
   const silk = clothMaterial(colour, 0.42);
   Object.assign(silk, { sheen: 1, sheenRoughness: 0.3, emissive: new Color(colour), emissiveIntensity: 0.06 * glow });
   const trim = glowTrim(effectColour(effects, 'trim'), glow * 0.4);
-  const add = (geometry: BufferGeometry, material: Material, name: string) => group.add(Object.assign(new Mesh(pushOut(geometry, shape, 0.004), material), { name }));
+  const add = (geometry: BufferGeometry, material: Material, name: string): BufferGeometry => {
+    const fitted = pushOut(geometry, shape, 0.004);
+    group.add(Object.assign(new Mesh(fitted, material), { name }));
+    return fitted;
+  };
 
   const top = necklineOf(shape) - NECK_DROP;
   const waistY = waistOf(shape);
   const hem = hemOf(shape, HEM_DROP);
   const rings = longRings(shape, top, hem, EASE, RINGS, radiusAt(shape, waistY) + EASE, SKIRT_FLARE);
   const geometry = fittedShell(rings, { segments: SEGMENTS, opening: 0, squareness: shape.squareness });
-  add(geometry, silk, 'gown-shell');
+  const shell = add(geometry, silk, 'gown-shell');
 
   const around = (ring: GarmentRing, by: number) => piping(ringPoints({ y: ring.y, rx: ring.rx + by, rz: ring.rz + by }, shape.squareness, 0, Math.PI * 2, 72), PIPING, true);
   const waistRing = rings.reduce((best, r) => (Math.abs(r.y - waistY) < Math.abs(best.y - waistY) ? r : best), rings[0]);
   add(around(rings[0], PIPING * 0.6), trim, 'gown-neckline');
   add(around(waistRing, PIPING), trim, 'gown-sash');
-  add(around(rings[rings.length - 1], PIPING * 0.6), trim, 'gown-hem');
+  const hemTrim = add(around(rings[rings.length - 1], PIPING * 0.6), trim, 'gown-hem');
 
   // Two straps from the neckline over the shoulders to the back, following the body upward.
   for (const side of [1, -1]) {
@@ -87,11 +95,16 @@ export function createGown(effects: EffectValues, fit: PartFit): PartInstance {
     const [x, z] = crossSection(angle, ring.rx + 0.004, ring.rz + 0.004, shape.squareness);
     return { at: new Vector3(x, ring.y, z), normal: outward(shape, x, z), spin: i };
   });
-  if (pieces.length > 0) add(scatterQuads(pieces, SPARKLE_SIZE), sparkle, 'gown-sparkles');
+  const sparkles = pieces.length > 0 ? add(scatterQuads(pieces, SPARKLE_SIZE), sparkle, 'gown-sparkles') : null;
 
-  const sway = garmentSway(geometry, waistY, hem, SWAY);
+  // The skirt swings and twists with the body (`sway/drape-sway.ts`); its hem trim and sparkles swing
+  // with it (they never billowed, so they keep only the swing).
+  const hemRing = rings[rings.length - 1];
+  const drape = createDrapeSway(group, { top: waistY, bottom: hem, radius: hemRing.rz, maxLag: DRAPE_LAG, frequency: 1.3 });
+  const sways = [shell, hemTrim, ...(sparkles ? [sparkles] : [])].map((g) => garmentSway(g, waistY, hem, g === shell ? SWAY : 0, drape));
   function update(frame: PartFrame): void {
-    sway(frame);
+    drape.step(frame.dt, frame.motion.amplitude);
+    for (const sway of sways) sway(frame);
     sparkle.emissiveIntensity = glow * (0.55 + 0.45 * Math.sin(frame.time * 2.3));
   }
   return { group, update, dispose: () => disposeTree(group) };

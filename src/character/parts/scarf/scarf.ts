@@ -11,13 +11,15 @@
  * the knit's ridges are a small bump in the tube.
  *
  * Effects: `color` (the wool), `stripe` (the stripes), `sway` (how far the ends swing; they only
- * ever swing out from the chest, never into it).
+ * ever swing out from the chest, never into it). The ends also swing and settle with the body's motion
+ * and the Studio's turn (`sway/sway-bone.ts`).
  */
 import { BoxGeometry, BufferAttribute, Color, Group, Mesh, TorusGeometry, type BufferGeometry } from 'three';
 import { disposeTree } from '../../dispose-tree.ts';
 import { clothMaterial } from '../cloth.ts';
 import { effectColour, effectNumber, type EffectValues } from '../effects.ts';
 import { radiusAt, surfaceDepth, widestBetween, type BodyShape, type PartFit } from '../fit.ts';
+import { addSwayBone } from '../../sway/sway-bone.ts';
 import type { PartFrame, PartInstance } from '../part';
 
 /** Room left under the wrap for a jacket's collar, and the knit's thickness as a share of the neck. */
@@ -73,7 +75,9 @@ export function createKnitScarf(effects: EffectValues, fit: PartFit): PartInstan
     end.position.y = -length / 2;
     pivot.add(end);
     group.add(pivot);
-    return { pivot, rest: lay.slope, swing: spec.swing };
+    // The end also swings with the body's motion (`sway/sway-bone.ts`), out from the chest, never into it.
+    const bone = addSwayBone(pivot, { tip: [0, -length, 0], frequency: 1.9, damping: 0.3, maxAngle: 0.45 * Math.min(sway, 1.5), keepOut: { direction: [0, 0, -1], room: 0.01 } });
+    return { pivot, bone, rest: lay.slope, swing: spec.swing };
   });
 
   function update(frame: PartFrame): void {
@@ -84,6 +88,7 @@ export function createKnitScarf(effects: EffectValues, fit: PartFit): PartInstan
       // Swinging out (negative x rotation lifts the end away from the chest) and a little sideways.
       end.pivot.rotation.x = end.rest - reach * (0.5 + 0.5 * Math.sin(t * 1.3 + end.swing));
       end.pivot.rotation.z = reach * 0.6 * Math.sin(t * 0.9 + end.swing * 2);
+      end.bone.update(frame.dt, amplitude);
     }
   }
 

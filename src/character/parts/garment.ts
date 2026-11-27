@@ -17,6 +17,7 @@
 import { BufferAttribute, BufferGeometry, Color, Vector3 } from 'three';
 import { trimMaterial } from './cloth.ts';
 import { bodyLevel, crossSection, radiusAt, type BodyShape, type GarmentRing } from './fit.ts';
+import type { DrapeSway } from '../sway/drape-sway.ts';
 import type { PartFrame } from './part';
 
 /** A fitted panel through `rings`, from angle `from` to `to` (radians, 0 = front, toward +x). */
@@ -120,15 +121,21 @@ export function hemOf(shape: BodyShape, share: number): number {
 
 /**
  * The hem's breath: every vertex below `top` moves outward a little (more toward `bottom`), never
- * inward, like the jacket's. Returns the per-frame update.
+ * inward, like the jacket's. With a `drape` (`sway/drape-sway.ts`, stepped by the part each frame
+ * before this runs) the cloth also swings and twists with the body's motion. Returns the per-frame
+ * update.
  */
-export function garmentSway(geometry: BufferGeometry, top: number, bottom: number, amount: number): (frame: PartFrame) => void {
+export function garmentSway(geometry: BufferGeometry, top: number, bottom: number, amount: number, drape?: DrapeSway): (frame: PartFrame) => void {
   const positions = geometry.getAttribute('position') as BufferAttribute;
   const rest = Float32Array.from(positions.array as Float32Array);
+  const swung = new Vector3();
+  let dirty = false;
   return (frame) => {
     const { amplitude, speed } = frame.motion;
     const reach = amount * amplitude * (1 + 0.8 * frame.work);
-    if (reach <= 0) return;
+    const swinging = drape?.moving ?? false;
+    if (reach <= 0 && !swinging && !dirty) return;
+    dirty = swinging;
     const t = frame.time * speed;
     const array = positions.array as Float32Array;
     for (let k = 0; k < array.length; k += 3) {
@@ -136,9 +143,15 @@ export function garmentSway(geometry: BufferGeometry, top: number, bottom: numbe
       const y = rest[k + 1];
       const z = rest[k + 2];
       const hang = Math.min(Math.max((top - y) / (top - bottom), 0), 1) ** 2;
-      const push = 1 + (reach * hang * (0.6 + 0.4 * Math.sin(t * 1.4 + y * 4 + Math.atan2(x, z) * 2))) / Math.max(Math.hypot(x, z), 0.1);
-      array[k] = x * push;
-      array[k + 2] = z * push;
+      const push = reach > 0 ? 1 + (reach * hang * (0.6 + 0.4 * Math.sin(t * 1.4 + y * 4 + Math.atan2(x, z) * 2))) / Math.max(Math.hypot(x, z), 0.1) : 1;
+      if (swinging) {
+        drape!.displace(x * push, y, z * push, x * push, z * push, swung);
+        array[k] = swung.x;
+        array[k + 2] = swung.z;
+      } else {
+        array[k] = x * push;
+        array[k + 2] = z * push;
+      }
     }
     positions.needsUpdate = true;
   };
