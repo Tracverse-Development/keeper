@@ -164,8 +164,11 @@ export function createOwlSkin(): Skin {
     const k = m.envelope;
     switch (m.id) {
       case 'adjust-spectacles': // the left wing tip comes up to the face and taps the frame
-        leftWing.rotation.z += 2.3 * k;
-        leftWing.rotation.x -= 0.7 * k;
+        // Swung forward and up from the shoulder, a little inward first, so the tip comes up in front
+        // of the face to the rim (a sideways lift would leave it out beside the head: Euler XYZ turns
+        // about z first, and a wing already pointing out is deaf to the forward swing).
+        leftWing.rotation.z -= 0.3 * k;
+        leftWing.rotation.x -= 2.45 * k;
         leftWing.rotation.z += 0.08 * Math.sin(m.elapsed * 14) * k;
         head.rotation.x += 0.12 * k;
         break;

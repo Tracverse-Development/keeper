@@ -51,7 +51,9 @@ export function momentDials(m: ActiveMoment | null): MomentDials {
       out.earFlap = 0.6 * Math.abs(Math.sin(m.elapsed * 24)) * k;
       break;
     case 'sniff-brooch': // nose down to the brooch, sniffing
-      out.headPitch = 0.5 * k;
+      out.headPitch = 0.78 * k;
+      out.headYaw = 0.12 * k;
+      out.earPerk = 0.25 * k;
       out.sniff = Math.max(0, Math.sin(m.elapsed * 9)) * k;
       break;
     case 'proud-wag': // chin up, ears up, a harder wag
@@ -66,7 +68,7 @@ export function momentDials(m: ActiveMoment | null): MomentDials {
       out.pawLift = 0.55 * k;
       break;
     case 'shake-coat': // a wriggle that settles the coat
-      out.bodyRoll = 0.1 * Math.sin(m.elapsed * 18) * k;
+      out.bodyRoll = 0.16 * Math.sin(m.elapsed * 18) * k;
       out.earFlap = 0.3 * Math.abs(Math.sin(m.elapsed * 18)) * k;
       break;
   }
