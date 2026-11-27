@@ -19,7 +19,7 @@ mod phone;
 mod pim;
 mod platform;
 mod setup;
-mod skills;
+mod sdk;
 mod stage;
 mod state;
 mod system;
@@ -32,7 +32,7 @@ use tauri::{Emitter, Manager, WindowEvent};
 use tauri::RunEvent;
 
 use kernel::{events, settings::Settings};
-use skills::reminders::Scheduler;
+use sdk::packs::reminders::Scheduler;
 use state::AppState;
 
 /// `keeper --look-guard`: answer one Claude Code PreToolUse request and exit (DESK-LOOK-DENY-001).
@@ -57,7 +57,7 @@ pub fn run() {
                     let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
                     let _ = state.voice.speak(&app, &line, &state.settings().speaking_as_active(), false).await;
                     // A repeating reminder is written again for its next time, in its keeper's memory.
-                    skills::reminder_actions::come_round(&state, &reminder).await;
+                    sdk::packs::reminders::actions::come_round(&state, &reminder).await;
                 });
             });
             let state = AppState::new(Settings::load(), reminders);
@@ -111,18 +111,18 @@ pub fn run() {
                 // What came due while Keeper was closed is said once (and finished) before the
                 // reminders still ahead are scheduled.
                 let mut missed = Vec::new();
-                let closed_at = skills::reminder_actions::last_alive();
+                let closed_at = sdk::packs::reminders::actions::last_alive();
                 for keeper in state.settings().keepers {
-                    missed.extend(skills::reminder_actions::settle_missed(&state, &keeper.id, closed_at).await);
+                    missed.extend(sdk::packs::reminders::actions::settle_missed(&state, &keeper.id, closed_at).await);
                 }
                 // From here on Keeper notes once a minute that it is running.
                 tauri::async_runtime::spawn(async {
                     loop {
-                        skills::reminder_actions::mark_alive();
+                        sdk::packs::reminders::actions::mark_alive();
                         tokio::time::sleep(std::time::Duration::from_secs(60)).await;
                     }
                 });
-                if let Some(line) = skills::reminder_actions::missed_words(&missed) {
+                if let Some(line) = sdk::packs::reminders::actions::missed_words(&missed) {
                     platform::notify("Keeper", &line);
                     let _ = app_handle.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
                 }
@@ -160,7 +160,7 @@ pub fn run() {
             commands::usage_month,
             commands::child_profile,
             commands::child_profile_set,
-            skills::reminder_actions::reminder_cancel,
+            sdk::packs::reminders::actions::reminder_cancel,
             memory::chats::chat_change,
             memory::chats::chats_search,
             commands::memory_restore_fact,

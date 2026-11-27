@@ -264,7 +264,7 @@ pub struct Reminder {
     pub text: String,
     pub due_at: String,
     pub at: String,
-    /// How it repeats (`skills::reminders::REPEATS`: daily, weekdays, weekly); "" = once.
+    /// How it repeats (`sdk::packs::reminders::clock::REPEATS`: daily, weekdays, weekly); "" = once.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub repeat: String,
     /// The keeper it belongs to (set when it is scheduled, never stored: it lives in that

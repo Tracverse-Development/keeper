@@ -31,7 +31,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::brain::MindUsed;
 use crate::kernel::{events, time, DeskError, Result};
 use crate::memory::{ActionRecord, Fact, QueryTrace, WriteReceipt};
-use crate::skills::Outcome;
+use crate::sdk::Outcome;
 use crate::state::AppState;
 
 /// Longest message the assistant takes (a paragraph; more is a paste, not a turn).

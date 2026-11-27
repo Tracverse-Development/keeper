@@ -8,7 +8,7 @@ use chrono::Duration;
 use regex::Regex;
 use tauri::State;
 
-use super::reminders::next_due;
+use super::clock::next_due;
 use crate::kernel::{time, DeskError, Result};
 use crate::memory::{Record, Reminder};
 use crate::state::AppState;

@@ -104,7 +104,7 @@ export const core = {
   keeperTouch: (kind: Touch, about: { keeper?: string; mode?: string; you?: string }) => invoke<TouchReply>('keeper_touch', { kind, ...about }),
   modesSave: (mode: RoleInfo) => invoke<RoleInfo[]>('modes_save', { mode }),
   modesReset: (id: string) => invoke<RoleInfo[]>('modes_reset', { id }),
-  skillsList: () => invoke<{ name: string; what: string }[]>('skills_list'),
+  skillsList: () => invoke<{ name: string; what: string; access: 'memory' | 'look' | 'personal' | 'open' | 'change' }[]>('skills_list'),
   /** Personal pictures (pendant, shirt): kept only on this computer, level-locked. */
   personalList: (keeper: string) => invoke<PersonalPicture[]>('personal_list', { keeper }),
   personalSet: (keeper: string, kind: PersonalKind, base64: string) => invoke<PersonalPicture[]>('personal_set', { keeper, kind, base64 }),

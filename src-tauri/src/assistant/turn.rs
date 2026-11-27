@@ -15,7 +15,7 @@ use crate::kernel::{events, time, Result};
 use crate::memory::later::Later;
 use crate::memory::scene_cache::CachedScene;
 use crate::memory::{ActionRecord, Chat, Fact, Memory, Recall, Turn};
-use crate::skills::{self, Effect, Outcome, SkillEnv};
+use crate::sdk::{self, Cx, Effect, Outcome};
 use crate::state::AppState;
 
 pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>, attached: Option<super::attach::Attached>) -> Result<TurnResult> {
@@ -156,14 +156,14 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut outcomes = Vec::new();
     if !reading && !thought.actions.is_empty() {
         phase(app, "acting", "");
-        let env = SkillEnv { app, memory, reminders: &state.reminders, keeper: &keeper.id };
+        let cx = Cx { app, memory, reminders: &state.reminders, keeper: &keeper.id };
         for request in thought.actions.iter().take(4) {
             // A role only uses the skills it is allowed (a companion does not open apps).
             if !role.allows(&request.skill) {
                 outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None });
                 continue;
             }
-            let mut outcome = skills::run(request, &env).await;
+            let mut outcome = sdk::run(request, &cx).await;
             if let Some(Effect::SwitchEngine(id)) = outcome.effect.clone() {
                 outcome.summary = change_engine(app, state, &keeper.id, &id, None, &turn_id).await.unwrap_or_else(|e| e.to_string());
                 outcomes.push(outcome);

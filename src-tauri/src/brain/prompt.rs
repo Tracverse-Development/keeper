@@ -2,7 +2,7 @@
 //! The model answers in JSON (the `Thought` shape); anything else is read as a plain reply.
 
 use super::context::{Context, Thought};
-use crate::skills;
+use crate::sdk;
 
 /// Agent engines with tools, allowed to act: what is expected of them.
 const ACTING: &str = "You may use your tools to act on this computer when the person asks (open, find, organise, write, run). \
@@ -32,7 +32,7 @@ When what the person says REPLACES something your memory holds (they moved, chan
 Leave \"remember\" empty when nothing new was learned.",
         name = ctx.assistant_name,
         identity = ctx.identity,
-        skills = skills::catalogue_for(&crate::keepers::kit::roles::get(&ctx.job)),
+        skills = sdk::catalogue_for(&crate::keepers::kit::roles::get(&ctx.job)),
         // A turn with no mode (a prepared lesson card) has no mode rule.
         acting = format!(
             "{} {}",

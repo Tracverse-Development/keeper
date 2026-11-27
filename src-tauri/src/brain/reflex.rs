@@ -10,7 +10,7 @@ use serde_json::json;
 
 use super::context::{Context, Learned, Thought};
 use crate::memory::Fact;
-use crate::skills::ActionRequest;
+use crate::sdk::ActionRequest;
 
 type Rule = fn(&str, &Context) -> Option<Thought>;
 

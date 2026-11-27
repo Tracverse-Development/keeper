@@ -1,5 +1,5 @@
 //! Focus sessions: a set stretch of quiet work with the keeper beside you. While one runs,
-//! reminders that come due are held (`skills::reminders::Scheduler::hold`) and delivered when
+//! reminders that come due are held (`sdk::packs::reminders::Scheduler::hold`) and delivered when
 //! it ends. A session that runs to its end is recorded on the keeper's graph as a `desk:Action`
 //! (skill `focus`), so it counts toward the keeper's level like anything else it does with you;
 //! one that is stopped early records nothing. One session at a time; it does not survive

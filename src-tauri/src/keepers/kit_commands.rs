@@ -55,7 +55,7 @@ pub async fn modes_save(state: State<'_, AppState>, mode: roles::Role) -> Result
     if crate::kernel::child_lock::on() {
         return Err(DeskError::Invalid("Modes can't be changed on a child profile.".into()));
     }
-    let clean = roles::sanitize(&mode, &crate::skills::names()).map_err(DeskError::Invalid)?;
+    let clean = roles::sanitize(&mode, &crate::sdk::names()).map_err(DeskError::Invalid)?;
     let client = state.client()?;
     inventory::save_mode(&client, &inventory::kit(&client, &state.kit_place()).await?, &clean, false).await?;
     state.refresh_souls().await;
@@ -80,12 +80,14 @@ pub async fn modes_reset(state: State<'_, AppState>, id: String) -> Result<Vec<r
 pub struct SkillInfo {
     pub name: &'static str,
     pub what: &'static str,
+    /// What it touches (`sdk::Access`): memory, look, personal, open or change.
+    pub access: crate::sdk::Access,
 }
 
 /// Every skill a mode can be given (the Studio's Modes tab).
 #[tauri::command]
 pub fn skills_list() -> Vec<SkillInfo> {
-    crate::skills::catalogue().into_iter().map(|(name, what)| SkillInfo { name, what }).collect()
+    crate::sdk::registry::all().map(|a| SkillInfo { name: a.id, what: a.how, access: a.access }).collect()
 }
 
 /// Every mode in effect (built-ins, edited built-ins, the person's own).

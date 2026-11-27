@@ -101,7 +101,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     }
 
     // "snooze", "snooze for 15 minutes": the reminder that just went off comes back.
-    if let Some(reply) = crate::skills::reminder_actions::snooze(&app.state::<crate::state::AppState>(), s).await {
+    if let Some(reply) = crate::sdk::packs::reminders::actions::snooze(&app.state::<crate::state::AppState>(), s).await {
         return Some(shown(reply, json!([])));
     }
 

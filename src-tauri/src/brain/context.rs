@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::memory::{Fact, Turn};
-use crate::skills::ActionRequest;
+use crate::sdk::ActionRequest;
 
 #[derive(Clone)]
 pub struct Context {

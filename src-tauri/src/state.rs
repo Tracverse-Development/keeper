@@ -9,7 +9,7 @@ use crate::kernel::settings::{KeeperProfile, Settings};
 use crate::kernel::{DeskError, Result};
 use crate::memory::Memory;
 use crate::phone::PhoneLink;
-use crate::skills::reminders::Scheduler;
+use crate::sdk::packs::reminders::Scheduler;
 use crate::voice::Voice;
 
 pub struct AppState {
@@ -101,7 +101,7 @@ impl AppState {
     pub async fn refresh_souls(&self) {
         let Ok(client) = self.client() else { return };
         let Ok(graph) = crate::keepers::kit::inventory::kit(&client, &self.kit_place()).await else { return };
-        if let Ok(modes) = crate::keepers::kit::inventory::modes(&client, &graph, &crate::skills::names()).await {
+        if let Ok(modes) = crate::keepers::kit::inventory::modes(&client, &graph, &crate::sdk::names()).await {
             crate::keepers::kit::roles::set_personal(modes);
         }
         if let Ok(list) = crate::keepers::kit::inventory::souls(&client, &graph).await {
