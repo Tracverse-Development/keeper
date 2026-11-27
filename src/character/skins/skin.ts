@@ -27,6 +27,7 @@
 import type { Object3D } from 'three';
 import type { HitRegion, Mood, TouchKind } from '../contract';
 import type { ExpressionFrame } from '../expression-frame';
+import type { FaceMix } from '../expression-mix';
 import type { ZoneFocus } from '../look/zone-focus';
 import type { ResolvedLook } from '../look/zones';
 import type { MoodParams, MotionProfile } from '../moods';
@@ -66,6 +67,12 @@ export interface SkinFrame {
    * `mood`; skins draw the rest their own way. All 0 when nothing plays.
    */
   readonly emote: Readonly<ExpressionFrame>;
+  /**
+   * The face it wears (`expression-mix.ts`), eased, 0..1 each: happy, focused, sleepy, surprised.
+   * Their share of the lids, squint, smile and glow is already folded into `mood`; a skin draws the
+   * rest its own way (brows, ears, brow tufts, the visor's glyphs, the mouth). All 0 = its plain face.
+   */
+  readonly face: Readonly<FaceMix>;
 }
 
 export interface Skin {

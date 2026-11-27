@@ -141,8 +141,11 @@ export function createRobotSkin(): Skin {
       stars: e.stars,
       loader: drama * (1 - frame.gotIt),
       wink: e.wink,
-      mouthO: e.mouthO,
+      mouthO: Math.max(e.mouthO, 0.8 * frame.face.surprised),
       bars,
+      focus: frame.face.focused,
+      sleepy: frame.face.sleepy,
+      surprise: frame.face.surprised,
       time: frame.time,
     });
     // While it speaks the bars never lie flat (a low murmur between words); the square root

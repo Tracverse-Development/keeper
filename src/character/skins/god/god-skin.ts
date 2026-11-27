@@ -47,12 +47,14 @@ import { addHitProxy } from '../hit-proxy';
 import { buildHumanRig, poseArms, type HumanMaterials, type HumanStyle } from '../human/human-body';
 import { HUMAN_HEAD_Y, HUMAN_NECK_Y, HUMAN_SOLE_Y } from '../human/human-shape';
 import type { Skin, SkinFrame } from '../skin';
-import { poseSoftBody, softEyePose } from '../soft-pose';
+import { poseSoftBody } from '../soft-pose';
+import { faceMouthO, softFacePose } from '../expression-face';
 import { GOD_FRAME, GOD_HOVER } from './god-shape';
 import { GOD_REACTIONS as R } from './reactions';
 import { createItemMoments } from '../../item-moments';
 import { poseHumanMoment } from '../human/human-moments';
 import { addGodDetail } from './god-detail';
+import { addGodFace } from './god-face';
 import { crownFlare, FLARE, GOD_MOMENTS, poseGodMoment } from './god-moments';
 
 type GodZone = 'skin' | 'body' | 'robe' | 'eyes' | 'crown' | 'rings';
@@ -108,6 +110,8 @@ export function createGodSkin(): Skin {
   };
   const rig = buildHumanRig(style);
   const { root, body, head } = rig;
+  // Its expressions in light: brows of light and a radiance that answers the face (`god-face.ts`).
+  const godFace = addGodFace(head, g.eyeLight);
 
   // Gold bands: the collar, the waist, the hem and both sleeves.
   const bands = new Group();
@@ -226,15 +230,15 @@ export function createGodSkin(): Skin {
     const pose = poseSoftBody(rig, f, R, leanSide, GOD_HOVER);
     const e = f.emote;
     const a = f.motion.amplitude;
-    rig.eyes.update(softEyePose(f, R));
-    rig.setMouth(Math.max(f.mouth, 0.3 * pose.cheer), f.mood.smile + 0.5 * pose.cheer, e.mouthO);
+    rig.eyes.update(softFacePose(f, R));
+    rig.setMouth(Math.max(f.mouth, 0.3 * pose.cheer), f.mood.smile + 0.5 * pose.cheer, faceMouthO(f));
     poseArms(rig, GOD_FRAME, e.paw, e.swing * a, Math.sin(pose.t * 0.9) * a, pose.cheer * a);
     head.position.y = HUMAN_HEAD_Y;
     const moment = moments.step(f);
     poseHumanMoment(rig, moment);
     poseGodMoment(rig, moment);
     const blaze = crownFlare(moment);
-    const flare = 1 + 1.5 * f.gotIt + 0.6 * pose.cheer + FLARE.light * blaze;
+    const flare = (1 + 1.5 * f.gotIt + 0.6 * pose.cheer + FLARE.light * blaze) * godFace.update(f.face);
     const energy = 1 + 1.6 * pose.work + 0.8 * pose.drama;
     spin += f.dt * f.motion.speed * energy;
     rays.rotation.z = spin * 0.12;

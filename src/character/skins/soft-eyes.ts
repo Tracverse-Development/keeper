@@ -8,7 +8,10 @@
  *
  * Pose: `open` 0..1, `squint` 0..1, gaze -1..1, `sparkle` (catchlights; asleep dims), and the
  * emote extras `wink` (the screen-right eye), `pop` (both swell) and `stars` (catchlights glint).
- * Everything is a rotation or a scale set per frame; nothing is rebuilt.
+ * The face's expressions (`expression-mix.ts`, posed by `expression-face.ts`) add `knit` (focus:
+ * the brows draw in and down, inner ends lowest), `narrow` (focus: the lower lid rises flat, no
+ * smile in it) and `droop` (sleepy: the brows settle, outer ends falling). Everything is a rotation,
+ * a position or a scale set per frame; nothing is rebuilt.
  */
 import { BoxGeometry, CapsuleGeometry, Group, Mesh, SphereGeometry, TorusGeometry, type Material, type Object3D } from 'three';
 import { markIris } from '../look/iris-glow.ts';
@@ -34,6 +37,10 @@ export interface SoftEyeSpec {
   readonly lashes?: number;
   /** A brow above each eye: its length and thickness. */
   readonly brow?: { readonly length: number; readonly thickness: number; readonly lift: number };
+  /** How far this face's brows tilt for an expression (1 = the people's; the owl's feather brows tilt further). */
+  readonly browTravel?: number;
+  /** How far the brows sink for focus and sleep (1 = the people's; the owl's stay on the disc's rim, where they show). */
+  readonly browSink?: number;
 }
 
 export interface SoftEyePose {
@@ -47,6 +54,12 @@ export interface SoftEyePose {
   stars?: number;
   /** -1 frown .. 1 raised (surprise, delight); brows only. */
   brows?: number;
+  /** Focus 0..1: brows knit (in, down, inner ends lowest). */
+  knit?: number;
+  /** Focus 0..1: the lower lids rise flat (a narrowed, attentive eye; no smile tilt). */
+  narrow?: number;
+  /** Sleepy 0..1: brows settle lower, their outer ends falling. */
+  droop?: number;
 }
 
 export interface SoftEyes {
@@ -59,6 +72,10 @@ const UPPER_OPEN = -1.15;
 const UPPER_SHUT = 0.4;
 const LOWER_OPEN = 1.25;
 const LOWER_RAISED = 0.36;
+/** How far a focused eye's lower lid rises (share of a full squint), and the brows' focus and sleepy tilt (radians). */
+const NARROW_LIFT = 0.55;
+const KNIT_TILT = 0.5;
+const DROOP_TILT = 0.2;
 
 export function addSoftEyes(head: Object3D, spec: SoftEyeSpec): SoftEyes {
   const r = spec.radius;
@@ -125,7 +142,7 @@ export function addSoftEyes(head: Object3D, spec: SoftEyeSpec): SoftEyes {
       brow.position.set(side * spec.position[0], spec.position[1] + r * 1.25 + spec.brow.lift, spec.position[2] + r * 0.2);
       head.add(brow);
     }
-    return { side, eye, roll, upper, lower, lowerTilt, seam, sparkles, brow, browRest: brow?.position.y ?? 0 };
+    return { side, eye, roll, upper, lower, lowerTilt, seam, sparkles, brow, browRest: brow?.position.y ?? 0, browX: brow?.position.x ?? 0 };
   });
 
   return {
@@ -137,13 +154,17 @@ export function addSoftEyes(head: Object3D, spec: SoftEyeSpec): SoftEyes {
       const glint = 1 + 0.9 * (pose.stars ?? 0);
       const swell = 1 + 0.14 * (pose.pop ?? 0);
       const brows = Math.min(Math.max(pose.brows ?? 0, -1), 1);
+      const knit = Math.min(Math.max(pose.knit ?? 0, 0), 1);
+      const narrow = Math.min(Math.max(pose.narrow ?? 0, 0), 1);
+      const droop = Math.min(Math.max(pose.droop ?? 0, 0), 1);
+      const travel = spec.browTravel ?? 1;
       for (const e of eyes) {
         const closure = e.side === 1 ? baseClosure + (1 - baseClosure) * wink : baseClosure;
         e.eye.scale.setScalar(swell);
         e.roll.rotation.y = pose.gazeX * GAZE_YAW - e.side * 0.05;
         e.roll.rotation.x = -pose.gazeY * GAZE_PITCH;
         e.upper.rotation.x = UPPER_OPEN + (UPPER_SHUT - UPPER_OPEN) * closure;
-        e.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open, e.side === 1 ? wink : 0);
+        e.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open, e.side === 1 ? wink : 0, NARROW_LIFT * narrow);
         e.lowerTilt.rotation.z = e.side * 0.32 * squint;
         const visible = closure < 0.9 && pose.sparkle > 0.05;
         for (const { mesh, rest } of e.sparkles) {
@@ -152,11 +173,15 @@ export function addSoftEyes(head: Object3D, spec: SoftEyeSpec): SoftEyes {
         }
         e.seam.visible = closure > 0.8;
         if (e.brow) {
-          // Raised brows lift and open out; a frown lowers them and knits them toward the nose.
-          e.brow.position.y = e.browRest + 0.05 * brows * spec.radius * 4 - 0.04 * closure * spec.radius;
+          // Raised brows lift and open out; a frown lowers them and knits them toward the nose; a
+          // sleepy brow settles with its outer end falling. Positive tilt raises the inner end.
+          const r = spec.radius;
+          e.brow.position.y = e.browRest + 0.2 * brows * r - 0.04 * closure * r - (spec.browSink ?? 1) * (0.18 * knit + 0.22 * droop) * r;
+          e.brow.position.x = e.browX - e.side * 0.25 * knit * r;
           e.brow.rotation.y = 0;
           e.brow.rotation.x = 0;
-          e.brow.rotation.z = Math.PI / 2 - e.side * (0.12 * brows - 0.05);
+          const tilt = 0.12 * brows - 0.05 - travel * KNIT_TILT * knit + travel * DROOP_TILT * droop;
+          e.brow.rotation.z = Math.PI / 2 - e.side * tilt;
         }
       }
     },

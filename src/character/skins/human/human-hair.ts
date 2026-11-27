@@ -3,7 +3,7 @@
  *
  *   man    a close crop on top whose strands run back from the brow, fading at the sides and the
  *          nape into single hairs over the skin (a stipple edge), a hairline that steps back at the
- *          temples, and a trimmed beard and moustache with their own fine texture and a broken edge
+ *          temples, and a trimmed full beard, moustache to sideburns in one piece (`human-beard.ts`)
  *   woman  a crown of natural hair: a cap of coily texture, a high puff built of a few hundred
  *          small coils (one instanced mesh) over a soft core, fuller at the temples, and gold hoops
  *
@@ -15,7 +15,8 @@ import { Color, DoubleSide, InstancedMesh, Matrix4, Mesh, MeshPhysicalMaterial, 
 import { PALETTE } from '../../palette';
 import type { Blob, HumanMaterials } from './human-body';
 import { MAN_FRAME, WOMAN_FRAME, type HumanFrame } from './human-shape';
-import { sculptedShell, surfaceZ, type ShellCut } from './human-face';
+import { addBeard } from './human-beard';
+import { sculptedShell, type ShellCut } from './human-face';
 import { coilBump, stippleAlpha, strandBump } from './surface-maps';
 
 /** How strongly the strand texture shades the hair (bump units). */
@@ -34,8 +35,6 @@ function shell(head: Group, material: MeshPhysicalMaterial, frame: HumanFrame, i
 /** The face's front (three.js' phi for +z) and how wide the fade leaves it bare. */
 const FRONT = Math.PI / 2;
 const FADE_GAP = 0.95;
-/** The moustache's height on the face (head space), just above the lips. */
-const MOUSTACHE_Y = -0.255;
 
 /** Gives the zone's hair material its strand texture (along the cap's crown-to-nape lines). */
 export function textureHair(m: HumanMaterials, repeat = 6): void {
@@ -63,28 +62,14 @@ export function dressManHair(head: Group, m: HumanMaterials, beard: MeshPhysical
   fade.side = DoubleSide;
   fade.bumpMap = m.hair.bumpMap;
   shell(head, fade, MAN_FRAME, 0.022, { thetaStart: 1.22, thetaLength: 0.6, tilt: 0.55, phiStart: FRONT + FADE_GAP, phiLength: Math.PI * 2 - 2 * FADE_GAP });
-  // The beard: strands of its own, a stippled edge up the cheeks; a moustache over the lips.
+  // The beard: strands of its own, one piece from the moustache round the mouth into the chin and
+  // up to the sideburns (`human-beard.ts`).
   const beardStrands = strandBump(220).clone();
   beardStrands.repeat.set(14, 2);
   beardStrands.needsUpdate = true;
   beard.bumpMap = beardStrands;
   beard.bumpScale = STRAND_BUMP;
-  shell(head, beard, MAN_FRAME, 0.018, { phiStart: FRONT - 0.85, phiLength: 1.7, thetaStart: 2.24, thetaLength: 0.52 });
-  const edge = beard.clone();
-  // The cap's v runs 1 at its top to 0 at its bottom: flipped, the stipple is dense at the jaw and
-  // breaks up toward the cheekbone.
-  const sparseUp = stippleAlpha(0.8).clone();
-  sparseUp.repeat.set(1, -1);
-  sparseUp.offset.set(0, 1);
-  sparseUp.needsUpdate = true;
-  edge.alphaMap = sparseUp;
-  edge.alphaTest = 0.5;
-  shell(head, edge, MAN_FRAME, 0.014, { phiStart: FRONT - 0.85, phiLength: 1.7, thetaStart: 1.98, thetaLength: 0.28 });
-  const moustache = new Mesh(new TorusGeometry(0.1, 0.022, 10, 24, Math.PI), beard);
-  moustache.position.set(0, MOUSTACHE_Y, surfaceZ(MAN_FRAME, 0, MOUSTACHE_Y) + 0.004);
-  moustache.rotation.x = -0.25;
-  moustache.scale.set(1.05, 0.9, 1);
-  head.add(moustache);
+  addBeard(head, MAN_FRAME, beard);
   return { fade };
 }
 

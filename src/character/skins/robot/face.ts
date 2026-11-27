@@ -15,6 +15,11 @@
  * spinning sparkle-star eyes (`stars`), loader rings while thinking (`loader`), one eye shut
  * for a wink (`wink`, the screen-right eye), a round "o" mouth (`mouthO`) and, while it
  * speaks or listens, an equaliser mouth (`bars`, heights in `barHeights`). All 0 = as before.
+ *
+ * The face mix (`expression-mix.ts`) is drawn the screen's way: `focus` slants each eye's top down
+ * toward the nose (a brow drawn in light) and presses the mouth into a short line, `sleepy` slants
+ * them the other way (drooping outer corners), `surprise` rounds the eyes wider and the mouth into
+ * an "o". The lids, squint, smile and glow arrive already folded in `eyeOpen`/`squint`/`smile`/`glow`.
  */
 import { Color, Group, Mesh, Vector2 } from 'three';
 import { disposeTree } from '../../dispose-tree';
@@ -51,6 +56,10 @@ export interface FaceState {
   wink: number;
   mouthO: number;
   bars: number;
+  /** The face mix 0..1 (`SkinFrame.face`): focused, sleepy, surprised (happy is all in squint and smile). */
+  focus: number;
+  sleepy: number;
+  surprise: number;
   /** Seconds, for the beating hearts and the spinning stars and loader. */
   time: number;
 }
@@ -79,6 +88,11 @@ const MOUTH_O = new Vector2(0.05, 0.058);
 /** Heart eyes beat this much bigger at each beat, this many beats a second (rad/s). */
 const HEART_BEAT = 0.1;
 const HEART_RATE = 7.5;
+/** How steeply focus and sleep slant the eyes' tops, how much a surprise widens them, and a focused mouth's narrowing. */
+const FOCUS_SLANT = 0.5;
+const SLEEPY_SLANT = 0.45;
+const SURPRISE_WIDEN = 0.16;
+const FOCUS_MOUTH = 0.35;
 
 const FACE_INFLATE = 0.022;
 
@@ -142,7 +156,9 @@ export function createFace(): Face {
       const u = eyes[i].uniforms;
       const open = Math.max(state.eyeOpen, 0) * (sides[i] === 1 ? 1 - state.wink : 1);
       u.uOpen.value = scan > 0 ? open + (Math.min(open, SCAN_OPEN) - open) * scan : open;
-      u.uHalf.value.set(EYE_HALF.x * (1 + SCAN_WIDEN * scan) * beat, EYE_HALF.y * beat);
+      u.uHalf.value.set(EYE_HALF.x * (1 + SCAN_WIDEN * scan + SURPRISE_WIDEN * state.surprise) * beat, EYE_HALF.y * beat);
+      // The screen-left eye (side -1) has the nose on its +x side: + slant lowers that end.
+      u.uSlant.value = -sides[i] * (FOCUS_SLANT * state.focus * (1 - 0.6 * scan) - SLEEPY_SLANT * state.sleepy) * (1 - state.hearts) * (1 - state.stars);
       // A winking eye stays a closed line, never a heart or a star.
       const shut = sides[i] === 1 ? 1 - state.wink : 1;
       u.uHeart.value = state.hearts * shut;
@@ -161,7 +177,7 @@ export function createFace(): Face {
 
     const m = mouth.uniforms;
     const o = state.mouthO;
-    const halfX = MOUTH_HALF.x * (1 - 0.18 * state.mouthOpen);
+    const halfX = MOUTH_HALF.x * (1 - 0.18 * state.mouthOpen) * (1 - FOCUS_MOUTH * state.focus * (1 - state.mouthOpen));
     const halfY = MOUTH_HALF.y + state.mouthOpen * MOUTH_OPEN_HEIGHT;
     m.uHalf.value.set(halfX + (MOUTH_O.x - halfX) * o, halfY + (MOUTH_O.y - halfY) * o);
     m.uBend.value = state.smile * 0.55 * (1 - 0.5 * state.mouthOpen) * (1 - o);

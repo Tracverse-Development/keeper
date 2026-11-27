@@ -15,7 +15,7 @@
  * Pattern: Builder functions over the shared rig; no state of their own.
  */
 import { CapsuleGeometry, Group, Mesh, SphereGeometry, TorusGeometry, Vector3, type Material, type Object3D } from 'three';
-import type { HumanFrame } from './human-shape';
+import { DEFAULT_NOSE, type HumanFrame } from './human-shape.ts';
 
 /** How far in front of the head's centre its surface is at (x, y), for an ellipsoid head. */
 export function surfaceZ(frame: HumanFrame, x: number, y: number): number {
@@ -119,12 +119,13 @@ export function addFaceDetail(head: Group, frame: HumanFrame, m: FaceMaterials):
   };
   const on = (x: number, y: number, out = 0): number => surfaceZ(frame, x, y) + out;
 
-  // The nose: bridge, tip, wings and nostrils.
-  blob(m.skin, [0.036, 0.085, 0.04], [0, (NOSE_TOP_Y + NOSE_TIP_Y) / 2, on(0, -0.08, 0.008)], [-0.25, 0, 0]);
-  blob(m.skin, [0.06, 0.052, 0.05], [0, NOSE_TIP_Y, on(0, NOSE_TIP_Y, 0.04)]);
+  // The nose (the frame's shape): bridge, tip, wings and nostrils.
+  const nose = frame.nose ?? DEFAULT_NOSE;
+  blob(m.skin, nose.bridge, [0, (NOSE_TOP_Y + NOSE_TIP_Y) / 2, on(0, -0.08, 0.008)], [-0.25, 0, 0]);
+  blob(m.skin, nose.tip, [0, NOSE_TIP_Y, on(0, NOSE_TIP_Y, nose.tipOut)]);
   for (const side of [-1, 1]) {
-    blob(m.skin, [0.038, 0.034, 0.036], [side * 0.052, NOSE_TIP_Y - 0.018, on(side * 0.052, NOSE_TIP_Y, 0.012)], [0, side * 0.4, 0]);
-    blob(m.line, [0.016, 0.009, 0.012], [side * 0.026, NOSE_TIP_Y - 0.045, on(side * 0.026, NOSE_TIP_Y - 0.045, 0.03)], [0.4, 0, side * 0.5]);
+    blob(m.skin, nose.wing, [side * nose.wingX, NOSE_TIP_Y - 0.018, on(side * nose.wingX, NOSE_TIP_Y, 0.012)], [0, side * 0.4, 0]);
+    blob(m.line, nose.nostril, [side * nose.nostrilX, NOSE_TIP_Y - 0.045, on(side * nose.nostrilX, NOSE_TIP_Y - 0.045, 0.03)], [0.4, 0, side * 0.5]);
   }
   // Ears: an outer ear, a helix curling round its rim, and the bowl inside.
   for (const side of [-1, 1]) {

@@ -145,12 +145,14 @@ export function createPuppySkin(): Skin {
       gazeY: frame.gaze.y,
       sparkle: p.presence * (1 + T.gotItSparkle * frame.gotIt),
       wink: e.wink,
-      pop: e.wide,
+      pop: Math.max(e.wide, 0.85 * frame.face.surprised),
       stars: e.stars,
+      narrow: frame.face.focused * (1 - frame.face.happy),
     });
+    face.setFace(frame.face);
     const panting = pant * (0.42 + 0.2 * Math.sin(t * Math.PI * 2 * R.work.pantSpeed) * a);
     face.setMouth(
-      Math.max(d.mouthOpen * (1 - d.curl), frame.mouth, R.pat.mouth * pat, panting, 0.75 * e.mouthO, 0.5 * cheer),
+      Math.max(d.mouthOpen * (1 - d.curl), frame.mouth, R.pat.mouth * pat, panting, 0.75 * Math.max(e.mouthO, 0.7 * frame.face.surprised), 0.5 * cheer),
       Math.max(d.tongue, R.pat.tongue * pat, pant, cheer),
     );
     const perk =
