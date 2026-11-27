@@ -4,7 +4,9 @@
  * same egg, head and wings the rig draws (and the clothes fit to):
  *
  *   body     brickwork rows over the egg, tips down, skipped where the breast covers it
- *   breast   smaller cream feathers over the chest, barred with dark chevrons
+ *   breast   many small soft cream feathers strewn over the chest (no rows to see), each its own
+ *            size, turn and tint, with soft broken chevrons and a ragged, darkening edge where it
+ *            meets the tawny body
  *   head     rows over the crown, the back and the sides of the head (the face stays clear)
  *   rims     a ring of short dark feathers round each half of the facial disc
  *   discs    fine cream feathers radiating from each eye across the facial disc
@@ -14,11 +16,14 @@
  *   talons   three scaled toes per foot, each ending in a curved dark claw
  *
  * Builder: one call per form, all meshes children of the group they ride (the wings' feathers swing
- * with the wing). Feathers wear the zone materials, so a repaint recolours them.
+ * with the wing). Feathers wear the zone materials, so a repaint recolours them. Every layer follows
+ * the owl's size on screen (`owl-detail.ts`): coarser and fewer feathers when it is small.
  */
 import { CatmullRomCurve3, Group, Matrix4, Mesh, MeshPhysicalMaterial, Quaternion, Euler, TubeGeometry, Vector3, type BufferGeometry, type Material, type Object3D } from 'three';
 import { radiusAt } from '../../parts/fit.ts';
-import { attach, coverFeathers, ellipsoidSurface, featherGeometry, featherLayer, jitter, type FeatherPlacement } from './owl-feathers';
+import { createDetailWatch } from '../detail-level.ts';
+import { COAT_SHARE, EVERY_FEATHER, featherSet, FINE_SHARE, followDetail, type FeatherSet } from './owl-detail.ts';
+import { attach, coverFeathers, ellipsoidSurface, featherLayer, jitter, scatterFeathers, type FeatherPlacement } from './owl-feathers';
 import { OWL_HEAD, OWL_NECK_Y, OWL_TALONS_Y, OWL_TORSO_SHAPE } from './owl-shape';
 
 /** The breast (an ellipsoid on the front of the egg, body space): `owl-skin.ts` draws it from these. */
@@ -45,30 +50,35 @@ export interface Plumage {
 
 /** Lays every feather layer on the owl's forms. `wings` are the wing joints, right (-x) then left (+x). */
 export function addOwlPlumage(body: Object3D, head: Object3D, wings: readonly Object3D[], tufts: readonly Object3D[], m: PlumageMaterials): Plumage {
-  const coat = featherGeometry(0.15, 0.17, 0.02);
-  const small = featherGeometry(0.115, 0.125, 0.014, 0.3);
-  const crown = featherGeometry(0.13, 0.14, 0.016);
-  const rim = featherGeometry(0.07, 0.11, 0.01, 0.2);
-  const fine = featherGeometry(0.05, 0.1, 0.004, 0.15);
-  const covert = featherGeometry(0.11, 0.14, 0.018);
-  const primary = featherGeometry(0.1, 0.44, 0.03, 0.18);
-  const tuftFeather = featherGeometry(0.085, 0.34, 0.0, 0.35);
+  const coat = featherSet(0.15, 0.17, 0.02);
+  // The breast's feathers: small, soft (deeply cupped, barely lifted), so they melt into one another.
+  const down = featherSet(0.085, 0.09, 0.008, 0.38);
+  const crown = featherSet(0.13, 0.14, 0.016);
+  const rim = featherSet(0.07, 0.11, 0.01, 0.2);
+  const fine = featherSet(0.05, 0.1, 0.004, 0.15);
+  const covert = featherSet(0.11, 0.14, 0.018);
+  const primary = featherSet(0.1, 0.44, 0.03, 0.18);
+  const tuftFeather = featherSet(0.085, 0.34, 0.0, 0.35);
+  const watch = createDetailWatch(body);
+  const layer = (parent: Object3D, name: string, set: FeatherSet, material: Material, placements: FeatherPlacement[], share = COAT_SHARE): void =>
+    followDetail(attach(parent, featherLayer(name, set.full, material, placements)), watch, { geometries: set, share });
 
-  attach(body, featherLayer('owl-body-feathers', coat, m.body, bodyFeathers()));
-  attach(body, featherLayer('owl-breast-feathers', small, m.belly, breastFeathers().map((f) => ({ ...f, scale: 0.72 }))));
-  attach(head, featherLayer('owl-head-feathers', crown, m.head, headFeathers()));
-  attach(head, featherLayer('owl-disc-rims', rim, m.head, rimFeathers()));
-  attach(head, featherLayer('owl-disc-feathers', fine, m.face, discFeathers()));
+  layer(body, 'owl-body-feathers', coat, m.body, bodyFeathers());
+  layer(body, 'owl-breast-feathers', down, m.belly, breastFeathers());
+  layer(head, 'owl-head-feathers', crown, m.head, headFeathers());
+  layer(head, 'owl-disc-rims', rim, m.head, rimFeathers(), EVERY_FEATHER);
+  layer(head, 'owl-disc-feathers', fine, m.face, discFeathers(), FINE_SHARE);
   wings.forEach((joint, i) => {
     const side = i === 0 ? -1 : 1;
-    attach(joint, featherLayer('owl-wing-coverts', covert, m.wings, wingCoverts(side)));
-    attach(joint, featherLayer('owl-primaries', primary, m.wings, primaries(side)));
+    layer(joint, 'owl-wing-coverts', covert, m.wings, wingCoverts(side));
+    layer(joint, 'owl-primaries', primary, m.wings, primaries(side), EVERY_FEATHER);
   });
-  tufts.forEach((pivot, i) => attach(pivot, featherLayer('owl-tuft', tuftFeather, m.head, tuft(i === 0 ? -1 : 1))));
+  tufts.forEach((pivot, i) => layer(pivot, 'owl-tuft', tuftFeather, m.head, tuft(i === 0 ? -1 : 1), EVERY_FEATHER));
   const beak = buildBeak();
   attach(head, new Mesh(beak, m.beak)).name = 'owl-beak';
   const feet = buildTalons(body, m.beak, m.claw);
-  return { geometries: [coat, small, crown, rim, fine, covert, primary, tuftFeather, beak, ...feet] };
+  const sets = [coat, down, crown, rim, fine, covert, primary, tuftFeather].flatMap((set) => Object.values(set));
+  return { geometries: [...sets, beak, ...feet] };
 }
 
 /** Rows over the egg (body space), skipped where the breast lies over them. */
@@ -88,7 +98,8 @@ function bodyFeathers(): FeatherPlacement[] {
     rows: 16,
     perRow: 30,
     inside: new Vector3(0, OWL_NECK_Y - 0.7, 0),
-    keep: (_a, _b, p) => ((p.x - cx) / rx) ** 2 + ((p.y - cy) / ry) ** 2 + ((p.z - cz) / (rz * 1.6)) ** 2 > 0.92,
+    // Clear of the breast, along a ragged line (the breast's own edge feathers fray over it).
+    keep: (a, b, p) => breastReach(p.x - cx, p.y - cy, p.z - cz, rx, ry, rz) > 0.8 + 0.08 * jitter(Math.round(a * 211), Math.round(b * 97)),
     // Tawny: each feather a little different, with darker streaks running down the back and flanks.
     tint: (a, b) => {
       const streak = jitter(Math.round(a * 30), 7) > 0.55 && jitter(Math.round(a * 30), Math.round(b * 4)) > -0.2;
@@ -97,23 +108,49 @@ function bodyFeathers(): FeatherPlacement[] {
   });
 }
 
-/** The breast's cream feathers with dark chevron bars (V-shaped bands, point down). */
+/** Where a point lies on the breast: 0 at its centre, 1 at its rim (the depth counts less). */
+function breastReach(dx: number, dy: number, dz: number, rx: number, ry: number, rz: number): number {
+  return (dx / rx) ** 2 + (dy / ry) ** 2 + (dz / (rz * 1.6)) ** 2;
+}
+
+/** The breast's tint near its rim: partway to the tawny body (linear body ÷ belly colour), so the two blend. */
+const TAWNY_EDGE = [0.5, 0.4, 0.32] as const;
+/** The chevrons' dark (multiplier of the cream), reached only at a bar's heart. */
+const CHEVRON = [0.55, 0.42, 0.3] as const;
+
+/**
+ * The breast: about a thousand small soft cream feathers strewn over the chest (`scatterFeathers`),
+ * so no rows or columns show. Dark chevrons (V-shaped bars, point down) are drawn as a smooth field
+ * the feathers sample with a little noise, so each bar breaks up softly; toward the rim the feathers
+ * take on the body's tawny and fray past it over the body's own feathers.
+ */
 function breastFeathers(): FeatherPlacement[] {
   const [cx, cy, cz] = OWL_BREAST.centre;
   const [rx, ry, rz] = OWL_BREAST.radii;
   const centre = new Vector3(cx, cy, cz);
   const surface = (a: number, b: number) => {
-    const th = (a - 0.5) * Math.PI * 0.92;
-    const phi = (0.06 + 0.86 * b) * Math.PI;
+    const th = (a - 0.5) * Math.PI * 0.98;
+    const phi = (0.05 + 0.9 * b) * Math.PI;
     return new Vector3(Math.sin(phi) * Math.sin(th) * rx, Math.cos(phi) * ry, Math.sin(phi) * Math.cos(th) * rz).add(centre);
   };
-  return coverFeathers(surface, {
-    rows: 17,
-    perRow: 19,
+  const mix = (from: number, to: number, k: number): number => from + (to - from) * k;
+  return scatterFeathers(surface, {
+    rows: 30,
+    perRow: 34,
+    seed: 0x0b1e,
     inside: centre.clone().add(new Vector3(0, 0, -0.2)),
-    tint: (_a, _b, p) => {
-      const band = (((p.y - cy) * 6 + Math.abs(p.x) * 3.2) % 1 + 1) % 1;
-      return band < 0.17 ? [0.66, 0.54, 0.42] : 0.95 + 0.06 * jitter(Math.round(p.x * 50), Math.round(p.y * 50));
+    sizes: [0.75, 1.25],
+    turn: 0.35,
+    tint: (_a, _b, p, own) => {
+      // Chevron bars: a smooth wave over height and spread, nudged per feather so bars break up.
+      const wave = Math.sin(((p.y - cy) * 5.2 + Math.abs(p.x - cx) * 2.6) * Math.PI * 2 + (own - 0.5) * 1.6);
+      const bar = Math.max(0, wave - 0.3) / 0.7; // 0 off a bar .. 1 at its heart
+      const dark = Math.sqrt(bar) * (0.5 + 0.5 * own);
+      // The rim of what shows (the breast sinks into the egg past ~0.8) takes on the tawny.
+      const edge = Math.min(Math.max((breastReach(p.x - cx, p.y - cy, p.z - cz, rx, ry, rz) - 0.3) / 0.5, 0), 1) ** 1.3;
+      const light = 0.92 + 0.12 * own; // each feather a shade of its own
+      const channel = (i: 0 | 1 | 2): number => light * mix(1, CHEVRON[i], dark) * mix(1, TAWNY_EDGE[i], edge * 0.85);
+      return [channel(0), channel(1), channel(2)];
     },
   });
 }

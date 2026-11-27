@@ -14,11 +14,18 @@
  *
  * The shells are children of the meshes they wrap, so they follow every pose; lengths are set in
  * view space, so a squashed or stretched blob still grows even fur.
+ *
+ * Level of detail (`detail-level.ts`): a keeper small on screen draws fewer shells
+ * (`FUR_DETAIL_SHELLS`), spread over the same length, so the coat keeps its depth and costs a
+ * fraction; a keeper filling the Studio draws all of them.
  */
+import { createDetailWatch, type DetailLevel } from './detail-level.ts';
 import { BufferGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshStandardMaterial, Vector3, Vector4, type Color, type Mesh, type Object3D } from 'three';
 
 /** Shells per furred mesh: more is denser fur and more to draw (one instanced draw per mesh either way). */
 export const FUR_SHELLS = 22;
+/** Shells drawn at each detail level (the coat's length stays the same; fewer shells, coarser strands). */
+export const FUR_DETAIL_SHELLS: Readonly<Record<DetailLevel, number>> = { light: 8, balanced: 14, full: FUR_SHELLS };
 /** Strands per world unit (the cell pattern's density). */
 const DENSITY = 58;
 /** How far the coat is combed down and back, as a share of its length at the tips. */
@@ -73,6 +80,10 @@ export function createFur(root: Object3D, zones: Readonly<Record<string, FurZone
   const built = new Map<string, Shell[]>();
   // One length per zone, shared by its shells' shaders, so a trim costs one number.
   const lengths = new Map(Object.entries(zones).map(([id, zone]) => [id, { value: zone.length }]));
+  // How small the keeper is on screen picks how many shells are drawn; `spread` (FUR_SHELLS / drawn)
+  // spaces them over the full length. Both are shared by every coat of this body.
+  const watch = createDetailWatch(root);
+  const spread = { value: 1 };
 
   function build(zone: FurZone, length: { value: number }): Shell[] {
     const out: Shell[] = [];
@@ -91,15 +102,18 @@ export function createFur(root: Object3D, zones: Readonly<Record<string, FurZone
       geometry.setAttribute('aLayer', new InstancedBufferAttribute(Float32Array.from({ length: FUR_SHELLS }, (_, i) => (i + 1) / FUR_SHELLS), 1));
       const scale = { value: new Vector3(1, 1, 1) };
       const offset = { value: new Vector3() };
-      const material = furMaterial(coat.color, zone, length, scale, offset, time);
+      const material = furMaterial(coat.color, zone, length, scale, offset, time, spread);
       const mesh = new InstancedMesh(geometry, material, FUR_SHELLS);
       for (let i = 0; i < FUR_SHELLS; i++) mesh.setMatrixAt(i, IDENTITY);
       mesh.name = 'fur';
       mesh.frustumCulled = false;
       mesh.raycast = () => undefined; // touch goes to the body's own proxies
-      mesh.onBeforeRender = () => {
+      mesh.onBeforeRender = (renderer, _scene, camera) => {
         scale.value.copy(source.scale);
         offset.value.copy(source.position);
+        const drawn = FUR_DETAIL_SHELLS[watch.observe(renderer, camera)];
+        spread.value = FUR_SHELLS / drawn;
+        mesh.count = drawn;
       };
       source.add(mesh);
       out.push({ mesh, material, coat });
@@ -138,12 +152,12 @@ export function createFur(root: Object3D, zones: Readonly<Record<string, FurZone
 }
 
 /** One furred mesh's material: a lit standard material whose shader pushes shells out and cuts strands. */
-function furMaterial(colour: Color, zone: FurZone, length: { value: number }, scale: { value: Vector3 }, offset: { value: Vector3 }, time: { value: number }): MeshStandardMaterial {
+function furMaterial(colour: Color, zone: FurZone, length: { value: number }, scale: { value: Vector3 }, offset: { value: Vector3 }, time: { value: number }, spread: { value: number }): MeshStandardMaterial {
   const material = new MeshStandardMaterial({ color: colour.clone(), roughness: 0.92, metalness: 0 });
   material.customProgramCacheKey = () => 'fur-shells';
   material.onBeforeCompile = (shader) => {
     const bare = Array.from({ length: MAX_BARE }, (_, i) => new Vector4(...(zone.bare?.[i] ?? [0, 0, 0, 0])));
-    Object.assign(shader.uniforms, { uFurLength: length, uFurTuft: { value: zone.tuft ?? 0 }, uFurScale: scale, uFurOffset: offset, uFurBare: { value: bare }, uFurTime: time });
+    Object.assign(shader.uniforms, { uFurLength: length, uFurTuft: { value: zone.tuft ?? 0 }, uFurScale: scale, uFurOffset: offset, uFurBare: { value: bare }, uFurTime: time, uFurSpread: spread });
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${VERTEX_HEAD}`)
       .replace('#include <project_vertex>', `#include <project_vertex>\n${VERTEX_PUSH}`);
@@ -162,6 +176,7 @@ const VERTEX_HEAD = /* glsl */ `
   uniform vec3 uFurOffset;
   uniform vec4 uFurBare[${MAX_BARE}];
   uniform float uFurTime;
+  uniform float uFurSpread;
   varying vec3 vFurPos;
   varying float vFurLayer;
   varying float vFurGrow;
@@ -169,7 +184,8 @@ const VERTEX_HEAD = /* glsl */ `
 
 /** After the view position is known: out along the normal, then combed down and back, more toward the tip. */
 const VERTEX_PUSH = /* glsl */ `
-  vFurLayer = aLayer;
+  float furLayer = min(aLayer * uFurSpread, 1.0); // fewer shells drawn: the same length, further apart
+  vFurLayer = furLayer;
   vFurPos = position * uFurScale;
   vec3 furN = normalize(normalMatrix * normal);
   float furTuft = 1.0 + uFurTuft * smoothstep(0.25, 0.95, abs(normal.x)) * smoothstep(0.35, -0.5, normal.y);
@@ -179,11 +195,11 @@ const VERTEX_PUSH = /* glsl */ `
     if (uFurBare[i].w > 0.0) furGrow = min(furGrow, smoothstep(uFurBare[i].w, uFurBare[i].w * 2.0, distance(furAt, uFurBare[i].xyz)));
   }
   vFurGrow = furGrow;
-  float furH = uFurLength * furTuft * furGrow * aLayer;
+  float furH = uFurLength * furTuft * furGrow * furLayer;
   vec3 furDown = (viewMatrix * vec4(0.0, -1.0, 0.0, 0.0)).xyz;
   vec3 furBack = normalize((modelViewMatrix * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
   float furSway = sin(uFurTime * 1.7 + position.x * 9.0 + position.y * 7.0) * 0.08;
-  mvPosition.xyz += furN * furH + (furDown * (0.7 + furSway) + furBack * 0.3) * furH * aLayer * ${COMB.toFixed(2)};
+  mvPosition.xyz += furN * furH + (furDown * (0.7 + furSway) + furBack * 0.3) * furH * furLayer * ${COMB.toFixed(2)};
   gl_Position = projectionMatrix * mvPosition;
 `;
 

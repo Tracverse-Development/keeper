@@ -15,6 +15,11 @@
  * `../races.ts`) wears pieces from every race, each drawn in the divine finish (`parts/divine-finish.ts`).
  * Work spins the rings faster and brightens the crown; thinking turns the crown and the shards
  * inward; a reply arriving flares everything at once ("got it").
+ *
+ * Its radiance lives at the edges: the mask, the gold, the armour and the robe wear the divine light
+ * (`parts/divine-light.ts`): a rim of gold light round the silhouette that blooms, over surfaces held
+ * under a soft ceiling so they keep real shading (the engraving, the plates, the robe's folds). The
+ * halo, the rays, the rings and the motes are light itself and bloom freely.
  */
 import {
   AdditiveBlending,
@@ -40,6 +45,7 @@ import { measureZones, zonesByMaterial } from '../../look/zone-focus';
 import { PaintableMaterial, zoneOf, type ZoneTarget } from '../../look/zone-paint';
 import { zonesOf, type ResolvedLook } from '../../look/zones';
 import { PALETTE } from '../../palette';
+import { addDivineLight, divineRim } from '../../parts/divine-light';
 import { createGlowPointsMaterial } from '../../stage/glow-points-material';
 import { addSlotAnchors } from '../anchors';
 import { slotsOf } from '../catalog';
@@ -58,8 +64,16 @@ import { crownFlare, FLARE, GOD_MOMENTS, poseGodMoment } from './god-moments';
 type GodZone = 'skin' | 'body' | 'robe' | 'eyes' | 'crown' | 'rings';
 
 /** The God Keeper's colours (not brand tokens, but drawn from them: gold, ivory, the navy night). */
-const GOD = { armour: 0x141a33, robe: 0xf3ead8, light: 0xffd88a, eye: 0xfff1cf } as const;
+const GOD = { armour: 0x141a33, robe: 0xdccfb4, light: 0xffd88a, eye: 0xfff1cf } as const;
 const MOTES = 70;
+/** The body's rim of light at rest (it breathes with presence and flares with the crown). */
+const BODY_RIM = 0.4;
+/**
+ * The most the body's own lights (eyes, shards, chest lamp, rim) take of a flare: the crown flare and
+ * "got it" are bursts of the rays and halo, and the body stacking every flare at once (a reply
+ * arriving mid crown-flare reached 4.7x) flooded the frame white.
+ */
+const BODY_FLARE_CAP = 1.8;
 const CROWN_RAYS = 16;
 
 function godMaterials() {
@@ -68,7 +82,8 @@ function godMaterials() {
   // The bands, the crest and the feet: polished gold.
   const gold = new MeshPhysicalMaterial({ color: 0xd49a3c, roughness: 0.26, metalness: 1, clearcoat: 0.8, clearcoatRoughness: 0.1 });
   const armour = new MeshPhysicalMaterial({ color: GOD.armour, roughness: 0.22, metalness: 0.7, clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessRange: [200, 800] });
-  const robe = new MeshPhysicalMaterial({ color: GOD.robe, roughness: 0.55, sheen: 1, sheenRoughness: 0.3, sheenColor: new Color(0xffe2a8), side: DoubleSide });
+  // The robe: a warm ivory a shade under white, so its lit side keeps its folds (white blooms flat).
+  const robe = new MeshPhysicalMaterial({ color: GOD.robe, roughness: 0.6, sheen: 0.6, sheenRoughness: 0.35, sheenColor: new Color(0xffe2a8), side: DoubleSide });
   const eyeLight = new MeshBasicMaterial({ color: new Color(GOD.eye).multiplyScalar(1.5) });
   const iris = new MeshPhysicalMaterial({ color: GOD.light, emissive: new Color(GOD.light), emissiveIntensity: 1.2, roughness: 0.2 });
   const crown = new MeshBasicMaterial({ color: new Color(GOD.light), transparent: true, opacity: 0.8, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
@@ -169,6 +184,8 @@ export function createGodSkin(): Skin {
   // The hero detail: engraving, layered armour, robe folds, filigree and jewels (`god-detail.ts`).
   addGodDetail({ body, crown, mask: g.mask, gold: g.gold, armour: g.armour, robe: g.robe, crownLight: g.crown, jewel: g.eyeLight });
   const filigree = crown.getObjectByName('filigree');
+  const bodyRim = divineRim(BODY_RIM, 4);
+  for (const surface of [g.mask, g.gold, g.armour, g.robe]) addDivineLight(surface, bodyRim);
 
   // Gyroscope rings round the body.
   const gyro = new Group();
@@ -255,9 +272,11 @@ export function createGodSkin(): Skin {
       shard.position.y = HUMAN_NECK_Y - 0.05 + 0.08 * Math.sin(pose.t * 1.1 + i * 2) * a + 0.25 * pose.drama;
       shard.rotation.y = spin * 0.8 * side;
     });
-    shardMaterial.emissiveIntensity = 0.35 * flare;
-    g.iris.emissiveIntensity = 1.2 * flare;
-    lamp.intensity = 0.35 * flare;
+    const bodyFlare = Math.min(flare, BODY_FLARE_CAP);
+    shardMaterial.emissiveIntensity = 0.35 * bodyFlare;
+    g.iris.emissiveIntensity = 1.2 * bodyFlare;
+    lamp.intensity = 0.35 * bodyFlare;
+    bodyRim.strength.value = BODY_RIM * (0.7 + 0.3 * f.mood.presence) * bodyFlare;
     motes.update(f, energy);
   }
 

@@ -65,3 +65,8 @@
 - **Context:** FIX-0026. Six reads addressed the node by a cache key that used to equal the graph id. Every live test ran on a whole scratch graph, where the key and the address are the same, so all were green while the released app could not read a keeper's level from its sub-graph.
 - **Lesson:** a test proves only the shape it runs in. When the real data moves (a sub-graph, a new table, a new tenant), the tests move with it in the same change, and a value that is a label is given a name that cannot be mistaken for an address.
 - **Rule added:** live memory tests use a sub-graph place; `structure.test.ts` fails if `hot_key()` reaches a node call.
+
+### LES-014 — Under bloom, a surface is either a light or it is not (2026-11-27)
+- **Context:** the God Keeper's glow work kept raising emissive and lights on the body; the bloom pass then took the ivory robe and polished gold as lights and every detail made for them vanished.
+- **Lesson:** with a luminance-threshold bloom, radiance belongs to emitters (halos, rays, rims, motes); a lit surface that must show detail is held under the threshold by construction, not by tuning each light.
+- **Rule added:** bodies meant to look radiant wear `parts/divine-light.ts` (soft ceiling + rim); a flare multiplies emitters freely but the body's lights through a cap.
