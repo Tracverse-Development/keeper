@@ -8,6 +8,23 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.15.0] - 2026-11-27
+
+### Added
+- Every keeper in more detail. The dog has real fur, a stronger brow, cheek tufts, a nose with nostrils and toes. The owl is fully feathered, with a barred chest, feathered ear tufts, layered wings, a hooked beak and talons. The man and the woman have sculpted faces with real noses, ears and lips, hands with fingers, and textured hair (a fade and a beard for him, coils for her). The robot has panel seams, screws, cables and inner light in its visor. The God Keeper has engraved gold, layered armour, robe folds and a second ring of rays.
+- Little moments with what they wear: when idle, the owl adjusts its spectacles and settles its cloak, the dog sniffs its brooch and looks at its booties, people check their watch and tug their tie, the robot taps its visor and bobs in its headphones, and the God Keeper's crown flares.
+- Stage moods: neon, lamplight, dawn, starfield and celestial light, which really light the keeper. The stage takes a set's mood on its own when three pieces of that set are worn.
+- Glowing eyes: a glow on the eyes now lights the iris round a dark pupil.
+- Turn around in the Studio: drag beside the keeper to turn it and see its back (packs, cloaks, wings), or press Turn around. It returns to the front by itself.
+- A set for each mode: tie a set to a mode, and the keeper changes into it when it switches to that mode, and back when it leaves.
+- When a level opens new pieces, a note says how far each set has come ("Gala Night: 4 of 5 ready"), and new pieces are marked New.
+- Two new pieces: the Ranger Jacket (worn leather, stitching, belts and arm bands) and the Cord Necklace (three twisted cords, a glowing brooch and a swinging chain).
+
+### Changed
+- Sleeves follow the arms: when a keeper waves, the sleeve, cuff and arm band go with it.
+- Shoes are real shoes: soles, heels and shaped toes, laces and eyelets, straps on sandals, a heel on heels, soft booties for paws.
+- The keeper card shows the set it wears and its rarest piece.
+
 ## [0.14.0] - 2026-11-27
 
 ### Added

@@ -111,12 +111,19 @@ pub struct KeeperProfile {
     /// copy until a confirmed clean-up removes it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_graph: Option<String>,
+    /// The set it changes into in each mode (mode id → official set id; `keepers::kit::loadout`).
+    /// Left out (an older profile, an older window) = none, and saving without it keeps it (LES-039).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub loadouts: std::collections::BTreeMap<String, String>,
+    /// What it wore before a mode's loadout went on, put back when it leaves for a mode without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub home_outfit: Option<Vec<WornPart>>,
 }
 
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None }
     }
 }
 
@@ -274,7 +281,7 @@ impl Settings {
             wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
-            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None
+            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None
         });
         self.active_keeper = "keeper-1".into();
     }

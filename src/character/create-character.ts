@@ -11,7 +11,7 @@
  */
 import { Raycaster, Vector2, type Camera } from 'three';
 import { Animator } from './animator';
-import type { Character, Emote, HitRegion, Habits, Look, Mood, TouchKind, WornPart } from './contract';
+import type { Character, Emote, HitRegion, Habits, Look, Mood, StageMood, TouchKind, WornPart } from './contract';
 import { createEffectLayer } from './effects/effect-layer';
 import { isEmote } from './emotes';
 import { isMood } from './moods';
@@ -21,6 +21,8 @@ import { DEFAULT_SKIN_ID, createSkin, resolveSkinId } from './skins';
 import { createBackdrop } from './stage/backdrop';
 import { createMemorySparks } from './stage/memory-spark';
 import { createStage } from './stage/scene';
+import { createMoodRig } from './stage/stage-mood';
+import { isStageMood, moodOfWear } from './stage/stage-moods';
 import { createTouchSparkles } from './stage/touch-sparkles';
 import { Wardrobe } from './wardrobe';
 
@@ -36,6 +38,8 @@ export interface CreateCharacterOptions {
   look?: Look;
   /** The keeper's habits, 0 never .. 3 often (default: the species' own). */
   habits?: Habits;
+  /** The stage's mood (default `auto`: a glowing set's mood, else the classic night). */
+  stageMood?: StageMood | 'auto';
 }
 
 export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharacterOptions = {}): Character {
@@ -52,12 +56,21 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
   stage.scene.add(wardrobe.group, sparks.group, touchSparkles.group, effects.group);
 
   const animator = new Animator({ stage, skins, wardrobe, touchSparkles, backdrop, effects });
+  // The stage's light: a mood chosen outright, or (auto) the mood of the set the outfit glows with.
+  const moods = createMoodRig(stage, backdrop);
+  let moodChoice: StageMood | 'auto' = options.stageMood ?? 'auto';
+  let worn: readonly WornPart[] = options.wearables ?? DEFAULT_WEARABLES;
+  const applyMood = (instant: boolean): void => moods.set(moodChoice === 'auto' ? moodOfWear(worn) ?? 'night' : moodChoice, instant);
+  applyMood(true);
   animator.setLook(options.look ?? {});
   animator.setHabits(options.habits ?? {});
   const hitTest = createHitTester(stage.camera, skins);
 
   const reducedMotion = window.matchMedia?.(REDUCED_MOTION_QUERY);
-  const onMotionChange = (): void => animator.setReducedMotion(Boolean(reducedMotion?.matches));
+  const onMotionChange = (): void => {
+    animator.setReducedMotion(Boolean(reducedMotion?.matches));
+    moods.setReducedMotion(Boolean(reducedMotion?.matches));
+  };
   onMotionChange();
   reducedMotion?.addEventListener('change', onMotionChange);
 
@@ -86,6 +99,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     fitToCanvas(); // cheap; catches a pixel-ratio change when the window moves screens
     const seconds = lastTimestamp === undefined ? 0 : (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
+    moods.update(seconds);
     animator.frame(seconds);
   };
 
@@ -115,7 +129,15 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       animator.setSkin(createSkin(next));
     },
     setWearables(parts: readonly WornPart[]) {
-      if (!disposed && Array.isArray(parts)) animator.setWearables(parts);
+      if (disposed || !Array.isArray(parts)) return;
+      animator.setWearables(parts);
+      worn = parts;
+      applyMood(false);
+    },
+    setStageMood(mood: StageMood | 'auto') {
+      if (disposed || (mood !== 'auto' && !isStageMood(mood))) return;
+      moodChoice = mood;
+      applyMood(false);
     },
     setLook(look: Look) {
       if (!disposed) animator.setLook(look);
@@ -133,6 +155,15 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     },
     carry(offset) {
       if (!disposed) animator.carry(offset);
+    },
+    turn(command) {
+      if (disposed || !command || typeof command !== 'object') return;
+      const t = animator.turn;
+      if (command.kind === 'drag') t.drag(command.delta, command.time);
+      else if (command.kind === 'release') t.release(command.time);
+      else if (command.kind === 'to') t.to(command.yaw);
+      else if (command.kind === 'by') t.by(command.delta);
+      else if (command.kind === 'around') t.around();
     },
     snapshot() {
       if (disposed) return null;
@@ -162,6 +193,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
       touchSparkles.dispose();
       effects.dispose();
       wardrobe.dispose();
+      moods.dispose();
       backdrop.dispose();
       stage.dispose();
     },

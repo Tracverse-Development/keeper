@@ -189,6 +189,8 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
                 voice: None,
                 style: String::new(),
                 feelings_off: false,
+                loadouts: Default::default(),
+                home_outfit: None,
             };
             super::write_profile(&client, &profile, &bp.soul).await?;
             let id = profile.id.clone();

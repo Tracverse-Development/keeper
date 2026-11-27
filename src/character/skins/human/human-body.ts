@@ -31,6 +31,7 @@ import {
 } from 'three';
 import { profilePoint, type Ring } from '../../parts/fit.ts';
 import { addSoftEyes, type SoftEyes } from '../soft-eyes';
+import { addBrowStrokes, addFaceDetail, buildHand, sculptedHead, surfaceZ } from './human-face';
 import { HUMAN_EYES, HUMAN_HEAD_Y, HUMAN_NECK_Y, HUMAN_SOLE_Y, handY, type HumanFrame } from './human-shape';
 
 export interface HumanMaterials {
@@ -79,6 +80,10 @@ export interface HumanRig {
 
 /** How far a waving arm lifts (radians about z) and how much it waves. */
 const WAVE_LIFT = 1.95;
+/** The brows' length (head units): the soft eyes' brow capsule and the hair strokes on it. */
+const BROW_LENGTH = 0.13;
+/** The mouth's height on the face (head space). */
+export const MOUTH_Y = -0.33;
 
 export function buildHumanRig(style: HumanStyle): HumanRig {
   const { frame, materials: m } = style;
@@ -123,10 +128,11 @@ export function buildHumanRig(style: HumanStyle): HumanRig {
   head.name = 'human-head';
   head.position.y = HUMAN_HEAD_Y;
   body.add(head);
-  blob(head, m.skin, frame.head, [0, 0, 0]);
-  for (const side of [-1, 1]) blob(head, m.skin, [0.09, 0.15, 0.08], [side * frame.head[0] * 0.97, -0.05, -0.02]); // ears
-  blob(head, m.skin, [0.075, 0.085, 0.07], [0, -0.13, frame.head[2] * 0.97]); // nose
+  head.add(new Mesh(sculptedHead(frame), m.skin));
+  // The sculpted face (nose, cheeks, jaw, chin, ears) over the soft head (`human-face.ts`).
+  addFaceDetail(head, frame, m);
 
+  const before = new Set(head.children);
   const eyes = addSoftEyes(head, {
     radius: HUMAN_EYES.radius,
     position: [HUMAN_EYES.x, HUMAN_EYES.y, HUMAN_EYES.z],
@@ -134,17 +140,26 @@ export function buildHumanRig(style: HumanStyle): HumanRig {
     iris: 0.78,
     materials: { eye: m.eye, iris: m.iris, pupil: m.pupil, catchlight: m.catchlight, lid: m.skin, line: m.line },
     lashes: style.lashes,
-    brow: { length: 0.13, thickness: 0.026, lift: 0.02 },
+    brow: { length: BROW_LENGTH, thickness: 0.026, lift: 0.02 },
   });
+  // Hair strokes ride the brows the soft eyes just made.
+  addBrowStrokes(head.children.filter((c) => !before.has(c)), m.hair, BROW_LENGTH);
 
   // The mouth: a smiling line (an arc) that opens into a dark oval with lips round it.
   const mouth = new Group();
-  mouth.position.set(0, -0.33, frame.head[2] * 0.86);
+  // On the sculpted skin (`surfaceZ`), so the lips stand just proud of it.
+  mouth.position.set(0, MOUTH_Y, surfaceZ(frame, 0, MOUTH_Y) - 0.012);
   mouth.rotation.x = -0.18;
   head.add(mouth);
   const smileArc = new Mesh(new TorusGeometry(0.12, 0.02, 8, 28, Math.PI), m.line);
   smileArc.rotation.z = Math.PI; // the arc opens upward: a smile
   mouth.add(smileArc);
+  // Closed lips round the smile line: a fuller lower lip, a cupid's-bow upper lip.
+  const closedLips = new Group();
+  mouth.add(closedLips);
+  blob(closedLips, m.lips, [0.1, 0.022, 0.03], [0, 0.03, -0.008]);
+  for (const side of [-1, 1]) blob(closedLips, m.lips, [0.05, 0.02, 0.028], [side * 0.035, 0.036, -0.006]);
+  blob(closedLips, m.lips, [0.085, 0.032, 0.036], [0, -0.035, -0.006]);
   const opening = blob(mouth, m.mouth, [0.1, 0.06, 0.05], [0, -0.04, 0]);
   const lip = new Mesh(new TorusGeometry(1, 0.18, 8, 28), m.lips);
   lip.scale.set(0.1, 0.06, 0.05);
@@ -166,7 +181,10 @@ export function buildHumanRig(style: HumanStyle): HumanRig {
       const a = Math.min(Math.max(Math.max(open, o * 0.8), 0), 1);
       const s = Math.min(Math.max(smile, -1), 1);
       // Closed: only the smile line (curving up as it smiles, flat or down when sad).
-      smileArc.visible = a < 0.12;
+      smileArc.visible = closedLips.visible = a < 0.12;
+      // The lips follow the smile: wider and lifted at a smile, pressed at a frown.
+      closedLips.scale.set(1 + 0.12 * Math.max(s, 0) - 0.15 * o, 1 - 0.2 * Math.abs(s), 1);
+      closedLips.position.y = 0.012 * s;
       smileArc.scale.set(1 - 0.15 * o, 0.25 + 0.75 * s, 1);
       smileArc.position.y = 0.03 * (1 - s);
       if (s < 0) smileArc.rotation.z = 0; // a frown: the arc turns over
@@ -204,10 +222,8 @@ function addArm(body: Object3D, frame: HumanFrame, m: HumanMaterials, side: numb
   const limb = new Mesh(new CapsuleGeometry(arm.radius, arm.length * 0.82, 6, 16), m.skin);
   limb.position.y = -arm.length * 0.5;
   joint.add(limb);
-  const hand = new Mesh(new SphereGeometry(arm.hand, 24, 18), m.skin);
-  hand.position.y = handY(frame);
-  hand.scale.set(1, 1.1, 0.85);
-  joint.add(hand);
+  // A hand with fingers and a thumb (`human-face.ts`), centred where held things sit.
+  joint.add(buildHand(m.skin, frame, side, handY(frame)));
   return joint;
 }
 

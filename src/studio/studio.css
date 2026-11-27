@@ -5,6 +5,7 @@
 .studio-actions { display: flex; align-items: center; gap: var(--space-3); }
 .studio-stage { position: relative; border-radius: var(--radius-lg); background: radial-gradient(70% 60% at 50% 45%, rgba(211, 151, 68, .14), transparent 70%), var(--surface); border: 1px solid var(--border); overflow: hidden; min-height: 320px; }
 .studio-character { position: absolute; inset: 0; }
+.studio-turn { position: absolute; top: var(--space-3); right: var(--space-3); z-index: 1; background: rgba(7, 10, 22, .7); }
 .studio-caption { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: var(--space-2) var(--space-4); border-radius: 999px; background: rgba(7, 10, 22, .7); border: 1px solid var(--border); font-size: var(--text-sm); animation: studio-in .2s var(--ease) both; }
 .studio-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .studio-chip { display: inline-flex; align-items: center; gap: var(--space-2); border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: var(--space-2) var(--space-4); border-radius: 999px; font: inherit; font-size: var(--text-base); cursor: pointer; transition: border-color .15s var(--ease), background .15s var(--ease); }
@@ -186,3 +187,6 @@
 .set-others { display: flex; flex-direction: column; gap: var(--space-3); }
 .set-others summary { cursor: pointer; color: var(--text-muted); padding-block: var(--space-2); }
 .studio-chip:disabled { opacity: .55; cursor: not-allowed; }
+.set-loadout { display: flex; align-items: center; gap: var(--space-2); }
+.set-loadout select { flex: 1; min-width: 0; }
+.tag-new { color: var(--gold-400); border-color: var(--gold-500); }

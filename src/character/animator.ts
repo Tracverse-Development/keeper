@@ -46,6 +46,7 @@ import type { SkinSwitcher } from './skin-switcher';
 import type { Skin } from './skins';
 import type { Backdrop } from './stage/backdrop';
 import { CameraFocus } from './stage/camera-focus';
+import { CameraTurn } from './stage/camera-turn';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
 import type { WornPart } from './contract';
@@ -121,6 +122,9 @@ export class Animator {
   private habits: unknown = {};
   private paintedKey: string | null = null;
   private readonly camera = new CameraFocus();
+  /** The Studio's turn round the keeper (`stage/camera-turn.ts`), on top of the zone focus. */
+  readonly turn = new CameraTurn();
+  private turned = false;
   private focusedZone: string | null = null;
 
   constructor(parts: StageParts) {
@@ -306,6 +310,14 @@ export class Animator {
     for (const rim of stage.rimLights) rim.intensity = 1.25 * (0.3 + 0.7 * p.presence);
     stage.bloom.strength = 0.45 + 0.15 * Math.min(p.haloGlow, 1.6);
     this.camera.step(dt, stage.camera, stage.home);
+    this.turn.step(dt);
+    if (this.turn.active || this.turned) {
+      // The focus wrote this frame's pose when busy; at home the pose is the home framing.
+      const target = this.camera.busy ? this.camera.target : stage.home.target;
+      if (!this.camera.busy) stage.camera.position.copy(stage.home.position);
+      this.turn.apply(stage.camera, stage.camera.position, target);
+      this.turned = this.turn.active;
+    }
     stage.render();
   }
 

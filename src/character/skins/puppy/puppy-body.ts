@@ -65,6 +65,8 @@ export interface ScratchLeg {
 /** Where the scratching paw reaches (body space): up by the ear on its side. */
 const SCRATCH_REACH = [-0.86, -0.42, 0.22] as const;
 const SHIN_RADIUS = 0.1;
+/** The toes on each front paw: their half-extents, how far apart, and how far below the paw's centre. */
+const TOE = { radii: [0.062, 0.06, 0.07] as const, spread: 0.085, lift: -0.035 };
 
 export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
   const m = kit.materials;
@@ -93,6 +95,8 @@ export function addPuppyBody(parent: Object3D, kit: PuppyKit): PuppyBody {
     leg.rotation.x = LEG.tilt; // top rounds into the chest as a shoulder, paw forward
     holder.add(leg);
     kit.blob(holder, m.paws, FP.radii, [side * FP.x - ox, FP.y - oy, FP.z - oz]); // front paw
+    // Three toe pads rounding the front of the paw, inside its published foot (booties still fit).
+    for (const toe of [-1, 0, 1]) kit.blob(holder, m.paws, TOE.radii, [side * FP.x + toe * TOE.spread - ox, FP.y + TOE.lift - oy, FP.z + FP.radii[2] - TOE.radii[2] - oz]);
   }
 
   const collar = new Mesh(new TorusGeometry(PUPPY_COLLAR.radius, PUPPY_COLLAR.tube, 24, 96), m.collar);

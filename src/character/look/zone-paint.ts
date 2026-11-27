@@ -7,7 +7,8 @@
  * sets the surface (`MATERIAL_PRESETS`). Only plain numbers and colours change, so repainting
  * never rebuilds the rig; a feature switching on or off (a clearcoat or sheen lobe going to or
  * from 0) bumps the material's version once and three.js compiles that variant once, never per
- * frame. Skins call `paint` only when the look changes.
+ * frame. Skins call `paint` only when the look changes. The glow preset on an iris (`iris-glow.ts`)
+ * lights it as a luminous iris with a dark rim instead of one flat disc.
  *
  * Skins that also animate a value per frame (the robot's torso sheen breathes with presence)
  * read the painted rest value back (`rest`), so their animation rides on the painted surface.
@@ -15,7 +16,8 @@
  * `ZoneTarget` is what a zone paints: a material (the usual case) or a custom painter (the robot's
  * glyph eyes, its chest core light), so a skin can map any zone onto its own drawing.
  */
-import { Color, MeshPhysicalMaterial, type MeshStandardMaterial } from 'three';
+import { Color, MeshPhysicalMaterial, type MeshStandardMaterial, type Texture } from 'three';
+import { IRIS_GLOW, IRIS_GLOW_BASE, irisGlowMap, isIris } from './iris-glow.ts';
 import type { MaterialId, ResolvedZone } from './zones.ts';
 
 /** The surface each material id draws (applied over the colour; fields a material lacks are skipped). */
@@ -51,6 +53,7 @@ interface Snapshot {
   color: Color;
   emissive: Color;
   emissiveIntensity: number;
+  emissiveMap: Texture | null;
   roughness: number;
   metalness: number;
   clearcoat: number;
@@ -74,6 +77,7 @@ export class PaintableMaterial implements ZoneTarget {
       color: material.color.clone(),
       emissive: material.emissive.clone(),
       emissiveIntensity: material.emissiveIntensity,
+      emissiveMap: material.emissiveMap,
       roughness: material.roughness,
       metalness: material.metalness,
       clearcoat: this.physical ? m.clearcoat : 0,
@@ -101,6 +105,10 @@ export class PaintableMaterial implements ZoneTarget {
     m.color.copy(s.color);
     m.emissive.copy(s.emissive);
     m.emissiveIntensity = s.emissiveIntensity;
+    if (m.emissiveMap !== s.emissiveMap) {
+      m.emissiveMap = s.emissiveMap;
+      m.needsUpdate = true;
+    }
     m.roughness = s.roughness;
     m.metalness = s.metalness;
     const p = m as MeshPhysicalMaterial;
@@ -125,6 +133,13 @@ export class PaintableMaterial implements ZoneTarget {
     if (preset.emissive > 0) {
       m.emissive.copy(m.color);
       m.emissiveIntensity = preset.emissive;
+      if (isIris(m)) {
+        // A luminous iris: bright around the pupil, fibred, dark at the rim (never a flat disc).
+        m.emissiveIntensity = IRIS_GLOW;
+        m.color.multiplyScalar(IRIS_GLOW_BASE);
+        m.emissiveMap = irisGlowMap();
+        m.needsUpdate = true;
+      }
     }
     if (!this.physical) return;
     p.clearcoat = preset.clearcoat;

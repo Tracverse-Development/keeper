@@ -209,6 +209,8 @@ pub fn run() {
             keepers::keepers_create,
             keepers::keepers_activate,
             keepers::keepers_update,
+            keepers::loadout_commands::keeper_set_loadout,
+            keepers::loadout_commands::keeper_wear_mode,
             keepers::keepers_remove,
             keepers::kit_commands::kit_catalog,
             keepers::kit_commands::modes_save,

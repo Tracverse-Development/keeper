@@ -11,6 +11,44 @@ export interface CardFacts {
   level: number;
   soulName: string;
   species: string;
+  /** What it wears worth showing off (`cardOutfit`); absent = the card shows no outfit band. */
+  outfit?: CardOutfit;
+}
+
+/** The outfit band on the card: the set it wears whole enough to glow, and its rarest piece. */
+export interface CardOutfit {
+  set: string | null;
+  rarest: { name: string; rarity: string; colour: string } | null;
+}
+
+/** A worn piece as the card reads it (the core stamps `rarity` and, while three glow, `set`). */
+interface WornForCard {
+  item?: string;
+  rarity?: string;
+  set?: string;
+}
+
+/**
+ * What the card shows of the outfit: the glowing set's name, and the rarest piece worn (the first
+ * of equals) with its rarity's name and colour; null when nothing is worth a band.
+ */
+export function cardOutfit(
+  worn: readonly WornForCard[],
+  items: readonly { id: string; name: string }[],
+  sets: readonly { id: string; name: string }[],
+  rarities: readonly { id: string; name: string; level: number; color: string }[],
+): CardOutfit | undefined {
+  const setId = worn.find((w) => w.set)?.set;
+  const set = (setId && sets.find((s) => s.id === setId)?.name) || null;
+  const rank = (id: string | undefined) => rarities.findIndex((r) => r.id === id);
+  let best: WornForCard | null = null;
+  for (const w of worn) {
+    if (!w.item || !items.some((i) => i.id === w.item)) continue;
+    if (!best || rank(w.rarity) > rank(best.rarity)) best = w;
+  }
+  const rarity = best && rarities.find((r) => r.id === best.rarity);
+  const rarest = best && rarity && rank(rarity.id) > 0 ? { name: items.find((i) => i.id === best.item)?.name ?? '', rarity: rarity.name, colour: rarity.color } : null;
+  return set || rarest ? { set, rarest } : undefined;
 }
 
 /** The three lines under the picture. */

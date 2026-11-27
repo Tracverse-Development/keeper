@@ -27,6 +27,11 @@ export interface Limb {
   readonly length: number;
   /** Its tilt about x (radians), as the rig poses it. */
   readonly tilt: number;
+  /**
+   * The rig joint the limb rides (`skins/catalog.ts` `Bone`: a person's `leftArm`, the puppy's waving
+   * `paw`), so a sleeve on it moves when the arm waves. Absent: the limb never moves on its own.
+   */
+  readonly bone?: string;
 }
 
 /**
@@ -76,11 +81,19 @@ export interface PartFit {
   /** Present for worn slots; floating parts need only the anchor's scale. */
   readonly shape?: BodyShape;
   /**
-   * Live joints for a shape with feet: `feet[i]` rides foot i's bone (a paw that waves), `base` is
-   * the slot's anchor. A part follows them each frame (`followFoot`); absent (as in the fit test),
-   * every foot stays at its rest place.
+   * Live joints for a shape with feet or moving limbs: `feet[i]` rides foot i's bone (a paw that
+   * waves), `limbs[i]` limb i's (an arm that waves), `base` is the slot's anchor. A part follows them
+   * each frame; absent (as in the fit test), every foot and sleeve stays at its rest place.
    */
-  readonly follow?: { readonly base: Object3D; readonly feet: readonly Object3D[] };
+  readonly follow?: {
+    readonly base: Object3D;
+    readonly feet: readonly Object3D[];
+    /**
+     * One live joint per limb of the shape (`shape.limbs[i]`), riding that limb's bone, placed at the
+     * limb's top with the anchor's own turn at rest: a sleeve follows `limbs[i]` (`limb-follow.ts`).
+     */
+    readonly limbs?: readonly Object3D[];
+  };
 }
 
 /** A garment ring: its height and the half-width and half-depth it is cut to. */

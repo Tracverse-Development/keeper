@@ -29,6 +29,7 @@ import { crossSection, garmentRings, radiusAt, type BodyShape, type GarmentRing,
 import { piping, ringPoints } from '../fitted-shell.ts';
 import { garmentSway, glowTrim, hemOf, longRings, outward, patch, pushOut, scatterQuads, waistOf } from '../garment.ts';
 import { necklineOf } from '../jacket/jacket.ts';
+import { followLimbs } from '../limb-follow.ts';
 import type { PartFrame, PartInstance } from '../part';
 import { closed, frontEdges, onSurface, sleeveGeometry, straight, taperedShell, vee, type Opening, type SleeveSpec } from './top-shell.ts';
 
@@ -106,8 +107,10 @@ export function createTop(effects: EffectValues, fit: PartFit): PartInstance {
   const sparkle = styleId === 7 ? sequins(ctx, glow) : null;
 
   const sway = garmentSway(geometry, top, rings[rings.length - 1].y, SWAY * (style.long ? 2 : 1));
+  const followSleeves = followLimbs(group, shape, fit);
   function update(frame: PartFrame): void {
     sway(frame);
+    followSleeves();
     if (sparkle) sparkle.emissiveIntensity = glow * (0.1 + 0.08 * Math.sin(frame.time * 3.1) * Math.sin(frame.time * 1.7));
   }
   return { group, update, dispose: () => disposeTree(group) };

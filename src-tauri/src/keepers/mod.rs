@@ -9,6 +9,7 @@
 
 pub mod kit;
 pub mod kit_commands;
+pub mod loadout_commands;
 pub mod season_commands;
 pub mod studio_commands;
 pub mod wardrobe_commands;
@@ -111,7 +112,7 @@ pub struct KeeperList {
     pub roles: Vec<kit::roles::Role>,
 }
 
-fn list(state: &AppState) -> KeeperList {
+pub(crate) fn list(state: &AppState) -> KeeperList {
     let s = state.settings();
     let active = s.active().map(|k| k.id.clone()).unwrap_or_default();
     // Each worn item goes to the window with its rarity, so the character draws its tier.
@@ -192,7 +193,7 @@ pub async fn keepers_create(state: State<'_, AppState>, mut keeper: NewKeeper) -
         // Every keeper lives in the ONE home graph, in its own sub-graph.
         graph_id: graph_id_for(&seed, true),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {

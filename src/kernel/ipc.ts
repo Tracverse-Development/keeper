@@ -62,6 +62,10 @@ export const core = {
   systemLoad: () => invoke<SystemLoad>('system_load'),
   activateKeeper: (id: string) => invoke<KeeperList>('keepers_activate', { id }),
   updateKeeper: (id: string, change: KeeperChange) => invoke<KeeperSaved>('keepers_update', { id, change }),
+  /** Tie an official set to a mode for a keeper (null clears it). */
+  setLoadout: (keeper: string, mode: string, set: string | null) => invoke<KeeperList>('keeper_set_loadout', { keeper, mode, set }),
+  /** Dress a keeper for the mode on screen; true when its outfit changed. */
+  wearMode: (keeper: string, mode: string) => invoke<boolean>('keeper_wear_mode', { keeper, mode }),
   removeKeeper: (id: string) => invoke<KeeperList>('keepers_remove', { id }),
   chats: (keeper?: string) => invoke<Chat[]>('chats_list', { keeper }),
   chatTurns: (chat: string, keeper?: string) => invoke<Turn[]>('chat_turns', { keeper, chat }),

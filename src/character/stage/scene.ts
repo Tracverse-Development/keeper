@@ -53,6 +53,8 @@ export interface Stage {
   readonly faceLight: PointLight;
   /** The gold rim lights, dimmed together when the character sleeps. */
   readonly rimLights: readonly DirectionalLight[];
+  /** The ambient, key and fill lights (a stage mood tints them: `stage-mood.ts`). */
+  readonly lights: { readonly ambient: AmbientLight; readonly key: DirectionalLight; readonly fill: DirectionalLight };
   /** Where the camera stands and looks to frame the whole character (set by `resize`). */
   readonly home: { readonly position: Vector3; readonly target: Vector3 };
   /** Resize to CSS pixels; `pixelRatio` is capped at 2. */
@@ -82,7 +84,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100);
   const home = { position: new Vector3(), target: new Vector3() };
 
-  const { faceLight, rimLights } = addLights(scene);
+  const { faceLight, rimLights, lights } = addLights(scene);
 
   // MSAA on the HDR buffers keeps the glossy silhouette smooth even with post-processing.
   const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
@@ -110,6 +112,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     bloom,
     faceLight,
     rimLights,
+    lights,
     home,
     resize,
     render: () => composer.render(),
@@ -124,8 +127,9 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
 }
 
 /** Key, fill and two gold rim lights from behind, plus the eye-glow light on the face. */
-function addLights(scene: Scene): { faceLight: PointLight; rimLights: DirectionalLight[] } {
-  scene.add(new AmbientLight(PALETTE.navy500, 0.35));
+function addLights(scene: Scene): { faceLight: PointLight; rimLights: DirectionalLight[]; lights: Stage['lights'] } {
+  const ambient = new AmbientLight(PALETTE.navy500, 0.35);
+  scene.add(ambient);
 
   const key = new DirectionalLight(PALETTE.cream50, 1.25);
   key.position.set(-3, 4, 5);
@@ -145,7 +149,7 @@ function addLights(scene: Scene): { faceLight: PointLight; rimLights: Directiona
   faceLight.position.set(0, 0.6, 1.6);
   scene.add(faceLight);
 
-  return { faceLight, rimLights: [rimLeft, rimRight] };
+  return { faceLight, rimLights: [rimLeft, rimRight], lights: { ambient, key, fill } };
 }
 
 /** Places the camera so the subject fills VIEWPORT_SHARE of the height, or fits the width; writes the pose into `home`. */

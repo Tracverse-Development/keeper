@@ -53,7 +53,7 @@ pub struct Wardrobe {
 }
 
 /// The person's own items from the kit graph, and whether the node answered.
-async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
+pub(super) async fn own_items(state: &AppState) -> (Vec<Variant>, bool) {
     let Ok(client) = state.client() else { return (vec![], false) };
     match inventory::kit(&client, &state.kit_place()).await {
         Ok(graph) => match inventory::variants(&client, &graph).await {

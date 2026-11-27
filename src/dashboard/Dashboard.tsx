@@ -23,6 +23,8 @@ import { CommandPalette } from '../palette/CommandPalette';
 import { paletteCommands } from '../palette/palette-commands';
 import { levelUpLine } from '../studio/studio-view';
 import { useLevelUp } from '../studio/useLevelUp';
+import { useModeOutfit } from '../keepers/useModeOutfit';
+import { SetProgressToasts } from '../studio/SetProgressToasts';
 import { Stage } from '../stage/Stage';
 import { useVoice } from '../voice/useVoice';
 import { moodFor, phaseWords } from './mood';
@@ -219,6 +221,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
     }
   };
 
+  useModeOutfit(keeper, assistant.mode, keepers.reload);
+
   /** This chat's mode: the keeper works as that job from the next message on, and says so. */
   const switchMode = (mode: string) => {
     if (!keeper || mode === (assistant.mode || keeper.role)) return;
@@ -366,7 +370,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
         })}
       />
       {keeper && opened.memory && <Suspense fallback={null}><MemoryDrawer open={memoryOpen} keeper={keeper.id} onClose={() => setMemoryOpen(false)} refreshKey={events.pulse} /></Suspense>}
-      {keeper && opened.studio && <Suspense fallback={null}><StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} keeperNames={(keepers.list?.keepers ?? []).map((k) => k.name)} /></Suspense>}
+      <SetProgressToasts keeper={keeper?.id ?? null} />
+      {keeper && opened.studio && <Suspense fallback={null}><StudioPage open={studioOpen} keeper={keeper} soulName={kit.kit?.souls.find((s) => s.id === keeper.soul)?.name ?? keeper.soul} souls={kit.kit?.souls ?? []} onSoul={(soul) => void changeKeeper({ soul })} onClose={() => setStudioOpen(false)} onSaved={() => { kit.refresh(); keepers.reload(); }} keeperNames={(keepers.list?.keepers ?? []).map((k) => k.name)} modes={keepers.list?.roles ?? []} /></Suspense>}
       {keeper && opened.settings && (
         <Suspense fallback={null}>
         <SettingsSheet

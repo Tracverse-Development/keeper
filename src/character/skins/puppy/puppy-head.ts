@@ -1,7 +1,8 @@
 /**
- * The puppy's head: a round caramel skull with a cream blaze, cream cheeks and muzzle, a
- * glossy nose, a hinged lower jaw carrying the tongue, the eyes (`puppy-eyes.ts`) and two
- * long floppy ears.
+ * The puppy's head: a round caramel skull with a cream blaze, soft brow ridges in deeper caramel,
+ * cream cheeks with fluffy cheek tufts and a muzzle, a glossy nose with nostrils and the groove
+ * below it, a hinged lower jaw carrying the tongue, the eyes (`puppy-eyes.ts`) and two long
+ * floppy ears.
  *
  * Rig inside the head group (all joints are Groups, so the skin poses them freely):
  *   head
@@ -26,6 +27,12 @@ const JAW_MAX = 0.42;
 const TONGUE_REACH = 0.11;
 const NOSE_RADII = [0.12, 0.08, 0.09] as const;
 const NOSE_AT = [0, -0.07, 0.9] as const;
+/** The brow ridges over each eye: centre (side +1), half-extents and their tilt (outer end up). */
+const BROW = { at: [0.3, 0.31, 0.65] as const, radii: [0.15, 0.042, 0.075] as const, tilt: 0.22 };
+/** The cheek tufts: fluffy cream fullness either side of the muzzle (side +1). */
+const CHEEK_TUFT = { at: [0.48, -0.24, 0.38] as const, radii: [0.17, 0.15, 0.15] as const };
+/** Nostrils on the nose's front, in the nose's own unit space (side +1), and their size there. */
+const NOSTRIL = { at: [0.36, -0.22, 0.88] as const, radii: [0.22, 0.2, 0.2] as const };
 
 /** One ear's pose: swing out from the head, flop back, and droop forward (radians). */
 export interface EarPose {
@@ -54,8 +61,16 @@ export function addPuppyHead(parent: Object3D, kit: PuppyKit, centreY: number): 
   kit.blob(head, m.head, SKULL, [0, 0, 0]);
   kit.blob(head, m.muzzle, [0.17, 0.4, 0.12], [0, 0.14, 0.67]); // blaze between the eyes
   for (const side of [-1, 1]) kit.blob(head, m.muzzle, [0.25, 0.2, 0.24], [side * 0.19, -0.27, 0.56]); // cheeks
+  for (const side of [-1, 1]) {
+    kit.blob(head, m.muzzle, CHEEK_TUFT.radii, [side * CHEEK_TUFT.at[0], CHEEK_TUFT.at[1], CHEEK_TUFT.at[2]]); // cheek tufts
+    const brow = kit.blob(head, m.ears, BROW.radii, [side * BROW.at[0], BROW.at[1], BROW.at[2]]);
+    brow.rotation.set(-0.35, side * 0.4, side * BROW.tilt);
+  }
   kit.blob(head, m.muzzle, [0.3, 0.2, 0.27], [0, -0.2, 0.64]); // muzzle
   const nose = kit.blob(head, m.nose, NOSE_RADII, NOSE_AT);
+  // Nostrils ride the nose (they puff with its sniff); the groove runs down from it to the mouth.
+  for (const side of [-1, 1]) kit.blob(nose, m.mouth, NOSTRIL.radii, [side * NOSTRIL.at[0], NOSTRIL.at[1], NOSTRIL.at[2]]).userData.noFur = true;
+  kit.blob(head, m.mouth, [0.009, 0.06, 0.012], [0, -0.19, 0.895]).userData.noFur = true;
   kit.blob(head, m.mouth, [0.16, 0.09, 0.16], [0, -0.34, 0.6]); // inside of the mouth
 
   const jaw = new Group();

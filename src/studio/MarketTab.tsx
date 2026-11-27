@@ -37,6 +37,9 @@ interface Props {
   onTrySet: (set: string | null) => void;
   /** The names of the person's keepers, and showing or adding a starter keeper. */
   keeperNames: string[];
+  /** The modes, and tying a set to one (null: untie); resolves when saved. */
+  modes: { id: string; title: string }[];
+  onLoadout: (mode: string, set: string | null) => Promise<unknown>;
   onTryStarter: (starter: Starter | null) => void;
   onStarterAdded: () => void;
 }
@@ -51,7 +54,7 @@ const SIDES: { id: Side; name: string }[] = [
   { id: 'keepers', name: 'Keepers' },
 ];
 
-export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed, onWearSet, onTrySet, keeperNames, onTryStarter, onStarterAdded }: Props) {
+export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed, onWearSet, onTrySet, keeperNames, onTryStarter, onStarterAdded, modes, onLoadout }: Props) {
   const [side, setSide] = useState<Side>('shop');
   const [filter, setFilter] = useState<MarketFilter>('all');
   const [search, setSearch] = useState('');
@@ -122,7 +125,7 @@ export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTr
         </>
       )}
 
-      {side === 'sets' && wardrobe && <SetsShelf info={info} keeperId={keeper.id} keeperName={keeper.name} wardrobe={wardrobe} busy={busy} onWearSet={onWearSet} onTrySet={onTrySet} />}
+      {side === 'sets' && wardrobe && <SetsShelf info={info} keeperId={keeper.id} keeperName={keeper.name} wardrobe={wardrobe} busy={busy} onWearSet={onWearSet} onTrySet={onTrySet} modes={modes} loadouts={keeper.loadouts ?? {}} onLoadout={onLoadout} />}
 
       {side === 'community' && <Community keeper={keeper} soulName={soulName} onImported={onImported} />}
 

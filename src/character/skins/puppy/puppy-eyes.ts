@@ -12,6 +12,7 @@
  * `stars` makes the catchlights swell and glint (celebration). All 0 = as before.
  */
 import { Group, Mesh, SphereGeometry, TorusGeometry, Vector3, type Object3D } from 'three';
+import { markIris } from '../../look/iris-glow.ts';
 import type { PuppyKit } from './puppy-kit';
 
 const EYE_RADIUS = 0.2;
@@ -52,6 +53,7 @@ export interface PuppyEyes {
 
 export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
   const m = kit.materials;
+  markIris(m.iris); // the glow material lights it as a luminous iris (`look/iris-glow.ts`)
   const lidRadius = EYE_RADIUS * 1.07;
   const upperCap = new SphereGeometry(lidRadius, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
   const lowerCap = new SphereGeometry(lidRadius, 48, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);

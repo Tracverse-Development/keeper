@@ -90,6 +90,8 @@ const FRAGMENT = /* glsl */ `
 
 export interface Backdrop {
   readonly mesh: Mesh;
+  /** The sky's colours (deep edge, middle, the glow behind the character, the wave crests), for stage moods to tint. */
+  readonly palette: { readonly deep: Color; readonly mid: Color; readonly high: Color; readonly gold: Color };
   setAspect(aspect: number): void;
   update(time: number, presence: number): void;
   dispose(): void;
@@ -120,6 +122,7 @@ export function createBackdrop(): Backdrop {
 
   return {
     mesh,
+    palette: { deep: uniforms.uDeep.value, mid: uniforms.uMid.value, high: uniforms.uHigh.value, gold: uniforms.uGold.value },
     setAspect(aspect) {
       uniforms.uAspect.value = aspect;
     },

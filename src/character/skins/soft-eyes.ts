@@ -11,6 +11,7 @@
  * Everything is a rotation or a scale set per frame; nothing is rebuilt.
  */
 import { BoxGeometry, CapsuleGeometry, Group, Mesh, SphereGeometry, TorusGeometry, type Material, type Object3D } from 'three';
+import { markIris } from '../look/iris-glow.ts';
 
 export interface SoftEyeSpec {
   readonly radius: number;
@@ -62,6 +63,8 @@ const LOWER_RAISED = 0.36;
 export function addSoftEyes(head: Object3D, spec: SoftEyeSpec): SoftEyes {
   const r = spec.radius;
   const m = spec.materials;
+  // Painted with the glow material, this iris lights as a luminous ring, not a flat disc.
+  markIris(m.iris);
   const ball = new SphereGeometry(r, 40, 28);
   const upperCap = new SphereGeometry(r * 1.07, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2);
   const lowerCap = new SphereGeometry(r * 1.07, 40, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);

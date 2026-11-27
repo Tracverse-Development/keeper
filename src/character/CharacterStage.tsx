@@ -21,11 +21,12 @@
  * render causes nothing.
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { Character, Feeling, Habits, HitRegion, Look, Mood, TouchKind, WornPart, Emote } from './contract';
+import type { Character, Feeling, Habits, HitRegion, Look, Mood, StageMood, TouchKind, WornPart, Emote } from './contract';
 import { createCharacter } from './create-character';
 import { DEFAULT_WEARABLES } from './parts';
 import { DEFAULT_SKIN_ID } from './skins/catalog';
 import { attachTouchGestures } from './touch-gestures';
+import { attachTurnGesture } from './turn-gesture';
 
 export interface CharacterStageProps {
   /** Which look to wear (`SKINS` ids); changing it plays the swap. Default: the robot. */
@@ -53,12 +54,22 @@ export interface CharacterStageProps {
   feeling?: Feeling | null;
   /** Filled with a function that takes a picture of the character (`Character.snapshot`) while it is mounted. */
   snapshotRef?: { current: (() => string | null) | null };
+  /**
+   * The Studio's back view: drag around the keeper to turn round it, double click to face front,
+   * arrow keys and T on the focused stage (`turn-gesture.ts`). Read once, at mount.
+   */
+  turnable?: boolean;
+  /** Each new value turns it round (`Character.turn` `around`): the "Turn around" button. */
+  turnAround?: number;
+  /** The stage's light mood (`Character.setStageMood`); absent = `auto` (a glowing set's mood, else night). */
+  stageMood?: StageMood | 'auto';
   /** Called once per touch gesture on the character, after its reaction started. */
   onTouch?: (kind: TouchKind, region: HitRegion) => void;
   className?: string;
 }
 
 const NO_LOOK: Look = {};
+const TURN_LABEL = 'Your keeper. Drag beside it, or press the left and right arrow keys, to turn it round; T turns it to show its back.';
 const NO_HABITS: Habits = {};
 const CANVAS_STYLE: CSSProperties = { display: 'block', width: '100%', height: '100%', touchAction: 'none' };
 
@@ -75,8 +86,8 @@ export function CharacterStage(props: CharacterStageProps) {
   const lastPulse = useRef(memoryPulse);
   const lastEmote = useRef(props.emote?.n ?? 0);
   // The latest props, read once at mount so the new character starts in the right state.
-  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null });
-  initial.current = { skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null };
+  const initial = useRef({ skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null, turnable: props.turnable ?? false });
+  initial.current = { skin, mood, voiceLevel, mouth, wearables, work, look, habits, focusZone, feeling: props.feeling ?? null, turnable: props.turnable ?? false };
   const onTouchRef = useRef(onTouch);
   onTouchRef.current = onTouch;
 
@@ -109,9 +120,11 @@ export function CharacterStage(props: CharacterStageProps) {
     };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     const detachTouch = attachTouchGestures(canvas, character, (kind, region) => onTouchRef.current?.(kind, region));
+    const detachTurn = initial.current.turnable ? attachTurnGesture(canvas, character) : () => undefined;
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
       detachTouch();
+      detachTurn();
       if (snapshotRef) snapshotRef.current = null;
       character.dispose();
       characterRef.current = null;
@@ -126,6 +139,7 @@ export function CharacterStage(props: CharacterStageProps) {
   useEffect(() => characterRef.current?.focusZone(focusZone), [focusZone]);
   useEffect(() => characterRef.current?.setFeeling(JSON.parse(feelingKey) as Feeling | null), [feelingKey]);
   useEffect(() => characterRef.current?.setMood(mood), [mood]);
+  useEffect(() => characterRef.current?.setStageMood(props.stageMood ?? 'auto'), [props.stageMood]);
   useEffect(() => characterRef.current?.setVoiceLevel(voiceLevel), [voiceLevel]);
   useEffect(() => characterRef.current?.setMouth(mouth), [mouth]);
   useEffect(() => {
@@ -133,11 +147,22 @@ export function CharacterStage(props: CharacterStageProps) {
     lastPulse.current = memoryPulse;
   }, [memoryPulse]);
 
+  const lastTurn = useRef(props.turnAround ?? 0);
+  useEffect(() => {
+    const n = props.turnAround ?? 0;
+    if (n > lastTurn.current) characterRef.current?.turn({ kind: 'around' });
+    lastTurn.current = n;
+  }, [props.turnAround]);
+
   useEffect(() => {
     const e = props.emote;
     if (e && e.n > lastEmote.current) characterRef.current?.emote(e.name);
     lastEmote.current = e?.n ?? lastEmote.current;
   }, [props.emote]);
 
+  if (props.turnable) {
+    // Focusable, so the arrow keys and T can turn it (`turn-gesture.ts`).
+    return <canvas ref={canvasRef} className={className} style={CANVAS_STYLE} tabIndex={0} role="img" aria-label={TURN_LABEL} />;
+  }
   return <canvas ref={canvasRef} className={className} style={CANVAS_STYLE} aria-hidden="true" />;
 }

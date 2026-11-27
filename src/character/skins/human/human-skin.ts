@@ -13,7 +13,7 @@
  * Slots: the man and the woman offer every slot but paws, including the face (spectacles), the left
  * wrist (a watch) and the right hand (something held): the human-only pieces.
  */
-import { Color, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, Object3D, SphereGeometry, TorusGeometry, type Group } from 'three';
+import { Color, MeshBasicMaterial, MeshPhysicalMaterial, Object3D } from 'three';
 import type { TouchKind } from '../../contract';
 import { disposeTree } from '../../dispose-tree';
 import { measureZones, zonesByMaterial, type ZoneParts } from '../../look/zone-focus';
@@ -26,8 +26,11 @@ import { addHitProxy } from '../hit-proxy';
 import type { Skin, SkinFrame } from '../skin';
 import { poseSoftBody, softEyePose } from '../soft-pose';
 import { buildHumanRig, poseArms, type Blob, type HumanMaterials, type HumanRig, type HumanStyle } from './human-body';
+import { BEARD_COLOUR, dressManHair, dressWomanHair, syncHair, type ManHair } from './human-hair';
 import { HUMAN_HEAD_Y, MAN_FRAME, WOMAN_FRAME, type HumanFrame } from './human-shape';
 import { HUMAN_REACTIONS as R } from './reactions';
+import { createItemMoments } from '../../item-moments';
+import { HUMAN_MOMENTS, poseHumanMoment } from './human-moments';
 
 export type HumanVariant = 'man' | 'woman';
 
@@ -35,6 +38,8 @@ export type HumanVariant = 'man' | 'woman';
 const HUMAN_ROOT_Y = 0.12;
 /** People are drawn a touch larger than their frame (the frame stays the unit the slots are measured in). */
 export const HUMAN_SCALE = 1.1;
+/** How much of its own colour the skin gives off (a hint of light scattered under the skin). */
+const SKIN_GLOW = 0.08;
 
 /** Skin and hair colours (not brand tokens): warm deep browns under the gold rim lights. */
 const TONES = {
@@ -44,7 +49,17 @@ const TONES = {
 
 /** The materials a human is made of; the zones own skin, hair, iris, top, bottom and shoes. */
 export function humanMaterials(tone: (typeof TONES)[HumanVariant]): HumanMaterials {
-  const skin = new MeshPhysicalMaterial({ color: tone.skin, roughness: 0.52, sheen: 0.5, sheenRoughness: 0.5, sheenColor: new Color(0xffc9a0), clearcoat: 0.15, clearcoatRoughness: 0.5 });
+  // Skin: a soft sheen and a faint warm glow from within (light scattered under the skin), a thin oily coat.
+  const skin = new MeshPhysicalMaterial({
+    color: tone.skin,
+    roughness: 0.5,
+    sheen: 0.6,
+    sheenRoughness: 0.45,
+    sheenColor: new Color(0xffc29a),
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.45,
+    emissive: new Color(tone.skin).multiplyScalar(SKIN_GLOW),
+  });
   const cloth = (color: number, roughness = 0.8) =>
     new MeshPhysicalMaterial({ color, roughness, sheen: 0.8, sheenRoughness: 0.55, sheenColor: new Color(color).lerp(new Color(0xffffff), 0.25) });
   return {
@@ -63,59 +78,44 @@ export function humanMaterials(tone: (typeof TONES)[HumanVariant]): HumanMateria
   };
 }
 
-/** A cap of hair over the crown and back of the head, tilted back so the forehead shows. */
-export function hairCap(head: Group, material: MeshPhysicalMaterial, radii: readonly [number, number, number], cover: number, tilt: number): Mesh {
-  const cap = new Mesh(new SphereGeometry(1, 56, 32, 0, Math.PI * 2, 0, cover), material);
-  cap.scale.set(...radii);
-  cap.rotation.x = -tilt;
-  cap.position.set(0, 0.02, -0.02);
-  head.add(cap);
-  return cap;
+/** A style and the hair it was dressed with (the man's fade follows the painted hair colour). */
+interface Dressed {
+  readonly style: HumanStyle;
+  readonly hair: { current: ManHair | null };
 }
 
-function manStyle(m: HumanMaterials): HumanStyle {
+function manStyle(m: HumanMaterials): Dressed {
   // The beard is the hair's colour, a little softer (short hair catches more light).
   const beardMaterial = m.hair.clone();
-  beardMaterial.color.setHex(0x34241b);
+  beardMaterial.color.copy(BEARD_COLOUR);
   beardMaterial.roughness = 0.85;
   const dressed = { ...m, beard: beardMaterial };
+  const hair: Dressed['hair'] = { current: null };
   return {
-    frame: MAN_FRAME,
-    materials: dressed,
-    legs: 'trousers',
-    lashes: 0,
-    dress(head) {
-      const m = dressed;
-      hairCap(head, m.hair, [0.775, 0.815, 0.755], 1.32, 0.55);
-      // A trimmed beard along the jaw and chin, under the mouth.
-      const beard = new Mesh(new SphereGeometry(1, 48, 20, Math.PI / 2 - 0.8, 1.6, 2.3, 0.5), m.beard);
-      beard.scale.set(0.748, 0.788, 0.73);
-      head.add(beard);
-      const moustache = new Mesh(new TorusGeometry(0.1, 0.02, 8, 20, Math.PI), m.beard);
-      moustache.position.set(0, -0.24, MAN_FRAME.head[2] * 0.9);
-      moustache.rotation.x = -0.25;
-      head.add(moustache);
+    hair,
+    style: {
+      frame: MAN_FRAME,
+      materials: dressed,
+      legs: 'trousers',
+      lashes: 0,
+      dress(head) {
+        hair.current = dressManHair(head, dressed, beardMaterial);
+      },
     },
   };
 }
 
-function womanStyle(m: HumanMaterials): HumanStyle {
-  const gold = new MeshPhysicalMaterial({ color: PALETTE.gold500, roughness: 0.22, metalness: 1, clearcoat: 0.6 });
+function womanStyle(m: HumanMaterials): Dressed {
   return {
-    frame: WOMAN_FRAME,
-    materials: m,
-    legs: 'bare',
-    lashes: 4,
-    dress(head, blob: Blob) {
-      hairCap(head, m.hair, [0.82, 0.86, 0.8], 1.42, 0.5);
-      blob(head, m.hair, [0.5, 0.46, 0.46], [0, 0.66, -0.36]); // the high puff
-      for (const side of [-1, 1]) blob(head, m.hair, [0.2, 0.3, 0.26], [side * 0.62, 0.12, -0.2]); // fullness at the temples
-      for (const side of [-1, 1]) {
-        const hoop = new Mesh(new TorusGeometry(0.07, 0.012, 8, 28), gold);
-        hoop.position.set(side * WOMAN_FRAME.head[0] * 0.98, -0.25, 0.0);
-        hoop.rotation.y = Math.PI / 2;
-        head.add(hoop);
-      }
+    hair: { current: null },
+    style: {
+      frame: WOMAN_FRAME,
+      materials: m,
+      legs: 'bare',
+      lashes: 4,
+      dress(head, blob: Blob) {
+        dressWomanHair(head, m, blob);
+      },
     },
   };
 }
@@ -123,7 +123,8 @@ function womanStyle(m: HumanMaterials): HumanStyle {
 export function createHumanSkin(variant: HumanVariant): Skin {
   const tone = TONES[variant];
   const materials = humanMaterials(tone);
-  const style = variant === 'man' ? manStyle(materials) : womanStyle(materials);
+  const dressed = variant === 'man' ? manStyle(materials) : womanStyle(materials);
+  const style = dressed.style;
   const frame = style.frame;
   const rig = buildHumanRig(style);
   rig.body.scale.setScalar(HUMAN_SCALE);
@@ -137,6 +138,8 @@ export function createHumanSkin(variant: HumanVariant): Skin {
   touchOrigin.position.set(0, frame.hat[1] * 0.95, 0.1);
   rig.head.add(touchOrigin);
   let leanSide = 1;
+  // Small idle gestures with what it wears (`human-moments.ts`).
+  const moments = createItemMoments(HUMAN_MOMENTS);
 
   return {
     id: variant,
@@ -150,8 +153,13 @@ export function createHumanSkin(variant: HumanVariant): Skin {
     focus,
     paint(look: ResolvedLook) {
       for (const zone of zonesOf(variant)) zones[zone as HumanZone]?.paint(look[zone]);
+      syncHair(materials, dressed.hair.current);
     },
-    apply: (frame) => applyHuman(rig, style.frame, frame, leanSide),
+    apply(frame) {
+      applyHuman(rig, style.frame, frame, leanSide);
+      poseHumanMoment(rig, moments.step(frame));
+    },
+    wearing: (parts) => moments.setWorn(parts),
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },

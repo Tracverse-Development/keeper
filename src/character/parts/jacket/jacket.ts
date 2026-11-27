@@ -8,7 +8,8 @@
  * the robot's heart-light and the puppy's bib and tag still show; a stand-up collar flares at the
  * top; gold piping runs round the collar, down both front edges and along the hem. Wherever the
  * shape lists limbs (the puppy's front legs) a sleeve with a piped cuff wraps each one; a body
- * with no arms (the robot's spirit) simply gets none.
+ * with no arms (the robot's spirit) simply gets none. Each sleeve follows its arm when the arm
+ * moves (`limb-follow.ts`).
  *
  * Effects: `color` (the cloth), `trim` (the piping and cuffs), `sway` (how much the hem moves).
  * The hem sways softly with the breath and a little more with work, the lower rings more than
@@ -20,6 +21,7 @@ import { clothMaterial, trimMaterial } from '../cloth.ts';
 import { effectColour, effectNumber, type EffectValues } from '../effects.ts';
 import { garmentRings, radiusAt, widestBetween, type BodyShape, type GarmentRing, type Limb, type PartFit } from '../fit.ts';
 import { edgePoints, fittedShell, piping, ringPoints } from '../fitted-shell.ts';
+import { followLimbs } from '../limb-follow.ts';
 import type { PartFrame, PartInstance } from '../part';
 
 /** The neckline sits where the body has opened out to this share of its widest. */
@@ -77,12 +79,14 @@ export function createArkJacket(effects: EffectValues, fit: PartFit): PartInstan
   ];
   for (const geometry of edges) group.add(Object.assign(new Mesh(geometry, trim), { name: 'jacket-piping' }));
   for (const limb of shape.limbs ?? []) group.add(buildSleeve(limb, cloth, trim));
+  const followSleeves = followLimbs(group, shape, fit);
 
   const positions = shellGeometry.getAttribute('position') as BufferAttribute;
   const rest = Float32Array.from(positions.array as Float32Array);
   const bottom = rings[rings.length - 1].y;
 
   function update(frame: PartFrame): void {
+    followSleeves();
     const { amplitude, speed } = frame.motion;
     const t = frame.time * speed;
     const reach = SWAY * sway * amplitude * (1 + WORK_SWAY * frame.work);

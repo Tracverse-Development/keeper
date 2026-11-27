@@ -11,7 +11,9 @@
  * whatever the wardrobe parents to it (a cap, a jacket) turns, leans and breathes with the body,
  * and it carries the body's `shape` there for the part to fit itself to (`parts/fit.ts`). A shape
  * with feet (the paws slot) also gets one joint per foot under that foot's own bone (a paw that
- * waves or scratches), placed where the foot rests, so a worn part can follow every foot.
+ * waves or scratches), placed where the foot rests, so a worn part can follow every foot; a shape
+ * whose limbs name bones (a person's arms, the puppy's waving paw) gets one joint per limb the same
+ * way, so sleeves follow an arm that waves.
  *
  * Effect slots (`thinking`, `celebrate`) get no anchor: nothing is drawn on the body for them.
  */
@@ -27,6 +29,11 @@ export interface SlotAnchor {
   readonly shape?: BodyShape;
   /** One joint per foot of the shape (`shape.feet`), riding that foot's bone, at the foot's rest place. */
   readonly feet?: readonly Object3D[];
+  /**
+   * One joint per limb of the shape (`shape.limbs`), riding that limb's bone (else the slot's), at
+   * the limb's top with the anchor's turn at rest: sleeves follow an arm that waves.
+   */
+  readonly limbs?: readonly Object3D[];
 }
 
 export type SlotAnchors = Readonly<Partial<Record<SlotId, SlotAnchor>>>;
@@ -53,27 +60,38 @@ export function addSlotAnchors(
     parent.add(object);
     const shape = placement.follow ? placement.shape : undefined;
     const feet = shape?.feet ? addFootJoints(root, object, shape, bones) : undefined;
-    anchors[slot] = { object, scale: placement.scale, shape, feet };
+    const limbs = shape?.limbs?.some((l) => l.bone) ? addLimbJoints(root, object, shape, bones) : undefined;
+    anchors[slot] = { object, scale: placement.scale, shape, feet, limbs };
   }
   return anchors;
 }
 
 /** One joint per foot, under the foot's bone (else the slot's), at the foot's rest place and turn. */
 function addFootJoints(root: Object3D, anchor: Object3D, shape: BodyShape, bones: Readonly<Partial<Record<Bone, Object3D>>>): Object3D[] {
+  return (shape.feet ?? []).map((foot, i) => addJoint(root, anchor, (foot.bone && bones[foot.bone as Bone]) || anchor, foot.position, `foot-${i}`));
+}
+
+/** One joint per limb, under the limb's bone (else the slot's), at the limb's top and the anchor's turn. */
+function addLimbJoints(root: Object3D, anchor: Object3D, shape: BodyShape, bones: Readonly<Partial<Record<Bone, Object3D>>>): Object3D[] {
+  return (shape.limbs ?? []).map((limb, i) => addJoint(root, anchor, (limb.bone && bones[limb.bone as Bone]) || anchor, limb.position, `limb-${i}`));
+}
+
+/**
+ * A joint under `parent` that sits, at the rig's rest pose, at `position` in the anchor's space with
+ * the anchor's own turn: so a part following it is exactly where it was built until the bone moves.
+ */
+function addJoint(root: Object3D, anchor: Object3D, parent: Object3D, position: readonly [number, number, number], name: string): Object3D {
   root.updateMatrixWorld(true);
   const world = new Vector3();
   const turn = new Quaternion();
   const parentTurn = new Quaternion();
-  return (shape.feet ?? []).map((foot, i) => {
-    const parent = (foot.bone && bones[foot.bone as Bone]) || anchor;
-    const joint = new Object3D();
-    joint.name = `foot-${i}`;
-    anchor.localToWorld(world.set(...foot.position));
-    parent.worldToLocal(joint.position.copy(world));
-    anchor.getWorldQuaternion(turn);
-    parent.getWorldQuaternion(parentTurn);
-    joint.quaternion.copy(parentTurn.invert().multiply(turn));
-    parent.add(joint);
-    return joint;
-  });
+  const joint = new Object3D();
+  joint.name = name;
+  anchor.localToWorld(world.set(...position));
+  parent.worldToLocal(joint.position.copy(world));
+  anchor.getWorldQuaternion(turn);
+  parent.getWorldQuaternion(parentTurn);
+  joint.quaternion.copy(parentTurn.invert().multiply(turn));
+  parent.add(joint);
+  return joint;
 }

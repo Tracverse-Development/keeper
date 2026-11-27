@@ -36,6 +36,7 @@ import { disposeTree } from '../../dispose-tree';
 import { PaintableMaterial, zoneOf, type ZoneTarget } from '../../look/zone-paint';
 import type { ResolvedZone } from '../../look/zones';
 import { HEAD_RADII, ellipsoidPatch } from './head-shape';
+import { addRobotDetail } from './robot-detail';
 import { PALETTE } from '../../palette';
 import { ROBOT_COLLAR, ROBOT_HEAD_CENTRE_Y, ROBOT_NECK_Y, ROBOT_TORSO_PROFILE } from './robot-shape';
 
@@ -171,6 +172,9 @@ export function createBody(): Body {
     head.add(ear);
     return ear;
   });
+
+  // The hero detail: seams, screws, the visor's inner light, cables and vents (`robot-detail.ts`).
+  addRobotDetail({ head, body, gold, headY: HEAD_CENTRE_Y, neckY: NECK_Y, torsoRadius: torsoRadiusAt });
 
   const baseRim = earGlowMaterial.emissiveIntensity;
   const heartRest = heartMaterial.emissive.clone();

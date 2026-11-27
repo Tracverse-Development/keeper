@@ -23,7 +23,8 @@
  *
  * Effect slots (`thinking`, `celebrate`) draw nothing here: the wardrobe only resolves which
  * moment effect is worn (`moment`) for the emote director to play. Parts worn on feet (the
- * paws slot) get the live foot joints of the anchor, so they follow a paw that waves.
+ * paws slot) get the live foot joints of the anchor, so they follow a paw that waves; parts on a
+ * shape with moving limbs (a torso with arms) get the live limb joints, so sleeves follow the arms.
  *
  * Every drawn part is decorated for its rarity (`parts/rarity-flourish.ts`: grander from common to
  * mythical) and, on a body whose race wears everything (the God Keeper), in the divine finish
@@ -194,7 +195,7 @@ export class Wardrobe {
       if (slot.outgoing) this.release(slot.outgoing);
       slot.outgoing = instant ? null : slot.current;
       if (instant && slot.current) this.release(slot.current);
-      const follow = anchor?.feet ? { base: anchor.object, feet: anchor.feet } : undefined;
+      const follow = anchor?.feet || anchor?.limbs ? { base: anchor.object, feet: anchor.feet ?? [], limbs: anchor.limbs } : undefined;
       slot.current =
         next && anchor && key ? this.wear(slot, anchor, key, createPart(next.id as DrawnPartId, next.effects, { species: species.id, shape: anchor.shape, follow }), next.rarity, divine, next.set !== null) : null;
       slot.swapStartedAt = this.time;

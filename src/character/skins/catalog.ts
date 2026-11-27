@@ -64,6 +64,16 @@ export interface SkinInfo {
   readonly slots: Readonly<Partial<Record<SlotId, SlotPlacement>>>;
 }
 
+/**
+ * A shape whose limbs ride the rig's bones: limb `i` takes `bones[i]` (sleeves on it follow that
+ * bone). The shape files measure the limbs; which joint moves each is the rig's business, named here.
+ */
+function riding(shape: BodyShape, bones: readonly (Bone | null)[]): BodyShape {
+  return { ...shape, limbs: (shape.limbs ?? []).map((limb, i) => (bones[i] ? { ...limb, bone: bones[i] } : limb)) };
+}
+/** A person's limbs are listed right (-x) then left (+x); the puppy's front legs the same, its screen-right (+x) one waves. */
+const ARMS: readonly Bone[] = ['rightArm', 'leftArm'];
+
 /** The human frames' published shapes (the man's and the woman's own). */
 const MAN = { frame: MAN_FRAME, shapes: humanShapes(MAN_FRAME) };
 const WOMAN = { frame: WOMAN_FRAME, shapes: humanShapes(WOMAN_FRAME) };
@@ -77,7 +87,7 @@ function humanSlots(human: typeof MAN) {
     head: worn('head', [0, 0.02, 0], shapes.head),
     face: worn('head', [0, 0, 0], shapes.face),
     neck: worn('body', [0, HUMAN_NECK_Y, 0], shapes.neck),
-    torso: worn('body', [0, HUMAN_NECK_Y, 0], shapes.torso),
+    torso: worn('body', [0, HUMAN_NECK_Y, 0], riding(shapes.torso, ARMS)),
     legs: worn('body', [0, 0, 0], shapes.legs),
     back: worn('body', [0, HUMAN_NECK_Y, 0], shapes.torso),
     paws: worn('body', [0, 0, 0], shapes.feet),
@@ -123,7 +133,7 @@ export const SKINS = [
       head: worn('head', [0, 0, PUPPY_HAT_FORWARD], PUPPY_HEAD_SHAPE),
       face: worn('head', [0, 0, 0], PUPPY_FACE_SHAPE),
       neck: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_NECK_SHAPE),
-      torso: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_TORSO_SHAPE),
+      torso: worn('body', [0, PUPPY_NECK_Y, 0], riding(PUPPY_TORSO_SHAPE, [null, 'paw'])),
       back: worn('body', [0, PUPPY_NECK_Y, 0], PUPPY_TORSO_SHAPE),
       paws: worn('body', [0, 0, 0], PUPPY_PAWS_SHAPE),
       base: ARK_BASE,

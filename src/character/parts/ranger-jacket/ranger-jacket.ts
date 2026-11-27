@@ -23,6 +23,7 @@ import { garmentSway, outward, pushOut } from '../garment.ts';
 import { lightMaterial, metalMaterial } from '../glow-kit.ts';
 import { necklineOf } from '../jacket/jacket.ts';
 import { leatherMaterial } from '../leather.ts';
+import { followLimbs } from '../limb-follow.ts';
 import type { PartFrame, PartInstance } from '../part';
 import { frontEdges, onSurface, sleeveGeometry, straight, taperedShell } from '../top/top-shell.ts';
 
@@ -103,7 +104,7 @@ export function createRangerJacket(effects: EffectValues, fit: PartFit): PartIns
     for (const share of [0.46, 0.58]) {
       const band = sleeveGeometry(limb, { share, flare: 0.07, cuff: 1.7 }, shape, 0.011);
       band.tube.dispose();
-      if (band.cuff) add(band.cuff, steel, 'ranger-band');
+      if (band.cuff) add(band.cuff, steel, 'ranger-arm-band');
     }
   }
 
@@ -113,8 +114,10 @@ export function createRangerJacket(effects: EffectValues, fit: PartFit): PartIns
   for (const share of BELTS) belt(shape, top + (shape.reach - top) * share, sq, add, dark, steel, brass);
 
   const sway = garmentSway(shell, top, hem.y, SWAY);
+  const followSleeves = followLimbs(group, shape, fit);
   function update(frame: PartFrame): void {
     sway(frame);
+    followSleeves();
     light.opacity = 0.7 + 0.3 * Math.sin(frame.time * 2.3) * (0.5 + 0.5 * (frame.mood.presence ?? 1));
   }
   return { group, update, dispose: () => disposeTree(group) };

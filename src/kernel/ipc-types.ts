@@ -44,6 +44,10 @@ export interface KeeperProfile {
   style?: string;
   /** The person turned its simulated mood off. */
   feelingsOff?: boolean;
+  /** The official set it changes into in each mode (mode id → set id; `kit/loadout.rs`). */
+  loadouts?: Record<string, string>;
+  /** What it wore before a loadout went on (put back in a mode without one). */
+  homeOutfit?: WornPart[];
 }
 
 export interface KeeperList {

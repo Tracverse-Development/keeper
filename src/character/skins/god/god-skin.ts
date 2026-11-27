@@ -50,6 +50,10 @@ import type { Skin, SkinFrame } from '../skin';
 import { poseSoftBody, softEyePose } from '../soft-pose';
 import { GOD_FRAME, GOD_HOVER } from './god-shape';
 import { GOD_REACTIONS as R } from './reactions';
+import { createItemMoments } from '../../item-moments';
+import { poseHumanMoment } from '../human/human-moments';
+import { addGodDetail } from './god-detail';
+import { crownFlare, FLARE, GOD_MOMENTS, poseGodMoment } from './god-moments';
 
 type GodZone = 'skin' | 'body' | 'robe' | 'eyes' | 'crown' | 'rings';
 
@@ -162,6 +166,10 @@ export function createGodSkin(): Skin {
     tips.add(tip);
   }
 
+  // The hero detail: engraving, layered armour, robe folds, filigree and jewels (`god-detail.ts`).
+  addGodDetail({ body, crown, mask: g.mask, gold: g.gold, armour: g.armour, robe: g.robe, crownLight: g.crown, jewel: g.eyeLight });
+  const filigree = crown.getObjectByName('filigree');
+
   // Gyroscope rings round the body.
   const gyro = new Group();
   gyro.position.y = HUMAN_NECK_Y - 0.55;
@@ -212,6 +220,7 @@ export function createGodSkin(): Skin {
   head.add(touchOrigin);
   let leanSide = 1;
   let spin = 0;
+  const moments = createItemMoments(GOD_MOMENTS);
 
   function apply(f: SkinFrame): void {
     const pose = poseSoftBody(rig, f, R, leanSide, GOD_HOVER);
@@ -221,13 +230,18 @@ export function createGodSkin(): Skin {
     rig.setMouth(Math.max(f.mouth, 0.3 * pose.cheer), f.mood.smile + 0.5 * pose.cheer, e.mouthO);
     poseArms(rig, GOD_FRAME, e.paw, e.swing * a, Math.sin(pose.t * 0.9) * a, pose.cheer * a);
     head.position.y = HUMAN_HEAD_Y;
-    const flare = 1 + 1.5 * f.gotIt + 0.6 * pose.cheer;
+    const moment = moments.step(f);
+    poseHumanMoment(rig, moment);
+    poseGodMoment(rig, moment);
+    const blaze = crownFlare(moment);
+    const flare = 1 + 1.5 * f.gotIt + 0.6 * pose.cheer + FLARE.light * blaze;
     const energy = 1 + 1.6 * pose.work + 0.8 * pose.drama;
     spin += f.dt * f.motion.speed * energy;
     rays.rotation.z = spin * 0.12;
     tips.rotation.z = spin * 0.12;
     innerRing.rotation.z = -spin * 0.3;
-    crown.scale.setScalar(1 + 0.04 * Math.sin(pose.t * 1.2) * a + 0.08 * f.gotIt);
+    crown.scale.setScalar(1 + 0.04 * Math.sin(pose.t * 1.2) * a + 0.08 * f.gotIt + FLARE.scale * blaze);
+    if (filigree) filigree.rotation.z = -spin * 0.06;
     g.crown.opacity = Math.min(1, (0.32 + 0.18 * f.mood.presence) * flare);
     gyroRings[0].rotation.z = spin * 0.5;
     gyroRings[1].rotation.z = -spin * 0.38;
@@ -264,6 +278,7 @@ export function createGodSkin(): Skin {
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
+    wearing: (parts) => moments.setWorn(parts),
     setPointScale: (scale) => motes.setPointScale(scale),
     dispose: () => disposeTree(root),
   };

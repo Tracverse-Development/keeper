@@ -36,6 +36,8 @@ import { HEAD_RADII } from './head-shape';
 import { ROBOT_REACTIONS as R } from './reactions';
 import { createRobotEmbers } from './robot-embers';
 import { addRobotThinking } from './robot-thinking';
+import { createItemMoments } from '../../item-moments';
+import { poseRobotMoment, ROBOT_MOMENTS } from './robot-moments';
 
 /** The speaking equaliser's floor between words (share of full height). */
 const BAR_MURMUR = 0.18;
@@ -73,6 +75,8 @@ export function createRobotSkin(): Skin {
   const tint = { cool: 0, hot: 0 };
   /** The heartbeat's own clock: its rate follows work, so the phase is accumulated (no jumps). */
   let beatPhase = 0;
+  /** Small idle gestures with what it wears (`robot-moments.ts`). */
+  const moments = createItemMoments(ROBOT_MOMENTS);
 
   function apply(frame: SkinFrame): void {
     const p = frame.mood;
@@ -112,6 +116,7 @@ export function createRobotSkin(): Skin {
       head.rotation.x -= drama * a * T.lookUp;
       beatPhase = (beatPhase + frame.dt * frame.motion.speed * heartbeatRate(frame.work)) % 1;
     }
+    poseRobotMoment(head, torso, moments.step(frame));
     const scanTime = t * (1 + work);
 
     // Humming shows a soft equaliser too, swaying to its own little tune.
@@ -167,6 +172,7 @@ export function createRobotSkin(): Skin {
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
+    wearing: (parts) => moments.setWorn(parts),
     setPointScale: (scale) => embers.setPointScale(scale),
     dispose() {
       face.dispose();

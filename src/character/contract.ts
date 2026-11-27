@@ -209,6 +209,23 @@ export interface Character {
   snapshot(): string | null;
 }
 
+// The stage's light (appended by declaration merging).
+/**
+ * A stage mood (`stage/stage-moods.ts`): how the light and the sky look. `night` is the stage as it
+ * always was; `neon` (teal and magenta), `lamplight` (warm), `dawn`, `starfield` and `celestial`
+ * (gold) light the character with real coloured lights.
+ */
+export type StageMood = 'night' | 'neon' | 'lamplight' | 'dawn' | 'starfield' | 'celestial';
+
+export interface Character {
+  /**
+   * Light the stage in a mood, eased over about a second (at once under reduced motion). `auto` (the
+   * default) follows what is worn: a set glowing (three of its pieces on) brings its own mood, and
+   * nothing glowing is `night`.
+   */
+  setStageMood(mood: StageMood | 'auto'): void;
+}
+
 // The mood in the body (appended by declaration merging).
 export interface Character {
   /** Show this mood in the body, eased over a couple of seconds; null = no mood. */
@@ -225,3 +242,22 @@ export interface Character {
  * at the moment `emote('celebrate')` or `emote('streak')` takes off. None worn = the classic
  * thinking and the shipped celebration.
  */
+
+// Turning round to see the back (appended by declaration merging): the Studio's back view.
+export interface Character {
+  /**
+   * Walk the camera round the keeper: `drag` follows a drag by `delta` radians (positive = the
+   * keeper turns to show its right side) at `time` seconds (any steady clock, e.g.
+   * `performance.now() / 1000`); `release` lets go, and it coasts and slows; `to` glides to an angle
+   * (0 = the front, π = the back); `by` glides on by a step (the arrow keys); `around` shows the back, or the front again. Left alone a few
+   * seconds, it glides back to the front by itself. The zone focus keeps working while turned.
+   */
+  turn(command: TurnCommand): void;
+}
+
+export type TurnCommand =
+  | { readonly kind: 'drag'; readonly delta: number; readonly time: number }
+  | { readonly kind: 'release'; readonly time: number }
+  | { readonly kind: 'to'; readonly yaw: number }
+  | { readonly kind: 'by'; readonly delta: number }
+  | { readonly kind: 'around' };

@@ -12,6 +12,7 @@ pub mod collection;
 pub mod finishes;
 pub mod inventory;
 pub mod levels;
+pub mod loadout;
 pub mod look;
 pub mod pack_sign;
 pub mod packs;

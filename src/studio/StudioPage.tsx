@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SKINS } from '../character';
 
 import { CharacterStage } from '../character';
-import { core, sentence, type KeeperProfile, type KeeperVoice, type Soul, type ZoneLook } from '../kernel/ipc';
+import { core, sentence, type KeeperProfile, type KeeperVoice, type RoleInfo, type Soul, type ZoneLook } from '../kernel/ipc';
 import { useEscape } from '../kernel/use-escape';
 import { tryOn, tryOnSet } from '../keepers/wardrobe-view';
 import { SoulSection } from '../keepers/SoulSection';
@@ -23,6 +23,7 @@ import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
 import { InventoryTab } from './InventoryTab';
 import { KeeperCard } from './KeeperCard';
+import { cardOutfit } from './keeper-card';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
@@ -81,9 +82,11 @@ interface Props {
   onSaved: () => void;
   /** The names of all the person's keepers (the Marketplace's Keepers side). */
   keeperNames: string[];
+  /** The modes a keeper can work in (for tying a set to a mode: loadouts). */
+  modes?: RoleInfo[];
 }
 
-export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved, keeperNames }: Props) {
+export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved, keeperNames, modes = [] }: Props) {
   const { info, error, reload } = useStudio(keeper.id, open);
   const [tab, setTab] = useState<Tab>('look');
   const [zone, setZone] = useState<string | null>(null);
@@ -95,11 +98,14 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
   // The Outfit tab's try-on, shown on the big stage.
   // Trying on a thinking or celebration effect plays that moment on the stage.
   const [celebrateN, setCelebrateN] = useState(0);
+  // The back view: each press of Turn around turns the stage round (`CharacterStage.turnAround`).
+  const [turnN, setTurnN] = useState(0);
   // Takes a picture of the keeper on the stage (for its card).
   const snapshot = useRef<(() => string | null) | null>(null);
   // One wardrobe for the Inventory, the Forge and the Marketplace.
   const usesWardrobe = tab === 'inventory' || tab === 'forge' || tab === 'market';
-  const market = useWardrobe(open && usesWardrobe, () => {
+  // The Level tab reads it too, for the card's outfit band.
+  const market = useWardrobe(open && (usesWardrobe || tab === 'level'), () => {
     onSaved();
     reload();
   });
@@ -232,7 +238,12 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             mouth={0}
             memoryPulse={0}
             snapshotRef={snapshot}
+            turnable
+            turnAround={turnN}
           />
+          <button type="button" className="btn btn-small studio-turn" onClick={() => setTurnN((n) => n + 1)} title="Drag beside your keeper, or use the arrow keys on the stage, to turn it">
+            Turn around
+          </button>
           {tab === 'look' && zone && info && <span className="studio-caption">{info.zones.find((z) => z.id === zone)?.name}</span>}
           {usesWardrobe && outfit && <span className="studio-caption">{outfit.caption}</span>}
         </section>
@@ -285,7 +296,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             {info && tab === 'level' && (
               <>
                 <LevelTab info={info} name={keeper.name} />
-                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: SKINS.find((s) => s.id === keeper.skin)?.name ?? keeper.skin }} snapshot={() => snapshot.current?.() ?? null} />
+                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: SKINS.find((s) => s.id === keeper.skin)?.name ?? keeper.skin, outfit: market.wardrobe ? cardOutfit(keeper.wearables, market.wardrobe.items, market.wardrobe.sets ?? [], info.rarities) : undefined }} snapshot={() => snapshot.current?.() ?? null} />
               </>
             )}
             {info && tab === 'market' && (
@@ -321,6 +332,8 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
                   setOutfit(w && set && pieces.length ? { wearables: tryOnSet(keeper.wearables, pieces, w, set), caption: `Trying on ${name}` } : null);
                 }}
                 keeperNames={keeperNames}
+                modes={modes}
+                onLoadout={(mode, set) => core.setLoadout(keeper.id, mode, set).then(onSaved)}
                 onTryStarter={(s) => {
                   const piece = s && market.wardrobe?.items.find((i) => i.id === `official:${s.piece}`);
                   setOutfit(s ? { wearables: [{ part: 'memory-halo' }, { part: 'ark-hull' }, ...(piece ? [{ part: piece.part, effects: piece.effects, item: piece.id, rarity: piece.rarity }] : [])], caption: `Meet ${s.name}`, skin: s.skin } : null);
