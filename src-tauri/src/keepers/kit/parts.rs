@@ -72,6 +72,19 @@ pub const PARTS: &[Part] = &[
     // Hero-detail kits: worn leather with stitching and hardware, twisted cord with a brooch and chain.
     Part { id: "ranger-jacket", name: "Ranger Jacket", slot: "torso", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0), num("wear", 0.0, 1.0)] },
     Part { id: "cord-necklace", name: "Cord Necklace", slot: "neck", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0)] },
+    // The 0.16.0 set pieces (two per keeper's new set, `collection/hero_sets.rs`; window: `set-parts.ts`).
+    Part { id: "sailor-collar", name: "Sailor Collar", slot: "neck", species: &[], effects: &[color("color"), color("trim"), color("knot"), num("sway", 0.0, 2.0)] },
+    Part { id: "pea-coat", name: "Pea Coat", slot: "torso", species: &[], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0)] },
+    Part { id: "top-hat", name: "Top Hat", slot: "head", species: &[], effects: &[color("color"), color("trim"), color("metal")] },
+    Part { id: "gear-loupe", name: "Gear Loupe", slot: "face", species: &[], effects: &[color("color"), color("lens"), num("shine", 0.0, 1.0)] },
+    Part { id: "batting-whites", name: "Batting Whites", slot: "legs", species: &["human"], effects: &[color("color"), color("trim"), color("pad")] },
+    Part { id: "cricket-bat", name: "Cricket Bat", slot: "held", species: &["human"], effects: &[color("color"), color("trim")] },
+    Part { id: "flight-cap", name: "Flight Cap", slot: "head", species: &[], effects: &[color("color"), color("trim"), num("wear", 0.0, 1.0)] },
+    Part { id: "flight-goggles", name: "Flight Goggles", slot: "face", species: &[], effects: &[color("color"), color("trim"), color("lens"), num("shine", 0.0, 1.0)] },
+    Part { id: "sentinel-plate", name: "Sentinel Plate", slot: "torso", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0)] },
+    Part { id: "kite-shield", name: "Kite Shield", slot: "back", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0)] },
+    Part { id: "shepherd-crook", name: "Shepherd's Crook", slot: "held", species: &["human"], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0)] },
+    Part { id: "stole", name: "Stole", slot: "neck", species: &["divine"], effects: &[color("color"), color("trim"), num("sway", 0.0, 2.0)] },
     // Effects for moments (slot kind "effect"): how thinking and a celebration look.
     Part { id: "think-classic", name: "Classic Thinking", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "think-pulse", name: "Pulse", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },

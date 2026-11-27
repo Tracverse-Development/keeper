@@ -30,6 +30,7 @@ import { createCape } from './cape/cape.ts';
 import { createShoes } from './shoes/shoes.ts';
 import { createRangerJacket } from './ranger-jacket/ranger-jacket.ts';
 import { createCordNecklace } from './cord-necklace/cord-necklace.ts';
+import { SET_FACTORIES } from './set-factories.ts';
 import type { PartFactory } from './part';
 
 export const WORN_FACTORIES = {
@@ -57,4 +58,5 @@ export const WORN_FACTORIES = {
   'shoes': createShoes,
   'ranger-jacket': createRangerJacket,
   'cord-necklace': createCordNecklace,
+  ...SET_FACTORIES,
 } as const satisfies Readonly<Record<string, PartFactory>>;

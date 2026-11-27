@@ -10,11 +10,13 @@
 //! (`set_glow`). The God Keeper wears every set (its race wears everything).
 //!
 //! One file per group of sets keeps each under the size budget: `classic.rs` (no set), `robot.rs`,
-//! `dog.rs`, `man.rs`, `woman.rs`, `owl.rs`, `shared.rs` (race and everyone sets) and `divine.rs`.
+//! `dog.rs`, `man.rs`, `woman.rs`, `owl.rs`, `shared.rs` (race and everyone sets), `divine.rs` and
+//! `hero_sets.rs` (0.16.0: one new set per keeper, each round two new set pieces).
 
 mod classic;
 mod divine;
 mod dog;
+mod hero_sets;
 mod man;
 mod owl;
 mod robot;
@@ -51,7 +53,7 @@ pub struct ItemSet {
 }
 
 const GROUPS: &[(&[ItemSet], &[Official])] =
-    &[(&[], classic::ITEMS), (robot::SETS, robot::ITEMS), (dog::SETS, dog::ITEMS), (man::SETS, man::ITEMS), (woman::SETS, woman::ITEMS), (owl::SETS, owl::ITEMS), (shared::SETS, shared::ITEMS), (divine::SETS, divine::ITEMS)];
+    &[(&[], classic::ITEMS), (robot::SETS, robot::ITEMS), (dog::SETS, dog::ITEMS), (man::SETS, man::ITEMS), (woman::SETS, woman::ITEMS), (owl::SETS, owl::ITEMS), (shared::SETS, shared::ITEMS), (divine::SETS, divine::ITEMS), (hero_sets::SETS, hero_sets::ITEMS)];
 
 /// Pieces of one set worn at once for the set glow.
 pub const SET_GLOW_PIECES: usize = 3;

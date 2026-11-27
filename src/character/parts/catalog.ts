@@ -10,7 +10,7 @@
  * plus effect values. Worn parts fit themselves to the body's published shape (`fit.ts`), so
  * `'any'` really means any species that offers the slot.
  *
- * Adding a part: one row here, one factory under `parts/<id>/` and one line in
+ * Adding a part: one row here (or in `kit-parts.ts` / `set-parts.ts`), one factory under `parts/<id>/` and one line in
  * `parts/index.ts` (whose table is typed against the drawn `PartId`s, so a row without a factory
  * fails the typecheck). A moment effect is a row in `moment-catalog.ts` and a style in
  * `effects/moments.ts` (it has no factory: nothing is drawn on the body).
@@ -19,6 +19,7 @@ import type { WornPart } from '../contract';
 import { effectsKey, resolveEffects, type EffectSchema, type EffectValues } from './effects.ts';
 import { COVERS, KIT_PARTS } from './kit-parts.ts';
 import { MOMENT_PARTS, type MomentPartId } from './moment-catalog.ts';
+import { SET_PARTS } from './set-parts.ts';
 import type { SlotId } from './slots.ts';
 import { raceOf, WEARS_EVERYTHING } from '../skins/races.ts';
 import { resolveRarity, type RarityId } from './rarity.ts';
@@ -196,7 +197,7 @@ const WEARABLE_PARTS = [
   },
 ] as const satisfies readonly PartInfo[];
 
-export const PARTS = [...WEARABLE_PARTS, ...KIT_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
+export const PARTS = [...WEARABLE_PARTS, ...KIT_PARTS, ...SET_PARTS, ...MOMENT_PARTS] as const satisfies readonly PartInfo[];
 
 export type PartId = (typeof PARTS)[number]['id'];
 /** The parts drawn on (or round) the body: every part but the moment effects. */
