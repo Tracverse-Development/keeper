@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SKINS } from '../character';
 
-import { CharacterStage } from '../character';
+import { CharacterStage, type PhotoRequest } from '../character';
 import { core, sentence, type KeeperProfile, type KeeperVoice, type RoleInfo, type Soul, type ZoneLook } from '../kernel/ipc';
 import { useEscape } from '../kernel/use-escape';
 import { tryOn, tryOnSet } from '../keepers/wardrobe-view';
@@ -23,11 +23,12 @@ import { ForgeTab } from './ForgeTab';
 import { HabitsTab } from './HabitsTab';
 import { InventoryTab } from './InventoryTab';
 import { KeeperCard } from './KeeperCard';
-import { cardOutfit } from './keeper-card';
+import { cardOutfit, type CardFacts } from './keeper-card';
 import { LevelTab } from './LevelTab';
 import { LookTab } from './LookTab';
 import { MarketTab } from './MarketTab';
 import { ModesTab } from './ModesTab';
+import { PhotoButton } from './PhotoButton';
 import { saveWords } from './studio-view';
 import { useStudio } from './useStudio';
 import { VoiceTab } from './VoiceTab';
@@ -100,12 +101,13 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
   const [celebrateN, setCelebrateN] = useState(0);
   // The back view: each press of Turn around turns the stage round (`CharacterStage.turnAround`).
   const [turnN, setTurnN] = useState(0);
-  // Takes a picture of the keeper on the stage (for its card).
-  const snapshot = useRef<(() => string | null) | null>(null);
+  // Takes a photo of the keeper on the stage (photo mode: its card or a portrait).
+  const photo = useRef<((request: PhotoRequest) => string | null) | null>(null);
+  const still = (request: PhotoRequest) => photo.current?.(request) ?? null;
   // One wardrobe for the Inventory, the Forge and the Marketplace.
   const usesWardrobe = tab === 'inventory' || tab === 'forge' || tab === 'market';
-  // The Level tab reads it too, for the card's outfit band.
-  const market = useWardrobe(open && (usesWardrobe || tab === 'level'), () => {
+  // The keeper card's outfit band reads it too (the Level tab, and the stage's Photo button on any tab).
+  const market = useWardrobe(open, () => {
     onSaved();
     reload();
   });
@@ -184,6 +186,8 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
   };
 
   if (!open) return null;
+  /** What the keeper card shows (the Level tab's card and the stage's Photo button). */
+  const cardFacts = (studio: NonNullable<typeof info>): CardFacts => ({ name: keeper.name, level: studio.experience.level, soulName, species: SKINS.find((s) => s.id === keeper.skin)?.name ?? keeper.skin, outfit: market.wardrobe ? cardOutfit(keeper.wearables, market.wardrobe.items, market.wardrobe.sets ?? [], studio.rarities) : undefined });
   const level = info ? Math.max(1, info.experience.level) : null;
   return (
     <div className="studio" role="dialog" aria-modal="true" aria-label={`${keeper.name}'s Studio`}>
@@ -237,13 +241,14 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             voiceLevel={0}
             mouth={0}
             memoryPulse={0}
-            snapshotRef={snapshot}
+            photoRef={photo}
             turnable
             turnAround={turnN}
           />
           <button type="button" className="btn btn-small studio-turn" onClick={() => setTurnN((n) => n + 1)} title="Drag beside your keeper, or use the arrow keys on the stage, to turn it">
             Turn around
           </button>
+          {info && <PhotoButton keeperId={keeper.id} facts={cardFacts(info)} still={still} />}
           {tab === 'look' && zone && info && <span className="studio-caption">{info.zones.find((z) => z.id === zone)?.name}</span>}
           {usesWardrobe && outfit && <span className="studio-caption">{outfit.caption}</span>}
         </section>
@@ -296,7 +301,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             {info && tab === 'level' && (
               <>
                 <LevelTab info={info} name={keeper.name} />
-                <KeeperCard facts={{ name: keeper.name, level: info.experience.level, soulName, species: SKINS.find((s) => s.id === keeper.skin)?.name ?? keeper.skin, outfit: market.wardrobe ? cardOutfit(keeper.wearables, market.wardrobe.items, market.wardrobe.sets ?? [], info.rarities) : undefined }} snapshot={() => snapshot.current?.() ?? null} />
+                <KeeperCard keeperId={keeper.id} facts={cardFacts(info)} still={still} />
               </>
             )}
             {info && tab === 'market' && (
