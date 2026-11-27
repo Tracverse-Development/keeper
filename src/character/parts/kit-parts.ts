@@ -210,6 +210,33 @@ export const KIT_PARTS = [
       style: { kind: 'number', label: 'Style', min: 0, max: 3, default: 0, step: 1 },
     },
   },
+  {
+    id: 'ranger-jacket',
+    name: 'Ranger Jacket',
+    slot: 'torso',
+    species: 'any',
+    description: 'A heavy worn-leather jacket: hood laid back, saddle stitching, rivets, a glowing shoulder patch, buckled belts.',
+    effects: {
+      color: { kind: 'colour', label: 'Leather', default: '#6a3620' },
+      trim: { kind: 'colour', label: 'Hardware', default: '#b9bec8' },
+      light: { kind: 'colour', label: 'Glow colour', default: '#35d6ff' },
+      glow: { kind: 'number', label: 'Glow', min: 0, max: 2, default: 1 },
+      wear: { kind: 'number', label: 'Wear', min: 0, max: 1, default: 0.6 },
+    },
+  },
+  {
+    id: 'cord-necklace',
+    name: 'Cord Necklace',
+    slot: 'neck',
+    species: 'any',
+    description: 'Three strands of twisted cord, a steel brooch with a glowing core, and a chain hanging from it.',
+    effects: {
+      color: { kind: 'colour', label: 'Cord', default: '#8a6a48' },
+      trim: { kind: 'colour', label: 'Metal', default: '#b9bec8' },
+      light: { kind: 'colour', label: 'Glow colour', default: '#35d6ff' },
+      glow: { kind: 'number', label: 'Glow', min: 0, max: 2, default: 1 },
+    },
+  },
 ] as const satisfies readonly KitRow[];
 
 /**

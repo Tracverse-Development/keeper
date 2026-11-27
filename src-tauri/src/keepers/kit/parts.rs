@@ -69,6 +69,9 @@ pub const PARTS: &[Part] = &[
     Part { id: "emblem-halo", name: "Emblem Halo", slot: "halo", species: &[], effects: &[color("color"), num("glow", 0.0, 2.0), num("speed", 0.0, 4.0), num("style", 0.0, 4.0)] },
     Part { id: "platform", name: "Platform", slot: "base", species: &[], effects: &[color("color"), color("trim"), num("glow", 0.0, 2.0), num("style", 0.0, 6.0)] },
     Part { id: "drift-aura", name: "Drift Aura", slot: "aura", species: &[], effects: &[color("color"), num("count", 8.0, 120.0), num("speed", 0.0, 4.0), num("style", 0.0, 3.0)] },
+    // Hero-detail kits: worn leather with stitching and hardware, twisted cord with a brooch and chain.
+    Part { id: "ranger-jacket", name: "Ranger Jacket", slot: "torso", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0), num("wear", 0.0, 1.0)] },
+    Part { id: "cord-necklace", name: "Cord Necklace", slot: "neck", species: &[], effects: &[color("color"), color("trim"), color("light"), num("glow", 0.0, 2.0)] },
     // Effects for moments (slot kind "effect"): how thinking and a celebration look.
     Part { id: "think-classic", name: "Classic Thinking", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },
     Part { id: "think-pulse", name: "Pulse", slot: "thinking", species: &[], effects: &[color("color"), num("intensity", 0.25, 2.0)] },

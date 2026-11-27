@@ -30,6 +30,7 @@ import { cyclePhase, holdWave, sniff, thinkDrama, twitch } from '../../thinking'
 import { band, effectiveWork } from '../../work-level';
 import { addSlotAnchors } from '../anchors';
 import { slotsOf } from '../catalog';
+import { createFur, type FurZone } from '../fur-shells';
 import { addHitProxy } from '../hit-proxy';
 import type { Skin, SkinFrame } from '../skin';
 import { addPuppyBody } from './puppy-body';
@@ -61,6 +62,8 @@ export function createPuppySkin(): Skin {
   const slots = addSlotAnchors(root, slotsOf('puppy'), { body, head, paw: parts.paw, hindPaw: parts.scratch.pawJoint });
   const zones = puppyZones(kit);
   const focus = measureZones(root, zoneParts(root, kit));
+  // Real fur, on every zone whose look asks for the `fur` material (none by default: nothing is built).
+  const fur = createFur(root, furZones(kit), { lighter: new Map([[kit.blobGeometry, kit.furGeometry]]) });
 
   const headProxy = addHitProxy(head, { radii: [1.06, 0.9, 0.95], centre: [0, 0, 0.05] });
   const bodyProxy = addHitProxy(body, { radii: [0.72, 0.8, 0.66], centre: [0, -1.2, 0.05] });
@@ -157,6 +160,7 @@ export function createPuppySkin(): Skin {
     parts.tag.rotation.x = Math.sin(t * 1.1 + 0.4) * 0.05 * a - body.rotation.x * 0.6 + R.poke.tagSwing * poke;
     parts.tag.rotation.z = Math.sin(t * 0.9) * 0.07 * a - body.rotation.z;
     kit.materials.tagGlow.color.copy(tagColour).multiplyScalar((0.45 + 0.55 * p.presence) * (1 + frame.voice * 0.6));
+    fur.update(frame.time * frame.motion.speed);
     sweat.update(band(w, R.work.sweatFrom, 1), frame.time, frame.motion.speed);
     bubble.update(drama, t);
   }
@@ -200,16 +204,35 @@ export function createPuppySkin(): Skin {
     reactions: R,
     focus,
     paint(look: ResolvedLook) {
-      for (const zone of LOOK_ZONES.puppy) zones[zone].paint(look[zone]);
+      for (const zone of LOOK_ZONES.puppy) {
+        zones[zone].paint(look[zone]);
+        fur.show(zone, look[zone]?.material === 'fur');
+      }
+      fur.sync();
+    },
+    covered(slots) {
+      for (const [zone, under] of Object.entries(FUR_UNDER)) fur.trim(zone, under.slots.some((slot) => slots.includes(slot)) ? under.share : 1);
     },
     apply,
     react(kind: TouchKind) {
       if (kind === 'pat') leanSide = Math.random() < 0.5 ? -1 : 1;
     },
     setPointScale: (scale) => bubble.setPointScale(scale),
-    dispose: () => disposeTree(root),
+    dispose: () => {
+      fur.dispose();
+      kit.furGeometry.dispose();
+      disposeTree(root);
+    },
   };
 }
+
+/** Fur lies short under clothes: each zone, the slots that cover it, and the share of its length left. */
+const FUR_UNDER: Readonly<Record<string, { readonly slots: readonly string[]; readonly share: number }>> = {
+  body: { slots: ['torso', 'back'], share: 0.3 },
+  legs: { slots: ['torso'], share: 0.45 },
+  head: { slots: ['head'], share: 0.4 },
+  paws: { slots: ['paws'], share: 0.3 },
+};
 
 type PuppyZone = (typeof LOOK_ZONES.puppy)[number];
 
@@ -217,6 +240,25 @@ type PuppyZone = (typeof LOOK_ZONES.puppy)[number];
 function zoneMaterials(kit: ReturnType<typeof createPuppyKit>): Record<PuppyZone, MeshPhysicalMaterial> {
   const m = kit.materials;
   return { head: m.head, ears: m.ears, muzzle: m.muzzle, eyes: m.iris, body: m.body, legs: m.legs, paws: m.paws, tail: m.tail };
+}
+
+/**
+ * Where fur grows when a zone is painted `fur`, and how long: a long coat with cheek tufts on the
+ * head, a short muzzle, a ruffed chest (the cream bib grows with the body), shorter legs and paws.
+ */
+function furZones(kit: ReturnType<typeof createPuppyKit>): Record<string, FurZone> {
+  const m = kit.materials;
+  // The eyes and the nose stay clear (head space: `puppy-eyes.ts`, `puppy-head.ts`).
+  const bare = [[0.33, 0.08, 0.6, 0.2], [-0.33, 0.08, 0.6, 0.2], [0, -0.07, 0.9, 0.11], [0, -0.36, 0.62, 0.12]] as const;
+  return {
+    head: { materials: [m.head], length: 0.085, tuft: 1.1, bare },
+    ears: { materials: [m.ears], length: 0.05 },
+    muzzle: { materials: [m.muzzle], length: 0.04, tuft: 1.6, bare },
+    body: { materials: [m.body, m.cream], length: 0.07, tuft: 0.4 },
+    legs: { materials: [m.legs], length: 0.05 },
+    paws: { materials: [m.paws], length: 0.035 },
+    tail: { materials: [m.tail], length: 0.09 },
+  };
 }
 
 function puppyZones(kit: ReturnType<typeof createPuppyKit>): Record<PuppyZone, PaintableMaterial> {

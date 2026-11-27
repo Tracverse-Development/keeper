@@ -98,6 +98,17 @@ export interface Skin {
    * species' own colour and material back. Called only when the look changes (never per frame).
    */
   paint(look: ResolvedLook): void;
+  /**
+   * The slots something is worn in right now (the wardrobe says, whenever the outfit changes): a
+   * skin with a coat lays it short under clothes (the puppy's fur under a jacket). Optional.
+   */
+  covered?(slots: readonly string[]): void;
+  /**
+   * The part ids worn right now (the wardrobe says, whenever the outfit changes), so a skin can
+   * play its own small moments with what it wears: the owl adjusts its monocle, Malik checks his
+   * watch. Called with the same timing as `covered`. Optional.
+   */
+  wearing?(parts: readonly string[]): void;
   /** Device pixels per world unit, for skins that draw glowing point sprites. */
   setPointScale?(scale: number): void;
   /** Turns one frame of shared dials into this skin's pose, materials and lights. */

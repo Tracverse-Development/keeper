@@ -42,6 +42,9 @@ export interface PuppyMaterials {
 
 export interface PuppyKit {
   readonly materials: PuppyMaterials;
+  /** The one fine unit sphere every blob is drawn with, and a lighter one for fur shells over it. */
+  readonly blobGeometry: SphereGeometry;
+  readonly furGeometry: SphereGeometry;
   /** Adds an ellipsoid of `radii` at `position` to `parent`, returns the mesh. */
   blob(parent: Object3D, material: Material, radii: readonly [number, number, number], position: readonly [number, number, number]): Mesh;
 }
@@ -120,6 +123,8 @@ export function createPuppyKit(): PuppyKit {
   const sphere = new SphereGeometry(1, 72, 54);
   return {
     materials,
+    blobGeometry: sphere,
+    furGeometry: new SphereGeometry(1, 44, 30),
     blob(parent, material, radii, position) {
       const mesh = new Mesh(sphere, material);
       mesh.scale.set(...radii);

@@ -45,6 +45,8 @@ pub const PART_RARITY: &[(&str, &str)] = &[
     ("emblem-halo", "uncommon"),
     ("platform", "uncommon"),
     ("drift-aura", "uncommon"),
+    ("ranger-jacket", "legendary"),
+    ("cord-necklace", "rare"),
     ("think-comet", "legendary"),
     ("think-beacon", "rare"),
     ("think-dream", "rare"),

@@ -91,6 +91,7 @@ export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
 
     const upper = new Mesh(upperCap, m.head);
     const lower = new Mesh(lowerCap, m.head);
+    upper.userData.noFur = lower.userData.noFur = true; // lids stay smooth when the head grows fur (`fur-shells.ts`)
     // The lower lid hangs in its own tilt joint: a squint lifts its outer corner (a smiling eye).
     const lowerTilt = new Group();
     lowerTilt.add(lower);

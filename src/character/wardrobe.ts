@@ -201,6 +201,8 @@ export class Wardrobe {
       slot.swapping = !instant;
       setPresence(slot.current, instant ? 1 : 0);
     }
+    species.covered?.(Object.keys(wanted));
+    species.wearing?.(Object.values(wanted).map((w) => w.id));
   }
 
   private stepSwap(slot: Slot): void {
