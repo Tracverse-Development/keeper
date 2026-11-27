@@ -8,6 +8,28 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.16.0] - 2026-11-27
+
+### Added
+- Elbows: people and the God Keeper bend their arms at the elbow, and long sleeves bend with them. Hands now reach real places: the watch comes up across the chest, a hand rests on the knot of a tie, fingertips come up to the spectacles' rim, a lantern is lifted to chin height. Under a hat, a person gives a small bow with a hand on the heart.
+- Expressions: every keeper can look happy, focused, sleepy or surprised in its own way (brows and lids, the dog's ears, the owl's feather brows, the robot's visor, the God Keeper's brows of light), following what it is doing and the stage mood.
+- Cloth that moves: capes, gowns, shawls and scarf ends sway and settle when the keeper moves or turns, and so do the dog's ears and tail and the owl's ear tufts.
+- Colour choices: every item can be worn in a few colours, picked from swatches on its card in the Marketplace and the Inventory. Pointing at a swatch tries it on.
+- Photo mode: the Photo button in the Studio saves a portrait or the keeper card as a large picture in Pictures/Keeper on this Mac. Nothing is uploaded. Saving the card from the Level tab now goes there too.
+- Six new sets, one for each keeper, with twelve new pieces: Harbour Watch for the dog (sailor collar, pea coat), Clockwork for the owl (top hat with turning gears, gear loupe), Test Match for the man (batting whites with pads, cricket bat), Sky Pilot for the woman (flight cap, goggles), Ark Sentinel for the robot (breastplate, kite shield) and Good Shepherd for the God Keeper (shepherd's crook, stole).
+
+### Changed
+- A keeper turned round in the Studio is lit like its front: the stage lights turn with the camera.
+- The owl's chest is soft overlapping feathers instead of a grid.
+- The God Keeper's glow stays on its rim, halo and rays, so its engraved gold, armour and robe folds show, and a crown's flare is a burst of light rather than a white-out.
+- The man has a slimmer nose, a new mouth, and a beard with no gap.
+- Item moments were tuned by watching them: the owl's wing now reaches its spectacles and the dog's sniff of its brooch reads.
+- Battery: drawing stops while Keeper's window is hidden, slows when it is not in front, and steps down quality when frames run slow. Fur and feathers get lighter when the keeper is small on screen.
+
+### Fixed
+- Outfit changes made by hand while in a mode with its own set are remembered for that mode (FIX-0030).
+- After gaining several levels at once, the set note counts every piece opened, not only the last level's (FIX-0029).
+
 ## [0.15.0] - 2026-11-27
 
 ### Added
