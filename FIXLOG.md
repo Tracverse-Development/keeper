@@ -233,3 +233,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** a soft ceiling on every God surface and every divinely finished item (`divine-light.ts`: luminance rolls off toward 0.96, below the threshold, keeping order and mid-tones), with the radiance moved to a fresnel rim added after the ceiling; the robe a shade under white; a restrained tier keeps half its flare and 70% of its sparkle; the body's lights take at most 1.8x of any flare (`BODY_FLARE_CAP`), so a flare is a burst of rays and halo.
 - **Guard:** `parts/divine-light.test.ts` (the ceiling never reaches the bloom threshold, keeps order, a lit/half-lit fold keeps a real step; the patch lands after lighting, before output); `set-glow.test.ts` still green.
 - **Evidence:** 471/471 TS tests; before/after shots in `misc/studio-preview/lineup/looks-*-god*.png` (default, celestial, close, regalia set, stacked flare).
+
+### FIX-0029 — A level-up of several levels at once named only the last level's set progress (2026-11-27)
+- **Area:** `src/studio/SetProgressToasts.tsx`, `src/studio/useLevelUp.ts`, `keepers/kit/levels.rs` (the level-up event).
+- **Symptom:** after a jump of several levels (a long focus session, a burst of quizzes) the corner note counted only the pieces opened by the final level: from level 3 to 10, "Island Linen: every piece ready" never showed.
+- **Root cause:** the window computed the notes from `level - 1` to `level`; the event did not carry the level the keeper came from, though the core knew it (`record_level`).
+- **Fix:** the event carries `from` (`levels::level_up_event`); the window reads it through `levelBefore` (an older core without it still means one level).
+- **Guard:** `levels.rs` test `a_jump_of_several_levels_says_where_it_came_from_and_opens_everything_between`; `set-progress.test.ts` "a jump of several levels counts every piece opened on the way".
+- **Evidence:** cargo test (226 passed), node tests 462 passed.
+
+### FIX-0030 — Outfit changes made by hand in a mode with a loadout were lost on the next mode change (2026-11-27)
+- **Area:** `keepers/kit/loadout.rs`, `keepers/loadout_commands.rs`, `kernel/settings.rs` (`ModeOutfits`).
+- **Symptom:** in a mode tied to a set the person swapped a piece or added one; after visiting another mode and coming back, the keeper was dressed from the set again and the change was gone.
+- **Root cause:** a loadout was only "mode → set"; nothing remembered what was worn in that mode, so every arrival re-dressed from the set.
+- **Fix:** changes made while in mode X belong to X: the profile keeps `modeOutfits` (the mode dressed for, and the outfit last worn in each loadout mode); leaving X saves what is worn as X's outfit, coming back puts it on (`loadout::change_mode`). The everyday outfit is untouched; tying another set to X forgets X's outfit; a remembered outfit that no longer fits is dropped. Pieces a set puts on that are already worn keep their colour.
+- **Guard:** `loadout.rs` tests `changes_made_by_hand_in_a_loadout_mode_are_that_modes_and_come_back_with_it`, `a_set_piece_already_worn_keeps_its_colour`, `an_older_profile_has_no_mode_outfits_and_an_empty_one_is_not_written`.
+- **Evidence:** cargo test (226 passed).

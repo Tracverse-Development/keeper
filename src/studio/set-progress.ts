@@ -14,6 +14,14 @@ export function openPieces(w: Wardrobe, rarities: readonly Rarity[], keeper: str
   return w.items.filter((i) => i.set === set && wears.has(i.id) && Math.max(1, level) >= levelOf(i.rarity)).map((i) => i.id);
 }
 
+/**
+ * The level a level-up event came from: its `from` (several levels can be gained at once, so the
+ * notes must count every piece opened on the way), else the level below (an older core).
+ */
+export function levelBefore(e: { level: number; from?: unknown }): number {
+  return typeof e.from === 'number' && Number.isFinite(e.from) && e.from < e.level ? e.from : e.level - 1;
+}
+
 /** One line per set a level up moved forward: "Gala Night: 4 of 5 ready". */
 export function levelUpNotes(w: Wardrobe, rarities: readonly Rarity[], keeper: string, from: number, to: number): string[] {
   const wears = new Set(w.keepers.find((k) => k.id === keeper)?.wears ?? []);

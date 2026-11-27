@@ -39,6 +39,10 @@ pub struct WornPart {
     /// pieces of that set are worn together (`keepers::kit::collection::glowing`). Never read back.
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub set: Option<String>,
+    /// The colour it is worn in: a swatch id from the item's palette (`keepers::kit::colours`),
+    /// already applied to `effects`. Missing (older data) or unknown = the item's own colours.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<String>,
 }
 
 /// One paint zone's look (`keepers::kit::look`): a colour (#rrggbb) and a material, either optional.
@@ -61,7 +65,7 @@ pub struct KeeperVoice {
 
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
-    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None, set: None }).collect()
+    ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None, set: None, colour: None }).collect()
 }
 
 /// One keeper: soul (who), role (what it can do), body (species + wearables) and its own graph (memory).
@@ -118,12 +122,33 @@ pub struct KeeperProfile {
     /// What it wore before a mode's loadout went on, put back when it leaves for a mode without one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub home_outfit: Option<Vec<WornPart>>,
+    /// The outfit last worn in each mode with a loadout, changes made by hand included, and the mode
+    /// dressed for now (`keepers::kit::loadout::change_mode`). Left out = nothing remembered.
+    #[serde(default, skip_serializing_if = "ModeOutfits::is_empty")]
+    pub mode_outfits: ModeOutfits,
+}
+
+/// What a keeper wore in its loadout modes: `on` is the mode whose loadout it is dressed in now;
+/// `worn` maps a mode id to the outfit it last wore there (saved when it leaves that mode).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ModeOutfits {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on: Option<String>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub worn: std::collections::BTreeMap<String, Vec<WornPart>>,
+}
+
+impl ModeOutfits {
+    pub fn is_empty(&self) -> bool {
+        self.on.is_none() && self.worn.is_empty()
+    }
 }
 
 
 impl Default for KeeperProfile {
     fn default() -> Self {
-        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None }
+        KeeperProfile { id: String::new(), name: "Keeper".into(), skin: "robot".into(), role: "system".into(), soul: "steady".into(), wearables: default_wearables(), graph_id: String::new(), brain: "reflex".into(), model: String::new(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default() }
     }
 }
 
@@ -281,7 +306,7 @@ impl Settings {
             wearables: default_wearables(),
             graph_id: self.graph_id.clone(),
             brain: if self.brain.is_empty() { "reflex".into() } else { self.brain.clone() },
-            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None
+            model, look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, memory_sub: None, legacy_graph: None, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default()
         });
         self.active_keeper = "keeper-1".into();
     }

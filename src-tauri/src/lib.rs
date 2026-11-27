@@ -233,6 +233,7 @@ pub fn run() {
             keepers::studio_commands::personal_list,
             keepers::photo_commands::photo_save,
             keepers::wardrobe_commands::wardrobe_wear,
+            keepers::wardrobe_commands::wardrobe_colour,
             keepers::wardrobe_commands::wardrobe_wear_set,
             keepers::wardrobe_commands::wardrobe_take_off,
             keepers::wardrobe_commands::wardrobe_give,

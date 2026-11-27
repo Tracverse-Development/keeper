@@ -16,11 +16,11 @@ const MOST = 3;
 export function SetProgressToasts({ keeper }: { keeper: string | null }) {
   const [notes, setNotes] = useState<{ id: number; text: string }[]>([]);
   const nextId = useRef(1);
-  useLevelUp(keeper, (level) => {
+  useLevelUp(keeper, (level, _unlocked, from) => {
     if (!keeper) return;
     void Promise.all([core.wardrobe(), core.keeperStudio(keeper)])
       .then(([w, info]) => {
-        const lines = levelUpNotes(w, info.rarities, keeper, level - 1, level).slice(0, MOST);
+        const lines = levelUpNotes(w, info.rarities, keeper, from, level).slice(0, MOST);
         if (lines.length) setNotes((list) => [...list, ...lines.map((text) => ({ id: nextId.current++, text }))].slice(-MOST));
       })
       .catch(() => undefined);

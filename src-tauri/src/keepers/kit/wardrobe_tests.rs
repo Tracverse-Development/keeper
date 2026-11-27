@@ -30,7 +30,7 @@ fn the_wardrobe_lists_every_part_the_stock_variants_and_the_persons_items() {
     let mine = find(&items, "kit:trini-jacket");
     assert!(mine.one_of_a_kind && mine.slot == "torso" && mine.source == "yours");
     // A bad item from the graph is skipped, and a newer save of an id replaces the older one.
-    let bad = Variant { id: "x".into(), name: "X".into(), worn: WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }, one_of_a_kind: false };
+    let bad = Variant { id: "x".into(), name: "X".into(), worn: WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None, colour: None }, one_of_a_kind: false };
     let mut renamed = trini_jacket();
     renamed.name = "Trini's Red Jacket".into();
     let items = super::items(&[bad, trini_jacket(), renamed]);
@@ -107,7 +107,7 @@ fn refusals_are_plain_sentences() {
 #[test]
 fn outfits_from_before_the_wardrobe_still_show_who_wears_what() {
     let (mut keepers, items) = setup();
-    keepers[0].wearables = vec![WornPart { part: "memory-halo".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }];
+    keepers[0].wearables = vec![WornPart { part: "memory-halo".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None, colour: None }];
     assert_eq!(worn_by(find(&items, "part:memory-halo"), &keepers, &items), vec!["k1", "k2"]);
     take_off(&mut keepers, "k1", find(&items, "part:memory-halo"), &items).unwrap();
     assert!(keepers[0].wearables.is_empty());

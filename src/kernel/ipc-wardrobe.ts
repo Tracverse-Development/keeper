@@ -34,6 +34,15 @@ export interface WardrobeItem {
   who?: string[];
   /** The official set it belongs to ('' or absent for none). */
   set?: string;
+  /** The colours it can be worn in (`kit/colours.rs`; absent from an older core, empty for none). */
+  colours?: ColourChoice[];
+}
+
+/** One colour an item can be worn in: a swatch id, its name, and the effect values it sets. */
+export interface ColourChoice {
+  id: string;
+  name: string;
+  effects: Record<string, number | string>;
 }
 
 /** An official set (`kit/collection/mod.rs` `ItemSet`). */

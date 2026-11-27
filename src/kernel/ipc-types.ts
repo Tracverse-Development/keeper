@@ -19,6 +19,7 @@ export interface WornPart {
   /** Filled in by the core (never sent back): the item's rarity, and its set while three pieces glow. */
   rarity?: string;
   set?: string;
+  colour?: string; // The swatch it is worn in (`kit/colours.rs`), applied to `effects`; absent = its own colours.
 }
 
 export interface KeeperProfile {

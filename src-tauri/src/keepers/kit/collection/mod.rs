@@ -105,7 +105,7 @@ mod tests {
         for o in all() {
             assert!(ids.insert(o.id), "{} is listed twice", o.id);
             let effects: std::collections::BTreeMap<String, serde_json::Value> = serde_json::from_str(o.effects).expect(o.id);
-            let worn = super::super::parts::check_effects(&super::super::parts::WornPart { part: o.part.into(), effects: effects.clone(), item: None, rarity: None, set: None }).expect(o.id);
+            let worn = super::super::parts::check_effects(&super::super::parts::WornPart { part: o.part.into(), effects: effects.clone(), item: None, rarity: None, set: None, colour: None }).expect(o.id);
             assert_eq!(worn.effects.len(), effects.len(), "{}: every effect is in its part's schema and range", o.id);
             assert!(super::super::rarity::get(o.rarity).is_some(), "{}", o.id);
             assert!(o.set.is_empty() || set(o.set).is_some(), "{}: its set {} exists", o.id, o.set);
@@ -129,7 +129,7 @@ mod tests {
             // Every piece fits at least one body the set is for (its slot is offered and its part allows it).
             for o in &pieces {
                 let fits = wearers.iter().any(|sp| {
-                    let worn = super::super::parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{}", o.id)), rarity: None, set: None };
+                    let worn = super::super::parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{}", o.id)), rarity: None, set: None, colour: None };
                     super::super::parts::check(&worn, sp.id).is_ok()
                 });
                 assert!(fits, "{} ({}) fits nobody it is for", o.id, s.id);
@@ -141,7 +141,7 @@ mod tests {
     fn set_rules_keep_pieces_on_their_own_bodies() {
         let check = |id: &str, species: &str| {
             let o = get(id).unwrap();
-            super::super::parts::check(&super::super::parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{id}")), rarity: None, set: None }, species).is_ok()
+            super::super::parts::check(&super::super::parts::WornPart { part: o.part.into(), effects: Default::default(), item: Some(format!("official:{id}")), rarity: None, set: None, colour: None }, species).is_ok()
         };
         assert!(check("linen-shirt", "man") && !check("linen-shirt", "woman") && !check("linen-shirt", "robot"), "a man's piece fits only the man");
         assert!(check("evening-gown", "woman") && !check("evening-gown", "man"));
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn three_pieces_of_a_set_glow_and_two_do_not() {
-        let w = |id: &str| super::super::parts::WornPart { part: get(id).unwrap().part.into(), effects: Default::default(), item: Some(format!("official:{id}")), rarity: None, set: None };
+        let w = |id: &str| super::super::parts::WornPart { part: get(id).unwrap().part.into(), effects: Default::default(), item: Some(format!("official:{id}")), rarity: None, set: None, colour: None };
         assert!(glowing(&[w("linen-shirt"), w("straw-fedora")]).is_empty());
         assert_eq!(glowing(&[w("linen-shirt"), w("straw-fedora"), w("rolled-chinos"), w("field-watch")]), ["island-linen"]);
     }

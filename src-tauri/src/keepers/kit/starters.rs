@@ -40,7 +40,7 @@ mod tests {
             assert!(super::super::roles::exists(s.role), "{}", s.id);
             assert!(souls.iter().any(|x| x.id == s.soul), "{}: soul {}", s.id, s.soul);
             let piece = super::super::collection::get(s.piece).unwrap_or_else(|| panic!("{}: piece {}", s.id, s.piece));
-            let worn = super::super::parts::WornPart { part: piece.part.into(), effects: Default::default(), item: Some(format!("official:{}", piece.id)), rarity: None, set: None };
+            let worn = super::super::parts::WornPart { part: piece.part.into(), effects: Default::default(), item: Some(format!("official:{}", piece.id)), rarity: None, set: None, colour: None };
             assert!(super::super::parts::check(&worn, s.skin).is_ok(), "{} can wear {}", s.id, s.piece);
         }
     }

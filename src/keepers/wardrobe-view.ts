@@ -13,12 +13,15 @@ function slotOf(wardrobe: Wardrobe, part: string): string | undefined {
 /**
  * The outfit with `item` tried on (whatever was in its slot comes off); unchanged for null. It
  * carries the item's rarity, so a legendary or mythical piece shows its tier while it is tried on
- * (even before the keeper's level opens it).
+ * (even before the keeper's level opens it). With `colour` (a swatch id of the item's palette) it
+ * is tried on in that colour; an unknown one is its own colours, as the core decides.
  */
-export function tryOn(wearables: readonly WornPart[], item: WardrobeItem | null, wardrobe: Wardrobe): WornPart[] {
+export function tryOn(wearables: readonly WornPart[], item: WardrobeItem | null, wardrobe: Wardrobe, colour?: string): WornPart[] {
   if (!item) return [...wearables];
   const others = wearables.filter((w) => slotOf(wardrobe, w.part) !== item.slot);
-  return [...others, { part: item.part, effects: item.effects, item: item.id, ...(item.rarity ? { rarity: item.rarity } : {}) }];
+  const choice = colour ? item.colours?.find((c) => c.id === colour) : undefined;
+  const effects = choice ? { ...item.effects, ...choice.effects } : item.effects;
+  return [...others, { part: item.part, effects, item: item.id, ...(item.rarity ? { rarity: item.rarity } : {}), ...(choice ? { colour: choice.id } : {}) }];
 }
 
 /** Pieces of one set worn together for the set glow (the core's `SET_GLOW_PIECES`). */

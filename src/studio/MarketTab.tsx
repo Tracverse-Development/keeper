@@ -12,8 +12,10 @@
 import { useMemo, useState } from 'react';
 
 import { core, sentence, type Imported, type KeeperProfile, type Starter, type StudioInfo, type Wardrobe, type WornPart } from '../kernel/ipc';
+import { effectsIn, shownColour, swatchesOf } from './colour-choice';
+import { ColourSwatches } from './ColourSwatches';
 import { ItemCard } from './ItemCard';
-import { earningOrder, filtered, listingAction, listings, MARKET_FILTERS, shopShelves, standing, type MarketFilter } from './market-view';
+import { coloursOf, earningOrder, filtered, listingAction, listings, MARKET_FILTERS, shopShelves, standing, type MarketFilter } from './market-view';
 import { MakerFields } from './MakerFields';
 import { PackDrop } from './PackDrop';
 import { SeasonShelf } from './SeasonShelf';
@@ -26,8 +28,12 @@ interface Props {
   wardrobe: Wardrobe | null;
   busy: boolean;
   soulName: string;
-  onWear: (item: string) => void;
-  onTry: (item: string | null) => void;
+  /** Put an item on, in the colour picked for it ('' = its own; left out = as it is worn). */
+  onWear: (item: string, colour?: string) => void;
+  /** Wear an item this keeper has on in another colour. */
+  onColour: (item: string, colour: string) => void;
+  /** Try an item on the stage, in a colour (null: stop). */
+  onTry: (item: string | null, colour?: string) => void;
   onImported: (i: Imported) => void;
   /** Try a season item on the stage (null: stop), and reload the wardrobe after one was claimed. */
   onSeasonTry: (item: WornPart | null, name: string) => void;
@@ -54,10 +60,12 @@ const SIDES: { id: Side; name: string }[] = [
   { id: 'keepers', name: 'Keepers' },
 ];
 
-export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTry, onImported, onSeasonTry, onClaimed, onWearSet, onTrySet, keeperNames, onTryStarter, onStarterAdded, modes, onLoadout }: Props) {
+export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onColour, onTry, onImported, onSeasonTry, onClaimed, onWearSet, onTrySet, keeperNames, onTryStarter, onStarterAdded, modes, onLoadout }: Props) {
   const [side, setSide] = useState<Side>('shop');
   const [filter, setFilter] = useState<MarketFilter>('all');
   const [search, setSearch] = useState('');
+  // Colours picked on cards this visit (item id → swatch id), for items not worn yet.
+  const [picked, setPicked] = useState<Record<string, string>>({});
   const all = useMemo(() => (wardrobe ? listings(wardrobe, info, keeper.id) : []), [wardrobe, info, keeper.id]);
   const shown = useMemo(() => (wardrobe ? filtered(all, wardrobe, filter, search) : []), [all, wardrobe, filter, search]);
   const stand = standing(info, all);
@@ -113,9 +121,16 @@ export function MarketTab({ info, keeper, wardrobe, busy, soulName, onWear, onTr
                 <div className="item-grid">
                   {earningOrder(info, shelf.items).map((l) => {
                     const action = listingAction(l);
+                    const colour = shownColour(l.item, picked, keeper.wearables);
+                    const pick = (id: string) => {
+                      setPicked((p) => ({ ...p, [l.item.id]: id }));
+                      if (l.wearing) onColour(l.item.id, id);
+                      onTry(l.item.id, id);
+                    };
+                    const swatches = <ColourSwatches label={l.item.name} swatches={swatchesOf(l.item)} chosen={colour} onPick={pick} onPreview={(id) => onTry(l.item.id, id ?? colour)} />;
                     return (
-                      <ItemCard key={l.item.id} name={l.item.name} rarity={l.rarity} slotName={l.slotName} colours={l.colours} locked={l.locked} worn={l.wearing} line={l.item.blurb} onTry={(on) => onTry(on ? l.item.id : null)}>
-                        <button type="button" className={`btn btn-small btn-block ${action.can ? 'btn-primary' : ''}`} disabled={busy || !action.can} onClick={() => onWear(l.item.id)}>{action.label}</button>
+                      <ItemCard key={l.item.id} name={l.item.name} rarity={l.rarity} slotName={l.slotName} colours={coloursOf({ effects: effectsIn(l.item, colour) })} locked={l.locked} worn={l.wearing} line={l.item.blurb} swatches={swatches} onTry={(on) => onTry(on ? l.item.id : null, colour)}>
+                        <button type="button" className={`btn btn-small btn-block ${action.can ? 'btn-primary' : ''}`} disabled={busy || !action.can} onClick={() => onWear(l.item.id, l.item.id in picked ? colour : undefined)}>{action.label}</button>
                       </ItemCard>
                     );
                   })}

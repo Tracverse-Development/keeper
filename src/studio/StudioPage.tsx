@@ -267,10 +267,11 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
                 keeper={keeper}
                 wardrobe={market.wardrobe}
                 busy={market.busy}
-                onWear={(item) => void market.wear(keeper.id, item)}
+                onWear={(item, colour) => void market.wear(keeper.id, item, colour)}
+                onColour={(item, colour) => void market.colour(keeper.id, item, colour)}
                 onTakeOff={(item) => void market.takeOff(keeper.id, item)}
                 onGive={(item, to, mode) => void market.give(item, keeper.id, to, mode)}
-                onTry={(item) => setOutfit(item && market.wardrobe ? { wearables: tryOn(keeper.wearables, item, market.wardrobe), caption: `Trying on the ${item.name}`, slot: item.slot } : null)}
+                onTry={(item, colour) => setOutfit(item && market.wardrobe ? { wearables: tryOn(keeper.wearables, item, market.wardrobe, colour), caption: `Trying on the ${item.name}`, slot: item.slot } : null)}
               />
             )}
             {info && tab === 'forge' && (
@@ -311,13 +312,14 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
                 wardrobe={market.wardrobe}
                 busy={market.busy}
                 soulName={soulName}
-                onWear={(item) => void market.wear(keeper.id, item)}
-                onTry={(id) => {
+                onWear={(item, colour) => void market.wear(keeper.id, item, colour)}
+                onColour={(item, colour) => void market.colour(keeper.id, item, colour)}
+                onTry={(id, colour) => {
                   const item = market.wardrobe?.items.find((i) => i.id === id) ?? null;
                   setOutfit(
                     item && market.wardrobe
                       ? {
-                          wearables: tryOn(keeper.wearables, item, market.wardrobe),
+                          wearables: tryOn(keeper.wearables, item, market.wardrobe, colour),
                           caption: `Trying on the ${item.name}`,
                         }
                       : null,

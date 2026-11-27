@@ -145,7 +145,8 @@ pub fn check_effects(worn: &WornPart) -> Result<WornPart, String> {
             }
         }
     }
-    Ok(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item), rarity: None, set: None })
+    // The colour is checked against the item's palette and applied over the effects.
+    Ok(super::colours::validated(WornPart { part: part.id.to_string(), effects, item: item_ref(&worn.item), rarity: None, set: None, colour: worn.colour.clone() }))
 }
 
 /// Validate a worn part for a species: as `check_effects`, and the part fits that body (its
@@ -199,11 +200,11 @@ mod tests {
         assert_eq!(ok.effects.get("color"), Some(&json!("#e2425f")));
         assert_eq!(ok.effects.get("spinWork"), Some(&json!(8.0)));
         assert!(!ok.effects.contains_key("evil") && !ok.effects.contains_key("nodes"));
-        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }, "robot").is_err());
+        assert!(check(&WornPart { part: "laser".into(), effects: BTreeMap::new(), item: None, rarity: None, set: None, colour: None }, "robot").is_err());
     }
 
     fn worn(part: &str) -> WornPart {
-        WornPart { part: part.into(), effects: BTreeMap::new(), item: None, rarity: None, set: None }
+        WornPart { part: part.into(), effects: BTreeMap::new(), item: None, rarity: None, set: None, colour: None }
     }
 
     #[test]

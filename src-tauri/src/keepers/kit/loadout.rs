@@ -4,6 +4,11 @@
 //! what it wore before is put back. Moving between two modes that both have loadouts keeps the
 //! outfit it started from, so the last move home restores the right thing.
 //!
+//! Changes made BY HAND while in a mode with a loadout belong to that mode (`change_mode`): when
+//! the keeper leaves mode X, what it wears is remembered as X's outfit, and coming back to X puts
+//! that outfit back on rather than the set fresh. Its everyday outfit (`home`) is never touched by
+//! them. Tying another set to X (or none) forgets X's outfit (`keeper_set_loadout`).
+//!
 //! Pure: `plan` decides from the outfit now, the outfit kept from before and the pieces the new
 //! mode's set offers (the commands in `keepers/loadout_commands.rs` read the level and the wardrobe
 //! and save the result). Tested below.
@@ -11,6 +16,7 @@
 use std::collections::BTreeMap;
 
 use super::parts::{self, WornPart};
+pub use crate::kernel::settings::ModeOutfits;
 
 /// What a change of mode does to the outfit.
 #[derive(Debug, Clone, PartialEq)]
@@ -38,7 +44,8 @@ pub fn plan(current: &[WornPart], home: Option<&[WornPart]>, pieces: Option<&[Wo
             let base = home.unwrap_or(current);
             let slots = taken(pieces);
             let mut outfit: Vec<WornPart> = base.iter().filter(|w| !parts::takes(&w.part).iter().any(|s| slots.contains(s))).cloned().collect();
-            outfit.extend(pieces.iter().cloned());
+            // A piece already worn keeps the colour it is worn in.
+            outfit.extend(pieces.iter().map(|p| base.iter().find(|b| b.item.is_some() && b.item == p.item).cloned().unwrap_or_else(|| p.clone())));
             if outfit == current {
                 return Plan::Keep;
             }
@@ -50,6 +57,36 @@ pub fn plan(current: &[WornPart], home: Option<&[WornPart]>, pieces: Option<&[Wo
             None => Plan::Keep,
         },
     }
+}
+
+/// Change to `mode`, remembering outfits per mode. `memory` is what was kept (`ModeOutfits`):
+/// leaving the mode dressed for (`memory.on`) saves `current` as that mode's outfit; arriving in a
+/// mode whose set offers `pieces` puts back its remembered outfit, or dresses from the set (`plan`);
+/// a mode without a loadout puts `home` back. Returns the plan and the memory to save (saved even
+/// when the plan is `Keep`). A remembered outfit is trusted as given: the caller drops one that no
+/// longer fits the body.
+pub fn change_mode(current: &[WornPart], home: Option<&[WornPart]>, memory: &ModeOutfits, mode: &str, pieces: Option<&[WornPart]>) -> (Plan, ModeOutfits) {
+    let mut memory = memory.clone();
+    let dressing = pieces.is_some_and(|p| !p.is_empty());
+    if memory.on.as_deref() == Some(mode) && dressing {
+        return (Plan::Keep, memory);
+    }
+    if let Some(leaving) = memory.on.clone().filter(|m| m != mode) {
+        memory.worn.insert(leaving, current.to_vec());
+    }
+    if !dressing {
+        if pieces.is_none() {
+            memory.on = None;
+        }
+        return (plan(current, home, pieces), memory);
+    }
+    memory.on = Some(mode.to_string());
+    let next = match memory.worn.get(mode) {
+        Some(kept) if kept.as_slice() == current => Plan::Keep,
+        Some(kept) => Plan::Wear { outfit: kept.clone(), home: home.unwrap_or(current).to_vec() },
+        None => plan(current, home, pieces),
+    };
+    (next, memory)
 }
 
 /// The pieces of a set to wear at once: the first piece wins a slot two pieces share.
@@ -74,7 +111,7 @@ mod tests {
     use super::*;
 
     fn w(part: &str, item: &str) -> WornPart {
-        WornPart { part: part.into(), effects: Default::default(), item: Some(item.into()), rarity: None, set: None }
+        WornPart { part: part.into(), effects: Default::default(), item: Some(item.into()), rarity: None, set: None, colour: None }
     }
 
     #[test]
@@ -115,6 +152,55 @@ mod tests {
         assert_eq!(pieces.iter().map(|p| p.item.clone().unwrap()).collect::<Vec<_>>(), ["official:crew-tee", "official:denim-jeans"], "the first top wins; the gown has no torso left");
         let gown_first = one_per_slot(vec![w("gown", "official:evening-gown"), w("trousers", "official:denim-jeans")]);
         assert_eq!(gown_first.len(), 1, "the gown takes the legs");
+    }
+
+    #[test]
+    fn changes_made_by_hand_in_a_loadout_mode_are_that_modes_and_come_back_with_it() {
+        let everyday = vec![w("crew-cap", "official:forest-cap")];
+        let explorer = vec![w("brim-hat", "official:wide-brim-hat")];
+        let none = ModeOutfits::default();
+        // Into Explorer: dressed from the set.
+        let (Plan::Wear { outfit: dressed, home }, memory) = change_mode(&everyday, None, &none, "researcher", Some(&explorer)) else { panic!() };
+        assert_eq!(memory.on.as_deref(), Some("researcher"));
+        // By hand, in Explorer: a scarf goes on, and the hat is worn in red.
+        let mut by_hand = dressed.clone();
+        by_hand.push(w("knit-scarf", "official:sky-scarf"));
+        by_hand.iter_mut().find(|p| p.part == "brim-hat").unwrap().colour = Some("red".into());
+        // Asked again for the same mode (the window reloads): nothing changes, nothing is lost.
+        assert_eq!(change_mode(&by_hand, Some(&home), &memory, "researcher", Some(&explorer)).0, Plan::Keep);
+        // Home (a mode without a loadout): the everyday outfit, untouched by the hand changes.
+        let (back_home, memory) = change_mode(&by_hand, Some(&home), &memory, "companion", None);
+        assert_eq!(back_home, Plan::Restore { outfit: everyday.clone() });
+        assert_eq!((memory.on.as_deref(), memory.worn.get("researcher")), (None, Some(&by_hand)), "Explorer's outfit is remembered as left");
+        // Back to Explorer: the outfit as it was left, scarf and red hat, not the set fresh.
+        let (Plan::Wear { outfit, home: kept_home }, memory) = change_mode(&everyday, None, &memory, "researcher", Some(&explorer)) else { panic!() };
+        assert_eq!(outfit, by_hand);
+        assert_eq!(kept_home, everyday);
+        // Explorer to Scholar (both loadouts): leaving Explorer saves it again; Scholar dresses from home.
+        let scholar = vec![w("round-spectacles", "official:owl-spectacles")];
+        let (Plan::Wear { outfit: in_scholar, .. }, memory) = change_mode(&outfit, Some(&kept_home), &memory, "tutor", Some(&scholar)) else { panic!() };
+        assert!(in_scholar.contains(&everyday[0]) && in_scholar.contains(&scholar[0]) && !in_scholar.iter().any(|p| p.part == "knit-scarf"));
+        assert_eq!(memory.worn.get("researcher"), Some(&by_hand));
+        assert_eq!(memory.on.as_deref(), Some("tutor"));
+    }
+
+    #[test]
+    fn a_set_piece_already_worn_keeps_its_colour() {
+        let mut cap = w("brim-hat", "official:wide-brim-hat");
+        cap.colour = Some("navy".into());
+        let Plan::Wear { outfit, .. } = plan(&[cap.clone(), w("knit-scarf", "official:sky-scarf")], None, Some(&[w("brim-hat", "official:wide-brim-hat"), w("trousers", "official:cargo-trousers")])) else { panic!() };
+        assert!(outfit.contains(&cap), "{outfit:?}");
+    }
+
+    #[test]
+    fn an_older_profile_has_no_mode_outfits_and_an_empty_one_is_not_written() {
+        let old: crate::kernel::settings::KeeperProfile = serde_json::from_str(r#"{"id":"keeper-1","name":"Pup","skin":"puppy","role":"companion"}"#).unwrap();
+        assert!(old.mode_outfits.is_empty());
+        assert!(!serde_json::to_string(&old).unwrap().contains("modeOutfits"));
+        let mut kept = old.clone();
+        kept.mode_outfits.worn.insert("tutor".into(), vec![w("crew-cap", "official:forest-cap")]);
+        let back: crate::kernel::settings::KeeperProfile = serde_json::from_str(&serde_json::to_string(&kept).unwrap()).unwrap();
+        assert_eq!(back.mode_outfits, kept.mode_outfits);
     }
 
     #[test]
