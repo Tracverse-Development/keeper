@@ -34,7 +34,8 @@ import type { EffectLayer } from './effects/effect-layer';
 import { EmoteDirector } from './emote-director';
 import { easeCarry, readCarry, restingCarry, type Carry, type CarryOffset } from './carry';
 import { PRIORITY } from './expression';
-import { foldExpression } from './expression-frame';
+import { foldExpression, restingExpression } from './expression-frame';
+import { alreadyShown, easeMix, foldMix, restingMix, selectExpression, type ExpressionChoice, type FaceMix, type MixInputs } from './expression-mix';
 import { blinkPace, easeFeeling, foldFeeling, readFeeling, type FeelingDials } from './feeling';
 import { GazeFollower, POINTER_IDLE_SECONDS } from './gaze';
 import type { ZoneFocus } from './look/zone-focus';
@@ -49,7 +50,7 @@ import { CameraFocus } from './stage/camera-focus';
 import { CameraTurn } from './stage/camera-turn';
 import type { Stage } from './stage/scene';
 import type { TouchSparkles } from './stage/touch-sparkles';
-import type { WornPart } from './contract';
+import type { StageMood, WornPart } from './contract';
 import type { Wardrobe } from './wardrobe';
 import { gotItEnvelope, isGotIt, thinkDrama } from './thinking';
 import { clampWork, easeWork } from './work-level';
@@ -114,6 +115,15 @@ export class Animator {
   private readonly touchStartedAt: Record<TouchKind, number> = { poke: -Infinity, pat: -Infinity };
   private readonly touch: Record<TouchKind, number> = { poke: 0, pat: 0 };
 
+  /** The face (`expression-mix.ts`): the stage it stands on, a forced choice, the target and shown mix. */
+  private stageMood: StageMood = 'night';
+  private forcedExpression: ExpressionChoice = 'auto';
+  private readonly mixTarget: FaceMix = restingMix();
+  private readonly mix: FaceMix = restingMix();
+  private readonly mixShown: FaceMix = restingMix();
+  /** Reused every frame (no allocation in the loop); weights, feeling and touch are live references. */
+  private readonly mixInputs: { -readonly [K in keyof MixInputs]: MixInputs[K] };
+
   private readonly headWorld = new Vector3();
   private readonly scratch = new Vector3();
 
@@ -132,6 +142,7 @@ export class Animator {
     this.director = new EmoteDirector(parts.effects);
     this.director.emote('wave', 0, PRIORITY.idle, HELLO_DELAY);
     this.partFrame = { dt: 0, time: 0, motion: this.motion, mood: this.current, voice: 0, work: 0, thinking: 0, gotIt: 0, dramaFloor: 0, head: this.headPoint };
+    this.mixInputs = { weights: this.weights, work: 0, feeling: this.feeling, touch: this.touch, emote: restingExpression(), stage: 'night', forced: 'auto' };
     this.refreshMoments();
   }
 
@@ -170,6 +181,16 @@ export class Animator {
     if (mood !== this.targetMood) this.director.activity();
     this.target = moodTarget(mood);
     this.targetMood = mood;
+  }
+
+  /** The stage's light mood: it leans the face (starfield sleepy, neon alert, lamplight warm). */
+  setStageMood(mood: StageMood): void {
+    this.stageMood = mood;
+  }
+
+  /** Shows one expression regardless (`neutral`: none), or follows what it does again (`auto`). */
+  setExpression(choice: ExpressionChoice): void {
+    this.forcedExpression = choice;
   }
 
   setVoiceLevel(level: number): void {
@@ -274,6 +295,13 @@ export class Animator {
       carry: easeCarry(this.carried, this.carryInput, dt),
     });
     foldExpression(expression, emote);
+    const mixInputs = this.mixInputs;
+    mixInputs.work = this.work;
+    mixInputs.emote = emote;
+    mixInputs.stage = this.stageMood;
+    mixInputs.forced = this.forcedExpression;
+    easeMix(this.mix, selectExpression(mixInputs, this.mixTarget), dt);
+    foldMix(expression, this.mix, alreadyShown(mixInputs, this.mixShown));
     if (this.director.takeWake()) this.blinks.blinkNow(this.time);
     const blink = this.blinks.step(this.time, dt * blinkPace(this.feeling), expression.eyeOpen);
     this.gaze.step(dt, this.time, p, this.motion, this.headOnScreen(), this.touch, emote);
@@ -294,6 +322,7 @@ export class Animator {
       gotIt,
       dramaFloor: this.director.dramaFloor,
       emote,
+      face: this.mix,
     });
 
     const partFrame = this.partFrame;

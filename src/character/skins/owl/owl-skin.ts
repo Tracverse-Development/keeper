@@ -26,7 +26,8 @@ import { slotsOf } from '../catalog';
 import { addHitProxy } from '../hit-proxy';
 import type { Skin, SkinFrame } from '../skin';
 import { addSoftEyes } from '../soft-eyes';
-import { poseSoftBody, softEyePose } from '../soft-pose';
+import { poseSoftBody } from '../soft-pose';
+import { faceMouthO, softFacePose } from '../expression-face';
 import { OWL_BODY_DEPTH, OWL_BODY_PROFILE, OWL_EYES, OWL_HEAD, OWL_HEAD_Y, OWL_NECK_Y, OWL_SHOULDER } from './owl-shape';
 import { OWL_MOMENTS } from './owl-moments';
 import { addOwlPlumage, clawMaterial, OWL_BREAST, OWL_WING } from './owl-plumage';
@@ -117,6 +118,8 @@ export function createOwlSkin(): Skin {
     iris: 0.95,
     materials: { eye: m.eye, iris: m.eyes, pupil: m.pupil, catchlight: m.catchlight, lid: m.face, line: m.line },
     brow: { length: 0.2, thickness: 0.035, lift: 0.05 },
+    browTravel: 1.5,
+    browSink: 0.15,
   });
 
   addOwlPlumage(body, head, [rightWing, leftWing], tufts, { body: m.body, belly: m.belly, head: m.head, face: m.face, wings: m.wings, beak: m.beak, claw: clawMaterial() });
@@ -142,10 +145,10 @@ export function createOwlSkin(): Skin {
     // Thinking: the owl's own trick, a slow, wide swivel of the head.
     head.rotation.y += pose.drama * a * 0.5 * Math.sin(pose.t * 0.6);
     const moment = moments.step(f);
-    const eyePose = softEyePose(f, R);
+    const eyePose = softFacePose(f, R);
     if (moment?.id === 'adjust-spectacles') eyePose.open *= 1 - 0.85 * Math.max(0, Math.sin(moment.progress * Math.PI * 2.2)) ** 6;
     eyes.update(eyePose);
-    const open = Math.max(f.mouth, 0.6 * e.mouthO);
+    const open = Math.max(f.mouth, 0.6 * faceMouthO(f));
     lowerBeak.rotation.x = Math.PI + 0.5 + 0.5 * open;
     lowerBeak.position.y = -0.24 - 0.03 * open;
     const perk = f.weights.listening * 0.3 + 0.3 * e.wide + 0.2 * f.gotIt - 0.4 * Math.max(e.nap, f.weights.asleep);

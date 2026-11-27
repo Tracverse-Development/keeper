@@ -13,6 +13,10 @@
  * can travel through both eyes) and a pulse (`scanPulse`) that alternates between the eyes.
  * With `scan` 0 that branch never runs, so the face is exactly the shipped one.
  *
+ * The face mix's focus and sleep (`slant`, signed per eye) cut the pill's top along a sloped line:
+ * lowered toward the nose it reads as a focused brow, lowered toward the temple as a drowsy one.
+ * At 0 the cut is skipped.
+ *
  * Screen-face expressions (`glyph-shapes.ts`) morph the pill into another shape by amount:
  * a heart (`heart`), a spinning sparkle star (`star`), a loader ring whose bright comet spins
  * (`loader`, thinking) and, on the mouth, five equaliser bars (`bars`, heights `barH`). Each
@@ -33,6 +37,8 @@ export interface GlyphUniforms extends Record<string, IUniform> {
   uLine: { value: number };
   uBend: { value: number };
   uSquint: { value: number };
+  /** The top edge's slope (signed: + lowers the +x end, toward screen right); 0 = the plain pill. */
+  uSlant: { value: number };
   uGlow: { value: number };
   uGlowWidth: { value: number };
   uCore: { value: Color };
@@ -68,6 +74,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uLine;
   uniform float uBend;
   uniform float uSquint;
+  uniform float uSlant;
   uniform float uGlow;
   uniform float uGlowWidth;
   uniform vec3 uCore;
@@ -102,6 +109,8 @@ ${GLYPH_SHAPES}
     float carveRadius = uHalf.x * 1.7;
     float carveCentre = -h - carveRadius + uSquint * h * 1.35;
     d = max(d, -(length(p - vec2(0.0, carveCentre)) - carveRadius));
+    // Slant: a sloped lid cuts the top (a focused brow toward the nose, a drowsy one outward).
+    if (uSlant != 0.0) d = max(d, p.y - (h * (1.0 - 0.3 * abs(uSlant)) - uSlant * p.x * 0.75));
     float tail = 1.0;
     if (uHeart > 0.0) d = mix(d, sdHeart(p, uHalf.y * 1.35), uHeart);
     if (uStar > 0.0) d = mix(d, sdStar4(p, uHalf.y * 1.15, uTime * 1.6), uStar);
@@ -159,6 +168,7 @@ export function createGlyphMaterial(options: GlyphOptions): GlyphMaterial {
     uLine: { value: options.line },
     uBend: { value: 0 },
     uSquint: { value: 0 },
+    uSlant: { value: 0 },
     uGlow: { value: 1 },
     uGlowWidth: { value: options.glowWidth },
     uCore: { value: new Color(PALETTE.cream50) },

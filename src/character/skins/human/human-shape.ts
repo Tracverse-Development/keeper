@@ -25,7 +25,49 @@ export interface HumanFrame {
   /** Legs: x either side, top and length (world), and the shoe ellipsoid. */
   readonly leg: { readonly x: number; readonly top: number; readonly length: number; readonly radius: number };
   readonly shoe: readonly [number, number, number];
+  /** The nose's sculpt (`human-face.ts`); left out = `DEFAULT_NOSE` (the woman's, the God Keeper's mask). */
+  readonly nose?: NoseShape;
 }
+
+/** Half-extents (head units) of the nose's pieces, and how far out from the face and apart they sit. */
+export interface NoseShape {
+  /** The bridge between the eyes down to the tip. */
+  readonly bridge: readonly [number, number, number];
+  /** The tip, and how far it stands out from the skin. */
+  readonly tip: readonly [number, number, number];
+  readonly tipOut: number;
+  /** Each nostril wing, and its distance from the middle. */
+  readonly wing: readonly [number, number, number];
+  readonly wingX: number;
+  /** Each dark nostril, and its distance from the middle. */
+  readonly nostril: readonly [number, number, number];
+  readonly nostrilX: number;
+}
+
+/** The shipped nose: a rounded button tip over full wings. */
+export const DEFAULT_NOSE: NoseShape = {
+  bridge: [0.036, 0.085, 0.04],
+  tip: [0.06, 0.052, 0.05],
+  tipOut: 0.04,
+  wing: [0.038, 0.034, 0.036],
+  wingX: 0.052,
+  nostril: [0.016, 0.009, 0.012],
+  nostrilX: 0.026,
+};
+
+/**
+ * The man's nose: a slimmer, longer bridge, a smaller defined tip and wings tucked closer, so it
+ * reads as a straight nose rather than a bulb (the same build as the woman's, finer).
+ */
+export const MAN_NOSE: NoseShape = {
+  bridge: [0.03, 0.088, 0.036],
+  tip: [0.043, 0.04, 0.041],
+  tipOut: 0.036,
+  wing: [0.026, 0.024, 0.025],
+  wingX: 0.04,
+  nostril: [0.012, 0.007, 0.01],
+  nostrilX: 0.022,
+};
 
 /** World heights: the head centre, the neck (top of the torso) and the soles. */
 export const HUMAN_HEAD_Y = 0.3;
@@ -56,6 +98,7 @@ export const MAN_FRAME: HumanFrame = {
   arm: { sleeve: 0.12, radius: 0.096, length: 0.5, hand: 0.11, spread: 0.13 },
   leg: { x: 0.17, top: -1.3, length: 0.46, radius: 0.13 },
   shoe: [0.14, 0.09, 0.22],
+  nose: MAN_NOSE,
 };
 
 export const WOMAN_FRAME: HumanFrame = {

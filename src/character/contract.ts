@@ -274,3 +274,21 @@ export type TurnCommand =
   | { readonly kind: 'to'; readonly yaw: number }
   | { readonly kind: 'by'; readonly delta: number }
   | { readonly kind: 'around' };
+
+// The face it wears (appended by declaration merging).
+/**
+ * One of the four expressions every keeper draws its own way (`expression-mix.ts`): `happy`, `focused`,
+ * `sleepy`, `surprised`; `neutral` shows none of them and `auto` (the default) follows what it is doing
+ * (a pat or a happy mood smiles, thinking and hard work focus, a doze or a tired mood is sleepy, a poke
+ * surprises) and the stage it stands on (the starfield leans sleepy, neon alert, lamplight warm).
+ */
+export type Expression = 'happy' | 'focused' | 'sleepy' | 'surprised' | 'neutral' | 'auto';
+
+export interface Character {
+  /**
+   * Hold one expression (eased in, never snapped), or `auto` to follow what it does again. Unknown
+   * values are ignored. Moods, emotes, blinks and the gaze keep playing on top, e.g.
+   *   character.setExpression('sleepy')   // a preview of the sleepy face
+   */
+  setExpression(expression: Expression): void;
+}

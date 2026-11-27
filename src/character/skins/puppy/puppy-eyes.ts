@@ -31,6 +31,8 @@ const UPPER_OPEN = -1.15;
 const UPPER_SHUT = 0.4;
 const LOWER_OPEN = 1.25;
 const LOWER_RAISED = 0.36;
+/** How far a focused eye's lower lid rises (share of a full squint). */
+const NARROW_LIFT = 0.4;
 
 export interface EyePose {
   /** Lid opening 0 shut .. 1 open (>1 is clamped: the puppy's eyes are already wide). */
@@ -45,6 +47,8 @@ export interface EyePose {
   wink?: number;
   pop?: number;
   stars?: number;
+  /** Focus 0..1 (`expression-mix.ts`): the lower lids rise flat, a narrowed attentive eye. */
+  narrow?: number;
 }
 
 export interface PuppyEyes {
@@ -111,13 +115,14 @@ export function addPuppyEyes(head: Object3D, kit: PuppyKit): PuppyEyes {
       const wink = Math.min(Math.max(pose.wink ?? 0, 0), 1);
       const glint = 1 + 0.9 * (pose.stars ?? 0);
       const swell = 1 + 0.14 * (pose.pop ?? 0);
+      const narrow = NARROW_LIFT * Math.min(Math.max(pose.narrow ?? 0, 0), 1);
       for (const eye of eyes) {
         const closure = eye.side === 1 ? baseClosure + (1 - baseClosure) * wink : baseClosure;
         eye.group.scale.setScalar(swell);
         eye.roll.rotation.y = pose.gazeX * GAZE_YAW - eye.side * 0.05;
         eye.roll.rotation.x = -pose.gazeY * GAZE_PITCH;
         eye.upper.rotation.x = UPPER_OPEN + (UPPER_SHUT - UPPER_OPEN) * closure;
-        eye.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open, eye.side === 1 ? wink : 0);
+        eye.lower.rotation.x = LOWER_OPEN + (LOWER_RAISED - LOWER_OPEN) * Math.max(squint, 1 - open, eye.side === 1 ? wink : 0, narrow);
         eye.lowerTilt.rotation.z = eye.side * 0.32 * squint;
         const visible = closure < 0.9 && pose.sparkle > 0.05;
         for (const { dot, rest } of eye.sparkles) {

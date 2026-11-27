@@ -24,7 +24,8 @@ import { addSlotAnchors } from '../anchors';
 import { slotsOf } from '../catalog';
 import { addHitProxy } from '../hit-proxy';
 import type { Skin, SkinFrame } from '../skin';
-import { poseSoftBody, softEyePose } from '../soft-pose';
+import { poseSoftBody } from '../soft-pose';
+import { faceMouthO, softFacePose } from '../expression-face';
 import { buildHumanRig, poseArms, type Blob, type HumanMaterials, type HumanRig, type HumanStyle } from './human-body';
 import { BEARD_COLOUR, dressManHair, dressWomanHair, syncHair, type ManHair } from './human-hair';
 import { HUMAN_HEAD_Y, MAN_FRAME, WOMAN_FRAME, type HumanFrame } from './human-shape';
@@ -172,8 +173,8 @@ export function createHumanSkin(variant: HumanVariant): Skin {
 export function applyHuman(rig: HumanRig, frame: HumanFrame, f: SkinFrame, leanSide: number): void {
   const pose = poseSoftBody(rig, f, R, leanSide, HUMAN_ROOT_Y);
   const e = f.emote;
-  rig.eyes.update(softEyePose(f, R));
-  rig.setMouth(Math.max(f.mouth, 0.3 * pose.cheer), f.mood.smile + 0.5 * pose.cheer + 0.3 * f.touch.pat, e.mouthO);
+  rig.eyes.update(softFacePose(f, R));
+  rig.setMouth(Math.max(f.mouth, 0.3 * pose.cheer), f.mood.smile + 0.5 * pose.cheer + 0.3 * f.touch.pat, faceMouthO(f));
   const a = f.motion.amplitude;
   const sway = Math.sin(pose.t * 1.1) * a + 0.5 * e.swing;
   poseArms(rig, frame, e.paw, e.swing * a, sway, pose.cheer * a);

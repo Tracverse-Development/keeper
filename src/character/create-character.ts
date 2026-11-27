@@ -17,6 +17,7 @@ import { Animator } from './animator';
 import type { Character, Emote, HitRegion, Habits, Look, Mood, StageMood, TouchKind, WornPart } from './contract';
 import { createEffectLayer } from './effects/effect-layer';
 import { isEmote } from './emotes';
+import { isExpressionChoice } from './expression-mix';
 import { isMood } from './moods';
 import { DEFAULT_WEARABLES } from './parts';
 import { SkinSwitcher } from './skin-switcher';
@@ -70,7 +71,11 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
   const moods = createMoodRig(stage, backdrop);
   let moodChoice: StageMood | 'auto' = options.stageMood ?? 'auto';
   let worn: readonly WornPart[] = options.wearables ?? DEFAULT_WEARABLES;
-  const applyMood = (instant: boolean): void => moods.set(moodChoice === 'auto' ? moodOfWear(worn) ?? 'night' : moodChoice, instant);
+  const applyMood = (instant: boolean): void => {
+    const mood = moodChoice === 'auto' ? moodOfWear(worn) ?? 'night' : moodChoice;
+    moods.set(mood, instant);
+    animator.setStageMood(mood); // the stage leans the face (`expression-mix.ts`)
+  };
   applyMood(true);
   animator.setLook(options.look ?? {});
   animator.setHabits(options.habits ?? {});
@@ -232,6 +237,9 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     hitTest,
     react(kind: TouchKind) {
       if (TOUCH_KINDS.includes(kind)) animator.react(kind);
+    },
+    setExpression(expression) {
+      if (!disposed && isExpressionChoice(expression)) animator.setExpression(expression);
     },
     emote(name: Emote) {
       if (!disposed && isEmote(name)) animator.emote(name);
