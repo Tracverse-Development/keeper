@@ -193,6 +193,11 @@ impl Voice {
     /// and the window hears why (no silent failures).
     /// `queue`: wait for what is being said (the rest of a reply after its first sentence).
     pub async fn speak(&self, app: &AppHandle, text: &str, settings: &Settings, queue: bool) -> Result<()> {
+        // Testing only: KEEPER_SILENT=1 (set by the bench scripts) keeps a test copy quiet on the
+        // machine running it. This is the one place the app makes sound. Never set in normal use.
+        if std::env::var_os("KEEPER_SILENT").is_some() {
+            return Ok(());
+        }
         let _turn = self.order.lock().await;
         if settings.voice_engine == VoiceEngine::Elevenlabs {
             match eleven::render(text, &settings.eleven_voice_id).await {

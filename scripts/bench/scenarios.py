@@ -5,7 +5,7 @@ Each turn records the time, the reply, the panel kinds; checks the kinds against
 should show (any of `want`, none of `never`); then a judge model rates the turn 1 to 5 for
 "do the panels fit what was asked, with enough context to understand them?". Run:
 
-    KEEPER_HOME=misc/bench-home KEEPER_TEST_LINK=1 src-tauri/target/release/keeper &
+    KEEPER_HOME=misc/bench-home KEEPER_TEST_LINK=1 KEEPER_SILENT=1 src-tauri/target/release/keeper &
     python3 scripts/bench/scenarios.py [scenario-name ...]
 
 The judge is Claude Code on the quick model (`claude -p --model haiku`); its notes say what to fix.
@@ -45,6 +45,29 @@ SCENARIOS = {
         ('Remember that my bench test cat is called Biscuit Moon.', NONE, {'quiz', 'live', 'table'}),
         ("What's my bench test cat called?", NONE, {'quiz', 'live'}),
         ('Forget my bench test cat.', NONE, {'quiz', 'live'}),
+    ]),
+    # Everyday usefulness (founder 2026-11-27: "make keepers genuinely useful to people").
+    'everyday': ('assistant', [
+        ("What's a 15% tip on $86?", NONE, {'quiz', 'live', 'approval'}),
+        ('Help me plan a dinner for six people on Saturday, one of them is vegetarian.', {'checklist', 'steps', 'table', 'cards', 'timeline'}, {'quiz', 'live', 'approval'}),
+        ('Compare the iPhone 16 and the Pixel 9 for someone who mostly takes photos.', {'table', 'cards', 'sources', 'text'}, {'quiz', 'live', 'approval'}),
+        ('Write a short, polite email to my landlord asking when the heating will be fixed.', {'text'}, {'quiz', 'live', 'approval'}),
+    ]),
+    'media': ('assistant', [
+        ('Show me a video on how to tie a tie.', {'media', 'steps'}, {'quiz', 'live', 'approval'}),
+        ('Play a short video about how volcanoes erupt.', {'media'}, {'live', 'approval'}),
+    ]),
+    'files': ('system', [
+        ('Show me what is in /tmp/keeper-bench/notes.txt', {'file', 'text'}, {'quiz'}),
+        ('Fix the spelling mistakes in /tmp/keeper-bench/notes.txt', {'approval', 'file'}, {'quiz'}),
+    ]),
+    'reminders': ('assistant', [
+        ('Remind me tomorrow at 9am to call the dentist.', NONE | {'agenda'}, {'quiz', 'live'}),
+        ('What reminders do I have?', {'agenda', 'checklist', 'table', 'text'}, {'quiz', 'live'}),
+    ]),
+    'kids': ('tutor', [
+        ('Explain fractions to my 8 year old using pizza.', TEACH, {'live', 'approval'}),
+        ('Now give her three practice questions.', CHECK | {'steps', 'cards'}, {'live', 'approval'}),
     ]),
     'switch': ('system', [
         ('How do I make banana bread?', TEACH | {'checklist'}, {'live', 'approval'}),

@@ -23,7 +23,7 @@ JSON
 mode="${BUILD:-debug}"
 bin="$root/src-tauri/target/$mode/keeper"
 (cd "$root/src-tauri" && if [ "$mode" = release ]; then cargo build --release -q; else cargo build -q; fi)
-KEEPER_HOME="$home" KEEPER_TEST_LINK=1 "$bin" > "$home/app.log" 2>&1 &
+KEEPER_HOME="$home" KEEPER_TEST_LINK=1 KEEPER_SILENT=1 "$bin" > "$home/app.log" 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
 for i in $(seq 1 80); do [ -s "$home/test-link.txt" ] && break; sleep 0.5; done
