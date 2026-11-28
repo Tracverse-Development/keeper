@@ -62,7 +62,24 @@ const TABLE: &[(&str, &str, Option<&str>)] = &[
     ("run my Friday tidy", "assistant", None),
     ("open Safari", "assistant", None),
     ("tell me about the moon", "assistant", None),
+    // The scenario bench's instant turns (scripts/bench/bench.py), word for word.
+    ("How's my computer?", "assistant", Some("computer-status")),
+    ("Where is my Downloads folder?", "assistant", Some("show-folder")),
+    ("Brief me", "companion", Some("brief")),
+    ("Can you see what I was working on yesterday?", "assistant", Some("recent-work")),
+    ("What do you know about me?", "assistant", Some("what-you-know")),
+    ("Tidy up my desktop", "assistant", None),
 ];
+
+/// The bench's turns arrive over the phone link: none of its instant answers may be one the
+/// phone is refused (a `Change` ability runs only at the Mac).
+#[test]
+fn the_bench_instant_turns_may_run_from_the_phone() {
+    for said in ["How's my computer?", "Where is my Downloads folder?", "Brief me", "Can you see what I was working on yesterday?", "What do you know about me?"] {
+        let (ability, _) = asked(said, &roles::get("assistant")).unwrap();
+        assert!(crate::sdk::registry::may_run_from(ability.access, false), "{said}");
+    }
+}
 
 #[test]
 fn the_table_of_phrasings_is_answered_as_before() {
