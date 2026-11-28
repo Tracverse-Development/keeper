@@ -8,6 +8,26 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.19.1] - 2026-11-28
+
+Everything beside your keeper takes turns, so it is never squeezed or covered.
+
+### Changed
+- **Memory moves your keeper aside** like the Transcript, instead of covering the message box.
+  Every Memory tab is in view, the counts read "2 things known", and each entry says what
+  answered ("Claude Code", "built-in mind") instead of an internal id.
+- On a narrower window the keepers list folds when the Transcript or Memory opens (at start
+  too), and opening the list while the Stage shows puts the Stage away; "Scenes" brings it back.
+- **Your keeper stays awake while you type or read** the conversation.
+- **Captions rest:** a while after a reply they dim so your keeper has the screen; point at
+  them to read again.
+- Health: a check you fix in Settings has a button that takes you there ("Choose a mind").
+
+### Fixed
+- The Stage's header no longer overlaps on a narrow window (the title shortens instead).
+- The keepers list button did nothing while the Stage was showing.
+- "Scenes" no longer sits on top of the Transcript; chips never break their words.
+
 ## [0.19.0] - 2026-11-28
 
 See your keeper while you talk, and talk without your hands.
