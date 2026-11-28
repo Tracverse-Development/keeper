@@ -8,6 +8,35 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.19.0] - 2026-11-28
+
+See your keeper while you talk, and talk without your hands.
+
+### Added
+- **Captions under your keeper.** The latest exchange shows like subtitles under your keeper,
+  so the conversation never covers it: your words on one small line, then its reply. A long
+  reply shows its first lines and **Read all**.
+- **The Transcript.** The whole conversation, with everything you know from the cards
+  (what it remembered, the steps it took, the memory trail, undo), in a column at the side.
+  Open it with the button by the message box, **Read all**, or a past chat; your keeper moves
+  over so nothing sits on top of it.
+- **Hands-free, one press.** A **Hands-free** switch beside Mode and Style: say your keeper's
+  name and talk. It shows "Yes? Biscuit is listening." when it hears its name, and after it
+  answers out loud you can keep talking for a few seconds without saying its name again.
+
+### Changed
+- Beside the Stage's panels, the message box and captions fit your keeper's column.
+- Asking for the same reminder twice keeps one reminder ("You already have that").
+- Reminder lists that run past today say "Today 9:00 AM" beside "Tomorrow 9:00 AM".
+- Conversions say which cup they mean ("2.113 US cups").
+- Golden Coat for the dog is matte now.
+
+### Fixed
+- What's new (and two other dialogs) now close with Escape, and typing while one is open no
+  longer goes to the message box behind it (FIX-0056).
+- A video request looks once more when YouTube answers with an empty page.
+- The message box shows focus on its whole bar; the Voice tab has one scroll; "1 DKG query".
+
 ## [0.18.1] - 2026-11-28
 
 Smooth keepers, and coats you have to earn.

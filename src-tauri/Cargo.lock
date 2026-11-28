@@ -2110,7 +2110,7 @@ dependencies = [
 
 [[package]]
 name = "keeper"
-version = "0.18.1"
+version = "0.19.0"
 dependencies = [
  "argon2",
  "base64 0.22.1",
