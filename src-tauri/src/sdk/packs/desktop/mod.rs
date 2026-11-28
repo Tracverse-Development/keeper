@@ -26,10 +26,10 @@ pub const ABILITIES: &[Ability] = &[
     },
     Ability {
         id: "open-website",
-        how: "{\"url\": \"https://umojaark.com\"} opens a website in the browser",
+        how: "{\"url\": \"https://umojaark.com\"} opens a website inside Keeper's own browser, in front of the person (add \"outside\": true only when they ask for their own browser)",
         access: Access::Open,
         platforms: ALL, modes: &["assistant"], instant: Instant::Also(words::site_words),
-        run: |input, _| Box::pin(async move { open_website(input) }),
+        run: |input, cx| Box::pin(async move { open_website(input, cx) }),
     },
 ];
 
@@ -67,10 +67,18 @@ pub fn normalise_url(raw: &str) -> Option<String> {
     (host.contains('.') && host.chars().all(|c| c.is_alphanumeric() || ".-:".contains(c))).then_some(url)
 }
 
-fn open_website(input: &serde_json::Value) -> Result<Done> {
+fn open_website(input: &serde_json::Value, cx: &super::super::Cx<'_>) -> Result<Done> {
     let url = normalise_url(input::text(input, "url")?).ok_or_else(|| DeskError::Invalid("That isn't a web address I can open.".into()))?;
-    platform::open_url(&url)?;
-    Ok(Done::said(format!("Opened {url}.")))
+    // Inside Keeper by default (founder 2026-11-28: "default to that"); the person's own browser
+    // when they ask for it, or when Keeper is not the one at the Mac (a phone asked).
+    let outside = input.get("outside").and_then(|v| v.as_bool()).unwrap_or(false) || !cx.at_the_mac;
+    if outside {
+        platform::open_url(&url)?;
+        return Ok(Done::said(format!("Opened {url} in your browser.")));
+    }
+    crate::browser::open(cx.app, &url)?;
+    let host = url.split("://").nth(1).and_then(|r| r.split('/').next()).unwrap_or(&url).to_string();
+    Ok(Done::said(format!("Here's {host}, open in Keeper.")))
 }
 
 #[cfg(test)]

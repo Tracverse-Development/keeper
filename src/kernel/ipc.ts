@@ -35,6 +35,8 @@ export const EVENTS = {
   modeSwitched: 'assistant://mode-switched',
   /** A keeper reached a new level: { keeper, level, unlocked } (`kit::levels::check_level_up`). */
   levelUp: 'keeper://level-up',
+  /** Keeper's browser changed: { open, url } (`browser`). */
+  browserState: 'browser://state',
 } as const;
 
 /**
@@ -46,6 +48,7 @@ export const localMediaSrc = (path: string): string => convertFileSrc(path, 'kee
 
 export type * from './ipc-types';
 export type * from './ipc-voice';
+import type { BrowserState } from './ipc-voice';
 export type * from './ipc-wardrobe';
 export type * from './ipc-studio';
 export type * from './ipc-usage';
@@ -201,6 +204,13 @@ export const core = {
   /** Erase one fact from a keeper's graph (the active keeper when none is named). */
   forgetFact: (id: string, keeper?: string) => invoke<void>('memory_forget_fact', { id, keeper }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),
+  /** Keeper's browser: a web page inside Keeper (core `browser`). */
+  browserOpen: (url: string) => invoke<BrowserState>('browser_open', { url }),
+  browserPlace: (x: number, y: number, width: number, height: number) => invoke<void>('browser_place', { x, y, width, height }),
+  browserGo: (how: 'back' | 'forward' | 'reload') => invoke<void>('browser_go', { how }),
+  browserClose: () => invoke<BrowserState>('browser_close'),
+  browserState: () => invoke<BrowserState>('browser_state'),
+  browserOut: () => invoke<void>('browser_out'),
   /** Opens one page of System Settings by name ("speech recognition", "microphone"). */
   settingsPaneOpen: (name: string) => invoke<void>('settings_pane_open', { name }),
   listenOnce: () => invoke<void>('voice_listen_once'),

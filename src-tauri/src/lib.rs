@@ -4,6 +4,7 @@
 
 mod assistant;
 mod backup;
+mod browser;
 mod brain;
 mod commands;
 mod dkg;
@@ -209,6 +210,12 @@ pub fn run() {
             commands::memory_forget_fact,
             commands::voice_authorize,
             commands::settings_pane_open,
+            browser::commands::browser_open,
+            browser::commands::browser_place,
+            browser::commands::browser_go,
+            browser::commands::browser_close,
+            browser::commands::browser_state,
+            browser::commands::browser_out,
             commands::voice_listen_once,
             commands::voice_stop,
             commands::voice_speak,

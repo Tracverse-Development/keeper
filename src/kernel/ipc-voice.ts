@@ -16,3 +16,9 @@ export type VoiceEvent =
   | { type: 'stopped' }
   /** `needs`: the permission macOS refused, so the window can open that page of Settings. */
   | { type: 'error'; message: string; needs?: 'speech' | 'microphone' };
+
+/** Keeper's browser: whether a page is open inside Keeper, and its address. */
+export interface BrowserState {
+  open: boolean;
+  url: string;
+}

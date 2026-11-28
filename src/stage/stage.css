@@ -200,3 +200,12 @@
 .scene-step, .stage-dismiss, .scene-crumb { flex: none; }
 .scene-title { min-width: 0; flex: 0 1 auto; }
 @media (max-width: 1100px) { .stage-head > .eyebrow { display: none; } }
+
+/* Keeper's browser in the Stage area: a toolbar, then the frame the real page is placed over. */
+.browser { position: absolute; top: 60px; left: var(--stage-left, 38%); right: 18px; bottom: 22px; z-index: 3; display: flex; flex-direction: column; gap: var(--space-2); animation: fade-up 360ms var(--ease) both; }
+.browser-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border-radius: var(--radius); background: var(--surface-strong); border: 1px solid var(--border); }
+.browser-address { flex: 1; min-width: 0; height: 34px; }
+.browser-host { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) { .browser-host { display: none; } }
+.browser-frame { flex: 1; min-height: 0; border-radius: var(--radius); background: #ffffff; border: 1px solid var(--border); display: grid; place-items: center; overflow: hidden; }
+.browser-frame .muted { color: #555; }

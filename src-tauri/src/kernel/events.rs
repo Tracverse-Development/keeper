@@ -30,3 +30,5 @@ pub const REPLY_DELTA: &str = "assistant://reply-delta";
 pub const MODE_SWITCHED: &str = "assistant://mode-switched";
 /// A keeper reached a new level: { keeper, level, from, unlocked: [Unlock] } (`kit::levels::check_level_up`).
 pub const LEVEL_UP: &str = "keeper://level-up";
+/// Keeper's browser changed: `browser::BrowserState` ({ open, url }).
+pub const BROWSER_STATE: &str = "browser://state";

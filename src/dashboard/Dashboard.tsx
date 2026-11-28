@@ -42,6 +42,8 @@ import { useReactions } from './useReactions';
 import { CanDoPage } from './CanDoPage';
 import { WhatsNew } from './WhatsNew';
 import { StagePill } from './StagePill';
+import { useWarmMind } from './useWarmMind';
+import { BrowserPane, useBrowser } from '../browser';
 import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
@@ -112,14 +114,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     speakRef.current(line, true);
   });
   const events = useDashboardEvents({ keeper: keeper?.id ?? null, assistant, onCelebrate: celebrate });
-  // The next turn's engine starts before the person speaks: on opening, on switching keeper, and
-  // whenever the window comes back to the front (a spare retires after 20 minutes).
-  useEffect(() => {
-    const warm = () => void core.warm(keeper?.id).catch(() => undefined);
-    warm();
-    window.addEventListener('focus', warm);
-    return () => window.removeEventListener('focus', warm);
-  }, [keeper?.id]);
+  useWarmMind(keeper?.id);
   const actions = usePanelActions({
     keeper: keeper?.id ?? null,
     speak: (t, queue) => speakRef.current(t, queue),
@@ -149,7 +144,9 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const sidebarOpen = panelOpen && !stage.showing;
   const transcript = useTranscript();
   // The Stage's panels take the side of the window; the Transcript waits until they close.
-  const railOpen = transcript.open && !stage.showing;
+  const browser = useBrowser(); // A page open inside Keeper takes the Stage area, like the Stage's panels.
+  const stageArea = stage.showing || browser.open;
+  const railOpen = transcript.open && !stageArea;
   const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stage.showing };
   useSideFit(sidebarOpen, railOpen || memoryOpen, foldKeepers);
   const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (stage.showing && !next.stage) stage.close(); };
@@ -244,7 +241,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
-    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${railOpen ? 'has-transcript' : ''} ${railOpen || memoryOpen ? 'has-right' : ''} ${memoryOpen ? 'has-memory' : ''} ${handed.over ? 'is-dropping' : ''}`}>
+    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stageArea ? 'has-stage' : ''} ${railOpen ? 'has-transcript' : ''} ${railOpen || memoryOpen ? 'has-right' : ''} ${memoryOpen ? 'has-memory' : ''} ${handed.over ? 'is-dropping' : ''}`}>
       {handed.over && (
         <div className="drop-hint" aria-live="polite">
           <span>Drop it on {name}</span>
@@ -253,7 +250,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       <div className="stage-frame">
         <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} stir={stirs} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
-      {stage.showing && (
+      {browser.open ? <BrowserPane browser={browser} /> : stage.showing && (
         <Stage
           panels={stage.panels}
           activity={stage.activity}
@@ -319,7 +316,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         attention={voice.attention}
         assistantName={name}
         transcriptOpen={railOpen}
-        narrow={stage.showing || railOpen || memoryOpen}
+        narrow={stageArea || railOpen || memoryOpen}
         onTranscript={(open) => applySides(setTranscript(sides, open, window.innerWidth))}
         onSend={sendMessage}
         compose={compose}

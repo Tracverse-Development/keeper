@@ -17,7 +17,7 @@ use super::super::super::instant;
 use super::{normalise_url, valid_app_name};
 
 const OPEN_APP: &str = r"(?i)^(?:please\s+)?(?:open|launch|start|switch\s+to|bring\s+up)\s+(?:up\s+)?(?:the\s+)?(.{2,40}?)(?:\s+app)?\s*[.!]?$";
-const OPEN_SITE: &str = r"(?i)^(?:please\s+)?(?:open|go to|visit|take me to)\s+(?:the\s+)?(?:website\s+|site\s+)?(\S{3,200})\s*[.!]?$";
+const OPEN_SITE: &str = r"(?i)^(?:please\s+)?(?:open|go to|visit|take me to)\s+(?:the\s+)?(?:website\s+|site\s+)?(\S{3,200})(\s+in\s+(?:my\s+(?:own\s+)?browser|safari|chrome))?\s*[.!]?$";
 
 /// Endings that make a name with a dot a file, not a website ("open notes.txt").
 const FILE_ENDINGS: &[&str] = &["txt", "md", "pdf", "doc", "docx", "rtf", "pages", "key", "numbers", "csv", "xls", "xlsx", "ppt", "pptx", "png", "jpg", "jpeg", "gif", "heic", "mp3", "mp4", "mov", "m4a", "wav", "zip", "dmg", "pkg", "app", "html", "json", "js", "ts", "rs", "py", "sh"];
@@ -56,7 +56,8 @@ pub fn site_words(said: &str) -> Option<Value> {
     let host = url.split("://").nth(1)?.split(['/', '?', '#', ':']).next()?.to_lowercase();
     let ending = host.rsplit('.').next()?;
     let a_domain = ending.len() >= 2 && ending.chars().all(|ch| ch.is_ascii_alphabetic()) && !FILE_ENDINGS.contains(&ending);
-    a_domain.then(|| json!({ "url": raw }))
+    let outside = c.get(2).is_some();
+    a_domain.then(|| if outside { json!({ "url": raw, "outside": true }) } else { json!({ "url": raw }) })
 }
 
 #[cfg(test)]
@@ -100,5 +101,12 @@ mod tests {
             assert_eq!(quit_words("close the Safari app."), Some(json!({ "name": "Safari" })));
             assert_eq!(app_words("switch to Safari"), Some(json!({ "name": "Safari" })));
         }
+    }
+
+    #[test]
+    fn a_site_opens_in_keeper_unless_the_person_asks_for_their_browser() {
+        assert_eq!(site_words("go to gmail.com"), Some(json!({ "url": "gmail.com" })));
+        assert_eq!(site_words("open gmail.com in my browser"), Some(json!({ "url": "gmail.com", "outside": true })));
+        assert_eq!(site_words("open youtube.com in Safari."), Some(json!({ "url": "youtube.com", "outside": true })));
     }
 }

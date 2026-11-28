@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "~2.12", features = [] }
+tauri = { version = "~2.12", features = ["unstable"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # rustls so the build needs no OpenSSL. Talks only to loopback services (the DKG node, Ollama).
