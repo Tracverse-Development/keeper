@@ -23,7 +23,7 @@ trap cleanup EXIT
 base="${PROOF_BASE:-keeper-test}"
 echo "== fresh VM $name from $base"
 "$tart" clone "$base" "$name"
-"$tart" run --no-graphics "$name" > "$log" 2>&1 &
+"$tart" run --no-graphics --no-audio "$name" > "$log" 2>&1 &
 ip=""
 for i in $(seq 1 90); do ip="$("$tart" ip "$name" 2>/dev/null || true)"; [ -n "$ip" ] && break; sleep 2; done
 [ -n "$ip" ] || { echo "the VM did not get an address"; exit 1; }
