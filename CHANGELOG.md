@@ -8,6 +8,20 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.19.2] - 2026-11-28
+
+Your keeper's memory recovers by itself.
+
+### Fixed
+- **Memory that stayed offline after an abrupt stop.** If your Mac lost power or was forced to
+  restart, the memory node could be left with a damaged file and never start again, so your
+  keeper said its memory was offline for good. Keeper now repairs that file itself when it starts
+  its node (it keeps the damaged copy beside it; your memories are never touched) and is back in
+  about half a minute (FIX-0058).
+- The Studio, Inventory and Memory try again by themselves while the memory node is still
+  starting, instead of showing an error until you reopen them.
+- Memory node messages read as plain sentences ("still catching up with its network").
+
 ## [0.19.1] - 2026-11-28
 
 Everything beside your keeper takes turns, so it is never squeezed or covered.
