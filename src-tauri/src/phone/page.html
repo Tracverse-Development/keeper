@@ -130,7 +130,7 @@
       case 'web': if (p.summary) card.appendChild(el('p', null, p.summary)); card.appendChild(link(p.url, 'Open the page', 'go')); break;
       case 'media':
         if (p.channel || p.length) card.appendChild(el('p', 'muted', [p.channel, p.length].filter(Boolean).join(' · ')));
-        if (safeUrl(p.url)) card.appendChild(link(p.url, 'Watch', 'go'));
+        if (safeUrl(p.url)) card.appendChild(link(p.url, 'Play', 'go'));
         else card.appendChild(el('p', 'muted', 'It plays on your Mac.'));
         break;
       case 'quiz': {
