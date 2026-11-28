@@ -8,6 +8,16 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.19.4] - 2026-11-28
+
+Your phone shows what your keeper shows.
+
+### Added
+- **Panels on your phone.** Asking from your phone used to give only the words. Now the phone
+  shows what your keeper shows with an answer: a video with a Play button, tables, steps, cards,
+  your agenda and checklists, sources to open, a quiz to answer and flashcards to flip. Things
+  that need the Mac (a file it changed, a folder) say so.
+
 ## [0.19.3] - 2026-11-28
 
 The Forge works for everyone, and the Studio is tidier.
