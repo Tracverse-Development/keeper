@@ -232,3 +232,7 @@
 .set-toast-close { background: none; border: 0; color: var(--text-muted); font: inherit; cursor: pointer; padding: 0 var(--space-1); }
 @keyframes set-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .set-toast { animation: none; } }
+/* A correction made while the keeper worked, under the message it changed. */
+.bubble.you.correction { padding: var(--space-2) var(--space-4); font-size: var(--text-sm); background: transparent; border-style: dashed; color: var(--gold-300); }
+/* While the keeper works: send what was typed as a correction, or queue it. */
+.dock-choice { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }

@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
+import type { WorkControl } from '../conversation/useWorkControl.ts';
 import { ActivityPanel } from './ActivityPanel.tsx';
 import { Icon } from './icons.tsx';
 import { PanelCard } from './PanelCard.tsx';
@@ -37,6 +38,8 @@ export interface StageProps {
   /** The turn's phase and engine name, for the working pipeline. */
   phase?: string | null;
   mind?: string;
+  /** The controls for the keeper at work (Pause / Resume, Change course, Stop). */
+  control?: WorkControl;
 }
 
 /** Whether a panel takes the full width of the stage grid (the rest pair up two by two). */
@@ -52,7 +55,7 @@ function isWide(panel: Panel): boolean {
   }
 }
 
-export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind, pins }: StageProps) {
+export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind, pins, control }: StageProps) {
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -85,7 +88,7 @@ export function Stage({ panels, activity, working, onFocus, onAction, onClose, k
         </button>
       </header>
       <div className="stage-scroll" ref={scroller}>
-        {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} phase={phase} mind={mind} />}
+        {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} phase={phase} mind={mind} control={control} />}
         <div className="stage-grid">
           {visible.map((panel, i) => (
             <PanelCard key={panel.id} panel={panel} index={i} wide={isWide(panel)} onFocus={onFocus} onAction={onAction} onClose={closePanel} />

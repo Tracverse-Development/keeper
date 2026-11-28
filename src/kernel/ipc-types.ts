@@ -359,7 +359,7 @@ export interface Overview {
 
 export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd'>> & { /** The maker's [name, link] for shared packs; an empty name clears both. */ maker?: [string, string] };
 
-export type Phase = 'recalling' | 'thinking' | 'acting' | 'remembering' | 'done';
+export type Phase = 'recalling' | 'thinking' | 'acting' | 'redirected' | 'remembering' | 'done';
 
 export type VoiceEvent =
   | { type: 'ready'; onDevice: boolean }

@@ -106,3 +106,13 @@ pub fn open_in_terminal(program: &std::path::Path, path: &std::ffi::OsStr) -> Re
     std::process::Command::new("/usr/bin/open").arg(&script).spawn()?;
     Ok(())
 }
+
+/// `/bin/kill -s <SIG> -- -<leader>`: the whole group (an engine and the commands it runs).
+pub fn signal_group(leader: u32, signal: super::GroupSignal) -> Result<()> {
+    let name = match signal {
+        super::GroupSignal::Pause => "STOP",
+        super::GroupSignal::Continue => "CONT",
+        super::GroupSignal::End => "TERM",
+    };
+    run(Command::new("/bin/kill").args(["-s", name, "--"]).arg(format!("-{leader}")), "signal the keeper's work")
+}

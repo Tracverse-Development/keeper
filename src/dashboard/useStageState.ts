@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { core, EVENTS, on, type Phase, type SystemLoad, type Turn, type TurnResult } from '../kernel/ipc';
 import type { Panel } from '../kernel/panel-spec';
+import { CHANGED_COURSE } from '../stage/activity.ts';
 import { makeScene, parentIndex, scenesFromTurns, scoped, type Scene } from './scenes';
 import { workLevel } from './work-level';
 
@@ -38,6 +39,18 @@ export function useStageState(keeper: string | null, phase: Phase | null, detail
       setActivity((a) => [...a, { tool: tool.trim(), detail: rest.join(':').trim() }].slice(-30));
     }
   }, [phase, detail]);
+
+  // A correction the keeper took joins the feed as a marker where it happened; the new run's
+  // first step shows even if it repeats the last one before the change.
+  useEffect(
+    () =>
+      on<{ phase: Phase; detail: string }>(EVENTS.assistantPhase, (p) => {
+        if (p.phase !== 'redirected') return;
+        lastDetail.current = '';
+        setActivity((a) => [...a, { tool: CHANGED_COURSE, detail: p.detail }].slice(-30));
+      }),
+    [],
+  );
 
   // Panels as the engine finishes each one: the stage opens on the first.
   useEffect(

@@ -154,8 +154,9 @@ pub async fn think(ctx: &Context, model: &str, progress: &(dyn Fn(Progress) + Sy
     };
     warm::fill(key, program.clone(), cwd.clone(), a.clone());
     match run_once(ctx, child, progress).await {
-        // A spare that went bad (it died, or its sign-in moved on) costs a retry, never a turn.
-        Err(DeskError::Brain(m)) if from_spare && m != cli::STOPPED => run_once(ctx, cli::spawn(&program, &a, &cwd, true)?, progress).await,
+        // A spare that went bad (it died, or its sign-in moved on) costs a retry, never a turn;
+        // a run the person stopped or redirected is not retried here.
+        Err(DeskError::Brain(m)) if from_spare && m != cli::STOPPED && m != cli::REDIRECTED => run_once(ctx, cli::spawn(&program, &a, &cwd, true)?, progress).await,
         other => other,
     }
 }

@@ -55,4 +55,5 @@ test('an error is shown, then the window goes', () => {
 test('phase lines prefer the core detail', () => {
   assert.equal(phaseLine('acting', 'Running Bash: ls'), 'Running Bash: ls');
   assert.equal(phaseLine('remembering', ' '), 'Writing to your memory…');
+  assert.equal(phaseLine('redirected', 'use metric'), 'Changed course: use metric');
 });

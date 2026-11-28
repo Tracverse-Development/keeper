@@ -152,7 +152,7 @@ pub(super) async fn plan(state: &AppState, keeper: &KeeperProfile, ctx: &Context
     if only_looks(&steps) {
         // The plan's opening line ("I'll take a look…") stays on screen; the look's own words
         // come with the finished answer, so the chat never repeats itself mid-way.
-        let quiet = |p: Progress| if matches!(p, Progress::Step(_)) { progress(p) };
+        let quiet = |p: Progress| if matches!(p, Progress::Step(_) | Progress::Redirected(_)) { progress(p) };
         return look(keeper, ctx, &quiet).await;
     }
     let summary = if thought.reply.trim().is_empty() { "Here's what I'd do. Approve it and I'll go ahead.".to_string() } else { thought.reply.clone() };

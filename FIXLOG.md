@@ -265,3 +265,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** the core emits `assistant://mode-switched` the moment it decides to answer in another mode (the picker follows at once); every change of the chat's mode goes through `follow()`, which updates the ref immediately as well as the state.
 - **Guard:** none automatic: the race lives in a React hook and this repo's window tests are node tests with no React renderer. The ref-and-state helper is the single path (`setMode` is no longer exported raw), and the comment on `follow()` names why.
 - **Evidence:** `scripts/check.sh` (below in the commit).
+
+### FIX-0033 — Stop left the command the keeper was running alive (2026-11-27)
+- **Area:** `src-tauri/src/brain/engines/cli.rs` (`spawn`, `drive`), `brain/engines/control.rs`, `platform::signal_group`
+- **Symptom:** found while building pause: pressing Stop (or a time-out) ended Claude Code, but a command it had started through its Bash tool (a long `find`, a `sleep`, a script) kept running as an orphan.
+- **Root cause:** `kill_on_drop` kills only the direct child; the engine's own children were in Keeper's process group and nothing ever signalled them.
+- **Fix:** every engine is spawned as the leader of its own process group (`process_group(0)`); a run that ends by Stop, Change course or time-out has its whole group continued (in case it was paused) and asked to end (SIGTERM) before the engine is killed.
+- **Guard:** `brain::engines::cli::tests::a_real_run_pauses_resumes_and_stops_while_paused` starts a real `sh` that runs `sleep 30`, pauses, stops, and checks both the engine and the command are gone (fails with the group signal removed: "the command it ran is gone (state S)").
+- **Evidence:** `cargo test --lib` in the commit.

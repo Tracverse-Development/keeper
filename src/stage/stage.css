@@ -175,3 +175,19 @@
 .scene-chip-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--surface-strong); font-size: var(--text-2xs); }
 .scene-chip-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .panel-help { margin: var(--space-1) 0 0; }
+
+/* ---------- the working card's controls (WorkControls) ---------- */
+.work-clock { margin-left: var(--space-3); font-variant-numeric: tabular-nums; color: var(--cream-300); }
+.act-meta { display: block; margin-top: 1px; font-size: var(--text-2xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paused-mark { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: var(--navy-950); background: var(--gold-400); flex: none; }
+.activity.is-paused { border-color: var(--border-strong); box-shadow: var(--shadow); }
+.activity.is-paused .act-now-words { color: var(--cream-300); }
+/* Paused means still: every animation in the card holds where it is. */
+.activity.is-paused *, .activity.is-paused .act.is-latest::after { animation-play-state: paused !important; }
+.work-controls { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-2); }
+.work-buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.work-change { display: flex; gap: var(--space-2); align-items: center; }
+.work-change-field { flex: 1; min-width: 0; height: var(--control-sm); }
+.act-course { margin: var(--space-1) 0 var(--space-1) var(--space-10); padding: var(--space-1) var(--space-3); border-left: 2px solid var(--gold-500); font-size: var(--text-sm); color: var(--gold-300); }
+.work-change { flex-wrap: wrap; }
+.work-change-hint { flex-basis: 100%; margin: 0 0 0 var(--space-2); }

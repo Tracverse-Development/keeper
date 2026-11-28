@@ -13,6 +13,7 @@ import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
 import { useHanded } from '../conversation/useHanded';
 import { useAssistant } from '../conversation/useAssistant';
+import { useWorkControl } from '../conversation/useWorkControl';
 import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
 import { useKit } from '../keepers/useKit';
@@ -185,6 +186,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     voice.hush();
     if (assistant.busy) void core.cancel().catch(() => undefined);
   };
+  const work = useWorkControl(assistant.busy, assistant.correct, stop);
 
   /** A poke or a pat on the character: it answers in its own words, out loud. */
   const touched = (kind: Touch) => {
@@ -248,7 +250,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         </div>
       )}
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage
@@ -264,6 +266,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           onFocus={(f) => assistant.send(focusQuestion(f))}
           onAction={(a) => void actions.act(a)}
           pins={pins}
+          control={work}
           onClose={stage.close}
         />
       )}
@@ -315,7 +318,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       <ConversationDock
         exchanges={assistant.exchanges}
         busy={assistant.busy}
-        status={phaseWords(assistant.phase, keeper?.graphId ?? '', assistant.detail)}
+        status={work.paused ? `${name} is paused.` : phaseWords(assistant.phase, keeper?.graphId ?? '', assistant.detail)}
         listening={voice.listening}
         speaking={voice.speaking}
         partial={voice.partial}
@@ -324,6 +327,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         full={sidebarOpen && assistant.chatId !== ''}
         compact={stage.showing}
         onSend={sendMessage}
+        onCorrect={assistant.correct}
         onType={() => voice.speaking && void voice.hush()}
         tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (

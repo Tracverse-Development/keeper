@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { core, EVENTS, on, sentence, type Handed, type Phase, type Turn, type TurnResult } from '../kernel/ipc';
 import { saidWith } from './handed';
 import { chatMode } from './styles';
+import { afterCorrection } from './work-control.ts';
 
 export interface Exchange {
   id: number;
@@ -23,7 +24,12 @@ export interface Exchange {
   note?: string;
   /** When the answer arrived (ms): Undo for what it forgot is offered for a while after. */
   at?: number;
+  /** Corrections the person made while it worked ("Changed course: …"), in order. */
+  corrections?: string[];
 }
+
+/** The exchange being answered now: unanswered and not waiting in the queue. */
+const answering = (list: Exchange[]) => list.findIndex((x) => !x.result && !x.error && !x.queued);
 
 const KEEP = 40;
 
@@ -58,6 +64,13 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
   useEffect(
     () =>
       on<{ phase: Phase; detail: string }>(EVENTS.assistantPhase, (p) => {
+        // The core took a correction and starts again: the exchange shows it, the reply restarts.
+        if (p.phase === 'redirected') {
+          return setExchanges((list) => {
+            const i = answering(list);
+            return list.map((x, j) => (j === i ? { ...x, live: undefined, corrections: [...(x.corrections ?? []), p.detail] } : x));
+          });
+        }
         setPhase(p.phase);
         setDetail(p.detail ?? '');
       }),
@@ -71,9 +84,8 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     () =>
       on<{ keeper: string; text: string }>(EVENTS.replyDelta, (e) => {
         if (e.keeper !== keeperRef.current) return;
-        // The exchange being answered: unanswered and not waiting in the queue.
         setExchanges((list) => {
-          const i = list.findIndex((x) => !x.result && !x.error && !x.queued);
+          const i = answering(list);
           if (i < 0) return list;
           return list.map((x, j) => (j === i ? { ...x, live: (x.live ?? '') + e.text } : x));
         });
@@ -150,6 +162,24 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     await run(handed ? saidWith(said, handed.name) : said, () => core.turn(said, toKeeper ?? keeper ?? undefined, chatRef.current || undefined, modeRef.current || undefined, handed?.what));
   };
 
+  /**
+   * Change course while the keeper works: the core stops the engine and starts again with the
+   * correction (it appears on the exchange when the core takes it). With nothing left running,
+   * the words are queued as the next message instead. Resolves with a refusal to show, or null.
+   */
+  const correct = async (text: string): Promise<string | null> => {
+    const words = text.trim();
+    if (!words) return null;
+    try {
+      await core.redirect(words);
+      return null;
+    } catch (e) {
+      if (afterCorrection(sentence(e)) === 'show') return sentence(e);
+      await send(words);
+      return null;
+    }
+  };
+
   /** Approve or refuse the plan the keeper showed before acting. */
   const decide = (token: string, approve: boolean) => run(approve ? 'Approved. Go ahead.' : "Don't do it.", () => core.planDecide(token, approve));
 
@@ -195,5 +225,5 @@ export function useAssistant(keeper: string | null, onReply: (result: TurnResult
     follow('');
   };
 
-  return { exchanges, chatId, mode, setMode: follow, phase, detail, busy, send, decide, brief, announce, celebrate, record, showChat, newChat };
+  return { exchanges, chatId, mode, setMode: follow, phase, detail, busy, send, correct, decide, brief, announce, celebrate, record, showChat, newChat };
 }
