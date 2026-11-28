@@ -62,3 +62,54 @@ How the computer packs are built:
 - Modes: System Administrator has every ability; Assistant the everyday ones (all but
   `run-shortcut`); Companion and Researcher only `calculate`, `convert` (and Companion
   `time-in`). A registry test keeps every mode that does not operate the computer below `Open`.
+
+## Panels
+
+A **panel** is what a keeper SHOWS on the Stage inside Keeper (never a web page or a file). An
+ability shows one with `Done::said(…).showing(panel)`; the mind can also put panels in its answer.
+Panels are an SDK on both sides, so a new kind is a short, fixed recipe.
+
+**Core side** (Rust, `src-tauri/src/stage/`):
+- `panel.rs`: one variant of `enum Panel` (serde tag `kind`, lowercase), with `#[serde(default)] id: String` and `title: String` first.
+- `cap.rs`: its arm in `Panel::cap` (clip every string and list to the limits in `panel.rs`), in `has_content` (when it is an empty card and dropped) and in `set_id`.
+- `mod.rs`: its JSON shape in `RULES`, if the mind may make it itself (an ability-only panel such as `draft` stays out).
+- Tests in the module: the cap and the empty-card rule.
+
+**Window side** (TypeScript, `src/`):
+- `kernel/panel-spec.ts`: one line in the `Panel` union mirroring the Rust variant (a `PanelAction` too, if the person can DO something in it).
+- `stage/panels/<Kind>Panel.tsx`: the renderer, taking `PanelProps<'kind'>` (shows things; calls `onPick` with the words for the piece pointed at, made by a helper in `stage/focus.ts`) or `ActingPanelProps<'kind'>` (also reports through `onAction`). Plain text only, never HTML. Reuse the shared pieces: `stagger`, `Breadcrumbs`, `Icon`, `Celebration`.
+- `stage/panels/registry.tsx`: ONE entry in `PANELS`, the window's panel SDK: `label` (the eyebrow word), `help` (one plain sentence on what the person can do with it, 20 to 70 characters), `wide` (`true`, `false`, or a rule on its content such as `(panel) => panel.cards.length > 2`) and `draw` (the renderer). `PanelBody`, `PanelCard` and `Stage` read it; nothing else changes. The mapped type makes a missing entry a type error.
+- Styles in the panels css file that fits (`panels.css`, `panels-visual.css`, `panels-work.css`, `panels-draft.css`), on the card's `is-<kind>` class and the renderer's own classes, with spacing and type from `kernel/tokens.css`.
+
+Guards: `src/structure.test.ts` (the Rust enum, `panel-spec.ts` and the registry name the same
+kinds) and `src/stage/panels/registry.test.ts` (one kit per kind, a plain help line, a label and
+its own renderer). Check it on the preview harness's Stage before landing.
+
+Today's kinds (label, then what it shows):
+
+| Kind | Label | Shows |
+|---|---|---|
+| `text` | Notes | Paragraphs and bullets. |
+| `table` | Table | Columns and rows, cells highlightable. |
+| `steps` | Step by step | Numbered steps with math lines; a walk-through on request. |
+| `formula` | Formula | An expression and what each symbol means. |
+| `cards` | Ideas | Idea cards with an emoji. |
+| `quiz` | Quick check | One question, checked in the panel, reported. |
+| `chart` | Chart | Bars with values. |
+| `files` | Files | What was done to which files. |
+| `diagram` | Diagram | Boxes and arrows. |
+| `timeline` | Timeline | Moments in order. |
+| `folder` | Folder | One folder's entries and their changes. |
+| `sliders` | What if | A formula with sliders and a live result. |
+| `flashcards` | Practice | Cards to turn over, known or not reported. |
+| `agenda` | Agenda | Events, reminders and tasks in time order; Delete on reminders. |
+| `checklist` | Checklist | Tickable items, ticks remembered. |
+| `form` | Fill this in | Fields whose answers become the next message. |
+| `approval` | Plan to approve | A plan of computer work; nothing runs until approved. |
+| `facts` | What I know | What the keeper remembers; forget or pin. |
+| `sources` | Sources | The sources a research answer cites. |
+| `live` | Live | This Mac's readings, updating. |
+| `media` | Watch | A video, song or picture, played only on Play. |
+| `web` | Visit | A page to open in the browser. |
+| `file` | File | A file to open or show in Finder. |
+| `draft` | Draft to save | A change to one text file, saved only by the person. |

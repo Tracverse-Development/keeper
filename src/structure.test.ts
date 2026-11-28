@@ -174,8 +174,10 @@ test('panels: the core and the window know the same panel kinds', async () => {
   const spec = readFileSync(join(web, 'kernel/panel-spec.ts'), 'utf8');
   const tsKinds = [...spec.matchAll(/kind: '([a-z]+)'; id: string/g)].map((m) => m[1]).sort();
   assert.deepEqual(tsKinds, rustKinds);
-  const body = readFileSync(join(web, 'stage/panels/PanelBody.tsx'), 'utf8');
-  for (const k of rustKinds) assert.ok(body.includes(`case '${k}':`), `PanelBody draws ${k}`);
+  // The window's panel SDK has one kit per kind (the mapped type enforces it too; this names the gap).
+  const registry = readFileSync(join(web, 'stage/panels/registry.tsx'), 'utf8');
+  const kits = [...registry.matchAll(/^  ([a-z]+): \{$/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(kits, rustKinds, 'panels/registry.tsx has a kit for every kind');
 });
 
 test('spacing and type: every gap, padding, margin and font size is on the one scale (kernel/tokens.css)', () => {
