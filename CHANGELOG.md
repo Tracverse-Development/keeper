@@ -8,6 +8,40 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.18.0] - 2026-11-28
+
+Keepers that work out of the box, tested end to end on a fresh Mac.
+
+### Added
+- **Useful with no AI connected.** Before you connect a mind, a keeper now does the everyday
+  things at once: "remind me in 10 minutes to stretch", "show me a video on how to tie a tie",
+  "what time is it in Tokyo", "turn on dark mode", "keep my Mac awake for an hour", "take a
+  screenshot", "how many cups is 500 ml", "what's 15% of 86", "open Notes", "make a note: …",
+  "define serendipity", "find my movies", "is everything working". With a mind connected these
+  answer instantly too.
+- **"Is everything working?"** shows the health checks right in the conversation.
+- **What I can do** lists the newest abilities: videos, your movies, fixing a file, what's on
+  tomorrow and your reminders.
+
+### Changed
+- **The Keeper SDK covers more.** Each ability names the modes that offer it and the words it
+  answers at once; the instant answers and the window's panels are part of the SDK, so a new
+  ability or panel is one entry.
+
+### Fixed
+- YouTube videos play inside Keeper again (FIX-0044).
+- A permission question from macOS no longer times out while you are reading it (FIX-0043).
+- On a smaller screen the window fits, the What's new sheet reads whole, the top bar and chat
+  titles stay tidy, and the draft's Save button stays in reach (FIX-0041, 0042, 0047, 0054).
+- An agenda's Delete no longer covers the reminder, and a panel shown alone uses the whole Stage
+  (FIX-0045).
+- Set-progress notes no longer cover the message box (FIX-0046).
+- "What's on today" never says "nothing on your calendar" when it could not read it (FIX-0050).
+- Finding files and movies works on a Mac with Spotlight indexing off (FIX-0051, 0052).
+- "My name is Amos and I love cricket" remembers both things (FIX-0053).
+- Inventory shows what your keeper can wear now first (FIX-0055).
+- Smaller wording fixes: "2.113 cups", "your calendar", "1 thing known" (FIX-0048, 0049, 0054).
+
 ## [0.17.0] - 2026-11-27
 
 Keepers that are genuinely useful, built on the new Keeper SDK.

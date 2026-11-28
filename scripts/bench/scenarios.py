@@ -71,8 +71,8 @@ SCENARIOS = {
     ]),
     'computer': ('assistant', [
         ("What's my battery at?", {'table'}, {'quiz', 'approval'}),
-        ('How many cups is 500 ml?', NONE | {'table', 'text'}, {'quiz', 'approval'}),
-        ("What time is it in Tokyo?", NONE | {'table', 'text'}, {'quiz', 'approval'}),
+        ('How many cups is 500 ml?', NONE, {'quiz', 'approval'}),
+        ("What time is it in Tokyo?", NONE, {'quiz', 'approval'}),
     ]),
     'switch': ('system', [
         ('How do I make banana bread?', TEACH | {'checklist'}, {'live', 'approval'}),
