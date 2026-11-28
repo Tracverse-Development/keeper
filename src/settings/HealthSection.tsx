@@ -7,9 +7,10 @@
 import { useEffect, useState } from 'react';
 
 import { core, sentence, type HealthCheck } from '../kernel/ipc';
-import { problemsFirst, summaryLine, worst } from './health-view';
+import { placeFor, problemsFirst, summaryLine, worst } from './health-view';
 
-export function HealthSection() {
+/** `onFind` shows the Settings section a check points to (its search words). */
+export function HealthSection({ onFind }: { onFind?: (words: string) => void }) {
   const [checks, setChecks] = useState<HealthCheck[] | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +64,16 @@ export function HealthSection() {
               <strong>{c.name}</strong>
               <span className="muted small selectable">{c.detail}</span>
             </span>
-            {c.fix && (
+            {c.fix ? (
               <button type="button" className="btn btn-small" disabled={busy !== ''} onClick={() => run(c.id, () => core.healthFix(c.id))}>
                 {busy === c.id ? 'Working…' : c.fix}
               </button>
+            ) : (
+              c.level !== 'ok' && placeFor(c.id) && onFind && (
+                <button type="button" className="btn btn-small" onClick={() => onFind(placeFor(c.id)!.find)}>
+                  {placeFor(c.id)!.label}
+                </button>
+              )
             )}
           </li>
         ))}

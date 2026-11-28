@@ -4,8 +4,8 @@
  * about 2¢"), so response time and spending are visible on every turn.
  */
 import type { Timings } from '../kernel/ipc-usage';
+import { mindName } from '../kernel/mind-words.ts';
 
-const SOURCES: Record<string, string> = { instant: 'instant answer', cache: 'from memory', reflex: 'built-in mind' };
 
 function seconds(ms: number): string {
   return ms < 1000 ? `${Math.max(1, Math.round(ms))} ms` : `${(ms / 1000).toFixed(1)} s`;
@@ -19,7 +19,7 @@ export function costWords(usd: number): string {
 }
 
 export function speedWords(t: Timings): string {
-  const who = SOURCES[t.source] ?? t.source;
+  const who = mindName(t.source);
   const first = t.firstMs ?? t.totalMs;
   const picture = t.panelMs != null && t.panelMs - first > 400 ? ` · first picture ${seconds(t.panelMs)}` : '';
   const cost = t.costUsd ? ` · ${costWords(t.costUsd)}` : '';

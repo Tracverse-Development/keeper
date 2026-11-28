@@ -245,12 +245,14 @@
 .dashboard { --rail-w: 400px; --dock-reserve: 128px; --left-inset: 76px; --right-inset: 0px; }
 .dashboard.has-panel { --left-inset: 280px; }
 .dashboard.has-transcript { --right-inset: calc(var(--rail-w) + 18px); }
+/* Memory opens over the Transcript's place: the keeper and the bar move clear of whichever is on the right. */
+.dashboard.has-memory { --right-inset: calc(min(460px, 100% - 32px) + 16px); }
 .stage-frame { bottom: var(--dock-reserve); transition: right 650ms var(--ease), left 650ms var(--ease);
   /* The stage fades out above the message box instead of ending on a hard edge. */
   mask-image: linear-gradient(180deg, black 82%, transparent); -webkit-mask-image: linear-gradient(180deg, black 82%, transparent); }
-.dashboard.has-transcript .stage-frame { right: var(--right-inset); }
-.dashboard.has-panel.has-transcript .stage-frame { left: var(--left-inset); }
-.dashboard.has-transcript .dock, .dashboard.has-panel.has-transcript .dock {
+.dashboard.has-right .stage-frame { right: var(--right-inset); }
+.dashboard.has-panel.has-right .stage-frame { left: var(--left-inset); }
+.dashboard.has-right .dock, .dashboard.has-panel.has-right .dock {
   left: calc(var(--left-inset) + (100% - var(--left-inset) - var(--right-inset)) / 2);
   width: min(680px, calc(100% - var(--left-inset) - var(--right-inset) - 32px)); }
 
@@ -294,3 +296,8 @@
 .hands-free { cursor: pointer; color: var(--text); }
 .hands-free.is-on { border-color: rgba(120, 220, 160, 0.45); }
 .hands-free .dot { width: 7px; height: 7px; }
+/* With the Transcript open, the way back to the Stage sits beside it, not on its header. */
+.dashboard.has-right .scenes-pill { right: calc(var(--right-inset) + 18px); }
+/* A chip never breaks its own words ("HANDS-FREE"); a narrow bar wraps whole chips instead. */
+.mode-pick { white-space: nowrap; flex: none; }
+.mode-bar { flex-wrap: wrap; justify-content: center; }

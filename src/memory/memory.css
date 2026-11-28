@@ -34,3 +34,6 @@
 .q-table tbody tr:hover td { background: var(--accent-soft); }
 .q-sparql { display: block; white-space: pre-wrap; word-break: break-word; line-height: 1.5; color: var(--cream-300); padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm); background: color-mix(in srgb, var(--navy-950) 70%, transparent); border: 1px solid var(--border); }
+/* Every tab of the memory drawer is in view: they wrap onto a second row instead of scrolling out of sight. */
+.drawer .tabs { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
+.drawer .tabs button { flex: 1 0 auto; }

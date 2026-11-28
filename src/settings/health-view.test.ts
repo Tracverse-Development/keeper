@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { problemsFirst, summaryLine, worst } from './health-view.ts';
+import { problemsFirst, summaryLine, worst, placeFor } from './health-view.ts';
 
 const c = (id: string, level: 'ok' | 'warn' | 'bad') => ({ id, name: id, level, detail: '', fix: null });
 
@@ -15,4 +15,9 @@ test('health: the summary is the worst thing found, in plain words', () => {
 
 test('health: problems are listed first, the rest keep their order', () => {
   assert.deepEqual(problemsFirst([c('a', 'ok'), c('b', 'bad'), c('c', 'warn'), c('d', 'ok')]).map((x) => x.id), ['b', 'c', 'a', 'd']);
+});
+
+test('a check with nothing to fix in place says where in Settings to go', () => {
+  assert.deepEqual(placeFor('mind'), { find: 'mind', label: 'Choose a mind' });
+  assert.equal(placeFor('node'), null);
 });

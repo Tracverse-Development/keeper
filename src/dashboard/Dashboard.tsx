@@ -10,7 +10,8 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
 import { TranscriptRail } from '../conversation/TranscriptRail';
-import { useTranscript, WIDE_ENOUGH_FOR_BOTH } from '../conversation/useTranscript';
+import { useTranscript } from '../conversation/useTranscript';
+import { keepersBeside, setTranscript, toggleKeepers, type Sides } from './side-layout.ts';
 import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
 import { useHanded } from '../conversation/useHanded';
@@ -150,6 +151,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const transcript = useTranscript();
   // The Stage's panels take the side of the window; the Transcript waits until they close.
   const railOpen = transcript.open && !stage.showing;
+  const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stage.showing };
+  const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (stage.showing && !next.stage) stage.close(); };
 
   // ⌘K / Ctrl+K anywhere opens the command palette.
   useEffect(() => {
@@ -241,7 +244,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
-    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${railOpen ? 'has-transcript' : ''} ${handed.over ? 'is-dropping' : ''}`}>
+    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${railOpen ? 'has-transcript' : ''} ${railOpen || memoryOpen ? 'has-right' : ''} ${memoryOpen ? 'has-memory' : ''} ${handed.over ? 'is-dropping' : ''}`}>
       {handed.over && (
         <div className="drop-hint" aria-live="polite">
           <span>Drop it on {name}</span>
@@ -277,7 +280,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         counts={events.counts}
         alwaysListening={settings.alwaysListening}
         openMic={!settings.wakeWord}
-        onMemory={() => setMemoryOpen((o) => !o)}
+        onMemory={() => { if (!memoryOpen) setPanelOpen(keepersBeside(panelOpen, window.innerWidth)); setMemoryOpen(!memoryOpen); }}
         onSettings={() => setSettingsOpen(true)}
         onStudio={() => setStudioOpen(true)}
         extra={<><FocusChip refreshKey={assistant.exchanges.length} /><button type="button" className="pill pill-button" onClick={() => setCanDoOpen(true)}>What I can do</button></>}
@@ -292,7 +295,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         souls={kit.kit?.souls ?? []}
         onImported={() => { kit.refresh(); keepers.reload(); }}
         error={chats.error ?? keepers.error}
-        onToggle={() => setPanelOpen((o) => !o)}
+        onToggle={() => applySides(toggleKeepers(sides, window.innerWidth))}
         onActivate={(id) => keepers.activate(id).catch(() => undefined)}
         onNewChat={() => { assistant.newChat(); stage.reset(); }}
         onOpenChat={openChat}
@@ -316,7 +319,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         assistantName={name}
         transcriptOpen={railOpen}
         narrow={stage.showing}
-        onTranscript={(open) => { transcript.setOpen(open); if (open && stage.showing) stage.close(); if (open && window.innerWidth < WIDE_ENOUGH_FOR_BOTH) setPanelOpen(false); }}
+        onTranscript={(open) => applySides(setTranscript(sides, open, window.innerWidth))}
         onSend={sendMessage}
         compose={compose}
         onCorrect={assistant.correct}

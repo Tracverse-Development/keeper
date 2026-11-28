@@ -6,9 +6,6 @@ import { useCallback, useState } from 'react';
 
 const KEY = 'keeper.transcriptOpen';
 
-/** Narrower than this (px), the keepers list folds to its rail when the Transcript opens, so the keeper keeps room. */
-export const WIDE_ENOUGH_FOR_BOTH = 1240;
-
 function remembered(): boolean {
   try {
     return window.localStorage.getItem(KEY) === '1';

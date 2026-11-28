@@ -90,7 +90,7 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
         {see.size === 0 && <p className="muted">No setting matches that. Try another word, or clear the search.</p>}
 
         {see.has('health') && <p className="eyebrow">Is everything working?</p>}
-        {see.has('health') && open && <HealthSection />}
+        {see.has('health') && open && <HealthSection onFind={setQuery} />}
 
         {see.has('name') && <p className="eyebrow">This keeper</p>}
         {see.has('name') && <KeeperNameField key={keeper.id} name={keeper.name} onSave={(name) => onKeeperChange({ name })} />}

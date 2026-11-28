@@ -25,3 +25,16 @@ export function summaryLine(checks: readonly HealthCheck[]): string {
   if (warn > 0) return warn === 1 ? 'Working, with 1 thing to know.' : `Working, with ${warn} things to know.`;
   return 'Everything is working.';
 }
+
+/**
+ * Where in Settings a check with no fix of its own is put right, as the search that lands on that
+ * section and the button's words ("Choose a mind" opens the Brain section). Null: nowhere to go.
+ */
+export function placeFor(checkId: string): { find: string; label: string } | null {
+  const PLACES: Readonly<Record<string, { find: string; label: string }>> = {
+    mind: { find: 'mind', label: 'Choose a mind' },
+    voice: { find: 'voice', label: 'Voice settings' },
+    spending: { find: 'spending', label: 'Spending limit' },
+  };
+  return PLACES[checkId] ?? null;
+}

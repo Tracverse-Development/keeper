@@ -4,6 +4,7 @@
  * pulses), reminders the keeper speaks by itself, turns from the phone link, and an installed
  * update. Also the person's first name from the active keeper's graph, for touch replies.
  */
+import { mindName } from '../kernel/mind-words.ts';
 import { useEffect, useState } from 'react';
 
 import { core, EVENTS, on, type Counts, type NodeStatus, type TurnResult } from '../kernel/ipc';
@@ -83,7 +84,7 @@ export function useDashboardEvents({ keeper, assistant, onCelebrate }: Hooks) {
   }, []);
 
   /** The engine's display name for the working pipeline ("Claude Code"). */
-  const mindLabel = (brain?: string) => ({ claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', hermes: 'Hermes', ollama: 'a local model', reflex: 'the built-in mind' } as Record<string, string>)[brain ?? ''] ?? '';
+  const mindLabel = (brain?: string) => (brain === 'reflex' ? 'the built-in mind' : mindName(brain));
 
   return { node, nodeChecked, counts, personName, pulse, updated, now, refreshHealth, mindLabel };
 }
