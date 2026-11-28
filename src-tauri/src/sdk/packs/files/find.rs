@@ -60,7 +60,12 @@ fn show_words(said: &str) -> Option<serde_json::Value> {
 fn find_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
     let c = instant::pattern(&R, FIND_ASKS).captures(said)?;
-    Some(json!({ "name": c[1].trim_end_matches(" file").trim_end_matches(" files") }))
+    let name = c[1].trim_end_matches(" file").trim_end_matches(" files");
+    // "find my movies" is the person's videos (the video pack's find-movies), never files named "movies".
+    if super::super::video::is_movies_word(name) {
+        return None;
+    }
+    Some(json!({ "name": name }))
 }
 
 fn open_words(said: &str) -> Option<serde_json::Value> {

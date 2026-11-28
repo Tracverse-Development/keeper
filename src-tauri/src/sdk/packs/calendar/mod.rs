@@ -36,6 +36,11 @@ pub async fn read_events(app: &tauri::AppHandle, from: chrono::DateTime<chrono::
     let (mut calendar, _) = crate::pim::access(app).await;
     if ask && calendar == PimAccess::NotAsked {
         calendar = crate::pim::request_access(app).await.0;
+        // The question went unanswered (the helper's wait ends as "unsupported"): it was not read,
+        // so never "nothing on your calendar" (FIX-0050).
+        if !matches!(calendar, PimAccess::Allowed | PimAccess::Denied) {
+            return (Vec::new(), Some(UNANSWERED));
+        }
     }
     match calendar {
         PimAccess::Allowed => match crate::pim::events(app, &time::iso(from), &time::iso(to)).await {
@@ -43,11 +48,12 @@ pub async fn read_events(app: &tauri::AppHandle, from: chrono::DateTime<chrono::
             Err(_) => (Vec::new(), Some("I couldn't read your calendar just now.")),
         },
         PimAccess::Denied => (Vec::new(), Some("I can't see your calendar: allow Keeper in System Settings, Privacy & Security, Calendars.")),
-        // Asked and still not answered: never "nothing on your calendar" (it was not read; FIX-0050).
-        PimAccess::NotAsked if ask => (Vec::new(), Some("I need your permission to read your calendar: answer the question macOS is showing, then ask me again.")),
         PimAccess::NotAsked | PimAccess::Unsupported => (Vec::new(), None),
     }
 }
+
+/// Said when the calendar question macOS showed was not answered in time.
+const UNANSWERED: &str = "I need your permission to read your calendar: answer the question macOS is showing, then ask me again.";
 
 fn counted(n: usize, one: &str) -> String {
     if n == 1 { format!("1 {one}") } else { format!("{n} {one}s") }

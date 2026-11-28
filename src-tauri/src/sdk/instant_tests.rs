@@ -14,6 +14,10 @@ const TABLE: &[(&str, &str, Option<&str>)] = &[
     ("what's in my desktop", "assistant", Some("show-folder")),
     ("show me my photos", "assistant", Some("show-folder")),
     ("find my NZCC deck", "assistant", Some("find-files")),
+    // FIX-0052: "find my movies" found files named "movies" instead of the person's videos.
+    ("find my movies", "assistant", Some("find-movies")),
+    ("find my videos", "assistant", Some("find-movies")),
+    ("show me my videos", "assistant", Some("show-folder")),
     ("Where did I save my resume?", "assistant", Some("find-files")),
     ("where's my charger", "assistant", Some("find-files")),
     ("find my resume", "tutor", Some("find-files")),

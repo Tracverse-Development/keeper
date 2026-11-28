@@ -30,7 +30,7 @@ pub const ABILITIES: &[Ability] = &[
         id: "find-movies",
         how: "{\"name\": \"holiday\"} lists the videos on this computer (name optional), newest first, ready to play inside Keeper",
         access: Access::Look,
-        platforms: ALL, modes: &["assistant"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant"], instant: Instant::Also(movies_words),
         run: |input, cx| Box::pin(local::find_movies(input, cx)),
     },
 ];
@@ -105,4 +105,17 @@ mod tests {
             assert!(!found.is_empty(), "{q} found nothing");
         }
     }
+}
+
+/// "Find my movies", "show me my videos", "play my films": the person's own videos, newest first.
+const MOVIES_ASKS: &str = r"(?i)^(?:please\s+)?(?:find|show(?: me)?|list|play|where are)\s+my\s+(?:home\s+)?(?:movies|videos|films)\s*[?.!]?$";
+
+fn movies_words(said: &str) -> Option<serde_json::Value> {
+    static R: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    crate::sdk::instant::whole(&R, MOVIES_ASKS, said)
+}
+
+/// The words that mean the person's videos, not a file by that name ("find my movies").
+pub fn is_movies_word(name: &str) -> bool {
+    matches!(name.trim().to_lowercase().as_str(), "movies" | "videos" | "films" | "home movies" | "home videos")
 }

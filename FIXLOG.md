@@ -403,3 +403,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Symptom:** the test VM has Spotlight indexing off; `~/Documents/notes.txt` was not found.
 - **Fix:** when Spotlight finds nothing, Desktop, Documents and Downloads are walked by name (bounded, never inside a git working tree) before saying so; the recent-files walk shares the same walker.
 - **Guard:** `files_tests.rs` test `a_name_holds_every_word_asked_for`.
+
+### FIX-0052 — "Find my movies" looked for files named "movies" (2026-11-28)
+- **Area:** `src-tauri/src/sdk/packs/files/find.rs` (`find_words`), `sdk/packs/video/mod.rs` (`find-movies` instant phrasings, `is_movies_word`)
+- **Symptom:** in the VM, "find my movies" answered "I couldn't find anything called movies on this computer" though a movie was in ~/Movies.
+- **Root cause:** the file search's "find my X" phrasing caught it before the movies ability, which had no phrasings of its own.
+- **Fix:** find-movies answers "find/list/play my movies|videos|films" at once; the file search leaves those words to it ("show me my videos" still opens the Movies folder view).
+- **Guard:** `instant_tests.rs` rows for "find my movies", "find my videos", "show me my videos".

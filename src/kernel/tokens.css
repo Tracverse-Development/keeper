@@ -6,6 +6,8 @@
  * light variant kept for the installer's paper cards.
  */
 :root {
+  /* Keeper is a dark window whatever the Mac's appearance: scrollbars and form controls draw dark too. */
+  color-scheme: dark;
   --navy-950: #070a16;
   --navy-900: #0b1020;
   --navy-800: #111830;

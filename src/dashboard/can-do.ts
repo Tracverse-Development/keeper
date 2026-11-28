@@ -36,6 +36,8 @@ export const CAN_DO: readonly Group[] = [
       { title: 'Remind me in 10 minutes to stretch', hint: 'A reminder, spoken when it is due.', say: 'Remind me in 10 minutes to stretch' },
       { title: 'Focus for 25 minutes', hint: 'A quiet stretch: reminders wait until it ends.', say: 'Focus for 25 minutes' },
       { title: 'Find my resume', hint: 'Looks through this Mac for a file by name.', say: 'Find my resume' },
+      { title: "What's on tomorrow?", hint: 'Your calendar and reminders for the day, in order.', say: "What's on tomorrow?" },
+      { title: 'What reminders do I have?', hint: 'Every reminder still ahead, with Delete beside each.', say: 'What reminders do I have?' },
     ],
   },
   {
@@ -44,6 +46,8 @@ export const CAN_DO: readonly Group[] = [
     examples: [
       { title: 'Explain fractions visually', hint: 'A lesson in panels you can point at and ask about.', say: 'Explain fractions visually' },
       { title: 'Quiz me on what I just learned', hint: 'Questions on the lesson; right answers count toward the level.', say: 'Quiz me on what I just learned' },
+      { title: 'Show me a video on how to tie a tie', hint: 'One real video, played right here; two others to swap to.', say: 'Show me a video on how to tie a tie' },
+      { title: 'Find my movies', hint: 'Your videos on this Mac, newest first, played right here.', say: 'Find my movies' },
     ],
   },
   {
@@ -52,6 +56,7 @@ export const CAN_DO: readonly Group[] = [
     examples: [
       { title: 'Fix what I copied', hint: 'Corrects the text on your clipboard and puts it back.', say: 'Fix what I copied', needs: 'Copy some text first.' },
       { title: 'Shorten what I copied', hint: 'About half the length, same meaning.', say: 'Shorten what I copied', needs: 'Copy some text first.' },
+      { title: 'Fix the spelling in a file', hint: 'I show the changes here; you edit them if you like and press Save.', say: 'Fix the spelling in ~/Documents/notes.txt' },
       { title: 'Drop a file on me', hint: 'Drag a document, a PDF or a picture onto this window: I summarise, explain or remember it.' },
     ],
   },
