@@ -239,11 +239,22 @@ pub async fn design(description: &str, model: &str) -> Result<Designed> {
     if words.trim().len() < 3 {
         return Err(DeskError::Invalid("Describe the item in a few words.".into()));
     }
-    let raw = crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await?;
-    let part = raw["part"].as_str().unwrap_or_default().to_string();
-    let effects: BTreeMap<String, serde_json::Value> = raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default();
+    // The helper model designs it; with none (no AI connected, or no answer) the plain words are
+    // read here (`forge_words`: the part named, its colours, fast or slow).
+    let (part, effects, name) = match crate::brain::engines::claude::ask_json(&designer_brief(), &words, model).await {
+        Ok(raw) => (
+            raw["part"].as_str().unwrap_or_default().to_string(),
+            raw["effects"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default(),
+            raw["name"].as_str().unwrap_or("My item").to_string(),
+        ),
+        Err(_) => match super::kit::forge_words::read(&words) {
+            Some((name, part, effects)) => (part.to_string(), effects, name),
+            None => return Err(DeskError::Invalid("Without a mind connected I can only make what you name: say the item and its colours, like \"a green scarf with cream stripes\".".into())),
+        },
+    };
+    let effects: BTreeMap<String, serde_json::Value> = effects;
     let worn = parts::check_effects(&parts::WornPart { part, effects, item: None, rarity: None, set: None, colour: None }).map_err(DeskError::Invalid)?;
-    let name = packs::clean_name(raw["name"].as_str().unwrap_or("My item")).unwrap_or_else(|_| "My item".into());
+    let name = packs::clean_name(&name).unwrap_or_else(|_| "My item".into());
     Ok(Designed { name, part: worn.part, effects: worn.effects })
 }
 

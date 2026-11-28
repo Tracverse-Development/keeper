@@ -12,6 +12,7 @@
 pub mod collection;
 pub mod colours;
 pub mod finishes;
+pub mod forge_words;
 pub mod inventory;
 pub mod levels;
 pub mod loadout;
