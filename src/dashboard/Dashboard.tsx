@@ -323,6 +323,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         attention={voice.attention}
         assistantName={name}
         transcriptOpen={railOpen}
+        narrow={stage.showing}
         onTranscript={(open) => { transcript.setOpen(open); if (open && stage.showing) stage.close(); if (open && window.innerWidth < WIDE_ENOUGH_FOR_BOTH) setPanelOpen(false); }}
         onSend={sendMessage}
         compose={compose}

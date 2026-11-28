@@ -12,6 +12,8 @@
 
 /** How much of a reply the captions hold at once (about three lines at caption size). */
 export const CAPTION_CHARS = 210;
+/** Beside the Stage's panels the keeper's column is narrow: about three short lines. */
+export const NARROW_CAPTION_CHARS = 110;
 
 export interface CaptionPage {
   readonly shown: string;

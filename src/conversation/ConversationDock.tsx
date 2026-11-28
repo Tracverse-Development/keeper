@@ -27,6 +27,8 @@ interface Props {
   transcriptOpen: boolean;
   /** Opens or closes the Transcript. */
   onTranscript: (open: boolean) => void;
+  /** Beside the Stage's panels: the keeper's column is narrow, so the captions are shorter. */
+  narrow?: boolean;
   onSend: (text: string) => void;
   /** Words put in the box for the person to finish (a draft's "Change something"); a new `at` puts them in again. */
   compose?: { text: string; at: number } | null;
@@ -79,7 +81,7 @@ export function ConversationDock(p: Props) {
 
   return (
     <div className="dock">
-      {!p.transcriptOpen && <Captions exchange={p.exchanges.at(-1)} assistantName={p.assistantName} onReadAll={() => p.onTranscript(true)} />}
+      {!p.transcriptOpen && <Captions exchange={p.exchanges.at(-1)} assistantName={p.assistantName} onReadAll={() => p.onTranscript(true)} narrow={p.narrow} />}
       <div className="dock-status" aria-live="polite">
         {refusal ? <span className="error-line">{refusal}</span> : p.partial ? <span className="hearing">{p.partial}</span> : attention ? <span className="attentive">{attention}</span> : p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
       </div>

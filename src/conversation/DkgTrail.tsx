@@ -2,6 +2,7 @@
  * "What I looked up": the SPARQL queries a turn ran on the person's graph and the Knowledge
  * Assets it wrote, so every answer shows that it came from the DKG.
  */
+import { trailWords } from './trail-words.ts';
 import { useState } from 'react';
 
 import type { TurnResult } from '../kernel/ipc';
@@ -15,7 +16,7 @@ export function DkgTrail({ result }: { result: TurnResult }) {
     <div className="trail">
       <button type="button" className="trail-chip" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={`dot ${result.memoryOffline ? 'off' : 'ok'}`} />
-        {result.memoryOffline ? 'Memory node offline' : `${result.traces.length} DKG queries · ${rows} records · ${wrote} written`}
+        {result.memoryOffline ? 'Memory node offline' : trailWords(result.traces.length, rows, wrote)}
         <span className="trail-mind">{result.mind.label}</span>
       </button>
       {result.mind.fellBack && <p className="trail-note">{fellBackWords(result.mind.fellBack)}</p>}

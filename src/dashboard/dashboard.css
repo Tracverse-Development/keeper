@@ -150,8 +150,7 @@
    the new size) and the conversation sits under it, so nothing overlaps the panels. */
 .stage-frame { position: absolute; inset: 0; transition: right 650ms var(--ease); }
 .dashboard.has-stage .stage-frame { right: 62%; }
-.dashboard.has-stage .dock { left: 19%; width: min(420px, calc(38% - 32px)); }
-.dashboard.has-stage { --stage-left: 38%; --stage-bottom: 24px; }
+.dashboard.has-stage { --stage-left: 38%; --stage-bottom: 24px; --dock-reserve: 200px; }
 
 .scenes-pill { position: absolute; top: 60px; right: 18px; z-index: 6; animation: fade-up 400ms var(--ease) both; color: var(--gold-300); }
 
@@ -280,3 +279,15 @@
 .attentive::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-300); box-shadow: 0 0 0 0 rgba(240, 201, 138, 0.6); animation: attentive 1.6s var(--ease) infinite; }
 @keyframes attentive { 70% { box-shadow: 0 0 0 10px rgba(240, 201, 138, 0); } 100% { box-shadow: 0 0 0 0 rgba(240, 201, 138, 0); } }
 @media (prefers-reduced-motion: reduce) { .attentive::before { animation: none; } }
+/* The message box's focus shows on the whole rounded bar, never as a square inside it (keyboard users still see it). */
+.dock-field:focus-visible { outline: none; }
+.dock-input:focus-within { border-color: var(--gold-400); box-shadow: 0 0 0 1px var(--gold-400); }
+/* In the narrow Transcript the memory trail chip wraps as one block, not mid-pill. */
+.transcript-feed .trail-chip { flex-wrap: wrap; justify-content: flex-start; text-align: left; border-radius: var(--radius-sm); }
+/* Beside the Stage's panels the bar under the keeper fits its column: it never runs into a panel. */
+.dashboard.has-stage .dock { left: calc(var(--stage-left) / 2); width: calc(var(--stage-left) - 28px); max-width: 460px; }
+.dashboard.has-stage .mode-bar { flex-wrap: wrap; justify-content: center; }
+.dashboard.has-stage .dock-input { padding-left: var(--space-4); }
+.dashboard.has-stage .dock-field { min-width: 0; }
+.dashboard.has-stage .send { padding-inline: var(--space-4); }
+.dashboard.has-stage .caption-line { font-size: var(--text-md); }

@@ -5,7 +5,7 @@
  * A short line of what else happened (remembered, steps taken) and "Read all" open the Transcript,
  * where every card of the conversation lives (`TranscriptRail`).
  */
-import { CAPTION_CHARS, captionPage, liveTail } from './caption-page.ts';
+import { CAPTION_CHARS, captionPage, liveTail, NARROW_CAPTION_CHARS } from './caption-page.ts';
 import type { Exchange } from './useAssistant';
 
 interface Props {
@@ -13,12 +13,15 @@ interface Props {
   assistantName: string;
   /** Opens the Transcript (the whole conversation, every card). */
   onReadAll: () => void;
+  /** The keeper's column is narrow (the Stage's panels are showing): shorter captions. */
+  narrow?: boolean;
 }
 
-export function Captions({ exchange: x, assistantName, onReadAll }: Props) {
+export function Captions({ exchange: x, assistantName, onReadAll, narrow = false }: Props) {
+  const max = narrow ? NARROW_CAPTION_CHARS : CAPTION_CHARS;
   if (!x) return null;
   const reply = x.result?.reply ?? '';
-  const page = reply ? captionPage(reply, CAPTION_CHARS) : null;
+  const page = reply ? captionPage(reply, max) : null;
   const extras = x.result ? extrasWords(x) : '';
   return (
     <div className="captions" aria-live="polite">
@@ -31,7 +34,7 @@ export function Captions({ exchange: x, assistantName, onReadAll }: Props) {
         </p>
       ) : x.live ? (
         <p className="caption-line is-live selectable">
-          {liveTail(x.live)}
+          {liveTail(x.live, max)}
           <span className="caret" aria-hidden />
         </p>
       ) : null}

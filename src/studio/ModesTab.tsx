@@ -127,7 +127,7 @@ export function ModesTab({ onChanged }: { onChanged: () => void }) {
           <li key={m.id}>
             <button type="button" className="mode-card" onClick={() => setDraft({ ...m })}>
               <strong>{m.title}</strong>
-              <span className="muted small">{m.scope}</span>
+              <span className="muted small mode-scope">{m.scope}</span>
               <span className="item-tags">
                 <span className="tag">{TOOLS.find((t) => t.id === m.tools)?.name}</span>
                 <span className="tag">{m.skills.includes('*') ? 'All skills' : `${m.skills.length} skills`}</span>

@@ -21,7 +21,7 @@
 .studio-habits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .studio-habits li { display: grid; grid-template-columns: 1fr 140px 90px; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
 .studio-habits input[type="range"] { accent-color: var(--gold-500); width: 100%; }
-.studio-voices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); max-height: 300px; overflow: auto; }
+.studio-voices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); } /* one scroll: the tab scrolls, the list does not */
 .studio-voices li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) 0; border-radius: var(--radius-sm); }
 .studio-voices li.is-on { background: var(--accent-soft); }
 .studio-voice { flex: 1; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; padding: var(--space-2) var(--space-3); cursor: pointer; }
@@ -197,3 +197,4 @@
 .item-colour.is-on { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 0 0 2px var(--surface), 0 0 0 4px var(--gold-400); }
 .item-colour:focus-visible { outline: 2px solid var(--gold-300); outline-offset: 3px; }
 .item-colour.is-own::after { content: ''; display: block; width: 6px; height: 6px; margin: auto; border-radius: 50%; background: rgba(255, 255, 255, .85); }
+.mode-scope { display: block; } .mode-scope::first-letter { text-transform: uppercase; }
