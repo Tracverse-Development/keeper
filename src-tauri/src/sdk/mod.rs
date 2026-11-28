@@ -95,7 +95,6 @@ impl Done {
 /// profile can be limited by it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)] // `Look` and `Change` are for the packs that read or change this computer.
 pub enum Access {
     /// Only the keeper's own memory graph.
     Memory,
@@ -121,6 +120,9 @@ pub enum Platform {
 /// Every system (an ability made only of the keeper's own memory, or of `platform` calls that
 /// answer in plain words where a system lacks them).
 pub const ALL: &[Platform] = &[Platform::Mac, Platform::Windows, Platform::Linux];
+
+/// Only on macOS (an ability made of Mac calls that other systems do not have yet).
+pub const MAC: &[Platform] = &[Platform::Mac];
 
 /// The system this build runs on.
 pub const fn this_platform() -> Platform {

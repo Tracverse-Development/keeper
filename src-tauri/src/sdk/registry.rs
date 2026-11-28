@@ -5,7 +5,16 @@ use super::{packs, this_platform, Ability, ActionRequest, Cx, Outcome};
 use crate::keepers::kit::roles::Role;
 
 /// Every pack, in the order the mind hears them. A new pack is one line here.
-const PACKS: &[&[Ability]] = &[packs::reminders::ABILITIES, packs::personal::ABILITIES, packs::desktop::ABILITIES, packs::core::ABILITIES];
+const PACKS: &[&[Ability]] = &[
+    packs::reminders::ABILITIES,
+    packs::personal::ABILITIES,
+    packs::desktop::ABILITIES,
+    packs::core::ABILITIES,
+    packs::computer::look::ABILITIES,
+    packs::computer::open::ABILITIES,
+    packs::computer::change::ABILITIES,
+    packs::everyday::ABILITIES,
+];
 
 /// Every ability this system offers.
 pub fn all() -> impl Iterator<Item = &'static Ability> {
@@ -62,6 +71,25 @@ mod tests {
         // The built-in modes list skills by name: a rename would silently take one away.
         for id in ["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine"] {
             assert!(super::PACKS.iter().flat_map(|p| p.iter()).any(|a| a.id == id), "{id} is missing");
+        }
+    }
+
+    #[test]
+    fn every_skill_a_built_in_mode_lists_exists() {
+        for mode in crate::keepers::kit::roles::builtins() {
+            for id in mode.skills.iter().filter(|s| s.as_str() != "*") {
+                assert!(super::PACKS.iter().flat_map(|p| p.iter()).any(|a| a.id == id), "{} lists {id}, which no pack has", mode.id);
+            }
+        }
+    }
+
+    #[test]
+    fn modes_that_do_not_operate_the_computer_change_nothing_on_it() {
+        use super::super::Access;
+        for mode in crate::keepers::kit::roles::builtins().into_iter().filter(|m| !m.uses_computer()) {
+            for a in super::PACKS.iter().flat_map(|p| p.iter()).filter(|a| mode.allows(a.id)) {
+                assert!(a.access < Access::Open, "{} may use {}, which opens or changes things", mode.id, a.id);
+            }
         }
     }
 }

@@ -95,7 +95,12 @@ or what is running, show it as it is: a live panel plus tables (devices, interfa
 finding things on their computer (you can look, never change), opening apps and websites, and answering questions. If they want \
 files changed, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
-        skills: &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine"],
+        skills: &[
+            "remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine",
+            // This computer, everyday: look, open, and the small reversible changes asked for in words.
+            "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word",
+            "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert",
+        ],
         mood: false,
     },
     Builtin {
@@ -112,7 +117,7 @@ and one line on what it supports. Never invent a source or a URL. You do not ope
 already found is answered from those findings; search again only for facts you do not have yet. Explain any \
 technical term (SMD, p-value, meta-analysis) in plain words the first time.",
         tools: Tools::Web,
-        skills: &["recall-actions", "ask-memory"],
+        skills: &["recall-actions", "ask-memory", "calculate", "convert"],
         mood: false,
     },
     Builtin {
@@ -135,7 +140,7 @@ praise effort. Give the full answer only when the person asks for it or has trie
         brief: "Your mode: this person's companion. Your domain is their day: conversation, learning together, reminders, \
 routines and wellbeing. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact"],
+        skills: &["remind", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "time-in", "calculate", "convert"],
         mood: true,
     },
 ];

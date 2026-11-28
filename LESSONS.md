@@ -75,3 +75,8 @@
 - **Context:** the God Keeper's glow work kept raising emissive and lights on the body; the bloom pass then took the ivory robe and polished gold as lights and every detail made for them vanished.
 - **Lesson:** with a luminance-threshold bloom, radiance belongs to emitters (halos, rays, rims, motes); a lit surface that must show detail is held under the threshold by construction, not by tuning each light.
 - **Rule added:** bodies meant to look radiant wear `parts/divine-light.ts` (soft ceiling + rim); a flare multiplies emitters freely but the body's lights through a cap.
+
+### LES-016 — A system tool's fallback is a wrong answer; check the input it would silently ignore (2026-11-27)
+- **Context:** the `time-in` ability (Keeper 0.17.0, lane os) asks `date` for the time with `TZ=<zone>`. For a zone it does not know, `date` prints UTC with no error, so "the time in Atlantis" (or a typo of a real zone) would come back confidently wrong. The same week, `system_profiler` returned the Wi-Fi name as the literal text `<redacted>`.
+- **Lesson:** before trusting a system tool's answer, find what it does with input it cannot use (a default, a placeholder, a silent fallback) and check for that case in our code, so the keeper says "I don't know" rather than a plausible wrong answer.
+- **Rule added:** `platform/status_macos.rs` checks the zone file exists before `date` runs and treats `<redacted>` as no name (both tested); new platform readers get a test for the tool's fallback output.
