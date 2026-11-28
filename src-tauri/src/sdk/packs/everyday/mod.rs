@@ -29,12 +29,14 @@ fn convert(input: &serde_json::Value) -> Result<Done> {
 }
 
 /// A unit as said after its amount: the word units (cups, days, weeks, acres, hectares, knots)
-/// lose their "s" for exactly one ("1 cup", "2.113 cups"); symbols (ml, km, °C) never change.
+/// lose their "s" for exactly one ("1 day", "2 days"); symbols (ml, km, °C) never change. A cup
+/// says it is the US cup (236.6 ml; a metric cup is 250 ml), so the number is never mistaken.
 fn counted_unit(amount: f64, unit: &'static str) -> &'static str {
-    const WORDS: [(&str, &str); 6] = [("cups", "cup"), ("days", "day"), ("weeks", "week"), ("acres", "acre"), ("hectares", "hectare"), ("knots", "knot")];
-    match WORDS.iter().find(|(many, _)| *many == unit) {
-        Some((_, one)) if amount == 1.0 => one,
-        _ => unit,
+    const WORDS: [(&str, &str, &str); 6] = [("cups", "US cup", "US cups"), ("days", "day", "days"), ("weeks", "week", "weeks"), ("acres", "acre", "acres"), ("hectares", "hectare", "hectares"), ("knots", "knot", "knots")];
+    match WORDS.iter().find(|(id, _, _)| *id == unit) {
+        Some((_, one, _)) if amount == 1.0 => one,
+        Some((_, _, many)) => many,
+        None => unit,
     }
 }
 
@@ -55,8 +57,9 @@ mod tests {
     // FIX-0048: "500 ml is 2.113 cup".
     #[test]
     fn word_units_are_counted_and_symbols_never_change() {
-        assert_eq!(super::counted_unit(2.113, "cups"), "cups");
-        assert_eq!(super::counted_unit(1.0, "cups"), "cup");
+        assert_eq!(super::counted_unit(2.113, "cups"), "US cups");
+        assert_eq!(super::counted_unit(1.0, "cups"), "US cup");
+        assert_eq!(super::counted_unit(1.0, "days"), "day");
         assert_eq!(super::counted_unit(1.0, "days"), "day");
         assert_eq!(super::counted_unit(1.0, "ml"), "ml");
     }

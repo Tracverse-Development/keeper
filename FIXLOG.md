@@ -436,3 +436,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Root cause:** the dialog had no Escape handler and took no focus, so the message box (autoFocus) kept the keyboard; two other dialogs also lacked Escape (same class).
 - **Fix:** What's new closes on Escape (`useEscape`), is `aria-modal` and focuses "Got it"; the soul editor and the new-keeper dialog close on Escape.
 - **Guard:** `structure.test.ts` "dialogs: every role=\"dialog\" screen closes on Escape".
+
+### FIX-0057 — The same reminder was set again on a repeated request, and the list mixed "Tomorrow 9:00 AM" with a bare "9:00 AM" (2026-11-28)
+- **Area:** `src-tauri/src/sdk/packs/reminders/mod.rs` (`remind`, `is_same`), `src-tauri/src/sdk/agenda.rs` (`rows`)
+- **Symptom:** the real-AI scenario round showed four "call the dentist" rows (repeats of one request) and today's row as a bare clock beside "Tomorrow 9:00 AM"; the judge scored both reminder turns 2/5.
+- **Root cause:** `remind` wrote every request without looking at the reminders already set; `agenda::rows` labels today's rows with a clock only (right for the "Today" panel) even in a list that runs into other days, and `remind` labelled the new row and the others in two separate lists.
+- **Fix:** a reminder with the same words, due within the same minute and repeating the same way is not set again ("You already have that: …"); a list that runs past today names today on its rows ("Today 9:00 AM"); the new reminder and the others are labelled as one list.
+- **Guard:** reminders test `the_same_reminder_twice_is_one_reminder`; agenda test `a_list_past_today_names_today_too`.

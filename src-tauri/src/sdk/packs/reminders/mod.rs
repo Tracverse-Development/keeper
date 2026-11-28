@@ -67,6 +67,13 @@ async fn remind(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
     let now = time::now();
     let due = clock::due_time(input, now).ok_or_else(|| DeskError::Invalid("I need to know when: in some minutes, or a time like 5:30 pm.".into()))?;
     let repeat = clock::repeat_of(input).map_err(DeskError::Invalid)?;
+    let ahead = upcoming(cx).await;
+    // Asked twice (a repeated request, a retried turn): one reminder, not two.
+    if ahead.iter().any(|r| is_same(r, text, due, &repeat)) {
+        let rows = agenda::rows(&[], &ahead.iter().take(ALSO_SHOWN + 1).cloned().collect::<Vec<_>>(), now);
+        let when = agenda::when_words(due, now);
+        return Ok(Done::said(format!("You already have that: I'll remind you to {text} {when}.")).showing(agenda::panel("agenda-reminders", "Reminders", rows)));
+    }
     let reminder = Reminder::new(text, &time::iso(due), &time::now_iso()).repeating(&repeat, cx.keeper);
     let receipt = cx.memory.write(&reminder).await;
     cx.reminders.schedule(reminder.clone());
@@ -75,14 +82,24 @@ async fn remind(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
         again => format!("{}, and{again} after that", agenda::when_words(due, now)),
     };
     let saved = if receipt.queued { "It's saved here and will reach your memory node when it's back." } else { "It's in your memory graph." };
-    // The new reminder first, then the next few already set (the panel's Delete works on each).
-    let others: Vec<Reminder> = upcoming(cx).await.into_iter().filter(|r| r.id != reminder.id).take(ALSO_SHOWN).collect();
-    let mut rows = agenda::rows(&[], std::slice::from_ref(&reminder), now);
-    for row in &mut rows {
+    // The new reminder first, then the next few already set (the panel's Delete works on each),
+    // labelled as one list so their days read the same way.
+    let mut shown = vec![reminder.clone()];
+    shown.extend(ahead.into_iter().filter(|r| r.id != reminder.id).take(ALSO_SHOWN));
+    let mut rows = agenda::rows(&[], &shown, now);
+    rows.sort_by_key(|row| row.id.as_deref() != Some(reminder.id.as_str()));
+    if let Some(row) = rows.first_mut() {
         row.detail = Some(row.detail.take().map_or("Just set".into(), |d| format!("Just set. {d}")));
     }
-    rows.extend(agenda::rows(&[], &others, now));
     Ok(Done::said(format!("I'll remind you to {text} {when}. {saved}")).showing(agenda::panel("agenda-reminders", "Reminders", rows)))
+}
+
+/// The same reminder as one already set: the same words (any case and spacing), due within the
+/// same minute, repeating the same way.
+fn is_same(r: &Reminder, text: &str, due: chrono::DateTime<chrono::Utc>, repeat: &str) -> bool {
+    let words = |s: &str| s.split_whitespace().map(str::to_lowercase).collect::<Vec<_>>();
+    let close = time::parse_iso(&r.due_at).is_some_and(|at| (at - due).num_seconds().abs() < 60);
+    close && words(&r.text) == words(text) && r.repeat == repeat
 }
 
 /// "What reminders do I have?": every reminder still ahead, soonest first.
@@ -116,5 +133,14 @@ mod tests {
         assert_eq!(super::list_words("remind me to call Maya at 5"), None, "a new reminder goes to the mind");
         assert_eq!(super::snooze_words("snooze for 15 minutes").unwrap()["minutes"], 15);
         assert!(super::snooze_words("snooze for 999 minutes").unwrap()["minutes"].is_null(), "too long is said, not set");
+    }
+
+    #[test]
+    fn the_same_reminder_twice_is_one_reminder() {
+        let due = crate::kernel::time::parse_iso("2026-11-29T14:00:00Z").unwrap();
+        let set = crate::memory::Reminder::new("Call the  dentist", "2026-11-29T14:00:20Z", "2026-11-28T08:00:00Z");
+        assert!(super::is_same(&set, "call the dentist", due, &set.repeat));
+        assert!(!super::is_same(&set, "call the vet", due, &set.repeat));
+        assert!(!super::is_same(&set, "call the dentist", due + chrono::Duration::hours(1), &set.repeat));
     }
 }

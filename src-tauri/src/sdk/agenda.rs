@@ -86,9 +86,21 @@ fn sorted(events: &[Event], reminders: &[Reminder], now: DateTime<Utc>) -> Vec<(
 
 /// Events and reminders as one list in time order, at most `MAX_ROWS`, their times labelled from
 /// `now` (pass a day's start to label a one-day agenda with clocks only). Rows whose time cannot
-/// be read are left out.
+/// be read are left out. A list that runs past today names today on its rows too ("Today 9:00
+/// AM" beside "Tomorrow 9:00 AM"), so a bare clock never reads as either day.
 pub fn rows(events: &[Event], reminders: &[Reminder], now: DateTime<Utc>) -> Vec<AgendaItem> {
-    sorted(events, reminders, now).into_iter().take(MAX_ROWS).map(|(_, _, row)| row).collect()
+    let all: Vec<(DateTime<Utc>, bool, AgendaItem)> = sorted(events, reminders, now).into_iter().take(MAX_ROWS).collect();
+    let today = now.with_timezone(&Local).date_naive();
+    let is_today = |at: &DateTime<Utc>| at.with_timezone(&Local).date_naive() == today;
+    let spans_days = all.iter().any(|(at, _, _)| !is_today(at));
+    all.into_iter()
+        .map(|(at, all_day, mut row)| {
+            if spans_days && !all_day && is_today(&at) {
+                row.time = row.time.map(|t| format!("Today {t}"));
+            }
+            row
+        })
+        .collect()
 }
 
 /// The first thing in that list and when, in words: ("Dentist", "tomorrow at 9:00 AM"), or
@@ -200,5 +212,17 @@ mod tests {
         assert_eq!(Day::Tomorrow.title(now), "Tomorrow, Saturday 28 November");
         assert_eq!(Day::from_words("Tomorrow"), Some(Day::Tomorrow));
         assert_eq!(Day::from_words("next year"), None);
+    }
+
+    #[test]
+    fn a_list_past_today_names_today_too() {
+        use chrono::TimeZone;
+        let now = Local.with_ymd_and_hms(2026, 11, 28, 8, 0, 0).unwrap().with_timezone(&Utc);
+        let at = |d: u32, h: u32| time::iso(Local.with_ymd_and_hms(2026, 11, d, h, 0, 0).unwrap().with_timezone(&Utc));
+        let both = [Reminder::new("call the dentist", &at(28, 9), &time::iso(now)), Reminder::new("call the dentist", &at(29, 9), &time::iso(now))];
+        let labels: Vec<String> = super::rows(&[], &both, now).into_iter().filter_map(|r| r.time).collect();
+        assert_eq!(labels, ["Today 9:00 AM", "Tomorrow 9:00 AM"]);
+        let one_day: Vec<String> = super::rows(&[], &both[..1], now).into_iter().filter_map(|r| r.time).collect();
+        assert_eq!(one_day, ["9:00 AM"], "a list of only today keeps clocks only");
     }
 }

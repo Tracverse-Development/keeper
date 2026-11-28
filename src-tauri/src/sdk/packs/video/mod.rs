@@ -60,7 +60,13 @@ fn search_panel(query: &str) -> Option<Panel> {
 async fn find_video(input: &serde_json::Value, _cx: &Cx<'_>) -> Result<Done> {
     let query = youtube::clean_query(input::text(input, "query")?).ok_or_else(|| DeskError::Invalid("Tell me what the video should be about.".into()))?;
     let short = input.get("short").and_then(|s| s.as_bool()).unwrap_or(false);
-    let picked = youtube::best(youtube::search(&query).await?, short);
+    let mut found = youtube::search(&query).await?;
+    if found.is_empty() {
+        // YouTube now and then serves a page with no results in it: one more look before the plain search link.
+        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+        found = youtube::search(&query).await.unwrap_or_default();
+    }
+    let picked = youtube::best(found, short);
     let Some((best, others)) = picked.split_first() else {
         let done = Done::said(format!("I couldn't pick out one video for {query}, so here is the YouTube search."));
         return Ok(match search_panel(&query) {
