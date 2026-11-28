@@ -75,6 +75,11 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
 async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     // A message that came with material (a dropped file) is about that material: the mind reads
     // it. No instant answer, no cached scene (the same words about another file differ).
+    // Testing only (KEEPER_TEST_LINK): "/run <ability> <input>" runs that ability with no mind.
+    if let Some(request) = super::test_drive::forced(&ctx.said) {
+        let thought = Thought { actions: vec![request], ..Thought::default() };
+        return Answer { thought, mind: mind("test", "Test drive (no AI)"), cached: false, switched: None };
+    }
     let fresh = ctx.attached.is_some();
     if !fresh {
         if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {

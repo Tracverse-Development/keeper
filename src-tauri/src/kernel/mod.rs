@@ -11,6 +11,7 @@ pub mod secrets;
 pub mod settings;
 pub mod time;
 pub mod usage;
+pub mod window_fit;
 pub mod slug;
 
 pub use error::{DeskError, Result};

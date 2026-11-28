@@ -40,6 +40,12 @@ pub fn entries(text: &str) -> Vec<Entry> {
             if let Some((_, items)) = entry.sections.last_mut() {
                 items.push(item.trim().into());
             }
+        } else if line.starts_with("  ") && !line.trim().is_empty() {
+            // A bullet wrapped onto the next lines (indented) belongs to that bullet.
+            if let Some(item) = out.last_mut().and_then(|e| e.sections.last_mut()).and_then(|(_, items)| items.last_mut()) {
+                item.push(' ');
+                item.push_str(line.trim());
+            }
         }
     }
     out
@@ -92,5 +98,12 @@ mod tests {
         assert_eq!(versions(unseen(&all, "", "0.11.2")), vec!["0.11.2"], "first time: this version only");
         assert_eq!(versions(unseen(&all, "0.10.0", "0.11.1")), vec!["0.11.1"], "never a version newer than the one running");
         assert_eq!(all[0].sections, vec![("Fixed".to_string(), vec!["a".to_string()])]);
+    }
+
+    // FIX-0041: a bullet wrapped onto a second line showed only its first line.
+    #[test]
+    fn a_wrapped_bullet_is_read_whole() {
+        let all = entries("## [1.0.0] - d\n### Added\n- **Edit in Keeper.** Ask a keeper to change\n  a text file and save it.\n- Next.\n\n  \n");
+        assert_eq!(all[0].sections[0].1, vec!["**Edit in Keeper.** Ask a keeper to change a text file and save it.".to_string(), "Next.".to_string()]);
     }
 }

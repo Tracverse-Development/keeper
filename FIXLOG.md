@@ -329,3 +329,19 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** `find-video` asks YouTube for exactly the person's words (HTTPS, no cookies, 6 s), reads the results page's embedded data with a pure parser, picks an ordinary video (no live streams or Shorts unless nothing else; under six minutes first when "short") and shows it playing in place with two alternatives. `RULES` and the ability's own line tell every mind to use it, never a search link or a guessed address; every built-in mode lists it. The search page is shown only when nothing on it can be read.
 - **Guard:** `youtube.rs` tests on a saved, trimmed results page (`testdata/youtube-search-tie.html`: a live stream, a Short, a Shorts shelf, five videos), query cleaning, the pick; `registry` test keeps the three new names; `cap` test for media panels (web or local, choices filtered). Live: `cargo test live_youtube -- --ignored --nocapture`.
 - **Evidence:** live search from this Mac: tie → "How to Tie a Four-In-Hand Knot | Men's Fashion" (Howcast, 1:24); volcanoes (short) → "Volcanic eruption explained" (TED-Ed, 5:34).
+
+### FIX-0041 — What's new showed half of each item, with ** marks as text (2026-11-28)
+- **Area:** `src-tauri/src/updater/whats_new.rs` (`entries`), `src/dashboard/WhatsNew.tsx`, new `src/dashboard/whats-new-text.ts`
+- **Symptom:** in the test VM after installing 0.17.0, every Added item ended mid-sentence ("Ask a keeper to change a text file ("fix the spelling in") and began "**Edit in Keeper, then save.**" with the asterisks shown.
+- **Root cause:** the parser took only lines starting "- ", so a bullet wrapped onto indented lines lost its rest; the window printed the changelog's markdown bold as plain text.
+- **Fix:** indented continuation lines are joined onto their bullet; the window splits `**bold**` into a bold run.
+- **Guard:** `whats_new.rs` test `a_wrapped_bullet_is_read_whole`; `whats-new-text.test.ts`.
+- **Evidence:** check.sh in the commit.
+
+### FIX-0042 — On a 1024 x 768 screen the window opened past the left edge (2026-11-28)
+- **Area:** new `src-tauri/src/kernel/window_fit.rs`, `lib.rs` setup
+- **Symptom:** in the test VM the window's left side (the Keeper logo panel, the start of the What's new sheet) was off screen.
+- **Root cause:** the window is designed at 1280 x 820 and `center: true` cannot fit a window wider than the screen.
+- **Fix:** at launch the main window shrinks to the screen's room (minus the menu bar and Dock), never below 900 x 620, and is centred.
+- **Guard:** `window_fit.rs` test `a_small_screen_gets_a_window_that_fits_and_a_big_one_keeps_the_design`.
+- **Evidence:** check.sh in the commit; seen again in the VM after the next build.

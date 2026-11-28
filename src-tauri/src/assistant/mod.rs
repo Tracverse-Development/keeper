@@ -15,6 +15,7 @@ pub mod approval;
 pub mod attach;
 mod compose;
 mod handoff;
+pub(crate) mod test_drive;
 mod intent;
 mod speech;
 pub mod persona;
@@ -128,9 +129,10 @@ pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: 
 }
 
 /// One turn from the phone link: everything a turn at the Mac does, except abilities that
-/// change this Mac (`sdk::Access::Change`).
-pub async fn run_phone_turn(app: &AppHandle, state: &AppState, chat: &str, text: &str, mode: &str) -> Result<TurnResult> {
-    run_turn_with(app, state, "", chat, text, mode, None, false).await
+/// change this Mac (`sdk::Access::Change`). `test_at_the_mac`: a developer's test link
+/// (`test_drive`) standing in for someone at the Mac; ignored unless the test link is on.
+pub async fn run_phone_turn(app: &AppHandle, state: &AppState, chat: &str, text: &str, mode: &str, test_at_the_mac: bool) -> Result<TurnResult> {
+    run_turn_with(app, state, "", chat, text, mode, None, test_at_the_mac && test_drive::enabled()).await
 }
 
 /// The mode a chat runs in. On a child profile: always the BUILT-IN Tutor (with no tools, never an

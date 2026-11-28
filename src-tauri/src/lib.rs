@@ -52,6 +52,10 @@ pub fn run() {
             tauri::async_runtime::spawn_blocking(move || responder.respond(stage::local_media::serve(&request)));
         })
         .setup(|app| {
+            // A screen smaller than the designed window (a 1024 x 768 display, a VM) gets a window that fits.
+            if let Some(main) = app.get_webview_window("main") {
+                kernel::window_fit::fit_main_window(&main);
+            }
             let handle = app.handle().clone();
             let reminders = Scheduler::new(move |reminder| {
                 let app = handle.clone();

@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 
 import { core, type ChangeEntry } from '../kernel/ipc';
+import { changeLine } from './whats-new-text.ts';
 
 export function WhatsNew() {
   const [entries, setEntries] = useState<ChangeEntry[]>([]);
@@ -40,7 +41,7 @@ export function WhatsNew() {
                   <strong className="whats-new-title">{title}</strong>
                   <ul>
                     {items.map((item) => (
-                      <li key={item}>{item.replace(/\s*\(FIX-\d+(?:,\s*FIX-\d+)*\)/g, '')}</li>
+                      <li key={item}>{changeLine(item).map((run, i) => (run.bold ? <strong key={i}>{run.text}</strong> : <span key={i}>{run.text}</span>))}</li>
                     ))}
                   </ul>
                 </div>

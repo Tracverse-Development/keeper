@@ -88,7 +88,7 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                         json_reply(req, 200, json!({ "reply": "I only work on copied text at the Mac itself, not from the phone.", "chat": chat }));
                         continue;
                     }
-                    let result = tauri::async_runtime::block_on(crate::assistant::run_phone_turn(&app, &state, &chat, &text, &mode));
+                    let result = tauri::async_runtime::block_on(crate::assistant::run_phone_turn(&app, &state, &chat, &text, &mode, body["atMac"].as_bool() == Some(true)));
                     reply_turn(req, &app, &text, result);
                 }
                 // Approve or refuse a plan the keeper showed (the phone sees its steps and token).
