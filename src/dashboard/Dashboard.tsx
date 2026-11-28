@@ -38,6 +38,7 @@ import { withFactHalo } from './halo';
 import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
 import { CanDoPage } from './CanDoPage';
 import { WhatsNew } from './WhatsNew';
+import { StagePill } from './StagePill';
 import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
@@ -267,16 +268,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           onClose={stage.close}
         />
       )}
-      {!stage.showing && stage.scenes.length > 0 && (
-        <button type="button" className="pill pill-button scenes-pill" onClick={stage.reopen}>
-          Scenes · {stage.scenes.length}
-        </button>
-      )}
-      {!stage.showing && stage.scenes.length === 0 && pins.count > 0 && (
-        <button type="button" className="pill pill-button scenes-pill" onClick={pins.openLatest}>
-          Pinned · {pins.count}
-        </button>
-      )}
+      {!stage.showing && <StagePill scenes={stage.scenes.length} pinned={pins.count} onScenes={stage.reopen} onPinned={pins.openLatest} />}
       {events.updated && <UpdateBanner version={events.updated} idle={!assistant.busy && !voice.speaking && !voice.listening} />}
       <TopBar
         assistantName={name}
