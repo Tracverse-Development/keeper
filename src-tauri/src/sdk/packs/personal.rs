@@ -1,7 +1,7 @@
 //! The person's own records on this computer: their calendar and contacts (through `pim`, read
 //! and written here and never sent anywhere).
 
-use super::super::{input, Ability, Access, Cx, Done, ALL};
+use super::super::{input, Ability, Instant, Access, Cx, Done, ALL};
 use crate::kernel::Result;
 
 pub const ABILITIES: &[Ability] = &[
@@ -9,14 +9,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "add-event",
         how: "{\"title\": \"Dentist\", \"start\": \"2026-12-01T15:00:00-05:00\", \"end\": \"2026-12-01T16:00:00-05:00\"} puts an event on the person's calendar (RFC 3339 times with offset)",
         access: Access::Personal,
-        platforms: ALL, modes: &["assistant", "companion"],
+        platforms: ALL, modes: &["assistant", "companion"], instant: Instant::No,
         run: |input, cx| Box::pin(add_event(input, cx)),
     },
     Ability {
         id: "find-contact",
         how: "{\"name\": \"Hannah\"} looks someone up in the person's contacts (phone numbers, emails)",
         access: Access::Personal,
-        platforms: ALL, modes: &["assistant", "companion"],
+        platforms: ALL, modes: &["assistant", "companion"], instant: Instant::No,
         run: |input, cx| Box::pin(find_contact(input, cx)),
     },
 ];

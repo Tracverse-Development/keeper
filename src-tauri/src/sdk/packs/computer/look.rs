@@ -1,20 +1,46 @@
 //! Looking at this computer, changing nothing: the battery, Wi-Fi, free disk space, the open
 //! apps, the time in another place, the person's Shortcuts. Each answers in a sentence and,
-//! where a table says it better, shows one.
+//! where a table says it better, shows one. "What's my battery?", "what Wi-Fi am I on?" and "how
+//! much space do I have?" are also instant answers (their whole phrasings below).
 
-use super::super::super::{input, Ability, Access, Done, ALL, MAC};
+use std::sync::OnceLock;
+
+use regex::Regex;
+
+use super::super::super::{input, instant, Ability, Access, Done, Instant, ALL, MAC};
 use super::{cities, counted, duration_words, names, readings, sentence_case, some_of, twelve_hour};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "battery", how: "{} says how much battery is left and whether it is charging", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(battery()) },
-    Ability { id: "wifi", how: "{} says which Wi-Fi network the Mac is on and how strong the signal is", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(wifi()) },
-    Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, modes: &["assistant"], run: |_, _| Box::pin(async { disk_space() }) },
-    Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(open_apps()) },
-    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], run: |input, _| Box::pin(time_in(input)) },
-    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(list_shortcuts()) },
+    Ability { id: "battery", how: "{} says how much battery is left and whether it is charging", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::Also(battery_words), run: |_, _| Box::pin(battery()) },
+    Ability { id: "wifi", how: "{} says which Wi-Fi network the Mac is on and how strong the signal is", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::Also(wifi_words), run: |_, _| Box::pin(wifi()) },
+    Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, modes: &["assistant"], instant: Instant::Also(disk_words), run: |_, _| Box::pin(async { disk_space() }) },
+    Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(open_apps()) },
+    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], instant: Instant::No, run: |input, _| Box::pin(time_in(input)) },
+    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(list_shortcuts()) },
 ];
+
+/// The whole phrasings that ask for a reading at once; anything else about the battery or the
+/// network ("why does my battery drain so fast?") goes to the mind.
+const BATTERY_ASKS: &str = r"(?i)^(?:please\s+)?(?:what(?:'s| is) my battery(?: level| at)?|how much battery (?:do i have|is left|have i got)(?: left)?|battery(?: level| status)?|is my (?:mac|laptop|computer) charging|how(?:'s| is) my battery)\s*[?.!]?$";
+const WIFI_ASKS: &str = r"(?i)^(?:please\s+)?(?:what wi-?fi am i on|which wi-?fi (?:am i on|is this)|what(?:'s| is) my wi-?fi(?: signal| network)?|how(?:'s| is) my wi-?fi(?: signal)?|wi-?fi (?:signal|status))\s*[?.!]?$";
+const DISK_ASKS: &str = r"(?i)^(?:please\s+)?(?:how much (?:free )?(?:disk |storage )?space (?:do i have|is left|have i got)(?: left)?(?: on (?:my|this) (?:mac|computer|disk|drive))?|(?:free )?disk space|how full is (?:my|this) (?:disk|drive|mac|computer))\s*[?.!]?$";
+
+fn battery_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::whole(&R, BATTERY_ASKS, said)
+}
+
+fn wifi_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::whole(&R, WIFI_ASKS, said)
+}
+
+fn disk_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::whole(&R, DISK_ASKS, said)
+}
 
 async fn battery() -> Result<Done> {
     let Some(b) = platform::battery().await? else { return Ok(Done::said("This Mac has no battery; it runs on mains power.")) };
@@ -101,6 +127,17 @@ async fn list_shortcuts() -> Result<Done> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn whole_phrasings_ask_for_their_reading() {
+        let asked = |said: &str| [("battery", battery_words(said)), ("wifi", wifi_words(said)), ("disk-space", disk_words(said))].into_iter().find(|(_, input)| input.is_some()).map(|(id, _)| id);
+        for (said, id) in [("What's my battery?", "battery"), ("how much battery do I have left", "battery"), ("is my laptop charging?", "battery"), ("What Wi-Fi am I on?", "wifi"), ("how's my wifi signal", "wifi"), ("How much space do I have?", "disk-space"), ("how much free disk space is left on my mac?", "disk-space"), ("how full is my drive", "disk-space")] {
+            assert_eq!(asked(said), Some(id), "{said}");
+        }
+        for mind in ["why does my battery drain so fast?", "what is wifi", "how much space is in a cubic metre", "battery acid on the floor"] {
+            assert_eq!(asked(mind), None, "{mind} goes to the mind");
+        }
+    }
 
     #[test]
     fn durations_and_differences_read_as_words() {

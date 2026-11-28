@@ -1,12 +1,10 @@
 //! Instant answers: requests that need no AI at all, answered in well under a second and still
 //! shown on the Stage. Matching is conservative (a whole phrasing, e.g. "find MY …"), so anything
 //! else goes on to the keeper's brain. What these answers do is recorded like any other turn.
+//! (Being moved into the SDK as abilities that declare their own words: `sdk::instant`, tried
+//! first by `assistant::source`.)
 //!
-//! - "find my NZCC deck", "where is my resume"   Spotlight → a files panel (`pim::find_files`)
-//! - "where is my Downloads folder", "open my documents"  a live folder view (`folders`)
 //! - "how's my computer", "system status"         CPU and memory → a chart panel
-//! - "what's my battery", "what Wi-Fi am I on", "how much space do I have"  the computer
-//!   pack's own abilities, run by the turn (`computer`)
 //! - "brief me", "good morning", "what's on today" the morning brief (`brief`)
 //! - "what do you know about me"                   your facts → a facts panel (forget / pin)
 //! - "week in review", "how was my week"          the week from memory (`week`)
@@ -14,12 +12,9 @@
 //!   is an expansion done before the turn)
 //! - "shorten what I copied"                       the clipboard's text (`clip`)
 //! - "focus for 25 minutes"                        a focus session (`crate::focus`)
-//! - "what reminders do I have", "what's on tomorrow"  the agenda abilities (`list-reminders`, `upcoming`)
 
 pub mod brief;
 pub mod clip;
-pub mod computer;
-pub mod folders;
 pub mod routines;
 pub mod week;
 
@@ -45,38 +40,10 @@ fn shown(reply: String, panels: serde_json::Value) -> Thought {
 
 pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProfile, said: &str) -> Option<Thought> {
     let s = said.trim();
-    static FIND: OnceLock<Regex> = OnceLock::new();
-    static OPEN: OnceLock<Regex> = OnceLock::new();
     static SYSTEM: OnceLock<Regex> = OnceLock::new();
     static BRIEF: OnceLock<Regex> = OnceLock::new();
     static FACTS: OnceLock<Regex> = OnceLock::new();
     static RECENT: OnceLock<Regex> = OnceLock::new();
-
-    static FOLDER: OnceLock<Regex> = OnceLock::new();
-    if let Some(c) = re(&FOLDER, FOLDER_WORDS).captures(s) {
-        return Some(folders::view(&folders::known(&c[1])?, false));
-    }
-
-    if let Some(c) = re(&FIND, FIND_WORDS).captures(s) {
-        let query = c[1].trim_end_matches(" file").trim_end_matches(" files").to_string();
-        let hits = crate::pim::find_files(&query, 8).await.ok()?;
-        if hits.is_empty() {
-            return Some(shown(format!("I couldn't find anything called {query} on this computer."), json!([])));
-        }
-        let items: Vec<_> = hits.iter().map(|h| json!({ "action": "find", "path": h.path })).collect();
-        let first = &hits[0];
-        return Some(shown(format!("Found {} match{}. The best one is {}.", hits.len(), if hits.len() == 1 { "" } else { "es" }, first.name), json!([{ "kind": "files", "title": format!("Looking for {query}"), "items": items }])));
-    }
-
-    if let Some(c) = re(&OPEN, OPEN_WORDS).captures(s) {
-        let path = folders::known(&c[1])?;
-        crate::platform::open_url(&path.display().to_string()).ok()?;
-        return Some(folders::view(&path, true));
-    }
-
-    if let Some(thought) = computer::answer(&keeper.role, s) {
-        return Some(thought);
-    }
 
     if re(&SYSTEM, SYSTEM_WORDS).is_match(s) {
         let load = crate::system::read();
@@ -89,12 +56,6 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
 
     if re(&BRIEF, BRIEF_WORDS).is_match(s) {
         return Some(brief::compose(app, memory, keeper).await);
-    }
-
-    // "What reminders do I have?", "what's on tomorrow?": the agenda abilities, at once (when the
-    // mode has them; otherwise the mind answers).
-    if let Some(request) = agenda_request(s).filter(|r| crate::keepers::kit::roles::get(&keeper.role).allows(&r.skill)) {
-        return Some(Thought { actions: vec![request], ..Thought::default() });
     }
 
     // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
@@ -152,31 +113,9 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     None
 }
 
-const FOLDER_WORDS: &str = r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$";
-const FIND_WORDS: &str = r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$";
-const OPEN_WORDS: &str = r"(?i)^(?:please\s+)?open\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|music|movies|home)(?:\s+folder)?\s*\.?$";
 const SYSTEM_WORDS: &str = r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$";
 const BRIEF_WORDS: &str = r"(?i)^(?:brief me|morning brief|good morning|what(?:'s| is) on (?:today|my day)|catch me up)\b.*$";
 const FACTS_WORDS: &str = r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)";
-
-/// "What reminders do I have?", "list my reminders", "my upcoming reminders".
-const REMINDERS: &str = r"(?i)^(?:please\s+)?(?:what reminders do i have|(?:show|list|tell)(?: me)? (?:all )?my reminders|(?:what are )?my (?:upcoming )?reminders|(?:do i have )?any (?:upcoming )?reminders)\s*[?.!]?$";
-/// "What's on tomorrow?", "what do I have tomorrow?".
-const TOMORROW: &str = r"(?i)^(?:please\s+)?(?:what(?:'s| is) on (?:for )?tomorrow|what do i have (?:on |going on )?tomorrow|what(?:'s| is) (?:my day|happening) tomorrow)\s*[?.!]?$";
-
-/// The agenda ability a clear phrasing asks for (None: anything else).
-fn agenda_request(said: &str) -> Option<crate::sdk::ActionRequest> {
-    static R: OnceLock<Regex> = OnceLock::new();
-    static T: OnceLock<Regex> = OnceLock::new();
-    let (skill, input) = if re(&R, REMINDERS).is_match(said) {
-        ("list-reminders", json!({}))
-    } else if re(&T, TOMORROW).is_match(said) {
-        ("upcoming", json!({ "day": "tomorrow" }))
-    } else {
-        return None;
-    };
-    Some(crate::sdk::ActionRequest { skill: skill.into(), input })
-}
 
 /// "Tidy my memory", "clean up your memory", "what's out of date in my memory?".
 const TIDY_MEMORY: &str = r"(?i)^(?:please\s+)?(?:(?:tidy|clean)(?:\s+up)?\s+(?:my|your)\s+memory|what(?:'s| is)\s+out of date in\s+(?:my|your)\s+memory)\s*[?.!]?$";
@@ -193,21 +132,15 @@ mod tests {
         let s = said.trim();
         let m = |p: &str| Regex::new(p).unwrap().is_match(s);
         let role = crate::keepers::kit::roles::get(mode);
-        let checks: [(&str, &'static str); 3] = [(FOLDER_WORDS, "show-folder"), (FIND_WORDS, "find-files"), (OPEN_WORDS, "open-folder")];
-        if let Some((_, id)) = checks.iter().find(|(p, _)| m(p)) {
-            return Some(id);
-        }
-        if let Some(id) = computer::asked(s).filter(|id| crate::sdk::registry::find(id).is_some() && role.allows(id)) {
-            return Some(id);
+        // The SDK's instant abilities first (as `assistant::source` asks), then the fast lane.
+        if let Some((ability, _)) = crate::sdk::instant::asked(s, &role) {
+            return Some(ability.id);
         }
         if m(SYSTEM_WORDS) {
             return Some("computer-status");
         }
         if m(BRIEF_WORDS) {
             return Some("brief");
-        }
-        if let Some(r) = agenda_request(s).filter(|r| role.allows(&r.skill)) {
-            return Some(if r.skill == "upcoming" { "upcoming" } else { "list-reminders" });
         }
         if m(crate::focus::STOPS) {
             return Some("stop-focus");
@@ -308,25 +241,5 @@ mod tests {
         assert!(r.is_match("what files did I change today"));
         assert!(r.is_match("show me my recent files"));
         assert!(!r.is_match("what was I saying about the embolism?"), "conversation goes to the brain");
-    }
-
-    #[test]
-    fn reminder_and_tomorrow_phrasings_ask_the_agenda() {
-        let skill = |s: &str| agenda_request(s).map(|r| r.skill);
-        assert_eq!(skill("What reminders do I have?").as_deref(), Some("list-reminders"));
-        assert_eq!(skill("list my reminders").as_deref(), Some("list-reminders"));
-        assert_eq!(skill("any upcoming reminders?").as_deref(), Some("list-reminders"));
-        assert_eq!(skill("What's on tomorrow?").as_deref(), Some("upcoming"));
-        assert_eq!(agenda_request("what do I have tomorrow").unwrap().input["day"], "tomorrow");
-        assert_eq!(skill("remind me to call Maya at 5"), None, "a new reminder goes to the mind");
-        assert_eq!(skill("what's on tomorrow's news"), None);
-    }
-
-    #[test]
-    fn only_clear_phrasings_skip_the_brain() {
-        static FIND: OnceLock<Regex> = OnceLock::new();
-        let find = re(&FIND, FIND_WORDS);
-        assert_eq!(&find.captures("Where did I save my NZCC deck?").unwrap()[1], "NZCC deck");
-        assert!(find.captures("find the area of a circle").is_none(), "maths goes to the brain");
     }
 }

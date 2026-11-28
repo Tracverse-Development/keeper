@@ -87,7 +87,7 @@ pub struct SkillInfo {
 /// Every skill a mode can be given (the Studio's Modes tab).
 #[tauri::command]
 pub fn skills_list() -> Vec<SkillInfo> {
-    crate::sdk::registry::all().map(|a| SkillInfo { name: a.id, what: a.how, access: a.access }).collect()
+    crate::sdk::registry::for_the_mind().map(|a| SkillInfo { name: a.id, what: a.how, access: a.access }).collect()
 }
 
 /// Every mode in effect (built-ins, edited built-ins, the person's own).

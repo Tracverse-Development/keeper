@@ -3,7 +3,7 @@
 //! dark mode, the volume level, staying awake, the display, the lock, the clipboard, a new
 //! screenshot in ~/Pictures/Keeper, a new note, running one of their own Shortcuts.
 
-use super::super::super::{input, Ability, Access, Done, MAC};
+use super::super::super::{input, Ability, Instant, Access, Done, MAC};
 use crate::kernel::{DeskError, Result};
 use crate::platform::{self, Volume, MAX_AWAKE_MINUTES};
 use crate::stage::Panel;
@@ -12,15 +12,15 @@ use crate::stage::Panel;
 const MAX_TEXT: usize = 20_000;
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "dark-mode", how: "{\"on\": true} turns dark mode on (false turns it off)", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(dark_mode(input)) },
-    Ability { id: "set-volume", how: "{\"level\": 40} sets the volume from 0 to 100, or {\"mute\": true} mutes ({\"mute\": false} unmutes); plays no sound", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(set_volume(input)) },
-    Ability { id: "keep-awake", how: "{\"minutes\": 60} keeps the Mac and its display awake for up to 480 minutes; {\"minutes\": 0} lets it sleep again", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(async move { keep_awake(input) }) },
-    Ability { id: "screen-off", how: "{} puts the display to sleep now", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(screen_off()) },
-    Ability { id: "lock-screen", how: "{} locks the screen now", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(lock_screen()) },
-    Ability { id: "copy-text", how: "{\"text\": \"hello\"} puts text on the clipboard", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(copy_text(input)) },
-    Ability { id: "screenshot", how: "{} takes a silent screenshot of the whole screen into Pictures/Keeper and shows it", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(screenshot()) },
-    Ability { id: "new-note", how: "{\"title\": \"Shopping\", \"text\": \"milk, eggs\"} makes a new note in Apple Notes (title optional: the first line is used)", access: Access::Change, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(new_note(input)) },
-    Ability { id: "run-shortcut", how: "{\"name\": \"Morning routine\"} runs one of the person's Shortcuts by its exact name (list-shortcuts shows them)", access: Access::Change, platforms: MAC, modes: &[], run: |input, _| Box::pin(run_shortcut(input)) },
+    Ability { id: "dark-mode", how: "{\"on\": true} turns dark mode on (false turns it off)", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(dark_mode(input)) },
+    Ability { id: "set-volume", how: "{\"level\": 40} sets the volume from 0 to 100, or {\"mute\": true} mutes ({\"mute\": false} unmutes); plays no sound", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(set_volume(input)) },
+    Ability { id: "keep-awake", how: "{\"minutes\": 60} keeps the Mac and its display awake for up to 480 minutes; {\"minutes\": 0} lets it sleep again", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { keep_awake(input) }) },
+    Ability { id: "screen-off", how: "{} puts the display to sleep now", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(screen_off()) },
+    Ability { id: "lock-screen", how: "{} locks the screen now", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(lock_screen()) },
+    Ability { id: "copy-text", how: "{\"text\": \"hello\"} puts text on the clipboard", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(copy_text(input)) },
+    Ability { id: "screenshot", how: "{} takes a silent screenshot of the whole screen into Pictures/Keeper and shows it", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(screenshot()) },
+    Ability { id: "new-note", how: "{\"title\": \"Shopping\", \"text\": \"milk, eggs\"} makes a new note in Apple Notes (title optional: the first line is used)", access: Access::Change, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(new_note(input)) },
+    Ability { id: "run-shortcut", how: "{\"name\": \"Morning routine\"} runs one of the person's Shortcuts by its exact name (list-shortcuts shows them)", access: Access::Change, platforms: MAC, modes: &[], instant: Instant::No, run: |input, _| Box::pin(run_shortcut(input)) },
 ];
 
 async fn dark_mode(input: &serde_json::Value) -> Result<Done> {

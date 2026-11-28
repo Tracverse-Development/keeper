@@ -11,6 +11,7 @@ const PACKS: &[&[Ability]] = &[
     packs::personal::ABILITIES,
     packs::desktop::ABILITIES,
     packs::files::ABILITIES,
+    packs::files::find::ABILITIES,
     packs::video::ABILITIES,
     packs::core::ABILITIES,
     packs::computer::look::ABILITIES,
@@ -27,6 +28,12 @@ pub fn all() -> impl Iterator<Item = &'static Ability> {
     PACKS.iter().flat_map(|pack| pack.iter()).filter(|a| a.platforms.contains(&this_platform()))
 }
 
+/// Every ability the mind can be offered: all but the instant-only ones (`Instant::Only`,
+/// which only the person's own words run). Modes, the Studio and the catalogue read this.
+pub fn for_the_mind() -> impl Iterator<Item = &'static Ability> {
+    all().filter(|a| !a.instant.only())
+}
+
 /// The ability called `id`, if this system offers it.
 pub fn find(id: &str) -> Option<&'static Ability> {
     all().find(|a| a.id == id)
@@ -37,14 +44,14 @@ pub fn defaults_for(mode: &str) -> Vec<&'static str> {
     all().filter(|a| a.modes.contains(&mode)).map(|a| a.id).collect()
 }
 
-/// Every ability's name (what a mode may list).
+/// Every ability's name a mode may list (instant-only ones need no listing: every mode has them).
 pub fn names() -> Vec<&'static str> {
-    all().map(|a| a.id).collect()
+    for_the_mind().map(|a| a.id).collect()
 }
 
 /// The abilities a mode may use, as the mind is told them (it never hears of the others).
 pub fn catalogue_for(mode: &Role) -> String {
-    let list: Vec<String> = all().filter(|a| mode.allows(a.id)).map(|a| format!("- {}: {}", a.id, a.how)).collect();
+    let list: Vec<String> = for_the_mind().filter(|a| mode.allows(a.id)).map(|a| format!("- {}: {}", a.id, a.how)).collect();
     if list.is_empty() { "(none in this mode)".into() } else { list.join("\n") }
 }
 
@@ -81,6 +88,17 @@ mod tests {
         for a in super::PACKS.iter().flat_map(|p| p.iter()) {
             for m in a.modes {
                 assert!(modes.iter().any(|id| id == m) && *m != "system", "{} names a mode {m} that is not a built-in (System offers everything)", a.id);
+            }
+        }
+    }
+
+    #[test]
+    fn instant_only_abilities_are_never_offered_to_the_mind_or_named_for_a_mode() {
+        for a in super::all().filter(|a| a.instant.only()) {
+            assert!(a.modes.is_empty(), "{} runs only by its words, in every mode: it names no modes", a.id);
+            assert!(!super::names().contains(&a.id), "{} is not a skill a mode lists", a.id);
+            for mode in crate::keepers::kit::roles::builtins() {
+                assert!(!super::catalogue_for(&mode).contains(&format!("- {}:", a.id)), "the mind in {} is told of {}", mode.id, a.id);
             }
         }
     }

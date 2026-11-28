@@ -1,7 +1,7 @@
 //! The keeper itself: asking its memory graph, what it has done for the person, and which mind
 //! it thinks with.
 
-use super::super::{input, Ability, Access, Cx, Done, Effect, ALL};
+use super::super::{input, Ability, Instant, Access, Cx, Done, Effect, ALL};
 use crate::kernel::{DeskError, Result};
 
 pub const ABILITIES: &[Ability] = &[
@@ -9,21 +9,21 @@ pub const ABILITIES: &[Ability] = &[
         id: "recall-actions",
         how: "{} lists what you have done for the person recently (from the DKG)",
         access: Access::Memory,
-        platforms: ALL, modes: &["assistant", "researcher", "companion"],
+        platforms: ALL, modes: &["assistant", "researcher", "companion"], instant: Instant::No,
         run: |_, cx| Box::pin(recall_actions(cx)),
     },
     Ability {
         id: "ask-memory",
         how: "{\"question\": \"actions-recent\", \"days\": \"1\"} asks your DKG memory one catalog question (facts-all, facts-by-category+category, facts-by-mode+mode (what you learned while in a mode: assistant, system, researcher, tutor, companion), facts-recent+days, turns-recent+days, actions-recent+days, agent-steps, actions-failed, skills-used, minds-used, memory-size)",
         access: Access::Memory,
-        platforms: ALL, modes: &["assistant", "researcher", "tutor", "companion"],
+        platforms: ALL, modes: &["assistant", "researcher", "tutor", "companion"], instant: Instant::No,
         run: |input, cx| Box::pin(ask_memory(input, cx)),
     },
     Ability {
         id: "switch-engine",
         how: "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex",
         access: Access::Memory,
-        platforms: ALL, modes: &["assistant", "companion"],
+        platforms: ALL, modes: &["assistant", "companion"], instant: Instant::No,
         run: |input, _| Box::pin(async move { switch_engine(input) }),
     },
 ];
