@@ -8,6 +8,19 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.18.1] - 2026-11-28
+
+Smooth keepers, and coats you have to earn.
+
+### Changed
+- **The dog and the owl are smooth by standard.** A real coat is now special: a dog's fur coat is
+  **mythical** and an owl's full feathers are **legendary**. A coat is never unlocked by level; a
+  keeper wears one only once it has obtained it (how keepers obtain coats is coming). The Studio's
+  Look tab has a **Coat** switch (Smooth or the coat) and the coat finishes (Golden Fleece, Snow
+  Wolf, Tawny Plumage, Snowy Owl) show "obtained only" until then.
+- Golden Coat and Snow Coat for the dog, and Moss Green for the owl, are smooth finishes now.
+- A keeper shared as a pack never brings a coat with it.
+
 ## [0.18.0] - 2026-11-28
 
 Keepers that work out of the box, tested end to end on a fresh Mac.

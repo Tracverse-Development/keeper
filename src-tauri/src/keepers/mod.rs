@@ -194,7 +194,7 @@ pub async fn keepers_create(state: State<'_, AppState>, mut keeper: NewKeeper) -
         // Every keeper lives in the ONE home graph, in its own sub-graph.
         graph_id: graph_id_for(&seed, true),
         brain: settings.active().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default()
+        model: settings.active().map(|k| k.model.clone()).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default(), obtained: Vec::new()
     };
     write_profile(&state.client()?, &profile, &soul).await?;
     state.update_settings(|s| {
@@ -283,6 +283,13 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
     }
     let species = change.skin.clone().unwrap_or_else(|| current.skin.clone());
     let look = change.look.as_ref().map(|l| kit::look::check_look(l, &species));
+    // A coat (fur, feathers) is obtained, never picked: a look may wear one only if this keeper
+    // has it (`kit::look::OBTAINED_ONLY`). Saving keeps the coat obtained even when it is taken off.
+    let before = if species == current.skin { current.look.clone() } else { Default::default() };
+    let obtained = kit::look::obtained(&current.obtained, &before);
+    if let Some(material) = look.as_ref().and_then(|l| kit::look::not_obtained(l, &obtained)) {
+        return Err(DeskError::Invalid(format!("{material} can't be picked: a keeper has to obtain it, and {} hasn't yet.", current.name)));
+    }
     let habits = change.habits.as_ref().map(|h| kit::look::check_habits(h, &species));
     if let Some(v) = &change.voice {
         if v.id.is_empty() || v.id.len() > 64 || !v.id.chars().all(|c| c.is_ascii_alphanumeric() || " ()-_.".contains(c)) {
@@ -319,6 +326,7 @@ pub async fn keepers_update(app: AppHandle, state: State<'_, AppState>, id: Stri
                 k.wearables = w;
             }
             if let Some(l) = look {
+                k.obtained = obtained.clone();
                 k.look = l;
             }
             if let Some(h) = habits {

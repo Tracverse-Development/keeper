@@ -7,7 +7,9 @@
  * `{ ears: { color: '#aa3311', material: 'fur' }, body: { material: 'metal' } }`; a zone left
  * out keeps the species' own colour and material, unknown zones and materials are dropped and
  * colours must be `#rrggbb`. Materials (`MATERIALS`) are a closed set the skins know how to
- * draw (`zone-paint.ts`): matte, gloss, metal, fur, glow.
+ * draw (`zone-paint.ts`): matte, gloss, metal, fur, feathers, glow. `fur` and `feathers` are coats:
+ * the dog grows real fur and the owl its feather layers only where a zone is painted with them (the
+ * standard body is smooth), and a keeper wears one only once it has obtained it (core `OBTAINED_ONLY`).
  *
  * Pure (no three.js, no DOM): tested by `zones.test.ts`.
  */
@@ -23,7 +25,7 @@ export const LOOK_ZONES = {
   god: ['skin', 'body', 'robe', 'eyes', 'crown', 'rings'],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
-export const MATERIALS = ['matte', 'gloss', 'metal', 'fur', 'glow'] as const;
+export const MATERIALS = ['matte', 'gloss', 'metal', 'fur', 'feathers', 'glow'] as const;
 export type MaterialId = (typeof MATERIALS)[number];
 
 /** One zone as the keeper's profile holds it (either part may be missing). */

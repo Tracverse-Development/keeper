@@ -116,7 +116,7 @@ pub async fn setup_create_graph(state: State<'_, AppState>, node_home: String, a
         wearables: existing.as_ref().map(|k| k.wearables.clone()).unwrap_or_else(crate::kernel::settings::default_wearables),
         graph_id: keepers::graph_id_for(&name, true),
         brain: existing.as_ref().map(|k| k.brain.clone()).unwrap_or_else(|| "reflex".into()),
-        model: existing.map(|k| k.model).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default()
+        model: existing.map(|k| k.model).unwrap_or_default(), look: Default::default(), habits: Default::default(), voice: None, style: String::new(), feelings_off: false, loadouts: Default::default(), home_outfit: None, mode_outfits: Default::default(), obtained: Vec::new()
     };
     let started = std::time::Instant::now();
     let soul = state.soul(&keeper.soul);

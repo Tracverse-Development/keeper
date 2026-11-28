@@ -1,6 +1,7 @@
 /**
- * The owl skin, "Owl": a wise tawny owl perched on the ark, feathered all over (`owl-plumage.ts`):
- * an egg of a body in brickwork feathers, a pale breast barred with dark chevrons, a round head with
+ * The owl skin, "Owl": a wise tawny owl perched on the ark. The standard owl is smooth (its ear tufts
+ * are its shape); a zone painted `feathers` grows its coat (`owl-plumage.ts`),
+ * and a fully feathered owl (a legendary coat) is: an egg of a body in brickwork feathers, a pale breast barred with dark chevrons, a round head with
  * a cream facial disc ringed by dark rim feathers, great amber eyes under pale feather brows, a
  * hooked gold beak, ear tufts of long feathers, folded wings with barred primaries and taloned feet.
  *
@@ -122,7 +123,7 @@ export function createOwlSkin(): Skin {
     browSink: 0.15,
   });
 
-  addOwlPlumage(body, head, [rightWing, leftWing], tufts, { body: m.body, belly: m.belly, head: m.head, face: m.face, wings: m.wings, beak: m.beak, claw: clawMaterial() });
+  const plumage = addOwlPlumage(body, head, [rightWing, leftWing], tufts, { body: m.body, belly: m.belly, head: m.head, face: m.face, wings: m.wings, beak: m.beak, claw: clawMaterial() });
   const moments = createItemMoments(OWL_MOMENTS);
   // The ear tufts are springy: they trail the head's motion and settle (`sway/sway-bone.ts`).
   const tuftSway = tufts.map((tuft, i) => addSwayBone(tuft, { tip: [(i === 0 ? -1 : 1) * 0.12, 0.32, -0.02], frequency: 2.6, damping: 0.3, maxAngle: 0.24 }));
@@ -211,7 +212,11 @@ export function createOwlSkin(): Skin {
     reactions: R,
     focus,
     paint(look: ResolvedLook) {
-      for (const zone of zonesOf('owl')) zones[zone as OwlZone]?.paint(look[zone]);
+      for (const zone of zonesOf('owl')) {
+        zones[zone as OwlZone]?.paint(look[zone]);
+        // Feathers grow only where the look paints them (the standard owl is smooth).
+        for (const layer of plumage.coat[zone] ?? []) layer.visible = look[zone]?.material === 'feathers';
+      }
     },
     apply,
     react(kind: TouchKind) {

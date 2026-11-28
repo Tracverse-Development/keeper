@@ -50,7 +50,12 @@ export interface StudioInfo {
   keeper: string;
   experience: Experience;
   zones: Named[];
-  materials: Named[];
+  /** Each material: its grade, and whether it is a coat a keeper must obtain (fur, feathers). Absent from an older core = common, pickable. */
+  materials: (Named & { rarity?: string; obtainedOnly?: boolean })[];
+  /** The coat this body can grow (absent: none). */
+  coat?: { material: string; zones: string[] } | null;
+  /** The coats this keeper has obtained and may wear. */
+  obtained?: string[];
   habits: Named[];
   maxHabit: number;
   rarities: Rarity[];

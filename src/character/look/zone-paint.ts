@@ -26,6 +26,7 @@ export const MATERIAL_PRESETS: Readonly<Record<MaterialId, Readonly<SurfacePrese
   gloss: { roughness: 0.14, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, sheen: 0, iridescence: 0, emissive: 0 },
   metal: { roughness: 0.36, metalness: 1, clearcoat: 0.1, clearcoatRoughness: 0.2, sheen: 0, iridescence: 0, emissive: 0 },
   fur: { roughness: 0.74, metalness: 0, clearcoat: 0, sheen: 1, sheenRoughness: 0.42, iridescence: 0, emissive: 0 },
+  feathers: { roughness: 0.7, metalness: 0, clearcoat: 0, sheen: 1, sheenRoughness: 0.45, iridescence: 0, emissive: 0 },
   glow: { roughness: 0.4, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.2, sheen: 0, iridescence: 0, emissive: 1.8 },
 };
 

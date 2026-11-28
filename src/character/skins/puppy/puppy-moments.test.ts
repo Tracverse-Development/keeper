@@ -1,16 +1,14 @@
 /**
- * The dog's item-moment poses and its default fur (pure).
+ * The dog's item-moment poses and when it grows fur (pure).
  * Run: node --test --experimental-strip-types src/character/skins/puppy/puppy-moments.test.ts
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { hasFur, momentDials, PUPPY_MOMENTS } from './puppy-moments.ts';
 
-test('every coat zone is furred unless its look picks another material; the eyes never are', () => {
-  for (const zone of ['head', 'ears', 'muzzle', 'body', 'legs', 'paws', 'tail']) assert.ok(hasFur(zone, undefined), zone);
-  assert.ok(!hasFur('eyes', undefined));
-  assert.ok(!hasFur('body', 'gloss') && !hasFur('head', 'matte'), 'a chosen smooth material turns fur off');
-  assert.ok(hasFur('eyes', 'fur'), 'asking for fur grows it anywhere');
+test('the standard dog is smooth; fur grows only where the look paints it', () => {
+  assert.ok(!hasFur(undefined) && !hasFur('gloss') && !hasFur('matte'));
+  assert.ok(hasFur('fur'));
 });
 
 test('each moment poses something, nothing at its ends, and no moment means no pose', () => {

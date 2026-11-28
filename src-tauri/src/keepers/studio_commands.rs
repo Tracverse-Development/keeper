@@ -19,13 +19,36 @@ pub struct HabitInfo {
     pub name: &'static str,
 }
 
+/// A material the Look tab offers. `obtainedOnly` (a coat: fur, feathers) is never picked, only
+/// worn once the keeper has obtained it; `rarity` is its grade.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialInfo {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub rarity: &'static str,
+    pub obtained_only: bool,
+}
+
+/// The coat this body can grow: its material and the zones the coat switch paints.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CoatInfo {
+    pub material: &'static str,
+    pub zones: &'static [&'static str],
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Studio {
     pub keeper: String,
     pub experience: levels::Experience,
     pub zones: &'static [look::Zone],
-    pub materials: Vec<HabitInfo>,
+    pub materials: Vec<MaterialInfo>,
+    /// The coat this body can grow (`look::COATS`; None: no coat).
+    pub coat: Option<CoatInfo>,
+    /// The coats this keeper has obtained (it may wear these).
+    pub obtained: Vec<String>,
     pub habits: Vec<HabitInfo>,
     pub max_habit: f64,
     pub rarities: &'static [rarity::Rarity],
@@ -48,7 +71,9 @@ pub async fn keeper_studio(state: State<'_, AppState>, keeper: Option<String>) -
         keeper: profile.id.clone(),
         experience,
         zones: look::zones(&profile.skin),
-        materials: look::MATERIALS.iter().map(|(id, name)| HabitInfo { id, name }).collect(),
+        materials: look::MATERIALS.iter().map(|(id, name)| MaterialInfo { id, name, rarity: look::obtained_only(id).map_or("common", |r| r.id), obtained_only: look::obtained_only(id).is_some() }).collect(),
+        coat: look::coat(&profile.skin).map(|(material, zones)| CoatInfo { material, zones }),
+        obtained: look::obtained(&profile.obtained, &profile.look),
         habits: look::habits(&profile.skin).map(|(id, name, _)| HabitInfo { id, name }).collect(),
         max_habit: look::MAX_HABIT,
         rarities: &rarity::RARITIES,

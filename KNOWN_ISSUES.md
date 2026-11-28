@@ -36,3 +36,5 @@
 - [ ] **DESK-CHILD-001** — The child profile is on while its lock exists in Keeper's private store; a person with access to this computer's account can delete that file. It guards a child using Keeper, not a determined user of the Mac. (2026-11-26, Low)
 - [x] **DESK-RESTORE-PROOF-001** — Bringing a backup in on a SECOND Mac has not been done; the round trip is proven on one node between scratch graphs. Not to be pursued: the founder declined a second-Mac restore test and automatic backups on 2026-11-26. (2026-11-26, recorded limit)
 - [ ] **DESK-A11Y-001** — Text size and keyboard focus rings are done; a full screen-reader pass (VoiceOver through every screen) has not been made. (2026-11-26, Low)
+
+- [ ] **DESK-COAT-001** — Coats (fur, feathers) are obtained, never picked, but there is no way to obtain one yet (founder 2026-11-28: "we'll flesh that out later"). Until then a keeper has a coat only if it already wore one (`KeeperProfile.obtained`). A restored backup keeps the coats its file names: a backup is the person's own unsigned file, so it is not a proof of obtaining. Packs never carry a coat. (2026-11-28, Low)

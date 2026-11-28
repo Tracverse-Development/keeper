@@ -222,7 +222,7 @@ export function createPuppySkin(): Skin {
     paint(look: ResolvedLook) {
       for (const zone of LOOK_ZONES.puppy) {
         zones[zone].paint(look[zone]);
-        fur.show(zone, hasFur(zone, look[zone]?.material));
+        fur.show(zone, hasFur(look[zone]?.material));
       }
       fur.sync();
     },

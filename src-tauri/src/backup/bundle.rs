@@ -90,6 +90,8 @@ fn clean_profile(p: &KeeperProfile) -> Result<KeeperProfile> {
         loadouts: crate::keepers::kit::loadout::checked(&p.loadouts),
         home_outfit: None,
         mode_outfits: Default::default(),
+        // Only real coat names (a backup is the person's own file, not a proof: see KNOWN_ISSUES DESK-COAT-001).
+        obtained: look::obtained(&p.obtained, &p.look),
     })
 }
 

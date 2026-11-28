@@ -5,8 +5,8 @@
  *   proud-wag      chin up and a happy, harder wag, showing off a bandana or scarf
  *   look-booties   a look down at its feet in booties, one paw lifted to check
  *   shake-coat     a wriggle that settles a jacket or coat on its shoulders
- * `momentDials` is the pose each adds; `puppy-skin.ts` applies it. Also here: which coat zones wear
- * fur by default (`hasFur`). Pure (tested by `puppy-moments.test.ts`).
+ * `momentDials` is the pose each adds; `puppy-skin.ts` applies it. Also here: whether a zone grows
+ * fur (`hasFur`). Pure (tested by `puppy-moments.test.ts`).
  */
 import type { ActiveMoment, ItemMoment } from '../../item-moments.ts';
 
@@ -18,12 +18,13 @@ export const PUPPY_MOMENTS: readonly ItemMoment[] = [
   { id: 'shake-coat', parts: ['ranger-jacket', 'ark-jacket', 'top', 'gown'], weight: 1, duration: 1.6, cooldown: 55 },
 ];
 
-/** Coat zones grow fur unless the look picks another material for them (the eyes never do). */
-const FURRED_BY_DEFAULT: ReadonlySet<string> = new Set(['head', 'ears', 'muzzle', 'body', 'legs', 'paws', 'tail']);
-
-/** True when zone `zone` wears fur: painted `fur`, or a coat zone left to its own material. */
-export function hasFur(zone: string, material: string | undefined): boolean {
-  return material === 'fur' || (material === undefined && FURRED_BY_DEFAULT.has(zone));
+/**
+ * True when a zone grows fur: only when its look paints it `fur`. The standard dog is smooth; a
+ * furred coat is mythical (founder 2026-11-28; the core's `kit/look.rs` `MATERIAL_RARITY`), worn
+ * through the Look tab's Fur switch or a mythical finish. Zones with no coat (the eyes) ignore it.
+ */
+export function hasFur(material: string | undefined): boolean {
+  return material === 'fur';
 }
 
 /** What an item moment adds this frame (all 0 when none plays). */

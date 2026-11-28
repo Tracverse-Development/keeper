@@ -46,6 +46,12 @@ export interface PlumageMaterials {
 export interface Plumage {
   /** Every geometry made here (meshes are freed with the skin's tree; shared geometries once). */
   readonly geometries: readonly BufferGeometry[];
+  /**
+   * The feather coat of each paint zone (body, belly, head, face, wings): shown only while that
+   * zone is painted `feathers` (the standard owl is smooth; a feathered owl is legendary). The ear
+   * tufts are the owl's shape and always stay.
+   */
+  readonly coat: Readonly<Record<string, readonly Object3D[]>>;
 }
 
 /** Lays every feather layer on the owl's forms. `wings` are the wing joints, right (-x) then left (+x). */
@@ -60,25 +66,29 @@ export function addOwlPlumage(body: Object3D, head: Object3D, wings: readonly Ob
   const primary = featherSet(0.1, 0.44, 0.03, 0.18);
   const tuftFeather = featherSet(0.085, 0.34, 0.0, 0.35);
   const watch = createDetailWatch(body);
-  const layer = (parent: Object3D, name: string, set: FeatherSet, material: Material, placements: FeatherPlacement[], share = COAT_SHARE): void =>
-    followDetail(attach(parent, featherLayer(name, set.full, material, placements)), watch, { geometries: set, share });
+  const coats: Record<string, Object3D[]> = {};
+  const layer = (parent: Object3D, name: string, set: FeatherSet, material: Material, placements: FeatherPlacement[], share = COAT_SHARE, zone?: string): void => {
+    const mesh = attach(parent, featherLayer(name, set.full, material, placements));
+    followDetail(mesh, watch, { geometries: set, share });
+    if (zone) (coats[zone] ??= []).push(mesh);
+  };
 
-  layer(body, 'owl-body-feathers', coat, m.body, bodyFeathers());
-  layer(body, 'owl-breast-feathers', down, m.belly, breastFeathers());
-  layer(head, 'owl-head-feathers', crown, m.head, headFeathers());
-  layer(head, 'owl-disc-rims', rim, m.head, rimFeathers(), EVERY_FEATHER);
-  layer(head, 'owl-disc-feathers', fine, m.face, discFeathers(), FINE_SHARE);
+  layer(body, 'owl-body-feathers', coat, m.body, bodyFeathers(), COAT_SHARE, 'body');
+  layer(body, 'owl-breast-feathers', down, m.belly, breastFeathers(), COAT_SHARE, 'belly');
+  layer(head, 'owl-head-feathers', crown, m.head, headFeathers(), COAT_SHARE, 'head');
+  layer(head, 'owl-disc-rims', rim, m.head, rimFeathers(), EVERY_FEATHER, 'head');
+  layer(head, 'owl-disc-feathers', fine, m.face, discFeathers(), FINE_SHARE, 'face');
   wings.forEach((joint, i) => {
     const side = i === 0 ? -1 : 1;
-    layer(joint, 'owl-wing-coverts', covert, m.wings, wingCoverts(side));
-    layer(joint, 'owl-primaries', primary, m.wings, primaries(side), EVERY_FEATHER);
+    layer(joint, 'owl-wing-coverts', covert, m.wings, wingCoverts(side), COAT_SHARE, 'wings');
+    layer(joint, 'owl-primaries', primary, m.wings, primaries(side), EVERY_FEATHER, 'wings');
   });
   tufts.forEach((pivot, i) => layer(pivot, 'owl-tuft', tuftFeather, m.head, tuft(i === 0 ? -1 : 1), EVERY_FEATHER));
   const beak = buildBeak();
   attach(head, new Mesh(beak, m.beak)).name = 'owl-beak';
   const feet = buildTalons(body, m.beak, m.claw);
   const sets = [coat, down, crown, rim, fine, covert, primary, tuftFeather].flatMap((set) => Object.values(set));
-  return { geometries: [...sets, beak, ...feet] };
+  return { geometries: [...sets, beak, ...feet], coat: coats };
 }
 
 /** Rows over the egg (body space), skipped where the breast lies over them. */

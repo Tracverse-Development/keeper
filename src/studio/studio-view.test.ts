@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { Experience, StudioInfo } from '../kernel/ipc-studio.ts';
-import { habitWeight, habitWords, levelProgress, levelUpLine, lockedUntil, rarityOf, saveWords, setZone } from './studio-view.ts';
+import { coatOn, finishLock, habitWeight, habitWords, levelProgress, levelUpLine, lockedUntil, rarityOf, saveWords, setCoat, setZone } from './studio-view.ts';
 
 const rarities = [
   { id: 'common', name: 'Common', level: 1, color: '#9aa3b5' },
@@ -50,4 +50,30 @@ test('studio: the save line says where things stand', () => {
   assert.equal(saveWords(false, false), 'Everything is saved');
   assert.equal(saveWords(true, false), 'Saving in a moment…');
   assert.equal(saveWords(true, true), 'Saving…');
+});
+
+test('studio: the coat switch paints every coat zone and takes it off again, keeping colours', () => {
+  const coat = { material: 'fur', zones: ['head', 'ears', 'body'] };
+  const start = { ears: { color: '#c98a34' }, eyes: { color: '#9ad0ff', material: 'gloss' }, body: { material: 'metal' } };
+  assert.ok(!coatOn(start, coat));
+  const furred = setCoat(start, coat, true);
+  assert.ok(coatOn(furred, coat));
+  assert.deepEqual(furred.ears, { color: '#c98a34', material: 'fur' });
+  assert.deepEqual(furred.eyes, start.eyes, 'the eyes are not a coat zone');
+  const smooth = setCoat(furred, coat, false);
+  assert.ok(!coatOn(smooth, coat));
+  assert.equal(smooth.ears?.color, '#c98a34');
+  assert.equal(smooth.ears?.material, undefined);
+  assert.ok(!('head' in smooth), 'a zone that only had the coat goes back to the standard body');
+  assert.deepEqual(setCoat({ body: { material: 'metal' } }, coat, false), { body: { material: 'metal' } }, 'off never touches another material');
+  assert.ok(!coatOn({}, { material: 'fur', zones: [] }), 'a body with no coat has no switch to be on');
+});
+
+test('studio: a coat finish needs the coat obtained, never only a level', () => {
+  const materials = [{ id: 'fur', obtainedOnly: true }, { id: 'gloss' }];
+  const mythical = { id: 'mythical', name: 'Mythical', level: 15, color: '#c25cf0' };
+  const fleece = { rarity: 'mythical', look: [['body', '#e0a64a', 'fur']] as [string, string, string][] };
+  assert.equal(finishLock(fleece, materials, [], mythical, 99), 'obtain', 'a high level does not open a coat');
+  assert.equal(finishLock(fleece, materials, ['fur'], mythical, 99), null);
+  assert.deepEqual(finishLock({ rarity: 'mythical', look: [['body', '#000000', 'gloss']] }, materials, [], mythical, 3), { level: 15 });
 });

@@ -26,7 +26,7 @@ test('every species has paint zones, and only the zones it has resolve', () => {
   assert.deepEqual(resolveLook({ antenna: { color: '#ffffff' } }, 'robot'), { antenna: { color: 0xffffff } });
   assert.deepEqual(resolveLook('nope', 'robot'), {});
   assert.deepEqual(resolveLook({ head: { color: '#123456' } }, 'dragon'), {});
-  assert.equal(MATERIALS.length, 5);
+  assert.equal(MATERIALS.length, 6);
 });
 
 test('equal looks give equal keys, whatever the order', () => {

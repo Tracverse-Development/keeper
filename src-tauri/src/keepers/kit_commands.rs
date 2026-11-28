@@ -194,6 +194,7 @@ pub async fn pack_import(state: State<'_, AppState>, text: String) -> Result<Imp
                 loadouts: Default::default(),
                 home_outfit: None,
                 mode_outfits: Default::default(),
+                obtained: Vec::new(),
             };
             super::write_profile(&client, &profile, &bp.soul).await?;
             let id = profile.id.clone();

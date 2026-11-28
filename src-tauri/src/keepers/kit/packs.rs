@@ -102,7 +102,7 @@ pub fn read(text: &str) -> Result<Pack, String> {
                 return Err("The keeper in this pack has an unusable name.".into());
             }
             let soul = if keeper.soul.builtin && souls::builtin().iter().any(|b| b.id == keeper.soul.id) { keeper.soul } else { souls::sanitize(&keeper.soul)? };
-            let (look, habits) = (super::look::check_look(&keeper.look, &keeper.species), super::look::check_habits(&keeper.habits, &keeper.species));
+            let (look, habits) = (super::look::without_rare(super::look::check_look(&keeper.look, &keeper.species)), super::look::check_habits(&keeper.habits, &keeper.species));
             Ok(Pack::Keeper { format, keeper: KeeperBlueprint { name, wearables: data_only(&parts::check_outfit(&keeper.wearables, &keeper.species)?), species: keeper.species, role: keeper.role, soul, look, habits } })
         }
     }

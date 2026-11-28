@@ -42,6 +42,41 @@ export function setZone(look: Record<string, ZoneLook>, zone: string, change: Zo
   return next;
 }
 
+/** The coat a body can grow (the core's `kit/look.rs` `COATS`): its material and zones. */
+export interface Coat {
+  readonly material: string;
+  readonly zones: readonly string[];
+}
+
+/** True when every zone of the coat wears it (the Look tab's coat switch is on). */
+export function coatOn(look: Record<string, ZoneLook>, coat: Coat): boolean {
+  return coat.zones.length > 0 && coat.zones.every((zone) => look[zone]?.material === coat.material);
+}
+
+/**
+ * The look with the coat switch turned on (every coat zone painted with the coat, colours kept)
+ * or off (the coat taken off each zone, back to the smooth standard body; other materials untouched).
+ */
+export function setCoat(look: Record<string, ZoneLook>, coat: Coat, on: boolean): Record<string, ZoneLook> {
+  let next = look;
+  for (const zone of coat.zones) {
+    if (on) next = setZone(next, zone, { material: coat.material });
+    else if (next[zone]?.material === coat.material) next = setZone(next, zone, { material: undefined });
+  }
+  return next;
+}
+
+/**
+ * Whether this keeper may wear finish `f`: a finish that paints a coat (fur, feathers) needs the
+ * keeper to have obtained it; any other only needs the level of its rarity (null = may wear).
+ */
+export function finishLock(f: { rarity: string; look: [string, string, string][] }, materials: readonly { id: string; obtainedOnly?: boolean }[], obtained: readonly string[], rarity: Rarity, level: number): { level: number } | 'obtain' | null {
+  const coat = f.look.find(([, , m]) => materials.some((x) => x.id === m && x.obtainedOnly) && !obtained.includes(m));
+  if (coat) return 'obtain';
+  const needs = lockedUntil(rarity, level);
+  return needs === null ? null : { level: needs };
+}
+
 /** Default weight for a habit the keeper has not set (napping a little, everything else sometimes). */
 export const DEFAULT_HABIT = 1;
 

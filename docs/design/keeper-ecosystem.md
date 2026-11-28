@@ -12,7 +12,7 @@ fit any body, one wardrobe per person, packs as data only.
 
 | Piece | What it is | Where it lives | Rules |
 |---|---|---|---|
-| **Look** | colour and material per paint zone of the body | `KeeperProfile.look` (`zone → {color, material}`) | each species declares its zones (robot: head, face, body, base ring, antenna; dog: head, ears, muzzle, body, legs, paws, tail); materials: matte, gloss, metal, fur, glow |
+| **Look** | colour and material per paint zone of the body | `KeeperProfile.look` (`zone → {color, material}`) | each species declares its zones (robot: head, face, body, base ring, antenna; dog: head, ears, muzzle, body, legs, paws, tail); materials: matte, gloss, metal, fur, feathers, glow. The standard body is smooth: fur (the dog, mythical) and feathers (the owl, legendary) are COATS a keeper obtains, never picks (`kit/look.rs` `OBTAINED_ONLY`, `KeeperProfile.obtained`) |
 | **Outfit** | wearables in slots (existing) | wardrobe + `KeeperProfile.wearables` | unchanged; parts may now be species-only (`species: ["puppy"]`) |
 | **Effects** | swappable add-ons for moments: thinking, idle, celebrate, speaking | effect slots (`kind: "effect"`) in the same wardrobe | one per moment; the built-in look of each moment is the "Classic" common effect |
 | **Habits** | what this keeper does on its own: sleeps when left alone, stretches, hums, looks around, chases its tail | `KeeperProfile.habits` (weights) | unique per keeper; species may add their own (only a dog chases its tail) |
