@@ -8,7 +8,9 @@ fn id(said: &str, mode: &str) -> Option<&'static str> {
 }
 
 /// Representative phrasings and what answers them (an ability, or None: the mind), captured
-/// from the fast lane as it was before instant answers moved into the SDK.
+/// from the fast lane as it was before instant answers moved into the SDK, then every everyday
+/// ability's own words (FIX-0053) with the near misses that must stay with the mind. The rows
+/// that name an app ("open Notes", "open Safari") need a Mac, where those apps are installed.
 const TABLE: &[(&str, &str, Option<&str>)] = &[
     ("where is my Downloads folder", "assistant", Some("show-folder")),
     ("what's in my desktop", "assistant", Some("show-folder")),
@@ -64,7 +66,8 @@ const TABLE: &[(&str, &str, Option<&str>)] = &[
     ("what was I saying about the embolism?", "assistant", None),
     ("forget my sister's birthday", "assistant", None),
     ("run my Friday tidy", "assistant", None),
-    ("open Safari", "assistant", None),
+    // Was None (the mind's) before FIX-0053; an installed app now opens with no mind.
+    ("open Safari", "assistant", Some("open-app")),
     ("tell me about the moon", "assistant", None),
     // The scenario bench's instant turns (scripts/bench/bench.py), word for word.
     ("How's my computer?", "assistant", Some("computer-status")),
@@ -73,6 +76,82 @@ const TABLE: &[(&str, &str, Option<&str>)] = &[
     ("Can you see what I was working on yesterday?", "assistant", Some("recent-work")),
     ("What do you know about me?", "assistant", Some("what-you-know")),
     ("Tidy up my desktop", "assistant", None),
+    // FIX-0053: what a fresh Mac's built-in mind got wrong in System Administrator mode.
+    ("Show me a video on how to tie a tie", "system", Some("find-video")),
+    ("Remind me in 10 minutes to stretch", "system", Some("remind")),
+    ("Turn on dark mode", "system", Some("dark-mode")),
+    ("Keep my Mac awake for an hour", "system", Some("keep-awake")),
+    ("Take a screenshot", "system", Some("screenshot")),
+    ("Is everything working?", "system", Some("health")),
+    ("What time is it in Tokyo?", "system", Some("time-in")),
+    // Every everyday ability's own words.
+    ("remind me to call Maya in 10 minutes", "system", Some("remind")),
+    ("remind me to pray at 5:30 pm", "assistant", Some("remind")),
+    ("remind me at 5pm to call Maya", "tutor", Some("remind")),
+    ("remind me again in 5 minutes", "system", Some("snooze")),
+    ("open Notes", "system", Some("open-app")),
+    ("open my documents", "system", Some("open-folder")),
+    ("open home", "system", Some("open-folder")),
+    ("open youtube.com", "system", Some("open-website")),
+    ("go to bbc.co.uk", "assistant", Some("open-website")),
+    ("turn off dark mode", "assistant", Some("dark-mode")),
+    ("dark mode on", "system", Some("dark-mode")),
+    ("switch to light mode", "system", Some("dark-mode")),
+    ("set the volume to 30", "system", Some("set-volume")),
+    ("volume 30%", "system", Some("set-volume")),
+    ("mute", "system", Some("set-volume")),
+    ("unmute", "system", Some("set-volume")),
+    ("keep my mac awake for 2 hours", "system", Some("keep-awake")),
+    ("keep my mac awake for 30 minutes", "system", Some("keep-awake")),
+    ("stop keeping my mac awake", "system", Some("keep-awake")),
+    ("lock my screen", "system", Some("lock-screen")),
+    ("lock my mac", "system", Some("lock-screen")),
+    ("turn off the display", "system", Some("screen-off")),
+    ("sleep the display", "system", Some("screen-off")),
+    ("time in Paris", "companion", Some("time-in")),
+    ("what's 15% of 86", "system", Some("calculate")),
+    ("what is 12 * 7", "companion", Some("calculate")),
+    ("calculate 2 * (3 + 4)", "researcher", Some("calculate")),
+    ("how many cups is 500 ml", "system", Some("convert")),
+    ("convert 5 km to miles", "system", Some("convert")),
+    ("what is 5 km in miles", "system", Some("convert")),
+    ("5 km in miles", "assistant", Some("convert")),
+    ("play a short video about volcanoes", "tutor", Some("find-video")),
+    ("find a video about bees", "researcher", Some("find-video")),
+    ("what shortcuts do I have", "system", Some("list-shortcuts")),
+    ("run my Morning routine shortcut", "system", Some("run-shortcut")),
+    ("run the shortcut Log water", "system", Some("run-shortcut")),
+    ("define grace", "system", Some("define-word")),
+    ("what does serendipity mean", "assistant", Some("define-word")),
+    ("open wifi settings", "system", Some("open-settings")),
+    ("open bluetooth settings", "assistant", Some("open-settings")),
+    ("make a note: milk and eggs", "system", Some("new-note")),
+    ("note that the boiler was serviced", "system", Some("new-note")),
+    ("new note Shopping list", "system", Some("new-note")),
+    ("switch your brain to claude", "system", Some("switch-engine")),
+    ("use codex", "companion", Some("switch-engine")),
+    ("run a health check", "assistant", Some("health")),
+    // A mode that does not offer the ability leaves the words to its mind.
+    ("turn on dark mode", "tutor", None),
+    ("open Notes", "companion", None),
+    ("run the shortcut Log water", "assistant", None),
+    ("is everything working?", "companion", None),
+    // Near misses: for the mind.
+    ("open the door for me", "system", None),
+    ("show me how photosynthesis works", "system", None),
+    ("what time do you finish", "system", None),
+    ("what time is it in the morning there", "system", None),
+    ("what is love", "system", None),
+    ("what's 7", "system", None),
+    ("what does it mean", "system", None),
+    ("use claude to write my essay", "system", None),
+    ("lock the door", "system", None),
+    ("is dark mode better for my eyes?", "system", None),
+    ("how do I take a screenshot", "system", None),
+    ("open notes.txt", "system", None),
+    ("start over", "system", None),
+    ("remind me to call Maya tomorrow at 5 pm", "system", None),
+    ("make a video about my dog", "system", None),
 ];
 
 /// The bench's turns arrive over the phone link: none of its instant answers may be one the
@@ -88,7 +167,37 @@ fn the_bench_instant_turns_may_run_from_the_phone() {
 #[test]
 fn the_table_of_phrasings_is_answered_as_before() {
     for (said, mode, expected) in TABLE {
+        // Off a Mac the Mac-only abilities (and installed apps) are not there to answer.
+        let mac_only = expected.and_then(crate::sdk::registry::find).is_none() && expected.is_some();
+        if mac_only && !cfg!(target_os = "macos") {
+            continue;
+        }
         assert_eq!(id(said, mode), *expected, "{said:?} in {mode}");
+    }
+}
+
+/// What the words read into is what the ability takes (the instant words and the mind's
+/// requests share one input shape).
+#[test]
+fn the_words_read_the_input_the_ability_takes() {
+    let system = roles::get("system");
+    let input = |said: &str| asked(said, &system).unwrap().1;
+    assert_eq!(input("Remind me in 10 minutes to stretch"), serde_json::json!({ "text": "stretch", "inSeconds": 600 }));
+    assert_eq!(input("Show me a video on how to tie a tie"), serde_json::json!({ "query": "how to tie a tie", "short": false }));
+    assert_eq!(input("Keep my Mac awake for an hour"), serde_json::json!({ "minutes": 60 }));
+    assert_eq!(input("Turn on dark mode"), serde_json::json!({ "on": true }));
+    assert_eq!(input("how many cups is 500 ml"), serde_json::json!({ "value": 500.0, "from": "ml", "to": "cups" }));
+    if cfg!(target_os = "macos") {
+        assert_eq!(input("What time is it in Tokyo?"), serde_json::json!({ "place": "Tokyo" }));
+    }
+}
+
+/// A change asked for in words still runs only at the Mac: over the phone link it is refused.
+#[test]
+fn changes_asked_in_words_stay_at_the_mac() {
+    for said in ["Turn on dark mode", "Take a screenshot", "lock my mac", "mute", "make a note: milk"] {
+        let Some((ability, _)) = asked(said, &roles::get("system")) else { continue };
+        assert!(!crate::sdk::registry::may_run_from(ability.access, false), "{said} would change this Mac from the phone");
     }
 }
 

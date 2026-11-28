@@ -34,6 +34,12 @@ pub fn open_app(name: &str) -> Result<()> {
     os::open_app(name)
 }
 
+/// Whether an app with this name (any case, no ".app") is installed where apps live, so "open
+/// Notes" can be run at once and "open the door for me" is left to the mind. Only looks.
+pub fn app_installed(name: &str) -> bool {
+    os::app_installed(name)
+}
+
 pub fn open_url(url: &str) -> Result<()> {
     os::open_url(url)
 }

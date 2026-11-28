@@ -1,9 +1,11 @@
 //! Videos inside Keeper: one real YouTube video for what the person wants to watch
 //! (`find-video`, through `youtube`), and videos or songs on this computer (`play-file`,
 //! `find-movies`, through `local`). Every one shows a `media` panel that plays in place, and
-//! nothing plays until the person presses Play.
+//! nothing plays until the person presses Play. "Show me a video on how to tie a tie" finds one
+//! with no mind (`words`).
 
 pub mod local;
+mod words;
 pub mod youtube;
 
 use super::super::{input, Ability, Access, Cx, Done, Instant, ALL};
@@ -16,7 +18,7 @@ pub const ABILITIES: &[Ability] = &[
         id: "find-video",
         how: "{\"query\": \"how to tie a tie four in hand\", \"short\": true} finds ONE real YouTube video and shows it playing in place (with two others to swap to); use it whenever the person wants to watch or see a video, never a search link or a made-up address",
         access: Access::Look,
-        platforms: ALL, modes: &["assistant", "researcher", "tutor", "companion"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant", "researcher", "tutor", "companion"], instant: Instant::Also(words::video_words),
         run: |input, cx| Box::pin(find_video(input, cx)),
     },
     Ability {

@@ -119,7 +119,10 @@ fn spending(state: &AppState) -> Option<Check> {
     })
 }
 
-async fn all(app: &AppHandle, state: &AppState) -> Vec<Check> {
+/// Every check, run now, in the order the health list shows them. The Settings health list
+/// (`health_check`), the support report and the keeper's `health` ability ("is everything
+/// working?", `sdk/packs/core.rs`) all read this one list.
+pub async fn all(app: &AppHandle, state: &AppState) -> Vec<Check> {
     let mut out = node_and_memory(state).await;
     out.push(waiting());
     out.push(mind(state).await);
@@ -127,6 +130,20 @@ async fn all(app: &AppHandle, state: &AppState) -> Vec<Check> {
     out.extend(calendar(app).await);
     out.extend(spending(state));
     out
+}
+
+/// The one-line summary of the checks, the same words the Settings health list shows above them
+/// (`src/settings/health-view.ts` `summaryLine`): "Everything is working.", "Working, with 1
+/// thing to know.", "2 things are not working."
+pub fn summary(checks: &[Check]) -> String {
+    let count = |level: Level| checks.iter().filter(|c| c.level == level).count();
+    match (count(Level::Bad), count(Level::Warn)) {
+        (1, _) => "1 thing is not working.".into(),
+        (bad, _) if bad > 1 => format!("{bad} things are not working."),
+        (_, 1) => "Working, with 1 thing to know.".into(),
+        (_, warn) if warn > 1 => format!("Working, with {warn} things to know."),
+        _ => "Everything is working.".into(),
+    }
 }
 
 /// Run every check now.
@@ -176,4 +193,20 @@ pub async fn support_report(app: AppHandle, state: State<'_, AppState>) -> Resul
     }
     out.extend(lines);
     Ok(out.join("\n"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_summary_says_the_worst_first() {
+        let of = |levels: &[Level]| levels.iter().map(|l| check("x", "X", *l, "", None)).collect::<Vec<_>>();
+        assert_eq!(summary(&of(&[Level::Ok, Level::Ok])), "Everything is working.");
+        assert_eq!(summary(&of(&[Level::Ok, Level::Warn])), "Working, with 1 thing to know.");
+        assert_eq!(summary(&of(&[Level::Warn, Level::Warn])), "Working, with 2 things to know.");
+        assert_eq!(summary(&of(&[Level::Bad, Level::Warn])), "1 thing is not working.");
+        assert_eq!(summary(&of(&[Level::Bad, Level::Bad])), "2 things are not working.");
+        assert_eq!(summary(&[]), "Everything is working.");
+    }
 }

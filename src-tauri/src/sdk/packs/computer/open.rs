@@ -1,14 +1,16 @@
 //! Opening things on this computer for the person: a folder or file in the Finder (inside their
 //! home folder only), a pane of System Settings by its everyday name, a word in the Dictionary.
+//! "Open Wi-Fi settings" and "define grace" run them with no mind (`open_words`).
 
+use super::open_words::{define_words, settings_words};
 use super::super::super::{input, Ability, Access, Done, Instant, MAC};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
     Ability { id: "show-in-finder", how: "{\"path\": \"~/Documents/Taxes\"} opens a folder in the Finder, or shows a file there (only inside the person's home folder)", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { show_in_finder(input) }) },
-    Ability { id: "open-settings", how: "{\"pane\": \"wifi\"} opens System Settings at a pane: wifi, bluetooth, network, sound, displays, battery, appearance, wallpaper, notifications, focus, privacy, keyboard, trackpad, mouse, accessibility, general, software update, storage, users, lock screen, desktop and dock, sharing, date and time, login items, time machine, printers", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { open_settings(input) }) },
-    Ability { id: "define-word", how: "{\"word\": \"grace\"} opens a word in the Dictionary app", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { define_word(input) }) },
+    Ability { id: "open-settings", how: "{\"pane\": \"wifi\"} opens System Settings at a pane: wifi, bluetooth, network, sound, displays, battery, appearance, wallpaper, notifications, focus, privacy, keyboard, trackpad, mouse, accessibility, general, software update, storage, users, lock screen, desktop and dock, sharing, date and time, login items, time machine, printers", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::Also(settings_words), run: |input, _| Box::pin(async move { open_settings(input) }) },
+    Ability { id: "define-word", how: "{\"word\": \"grace\"} opens a word in the Dictionary app", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::Also(define_words), run: |input, _| Box::pin(async move { define_word(input) }) },
 ];
 
 fn show_in_finder(input: &serde_json::Value) -> Result<Done> {
@@ -58,7 +60,7 @@ const PANES: &[(&[&str], &str)] = &[
 ];
 
 /// The Settings address for a pane the person named ("Wi-Fi", "privacy & security"), or None.
-fn pane_address(said: &str) -> Option<String> {
+pub(super) fn pane_address(said: &str) -> Option<String> {
     let key = said.trim().to_lowercase().replace('&', "and").replace(" settings", "").replace(" pane", "");
     let key = key.trim();
     PANES.iter().find(|(names, _)| names.contains(&key)).map(|(_, id)| format!("x-apple.systempreferences:{id}"))

@@ -1,13 +1,15 @@
 //! Looking at this computer, changing nothing: the battery, Wi-Fi, free disk space, the open
 //! apps, the time in another place, the person's Shortcuts. Each answers in a sentence and,
 //! where a table says it better, shows one. "What's my battery?", "what Wi-Fi am I on?" and "how
-//! much space do I have?" are also instant answers (their whole phrasings below).
+//! much space do I have?" are also instant answers (their whole phrasings below); "what time is it
+//! in Tokyo" and "what shortcuts do I have" are in `look_words`.
 
 use std::sync::OnceLock;
 
 use regex::Regex;
 
 use super::super::super::{input, instant, Ability, Access, Done, Instant, ALL, MAC};
+use super::look_words::{shortcuts_words, time_in_words};
 use super::{cities, counted, duration_words, names, readings, sentence_case, some_of, twelve_hour};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
@@ -18,8 +20,8 @@ pub const ABILITIES: &[Ability] = &[
     Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, modes: &["assistant"], instant: Instant::Also(disk_words), run: |_, _| Box::pin(async { disk_space() }) },
     Ability { id: "computer-status", how: "\"how's my computer\", \"system status\": the processor and memory load right now, as a chart", access: Access::Look, platforms: ALL, modes: &[], instant: Instant::Only(status_words), run: |_, _| Box::pin(async { Ok(status()) }) },
     Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(open_apps()) },
-    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], instant: Instant::No, run: |input, _| Box::pin(time_in(input)) },
-    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(list_shortcuts()) },
+    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], instant: Instant::Also(time_in_words), run: |input, _| Box::pin(time_in(input)) },
+    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::Also(shortcuts_words), run: |_, _| Box::pin(list_shortcuts()) },
 ];
 
 /// The whole phrasings that ask for a reading at once; anything else about the battery or the
