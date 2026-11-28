@@ -64,7 +64,7 @@ async fn node_and_memory(state: &AppState) -> Vec<Check> {
     // The same kind of read a turn makes, in this keeper's own place.
     let memory = match state.active_keeper().and_then(|k| state.memory_for(&k).map(|m| (k, m))) {
         Ok((keeper, memory)) => match memory.counts().await {
-            Ok(counts) => check("memory", "This keeper's memory", Level::Ok, format!("{} can read its memory: {} things known, {} conversations.", keeper.name, counts.facts, counts.turns), None),
+            Ok(counts) => check("memory", "This keeper's memory", Level::Ok, format!("{} can read its memory: {}, {}.", keeper.name, counted(counts.facts as u64, "thing known", "things known"), counted(counts.turns as u64, "conversation", "conversations")), None),
             Err(e) => check("memory", "This keeper's memory", Level::Bad, format!("{}'s memory could not be read. {}", keeper.name, words(&e)), None),
         },
         Err(e) => check("memory", "This keeper's memory", Level::Bad, words(&e), None),
@@ -195,8 +195,19 @@ pub async fn support_report(app: AppHandle, state: State<'_, AppState>) -> Resul
     Ok(out.join("\n"))
 }
 
+/// "1 thing known", "55 conversations" (FIX-0054: it said "1 things known").
+fn counted(n: u64, one: &str, many: &str) -> String {
+    if n == 1 { format!("1 {one}") } else { format!("{n} {many}") }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn counts_say_one_thing_and_many_things() {
+        assert_eq!(super::counted(1, "thing known", "things known"), "1 thing known");
+        assert_eq!(super::counted(55, "conversation", "conversations"), "55 conversations");
+    }
+
     use super::*;
 
     #[test]

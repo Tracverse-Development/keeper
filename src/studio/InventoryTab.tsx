@@ -35,7 +35,10 @@ export function InventoryTab({ info, keeper, wardrobe, busy, onWear, onColour, o
   const [note, setNote] = useState<string | null>(null);
   // Colours picked on cards this visit (item id → swatch id), for items not worn yet.
   const [picked, setPicked] = useState<Record<string, string>>({});
-  const items = useMemo(() => (wardrobe ? inventory(wardrobe, keeper.id, filter, search, (i) => rarityOf(info, i).id) : []), [wardrobe, keeper.id, filter, search, info]);
+  const items = useMemo(
+    () => (wardrobe ? inventory(wardrobe, keeper.id, filter, search, (i) => rarityOf(info, i).id, (i) => fitsKeeper(wardrobe, keeper.id, i) && lockedUntil(rarityOf(info, i), info.experience.level) === null) : []),
+    [wardrobe, keeper.id, filter, search, info],
+  );
   const others = (wardrobe?.keepers ?? []).filter((k) => k.id !== keeper.id);
   const share = (item: WardrobeItem) =>
     core

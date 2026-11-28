@@ -23,3 +23,11 @@ test('filters and search', () => {
   assert.deepEqual(inventory(w, 'k1', 'yours', '', rarity).map((i) => i.id), ['mine']);
   assert.deepEqual(inventory(w, 'k1', 'all', 'HAL', rarity).map((i) => i.id), ['halo']);
 });
+
+// FIX-0055: what this keeper can put on now comes before what it cannot (locked or not its kind).
+test('what the keeper can put on now comes first', () => {
+  const item = (id: string, rarity: string) => ({ id, name: id, part: id, slot: 'halo', effects: {}, oneOfAKind: false, source: 'official' as const, rarity, wornBy: [] });
+  const w = { items: [item('wings', 'mythical'), item('halo', 'common')], slots: [{ id: 'halo', kind: 'floating' }] } as unknown as Parameters<typeof inventory>[0];
+  const order = inventory(w, 'k', 'all', '', (i) => i.rarity ?? 'common', (i) => i.id !== 'wings').map((i) => i.id);
+  assert.deepEqual(order, ['halo', 'wings']);
+});

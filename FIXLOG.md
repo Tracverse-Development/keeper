@@ -417,3 +417,15 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Root cause:** the built-in mind kept its own copies of abilities (`remind`, `open`, `switch_engine`, the list-reminders branch): "show me X" was its open-app rule, its remind rule took the time only at the end, and the abilities that exist (dark mode, keep awake, screenshot, time-in, the health checks) had no words of their own, so with no AI connected nothing could ask for them. The name rule took up to 40 letters and spaces.
 - **Fix:** every everyday ability declares conservative whole phrasings (`Instant::Also`) in its own pack, guarded by what it can really do (an installed app, a known time zone, a sum of digits and operators, known units, a clear clock time); a `health` ability shows the Settings checks as a table. Reflex keeps only conversation and memory rules, its time rule no longer answers "time in X", its help says what works with no AI, and a name stops at punctuation or a joining word, with the rest learned when it is a statement. Change abilities still run only at the Mac.
 - **Guard:** `sdk/instant_tests.rs` (every new phrasing, near misses that stay with the mind, the inputs read, changes refused from the phone), `reflex::tests::the_built_in_mind_holds_no_ability_rules` (the rule list is pinned; each old ability phrasing is answered by its ability), `a_name_stops_at_a_joining_word_and_the_rest_is_learned_too`, per-pack word tests.
+
+### FIX-0054 — Small things found on the screens in the VM (2026-11-28)
+- **Area:** `src/dashboard/TopBar.tsx` + `dashboard.css` (top bar), `src/keepers/keepers.css` (chat list), `src/memory/MemoryDrawer.tsx` (Reminders tab), `src-tauri/src/health/mod.rs` (`counted`)
+- **Symptom:** with the Focus timer in the top bar, "Biscuit · Keeper" broke over three lines; long chat titles pushed the chat list sideways (with a white scrollbar); the Reminders tab listed 5:30 PM above 9:00 AM; Settings said "1 things known".
+- **Fix:** the brand never wraps and the node pill drops "· working memory" under 1180 px; chat rows can shrink so titles end in "…"; reminders are soonest first; counts say one thing / many things.
+- **Guard:** health test `counts_say_one_thing_and_many_things`; the layout ones are visual (VM screenshots).
+
+### FIX-0055 — Inventory opened on items the keeper cannot use (2026-11-28)
+- **Area:** `src/studio/inventory-view.ts` (`inventory`, `usable`), `src/studio/InventoryTab.tsx`
+- **Symptom:** a level 5 robot's Inventory began with level 15 wings "only for humans" and an item "only for the God Keeper".
+- **Fix:** items this keeper can put on now (fits its body, level reached) come first; rarity, worn and name order follow.
+- **Guard:** `inventory-view.test.ts` "what the keeper can put on now comes first".

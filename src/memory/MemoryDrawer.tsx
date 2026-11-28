@@ -141,7 +141,8 @@ export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: bool
         ))}
         {data && tab === 'Reminders' && (data.reminders.length === 0 ? <p className="muted">No reminders coming up.</p> : (
           <ul className="records">
-            {data.reminders.map((r) => (
+            {/* Soonest first, as a day is lived (FIX-0054: 5:30 PM was listed above 9:00 AM). */}
+            {[...data.reminders].sort((a, b) => a.dueAt.localeCompare(b.dueAt)).map((r) => (
               <li key={r.id}>
                 <div>
                   <p>{r.text}</p>

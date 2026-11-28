@@ -6,6 +6,10 @@
   padding: var(--space-3) var(--space-5) 0 88px; height: 52px; pointer-events: none; }
 .topbar > * { pointer-events: auto; -webkit-app-region: no-drag; }
 .brand { display: flex; align-items: center; gap: var(--space-3); font-family: var(--font-serif); font-size: var(--text-lg); color: var(--cream-50); }
+/* The name never breaks over lines; on a narrow window the node pill says less (FIX-0054). */
+.brand { white-space: nowrap; flex: 0 0 auto; }
+.topbar-right { min-width: 0; }
+@media (max-width: 1180px) { .node-pill-more { display: none; } }
 .brand em { font-style: normal; color: var(--gold-400); }
 .topbar-right { display: flex; gap: var(--space-2); align-items: center; }
 .pill-button { cursor: pointer; color: var(--text); transition: border-color 200ms var(--ease), background 200ms var(--ease); }

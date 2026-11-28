@@ -26,9 +26,11 @@
 .keeper-words strong { color: var(--cream-50); font-size: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chats { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--border); padding-top: var(--space-3); }
 .chats-head { display: flex; justify-content: space-between; align-items: center; }
-.chat-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.chat-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 2px; }
 .chat { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 0;
-  background: transparent; cursor: pointer; text-align: left; }
+  background: transparent; cursor: pointer; text-align: left; min-width: 0; }
+/* A long chat title ends in "…" instead of pushing the list sideways (FIX-0054). */
+.chat-title { max-width: 100%; }
 .chat:hover { background: var(--surface); }
 .chat.is-on { background: var(--accent-soft); }
 .chat-title { font-size: var(--text-sm); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
