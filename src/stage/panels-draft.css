@@ -1,0 +1,47 @@
+/* The draft panel (DraftPanel.tsx): a keeper's change to one text file, before it is saved.
+   Taken-out lines struck in the danger colour, put-in lines in the ok colour, changed words
+   highlighted. Changed lines arrive one by one (--d, set per line) after the card has entered;
+   reduced motion shows them at once. Tokens only. */
+.draft { display: flex; flex-direction: column; gap: var(--space-3); }
+.draft-file { display: flex; align-items: center; gap: var(--space-3); color: var(--gold-300); }
+.draft-file-words { display: flex; flex-direction: column; min-width: 0; }
+.draft-file-words .file-name { color: var(--text); overflow-wrap: anywhere; }
+.draft-count { margin-left: auto; flex: none; padding: 2px var(--space-3); border-radius: 999px; font-size: var(--text-xs); font-weight: 650;
+  color: var(--text-muted); background: rgba(244, 238, 226, 0.06); }
+.draft-count.is-changed { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+.draft-why { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--text-sm); color: var(--cream-300); }
+
+.draft-lines { list-style: none; margin: 0; padding: var(--space-2) 0; max-height: 340px; overflow: auto; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: rgba(7, 10, 22, 0.45); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: var(--text-sm); line-height: 1.6; }
+.draft-line { display: flex; gap: var(--space-2); padding: 0 var(--space-3); color: var(--cream-300); }
+.draft-mark { flex: none; width: 1ch; text-align: center; font-weight: 700; }
+.draft-text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.draft-line.is-removed { color: color-mix(in srgb, var(--danger) 80%, var(--cream-100)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.draft-line.is-removed .draft-text { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--danger) 70%, transparent); }
+.draft-line.is-removed .draft-mark { color: var(--danger); }
+.draft-line.is-added { color: var(--cream-100); background: color-mix(in srgb, var(--ok) 11%, transparent); }
+.draft-line.is-added .draft-mark { color: var(--ok); }
+.draft-line.is-removed .draft-word { border-radius: 3px; background: color-mix(in srgb, var(--danger) 30%, transparent); }
+.draft-line.is-added .draft-word { border-radius: 3px; color: var(--navy-950); background: var(--ok); }
+.draft-gap { padding: 2px var(--space-3); font-family: var(--font); font-size: var(--text-xs); color: var(--text-muted); text-align: center;
+  border-block: 1px dashed var(--border); margin: var(--space-1) 0; }
+.draft .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Watching the edit: each changed line slides in after the one before; a put-in line glows once. */
+.draft-line.is-removed, .draft-line.is-added { animation: draft-in 420ms var(--ease) both; animation-delay: calc(var(--d, 0ms) + 700ms); }
+.draft-line.is-added .draft-word { animation: draft-glow 900ms var(--ease) both; animation-delay: calc(var(--d, 0ms) + 820ms); }
+@keyframes draft-in { from { opacity: 0; transform: translateX(-10px); } }
+@keyframes draft-glow { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 55%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
+
+.draft-editor { height: 300px; padding: var(--space-3); resize: vertical; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: var(--text-sm); line-height: 1.6; color: var(--text); }
+.draft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.draft-actions .draft-save { margin-left: auto; }
+.draft-throw:hover:not(:disabled) { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.draft-result { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: var(--text-sm);
+  color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); animation: pop-in 420ms var(--ease) both; }
+.draft-result.is-gone { color: var(--text-muted); background: transparent; border-color: var(--border); }
+.draft.is-saved { gap: var(--space-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .draft-line.is-removed, .draft-line.is-added, .draft-line.is-added .draft-word, .draft-result { animation: none !important; }
+}

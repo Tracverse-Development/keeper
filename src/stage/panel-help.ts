@@ -29,4 +29,5 @@ export const PANEL_HELP: Record<PanelKind, string> = {
   media: 'Press play to watch it here.',
   web: 'Press to open the page in your browser.',
   file: 'Press to open the file, or show it in Finder.',
+  draft: 'Nothing is saved until you press Save. Change it first if you like.',
 };

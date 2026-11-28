@@ -9,6 +9,7 @@ import { CardsPanel } from './CardsPanel.tsx';
 import { ChartPanel } from './ChartPanel.tsx';
 import { ChecklistPanel } from './ChecklistPanel.tsx';
 import { DiagramPanel } from './DiagramPanel.tsx';
+import { DraftPanel } from './DraftPanel.tsx';
 import { FactsPanel } from './FactsPanel.tsx';
 import { FilePanel } from './FilePanel.tsx';
 import { LivePanel } from './LivePanel.tsx';
@@ -58,6 +59,7 @@ export function PanelBody({ panel, onPick, onAction }: Props) {
     case 'media': return <MediaPanel panel={panel} onPick={onPick} />;
     case 'web': return <WebPanel panel={panel} onPick={onPick} />;
     case 'file': return <FilePanel panel={panel} onPick={onPick} />;
+    case 'draft': return <DraftPanel panel={panel} onPick={onPick} onAction={onAction} />;
     default: {
       const unknown: never = panel;
       return unknown;

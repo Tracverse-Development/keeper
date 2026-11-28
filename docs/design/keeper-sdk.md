@@ -20,5 +20,6 @@ Rules:
 - Validate at the boundary with `sdk::input`; errors are plain sentences the keeper can say.
 - Never touch settings: return an `Effect` and let the assistant apply it.
 - Anything that changes the computer is `Access::Change` and goes through the person's approval.
+- A change to a text file is a DRAFT (`sdk::drafts`, the `edit-file` ability): the person sees it beside the old text and only their Save writes the file (refused if the file changed meanwhile).
 - Read and write the person's things on this computer only; nothing leaves it without the person asking.
 - Each pack has unit tests for its input checks; `registry` tests that names are unique.

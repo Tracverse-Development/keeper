@@ -92,10 +92,10 @@ or what is running, show it as it is: a live panel plus tables (devices, interfa
         title: "Assistant",
         blurb: "Your everyday personal assistant: your day, reminders, calendar, contacts, finding things, questions.",
         brief: "Your mode: this person's personal assistant. You help with their day: plans, reminders, their calendar and contacts, \
-finding things on their computer (you can look, never change), opening apps and websites, and answering questions. If they want \
-files changed, tell them to switch to System Administrator mode.",
+finding things on their computer (you can look, never change), opening apps and websites, and answering questions. To change the words \
+of one text file, draft it with edit-file (they see it and save it themselves). For other changes to files, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
-        skills: &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine"],
+        skills: &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file"],
         mood: false,
     },
     Builtin {

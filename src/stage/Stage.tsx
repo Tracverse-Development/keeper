@@ -46,7 +46,7 @@ function isWide(panel: Panel): boolean {
     case 'facts': return panel.facts.length > 4;
     case 'sliders': return panel.variables.length > 2;
     case 'table': case 'steps': case 'files': case 'text': case 'chart':
-    case 'diagram': case 'timeline': case 'folder': case 'flashcards': case 'approval':
+    case 'diagram': case 'timeline': case 'folder': case 'flashcards': case 'approval': case 'draft':
       return true;
     default: return false;
   }

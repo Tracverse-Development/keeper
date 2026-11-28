@@ -33,7 +33,9 @@ export type Panel =
   | { kind: 'live'; id: string; title: string; metrics: ('cpu' | 'memory' | 'network' | 'disk' | 'apps')[] }
   | { kind: 'media'; id: string; title: string; url: string; caption?: string }
   | { kind: 'web'; id: string; title: string; url: string; summary?: string }
-  | { kind: 'file'; id: string; title: string; path: string; note?: string };
+  | { kind: 'file'; id: string; title: string; path: string; note?: string }
+  // ---- added in 0.17: a keeper's draft of a change to one text file, saved only by the person ----
+  | { kind: 'draft'; id: string; title: string; draft: string; name: string; folder: string; why?: string };
 
 export type PanelKind = Panel['kind'];
 
@@ -56,7 +58,9 @@ export type PanelAction =
   | { type: 'quiz'; panelId: string; question: string; correct: boolean }
   | { type: 'card'; panelId: string; front: string; known: boolean }
   | { type: 'approve' | 'deny'; token: string }
-  | { type: 'forget' | 'pin'; factId: string };
+  | { type: 'forget' | 'pin'; factId: string }
+  /** Put words in the talk box for the person to finish (a draft's "Change something"); nothing is sent. */
+  | { type: 'compose'; text: string };
 
 /** The follow-up the keeper is asked when the person points at a piece (pure; tested). */
 export function focusQuestion(f: PanelFocus): string {

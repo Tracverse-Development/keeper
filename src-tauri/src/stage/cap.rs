@@ -58,7 +58,7 @@ fn has_content(p: &Panel) -> bool {
         Panel::Checklist { items, .. } => !items.is_empty(),
         Panel::Form { fields, .. } => !fields.is_empty(),
         Panel::Sources { items, .. } => !items.is_empty(),
-        Panel::Live { .. } | Panel::Media { .. } | Panel::Web { .. } | Panel::File { .. } | Panel::Approval { .. } | Panel::Facts { .. } => true,
+        Panel::Live { .. } | Panel::Media { .. } | Panel::Web { .. } | Panel::File { .. } | Panel::Approval { .. } | Panel::Facts { .. } | Panel::Draft { .. } => true,
     }
 }
 
@@ -202,8 +202,8 @@ impl Panel {
                 }
                 Panel::File { id: id(&i), title: clip(&title, MAX_SHORT), path: p.to_string(), note: clip_opt(&note, 300) }
             }
-            // The plan to approve and the person's facts come only from the core, never an engine.
-            Panel::Approval { .. } | Panel::Facts { .. } => return None,
+            // The plan to approve, the person's facts and a draft come only from the core, never an engine.
+            Panel::Approval { .. } | Panel::Facts { .. } | Panel::Draft { .. } => return None,
         };
         has_content(&p).then_some(p)
     }
@@ -235,7 +235,8 @@ impl Panel {
         | Panel::Web { id, .. }
         | Panel::File { id, .. }
         | Panel::Approval { id, .. }
-        | Panel::Facts { id, .. }) = self;
+        | Panel::Facts { id, .. }
+        | Panel::Draft { id, .. }) = self;
         *id = new.to_string();
     }
 }

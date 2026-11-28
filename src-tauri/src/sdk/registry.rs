@@ -5,7 +5,7 @@ use super::{packs, this_platform, Ability, ActionRequest, Cx, Outcome};
 use crate::keepers::kit::roles::Role;
 
 /// Every pack, in the order the mind hears them. A new pack is one line here.
-const PACKS: &[&[Ability]] = &[packs::reminders::ABILITIES, packs::personal::ABILITIES, packs::desktop::ABILITIES, packs::core::ABILITIES];
+const PACKS: &[&[Ability]] = &[packs::reminders::ABILITIES, packs::personal::ABILITIES, packs::desktop::ABILITIES, packs::files::ABILITIES, packs::core::ABILITIES];
 
 /// Every ability this system offers.
 pub fn all() -> impl Iterator<Item = &'static Ability> {
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn the_skills_modes_name_still_exist() {
         // The built-in modes list skills by name: a rename would silently take one away.
-        for id in ["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine"] {
+        for id in ["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file"] {
             assert!(super::PACKS.iter().flat_map(|p| p.iter()).any(|a| a.id == id), "{id} is missing");
         }
     }

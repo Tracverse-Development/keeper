@@ -64,6 +64,8 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Words a panel put in the talk box for the person to finish (a draft's "Change something"). */
+  const [compose, setCompose] = useState<{ text: string; at: number } | null>(null);
   const [canDoOpen, setCanDoOpen] = useState(false);
   // Which of the screens loaded on first use have been opened (then they stay mounted).
   const opened = useOpened({ memory: memoryOpen, settings: settingsOpen, studio: studioOpen });
@@ -135,6 +137,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     decide: assistant.decide,
     brief: assistant.brief,
     send: (t) => void assistant.send(t),
+    compose: (text) => setCompose({ text, at: Date.now() }),
     changed: events.refreshHealth,
   });
   // The halo starts with one node per fact this keeper holds, read once per keeper (a change of
@@ -324,6 +327,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         full={sidebarOpen && assistant.chatId !== ''}
         compact={stage.showing}
         onSend={sendMessage}
+        compose={compose}
         onType={() => voice.speaking && void voice.hush()}
         tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (

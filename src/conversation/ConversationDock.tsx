@@ -27,6 +27,8 @@ interface Props {
   /** Beside the stage: only the latest exchange, so nothing covers the character. */
   compact?: boolean;
   onSend: (text: string) => void;
+  /** Words put in the box for the person to finish (a draft's "Change something"); a new `at` puts them in again. */
+  compose?: { text: string; at: number } | null;
   /** The person started typing (the keeper stops talking so it does not talk over them). */
   onType?: () => void;
   /** The mode and style controls, shown above the message box. */
@@ -44,6 +46,16 @@ export function ConversationDock(p: Props) {
   const shown = p.full ? p.exchanges : p.exchanges.slice(p.compact ? -1 : -3);
   // While the keeper listens, speaks or works, the button stops it.
   const stoppable = p.listening || p.speaking || p.busy;
+
+  // Composed words replace what is in the box, with the cursor after them, ready to type on.
+  useEffect(() => {
+    if (!p.compose) return;
+    setText(p.compose.text);
+    const field = input.current;
+    if (!field) return;
+    field.focus();
+    window.requestAnimationFrame(() => field.setSelectionRange(field.value.length, field.value.length));
+  }, [p.compose]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });
