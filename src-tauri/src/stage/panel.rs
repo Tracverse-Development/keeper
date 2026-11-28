@@ -193,6 +193,23 @@ pub struct Source {
     pub note: Option<String>,
 }
 
+/// Another video a media panel can swap to: a web address, or a file on this computer (`path`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MediaChoice {
+    pub title: String,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channel: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub length: Option<String>,
+}
+
+/// The most choices a media panel carries (two alternatives to a found video; a list of movies).
+pub const MAX_MEDIA_CHOICES: usize = 8;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FactRow {
     pub id: String,
@@ -225,8 +242,26 @@ pub enum Panel {
     /// A live dashboard of this computer that keeps updating while it is on screen
     /// (`metrics`: cpu, memory, network, disk, apps; empty = all).
     Live { #[serde(default)] id: String, title: String, #[serde(default)] metrics: Vec<String> },
-    /// A video or picture to watch or look at (an https address; YouTube links play in place).
-    Media { #[serde(default)] id: String, title: String, url: String, #[serde(default)] caption: Option<String> },
+    /// A video or picture to watch or look at: an https address (YouTube links play in place) or,
+    /// with `path` (and an empty `url`), a video or audio file on this computer (`local_media`).
+    /// `channel` and `length` say who made it and how long it runs; `choices` are others to swap to.
+    Media {
+        #[serde(default)]
+        id: String,
+        title: String,
+        #[serde(default)]
+        url: String,
+        #[serde(default)]
+        caption: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        channel: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        length: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        choices: Vec<MediaChoice>,
+    },
     /// A web page to visit (opens in the browser).
     Web { #[serde(default)] id: String, title: String, url: String, #[serde(default)] summary: Option<String> },
     /// A file the keeper made or found, to open or show in the Finder (a path in the person's home).

@@ -3,7 +3,7 @@
  * Shapes mirror `src-tauri/src` exactly (serde camelCase); event names mirror
  * `src-tauri/src/kernel/events.rs` (`events.test.ts` keeps the two lists equal).
  */
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -36,6 +36,13 @@ export const EVENTS = {
   /** A keeper reached a new level: { keeper, level, unlocked } (`kit::levels::check_level_up`). */
   levelUp: 'keeper://level-up',
 } as const;
+
+/**
+ * The address a video or song on this computer plays from, for a media element's `src`
+ * (`keeper-media:`; the core checks every request against the person's media folders:
+ * `stage::local_media`).
+ */
+export const localMediaSrc = (path: string): string => convertFileSrc(path, 'keeper-media');
 
 export type * from './ipc-types';
 export type * from './ipc-wardrobe';

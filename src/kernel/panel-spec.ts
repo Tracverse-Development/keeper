@@ -31,11 +31,16 @@ export type Panel =
   // ---- added in 0.9: research, live dashboards, things to watch, visit or open ----
   | { kind: 'sources'; id: string; title: string; items: { title: string; url: string; note?: string }[] }
   | { kind: 'live'; id: string; title: string; metrics: ('cpu' | 'memory' | 'network' | 'disk' | 'apps')[] }
-  | { kind: 'media'; id: string; title: string; url: string; caption?: string }
+  // A web video or picture (`url`), or a video or song on this computer (`path`, `url` empty);
+  // `choices` are other videos to swap to (two alternatives to a found video; a list of movies).
+  | { kind: 'media'; id: string; title: string; url: string; caption?: string; path?: string; channel?: string; length?: string; choices?: MediaChoice[] }
   | { kind: 'web'; id: string; title: string; url: string; summary?: string }
   | { kind: 'file'; id: string; title: string; path: string; note?: string }
   // ---- added in 0.17: a keeper's draft of a change to one text file, saved only by the person ----
   | { kind: 'draft'; id: string; title: string; draft: string; name: string; folder: string; why?: string };
+
+/** Another video a media panel can swap to (mirrors `stage::panel::MediaChoice`). */
+export interface MediaChoice { title: string; url: string; path?: string; channel?: string; length?: string }
 
 export type PanelKind = Panel['kind'];
 

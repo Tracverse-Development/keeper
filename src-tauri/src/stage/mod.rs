@@ -7,6 +7,7 @@
 
 mod cap;
 mod echo;
+pub mod local_media;
 pub mod open;
 pub mod panel;
 pub mod stream;
@@ -43,6 +44,12 @@ pub fn read(raw: &serde_json::Value) -> Vec<Panel> {
         .collect()
 }
 
+/// One panel the core builds from outside data (a found video's title, a file name), cut to the
+/// same limits as an engine's; None when it is unusable. Keeps its id when it has one.
+pub fn checked(panel: Panel) -> Option<Panel> {
+    panel.cap(0)
+}
+
 /// What engines are told when the person wants text this time.
 pub const TEXT_RULES: &str = "SHOWING THINGS: answer in words this time (\"panels\": []), unless you must report files you changed, \
 then one \"files\" panel. NEVER create HTML files, web pages or documents and NEVER open a browser just to show something.";
@@ -64,10 +71,11 @@ array; usually 2 to 4, at most 5, each short: a few lines or items, since the pe
 {\"kind\":\"flashcards\",\"title\",\"cards\":[{\"front\",\"back\"}]} (practice), {\"kind\":\"agenda\",\"title\",\"items\":[{\"time\",\"title\",\"detail\",\"kind\":\"event|reminder|task\"}]}, \
 {\"kind\":\"checklist\",\"title\",\"items\":[{\"id\",\"text\",\"done\"}]} (steps the person ticks off), {\"kind\":\"form\",\"title\",\"fields\":[{\"id\",\"label\",\"kind\":\"text|number|choice|date\",\"choices\"}],\"submit\"} (when you need details from the person), \
 {\"kind\":\"live\",\"title\",\"metrics\":[\"cpu\",\"memory\",\"network\",\"disk\",\"apps\"]} (a LIVE dashboard of this computer that keeps updating: use it whenever the person asks how the computer, its network or its storage is doing), \
-{\"kind\":\"media\",\"title\",\"url\",\"caption\"} (a video or picture to watch, https; YouTube plays in place), {\"kind\":\"web\",\"title\",\"url\",\"summary\"} (a page to visit), \
+{\"kind\":\"media\",\"title\",\"url\",\"caption\"} (a picture, or a video whose real https address you already have; YouTube plays in place: to SHOW A VIDEO about something, \
+use the find-video skill, which finds one real video and shows it playing here, and a file on this computer with play-file; never a search link, never a guessed address), {\"kind\":\"web\",\"title\",\"url\",\"summary\"} (a page to visit), \
 {\"kind\":\"file\",\"title\",\"path\",\"note\"} (a file you made or found, ~/…: the person can open it or show it in the Finder). \
 CHOOSE PANELS FOR THE JOB, not by habit: looking at or doing something on the computer → live, table, folder, files, file (a dashboard of what is, never a lesson); teaching or \
-explaining → steps, cards, diagram, formula, then a quiz; comparing → table or chart; research → table, text and sources; something to watch, visit or open → media, web, file; \
+explaining → steps, cards, diagram, formula, then a quiz; comparing → table or chart; research → table, text and sources; something to watch → the find-video skill (or play-file for the person's own files); a page to visit or a file to open → web, file; \
 plain conversation → no panels. \
 A LESSON opens with the big picture (the whole idea in one card or diagram, every term it uses introduced) before details, and \
 offers ONE practice panel at a time (a quiz or flashcards, not both). A FOLLOW-UP question in a lesson keeps teaching with a panel \

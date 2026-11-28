@@ -1,5 +1,5 @@
 //! Files on this computer: Spotlight search by name then content (`find`), and what changed
-//! lately in Desktop, Documents and Downloads (`recent`). Spotlight runs through the platform
+//! lately in Desktop, Documents and Downloads (`recent`), files of one type such as movies (`of_type`). Spotlight runs through the platform
 //! seam with a 2 s limit; when it is unavailable, `recent` walks those folders (bounded) instead.
 //! The person's words reach Spotlight only after `sanitise` and only inside a quoted string.
 
@@ -169,6 +169,40 @@ pub async fn recent(days: u32, limit: usize) -> Result<Vec<FileHit>> {
         }
     };
     hits.retain(|h| h.kind != "folder");
+    hits.sort_by(|a, b| b.modified.cmp(&a.modified));
+    hits.truncate(limit);
+    Ok(hits)
+}
+
+/// Spotlight: files of a content type (`public.movie`), optionally with the name containing `safe`.
+pub fn type_query(content_type: &str, safe: Option<&str>) -> String {
+    let of_type = format!("kMDItemContentTypeTree == \"{content_type}\"");
+    match safe {
+        Some(name) => format!("{of_type} && {}", name_query(name)),
+        None => of_type,
+    }
+}
+
+/// Files of one content type (`public.movie`, `public.audio`) inside `folders`, newest first,
+/// optionally only those whose name contains `name`, and only paths `keep` accepts (the
+/// caller's formats: a movie the player can play). Spotlight first; an unindexed computer walks
+/// the folders (bounded) instead.
+pub async fn of_type(content_type: &str, name: Option<&str>, folders: &[PathBuf], keep: fn(&Path) -> bool, limit: usize) -> Result<Vec<FileHit>> {
+    let safe = name.and_then(sanitise);
+    let limit = limit.clamp(1, MAX_LIMIT);
+    let folders: Vec<PathBuf> = folders.iter().filter(|p| p.is_dir()).cloned().collect();
+    let mut hits = match spotlight_hits(&type_query(content_type, safe.as_deref()), &folders).await {
+        Ok(h) => h,
+        Err(_) => {
+            let scope = folders.clone();
+            let mut walked = tokio::task::spawn_blocking(move || walk(&scope, SystemTime::UNIX_EPOCH)).await.unwrap_or_default();
+            if let Some(q) = &safe {
+                walked.retain(|h| name_rank(&h.name, q) < 3);
+            }
+            walked
+        }
+    };
+    hits.retain(|h| h.kind != "folder" && keep(Path::new(&h.path)));
     hits.sort_by(|a, b| b.modified.cmp(&a.modified));
     hits.truncate(limit);
     Ok(hits)

@@ -87,6 +87,12 @@ pub async fn recent_files(days: u32, limit: usize) -> Result<Vec<FileHit>> {
     files::recent(days, limit).await
 }
 
+/// Files of one content type (`public.movie`) in `folders`, newest first, at most `limit` (1 to
+/// 50), optionally only names containing `name`, and only paths `keep` accepts.
+pub async fn files_of_type(content_type: &str, name: Option<&str>, folders: &[std::path::PathBuf], keep: fn(&std::path::Path) -> bool, limit: usize) -> Result<Vec<FileHit>> {
+    files::of_type(content_type, name, folders, keep, limit).await
+}
+
 /// Calendar events between two RFC 3339 instants (at most a year apart).
 pub async fn events(app: &AppHandle, from: &str, to: &str) -> Result<Vec<Event>> {
     #[cfg(target_os = "macos")]

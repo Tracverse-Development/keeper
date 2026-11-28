@@ -22,6 +22,8 @@ fn sanitise_keeps_words_and_drops_what_could_escape_the_quotes() {
 #[test]
 fn queries_quote_the_sanitised_words() {
     assert_eq!(name_query("tax"), "kMDItemDisplayName == \"*tax*\"cd");
+    assert_eq!(type_query("public.movie", None), "kMDItemContentTypeTree == \"public.movie\"");
+    assert_eq!(type_query("public.movie", Some("holiday")), "kMDItemContentTypeTree == \"public.movie\" && kMDItemDisplayName == \"*holiday*\"cd");
     assert_eq!(content_query("tax return"), "kMDItemTextContent == \"tax return\"cdw");
     assert_eq!(recent_query(3), "kMDItemFSContentChangeDate >= $time.today(-3)");
 }

@@ -51,6 +51,19 @@ fn web_source(s: &Source) -> Option<Source> {
     (ok && !s.title.trim().is_empty()).then(|| Source { title: clip(&s.title, 200), url: url.to_string(), note: clip_opt(&s.note, 300) })
 }
 
+/// Another video worth offering: a web address or a plausible local media file, with a title.
+fn media_choice(c: &MediaChoice) -> Option<MediaChoice> {
+    let path = c.path.as_ref().map(|p| p.trim().to_string()).filter(|p| super::local_media::plausible(p));
+    let ok = (path.is_some() || web_address(&c.url)) && !c.title.trim().is_empty();
+    ok.then(|| MediaChoice {
+        title: clip(&c.title, MAX_SHORT),
+        url: if path.is_some() { String::new() } else { c.url.trim().to_string() },
+        path,
+        channel: clip_opt(&c.channel, 80),
+        length: clip_opt(&c.length, 12),
+    })
+}
+
 /// Does a capped panel show anything? A table with no rows, steps with no step, a chart with no
 /// numbers or a text panel with no words is an empty card on the Stage: it is dropped.
 fn has_content(p: &Panel) -> bool {
@@ -198,11 +211,14 @@ impl Panel {
                 let metrics: Vec<String> = metrics.into_iter().filter(|m| LIVE_METRICS.contains(&m.as_str())).take(LIVE_METRICS.len()).collect();
                 Panel::Live { id: id(&i), title: if title.trim().is_empty() { "Your computer, live".into() } else { clip(&title, MAX_SHORT) }, metrics }
             }
-            Panel::Media { id: i, title, url, caption } => {
-                if !web_address(&url) {
+            Panel::Media { id: i, title, url, caption, path, channel, length, choices } => {
+                let path = path.map(|p| p.trim().to_string()).filter(|p| super::local_media::plausible(p));
+                if path.is_none() && !web_address(&url) {
                     return None;
                 }
-                Panel::Media { id: id(&i), title: clip(&title, MAX_SHORT), url: url.trim().to_string(), caption: clip_opt(&caption, 300) }
+                let url = if path.is_some() { String::new() } else { url.trim().to_string() };
+                let choices = choices.iter().filter_map(media_choice).take(MAX_MEDIA_CHOICES).collect();
+                Panel::Media { id: id(&i), title: clip(&title, MAX_SHORT), url, caption: clip_opt(&caption, 300), path, channel: clip_opt(&channel, 80), length: clip_opt(&length, 12), choices }
             }
             Panel::Web { id: i, title, url, summary } => {
                 if !web_address(&url) {
@@ -280,5 +296,19 @@ mod empty_tests {
         assert_eq!(unit("GB").as_deref(), Some("GB"));
         assert_eq!(unit("kg (dry)").as_deref(), Some("kg (dry)"), "a whole bracket that fits stays");
         assert_eq!(unit("(per person per day)"), None, "nothing left before the bracket");
+    }
+
+    #[test]
+    fn a_media_panel_plays_a_web_address_or_a_media_file_and_keeps_good_choices() {
+        let media = |url: &str, path: Option<&str>, choices: Vec<MediaChoice>| Panel::Media { id: String::new(), title: "Volcanoes".into(), url: url.into(), caption: None, path: path.map(Into::into), channel: Some("Nat Geo".into()), length: Some("4:59".into()), choices };
+        let choice = |title: &str, url: &str, path: Option<&str>| MediaChoice { title: title.into(), url: url.into(), path: path.map(Into::into), channel: None, length: None };
+        assert!(media("javascript:alert(1)", None, vec![]).cap(0).is_none(), "not a web address");
+        assert!(media("", Some("/etc/passwd"), vec![]).cap(0).is_none(), "not a media file in a home");
+        let Some(Panel::Media { url, path, .. }) = media("https://evil.example/x", Some("~/Movies/Trip.mp4"), vec![]).cap(0) else { panic!("a local file plays") };
+        assert_eq!((url.as_str(), path.as_deref()), ("", Some("~/Movies/Trip.mp4")), "a local panel carries no web address");
+        let choices = vec![choice("Good", "https://www.youtube.com/watch?v=abcdefgh", None), choice("Bad", "file:///etc/passwd", None), choice("", "https://x.org/a.mp4", None), choice("Song", "", Some("~/Music/a.mp3"))];
+        let Some(Panel::Media { choices, channel, length, .. }) = media("https://www.youtube.com/watch?v=dQw4w9WgXcQ", None, choices).cap(0) else { panic!("kept") };
+        assert_eq!(choices.iter().map(|c| c.title.as_str()).collect::<Vec<_>>(), ["Good", "Song"]);
+        assert_eq!((channel.as_deref(), length.as_deref()), (Some("Nat Geo"), Some("4:59")));
     }
 }
