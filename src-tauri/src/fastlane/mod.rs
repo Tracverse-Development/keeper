@@ -53,11 +53,11 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     static RECENT: OnceLock<Regex> = OnceLock::new();
 
     static FOLDER: OnceLock<Regex> = OnceLock::new();
-    if let Some(c) = re(&FOLDER, r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$").captures(s) {
+    if let Some(c) = re(&FOLDER, FOLDER_WORDS).captures(s) {
         return Some(folders::view(&folders::known(&c[1])?, false));
     }
 
-    if let Some(c) = re(&FIND, r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$").captures(s) {
+    if let Some(c) = re(&FIND, FIND_WORDS).captures(s) {
         let query = c[1].trim_end_matches(" file").trim_end_matches(" files").to_string();
         let hits = crate::pim::find_files(&query, 8).await.ok()?;
         if hits.is_empty() {
@@ -68,7 +68,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(shown(format!("Found {} match{}. The best one is {}.", hits.len(), if hits.len() == 1 { "" } else { "es" }, first.name), json!([{ "kind": "files", "title": format!("Looking for {query}"), "items": items }])));
     }
 
-    if let Some(c) = re(&OPEN, r"(?i)^(?:please\s+)?open\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|music|movies|home)(?:\s+folder)?\s*\.?$").captures(s) {
+    if let Some(c) = re(&OPEN, OPEN_WORDS).captures(s) {
         let path = folders::known(&c[1])?;
         crate::platform::open_url(&path.display().to_string()).ok()?;
         return Some(folders::view(&path, true));
@@ -78,7 +78,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(thought);
     }
 
-    if re(&SYSTEM, r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$").is_match(s) {
+    if re(&SYSTEM, SYSTEM_WORDS).is_match(s) {
         let load = crate::system::read();
         let words = if load.cpu > 80.0 { "working hard" } else if load.cpu > 40.0 { "fairly busy" } else { "calm" };
         return Some(shown(
@@ -87,7 +87,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         ));
     }
 
-    if re(&BRIEF, r"(?i)^(?:brief me|morning brief|good morning|what(?:'s| is) on (?:today|my day)|catch me up)\b.*$").is_match(s) {
+    if re(&BRIEF, BRIEF_WORDS).is_match(s) {
         return Some(brief::compose(app, memory, keeper).await);
     }
 
@@ -140,7 +140,7 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(brief::recent_work(days, when).await);
     }
 
-    if re(&FACTS, r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)").is_match(s) {
+    if re(&FACTS, FACTS_WORDS).is_match(s) {
         let (facts, _) = memory.facts().await.ok()?;
         if facts.is_empty() {
             return Some(shown("I don't know anything about you yet. Tell me about yourself.".into(), json!([])));
@@ -151,6 +151,13 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     }
     None
 }
+
+const FOLDER_WORDS: &str = r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$";
+const FIND_WORDS: &str = r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$";
+const OPEN_WORDS: &str = r"(?i)^(?:please\s+)?open\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|music|movies|home)(?:\s+folder)?\s*\.?$";
+const SYSTEM_WORDS: &str = r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$";
+const BRIEF_WORDS: &str = r"(?i)^(?:brief me|morning brief|good morning|what(?:'s| is) on (?:today|my day)|catch me up)\b.*$";
+const FACTS_WORDS: &str = r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)";
 
 /// "What reminders do I have?", "list my reminders", "my upcoming reminders".
 const REMINDERS: &str = r"(?i)^(?:please\s+)?(?:what reminders do i have|(?:show|list|tell)(?: me)? (?:all )?my reminders|(?:what are )?my (?:upcoming )?reminders|(?:do i have )?any (?:upcoming )?reminders)\s*[?.!]?$";
@@ -180,6 +187,110 @@ const RECENT_WORK: &str = r"(?i)^(?:please\s+)?(?:can you (?:see|tell me|show me
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Which instant answer the chain gives, in the chain's own order (None: the mind answers).
+    fn current(said: &str, mode: &str) -> Option<&'static str> {
+        let s = said.trim();
+        let m = |p: &str| Regex::new(p).unwrap().is_match(s);
+        let role = crate::keepers::kit::roles::get(mode);
+        let checks: [(&str, &'static str); 3] = [(FOLDER_WORDS, "show-folder"), (FIND_WORDS, "find-files"), (OPEN_WORDS, "open-folder")];
+        if let Some((_, id)) = checks.iter().find(|(p, _)| m(p)) {
+            return Some(id);
+        }
+        if let Some(id) = computer::asked(s).filter(|id| crate::sdk::registry::find(id).is_some() && role.allows(id)) {
+            return Some(id);
+        }
+        if m(SYSTEM_WORDS) {
+            return Some("computer-status");
+        }
+        if m(BRIEF_WORDS) {
+            return Some("brief");
+        }
+        if let Some(r) = agenda_request(s).filter(|r| role.allows(&r.skill)) {
+            return Some(if r.skill == "upcoming" { "upcoming" } else { "list-reminders" });
+        }
+        if m(crate::focus::STOPS) {
+            return Some("stop-focus");
+        }
+        if m(crate::focus::STARTS) {
+            return Some("start-focus");
+        }
+        if m(TIDY_MEMORY) {
+            return Some("tidy-memory");
+        }
+        if crate::sdk::packs::reminders::actions::snooze_minutes(s).is_some() {
+            return Some("snooze");
+        }
+        if let Some(id) = routines::which(s) {
+            return Some(id);
+        }
+        let later: [(&str, &'static str); 4] = [(clip::ASKS, "work-on-copied"), (week::ASKS, "week-review"), (RECENT_WORK, "recent-work"), (FACTS_WORDS, "what-you-know")];
+        later.iter().find(|(p, _)| m(p)).map(|(_, id)| *id)
+    }
+
+    /// Representative phrasings and what answers them (an ability, or None: the mind), captured
+    /// from the fast lane as it was before instant answers moved into the SDK.
+    pub const TABLE: &[(&str, &str, Option<&str>)] = &[
+        ("where is my Downloads folder", "assistant", Some("show-folder")),
+        ("what's in my desktop", "assistant", Some("show-folder")),
+        ("show me my photos", "assistant", Some("show-folder")),
+        ("find my NZCC deck", "assistant", Some("find-files")),
+        ("Where did I save my resume?", "assistant", Some("find-files")),
+        ("where's my charger", "assistant", Some("find-files")),
+        ("find my resume", "tutor", Some("find-files")),
+        ("open my documents", "assistant", Some("open-folder")),
+        ("Open the downloads folder.", "assistant", Some("open-folder")),
+        ("What's my battery?", "assistant", Some("battery")),
+        ("What's my battery?", "tutor", None),
+        ("what wifi am I on", "assistant", Some("wifi")),
+        ("how much space do I have", "assistant", Some("disk-space")),
+        ("how's my computer?", "assistant", Some("computer-status")),
+        ("system status", "companion", Some("computer-status")),
+        ("how much memory am I using", "assistant", Some("computer-status")),
+        ("Brief me", "assistant", Some("brief")),
+        ("Good morning! What do you know about me?", "assistant", Some("brief")),
+        ("what's on today", "tutor", Some("brief")),
+        ("What reminders do I have?", "assistant", Some("list-reminders")),
+        ("what reminders do I have", "tutor", Some("list-reminders")),
+        ("what's on tomorrow?", "assistant", Some("upcoming")),
+        ("what's on tomorrow?", "tutor", None),
+        ("focus for 40 minutes", "assistant", Some("start-focus")),
+        ("let's do a pomodoro", "companion", Some("start-focus")),
+        ("focus for 500 minutes", "assistant", Some("start-focus")),
+        ("stop the focus session", "assistant", Some("stop-focus")),
+        ("tidy my memory", "assistant", Some("tidy-memory")),
+        ("snooze for 10 minutes", "assistant", Some("snooze")),
+        ("remind me again in 5 minutes", "assistant", Some("snooze")),
+        ("what routines do I have", "assistant", Some("list-routines")),
+        ("forget my Friday tidy routine", "assistant", Some("forget-routine")),
+        ("save that as my Friday tidy routine", "assistant", Some("save-routine")),
+        ("shorten what I copied", "assistant", Some("work-on-copied")),
+        ("translate what I copied", "tutor", Some("work-on-copied")),
+        ("how was my week?", "assistant", Some("week-review")),
+        ("what was I working on yesterday?", "assistant", Some("recent-work")),
+        ("show me my recent files", "assistant", Some("recent-work")),
+        ("what do you know about me", "companion", Some("what-you-know")),
+        ("show me your memory", "assistant", Some("what-you-know")),
+        ("find the area of a circle", "assistant", None),
+        ("why does my battery drain so fast?", "assistant", None),
+        ("remind me to call Maya at 5", "assistant", None),
+        ("help me focus on my essay about rivers", "assistant", None),
+        ("save that as a PDF", "assistant", None),
+        ("shorten this paragraph about rivers for me", "assistant", None),
+        ("how was my week at the gym compared to last month", "assistant", None),
+        ("what was I saying about the embolism?", "assistant", None),
+        ("forget my sister's birthday", "assistant", None),
+        ("run my Friday tidy", "assistant", None),
+        ("open Safari", "assistant", None),
+        ("tell me about the moon", "assistant", None),
+    ];
+
+    #[test]
+    fn the_table_of_phrasings_is_what_the_chain_answers() {
+        for (said, mode, id) in TABLE {
+            assert_eq!(current(said, mode), *id, "{said:?} in {mode}");
+        }
+    }
 
     #[test]
     fn tidy_memory_phrasings() {
@@ -214,7 +325,7 @@ mod tests {
     #[test]
     fn only_clear_phrasings_skip_the_brain() {
         static FIND: OnceLock<Regex> = OnceLock::new();
-        let find = re(&FIND, r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$");
+        let find = re(&FIND, FIND_WORDS);
         assert_eq!(&find.captures("Where did I save my NZCC deck?").unwrap()[1], "NZCC deck");
         assert!(find.captures("find the area of a circle").is_none(), "maths goes to the brain");
     }

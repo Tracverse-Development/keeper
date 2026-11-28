@@ -102,6 +102,22 @@ pub async fn expand(memory: &Memory, said: &str) -> Option<String> {
     memory.routines().await.ok()?.into_iter().find(|r| r.id == id_of(&name)).map(|r| r.request)
 }
 
+/// Which routine ability a phrasing asks for (the table test in `fastlane`).
+#[cfg(test)]
+pub(super) fn which(said: &str) -> Option<&'static str> {
+    static L: OnceLock<Regex> = OnceLock::new();
+    static F: OnceLock<Regex> = OnceLock::new();
+    static S: OnceLock<Regex> = OnceLock::new();
+    let s = said.trim();
+    if re(&L, LIST).is_match(s) {
+        return Some("list-routines");
+    }
+    if named(&F, FORGET, s).is_some() {
+        return Some("forget-routine");
+    }
+    named(&S, SAVE, s).map(|_| "save-routine")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
