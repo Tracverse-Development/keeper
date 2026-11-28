@@ -10,6 +10,9 @@ pub fn open_app(_: &str) -> Result<()> {
 pub async fn sqlite_quick_check(_: &std::path::Path) -> Option<(String, bool)> {
     None
 }
+pub async fn sqlite_recover(_: &std::path::Path, _: &std::path::Path) -> bool {
+    false
+}
 pub fn app_installed(_: &str) -> bool {
     false
 }

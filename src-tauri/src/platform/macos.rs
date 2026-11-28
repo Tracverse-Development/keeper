@@ -42,6 +42,25 @@ pub async fn sqlite_quick_check(db: &std::path::Path) -> Option<(String, bool)> 
     Some((format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr)), out.status.success()))
 }
 
+pub async fn sqlite_recover(damaged: &std::path::Path, into: &std::path::Path) -> bool {
+    use tokio::io::AsyncWriteExt;
+    let sqlite = std::path::Path::new("/usr/bin/sqlite3");
+    if !sqlite.exists() {
+        return false;
+    }
+    let Ok(dump) = tokio::process::Command::new(sqlite).arg(damaged).arg(".recover").output().await else { return false };
+    if dump.stdout.is_empty() {
+        return false;
+    }
+    let Ok(mut load) = tokio::process::Command::new(sqlite).arg(into).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn() else { return false };
+    let Some(mut stdin) = load.stdin.take() else { return false };
+    if stdin.write_all(&dump.stdout).await.is_err() {
+        return false;
+    }
+    drop(stdin);
+    load.wait().await.is_ok_and(|s| s.success()) && into.exists()
+}
+
 pub fn app_installed(name: &str) -> bool {
     let wanted = format!("{}.app", name.trim().to_lowercase());
     // A plain name only: never a path, so nothing outside the app folders is looked at.

@@ -43,6 +43,10 @@ pub async fn repair(node_home: &Path) -> bool {
         return false;
     }
     let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    // Salvage what can be read first (the node's chain cache with it: no wait for a rebuild).
+    let recovered = node_home.join(format!("{DASHBOARD_DB}.recovered-{at}"));
+    let _ = std::fs::remove_file(&recovered);
+    let healthy_copy = crate::platform::sqlite_recover(&db, &recovered).await && matches!(crate::platform::sqlite_quick_check(&recovered).await, Some((a, ok)) if !is_damaged(&a, ok));
     let mut moved = false;
     for suffix in ["", "-wal", "-shm"] {
         let file = node_home.join(format!("{DASHBOARD_DB}{suffix}"));
@@ -50,8 +54,12 @@ pub async fn repair(node_home: &Path) -> bool {
             moved = true;
         }
     }
-    if moved {
-        crate::kernel::log::error("node", &format!("The memory node's dashboard file was damaged ({}); set it aside so the node can start.", answer.lines().next().unwrap_or("").trim()));
+    let why = answer.lines().next().unwrap_or("").trim().to_string();
+    if moved && healthy_copy && std::fs::rename(&recovered, &db).is_ok() {
+        crate::kernel::log::error("node", &format!("The memory node's dashboard file was damaged ({why}); recovered it and kept the damaged one beside it."));
+    } else if moved {
+        let _ = std::fs::remove_file(&recovered);
+        crate::kernel::log::error("node", &format!("The memory node's dashboard file was damaged ({why}) and could not be recovered; set it aside so the node starts with a fresh one."));
     }
     moved
 }
@@ -74,14 +82,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_healthy_or_missing_dashboard_file_is_left_alone() {
+    async fn a_missing_file_is_left_alone_and_a_damaged_one_kept_beside_its_repair() {
         let dir = std::env::temp_dir().join(format!("keeper-repair-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         assert!(!super::repair(&dir).await, "no file: nothing to do");
         std::fs::write(dir.join(super::DASHBOARD_DB), b"this is not a database at all, it is damaged").unwrap();
         if crate::platform::sqlite_quick_check(&dir.join(super::DASHBOARD_DB)).await.is_some() {
-            assert!(super::repair(&dir).await, "a damaged file is set aside");
-            assert!(!dir.join(super::DASHBOARD_DB).exists());
+            assert!(super::repair(&dir).await, "a damaged file is repaired");
+            // In its place: nothing, or a recovered database that passes the check.
+            let db = dir.join(super::DASHBOARD_DB);
+            if db.exists() {
+                let (answer, ok) = crate::platform::sqlite_quick_check(&db).await.unwrap();
+                assert!(!super::is_damaged(&answer, ok), "{answer}");
+            }
             assert!(std::fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().starts_with("node-ui.db.damaged-")));
         }
         let _ = std::fs::remove_dir_all(&dir);

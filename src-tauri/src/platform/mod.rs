@@ -47,6 +47,13 @@ pub async fn sqlite_quick_check(db: &std::path::Path) -> Option<(String, bool)> 
     os::sqlite_quick_check(db).await
 }
 
+/// Rebuilds a damaged SQLite database into a new file with the system's sqlite3 (`.recover`,
+/// which salvages every row it can read): true when `into` was written. False where the system
+/// has no sqlite3 or the recovery failed. Reads `damaged`, writes only `into`.
+pub async fn sqlite_recover(damaged: &std::path::Path, into: &std::path::Path) -> bool {
+    os::sqlite_recover(damaged, into).await
+}
+
 pub fn open_url(url: &str) -> Result<()> {
     os::open_url(url)
 }
