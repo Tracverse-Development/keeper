@@ -1,24 +1,16 @@
 /**
  * One panel on its glass card: a kind label, the title, one line on what you can do with it
- * (`panel-help.ts`), a close button, the renderer, and a
+ * (the kind's kit in `panels/registry.tsx`), a close button, the renderer, and a
  * short "Asking about …" line after the person points at a piece. Closing plays the exit
  * animation first, then tells the Stage.
  */
 import { useEffect, useState } from 'react';
 
 import { Icon } from './icons.tsx';
-import type { Panel, PanelAction, PanelFocus, PanelKind } from './panel-spec.ts';
-import { PANEL_HELP } from './panel-help.ts';
+import type { Panel, PanelAction, PanelFocus } from './panel-spec.ts';
 import { PanelBody } from './panels/PanelBody.tsx';
+import { panelKit } from './panels/registry.tsx';
 import { stagger } from './stagger.ts';
-
-const KIND_LABELS: Record<PanelKind, string> = {
-  text: 'Notes', table: 'Table', steps: 'Step by step', formula: 'Formula',
-  cards: 'Ideas', quiz: 'Quick check', chart: 'Chart', files: 'Files',
-  diagram: 'Diagram', timeline: 'Timeline', folder: 'Folder', sliders: 'What if', flashcards: 'Practice',
-  agenda: 'Agenda', checklist: 'Checklist', form: 'Fill this in', approval: 'Plan to approve', facts: 'What I know',
-  sources: 'Sources', live: 'Live', media: 'Watch', web: 'Visit', file: 'File', draft: 'Draft to save',
-};
 
 /** How long the "Asking about …" line stays after a click. */
 const ASKED_MS = 2600;
@@ -47,6 +39,7 @@ export function PanelCard({ panel, index, wide, onFocus, onAction, onClose }: Pr
     onFocus({ panelId: panel.id, panelTitle: panel.title, what });
   };
 
+  const kit = panelKit(panel);
   const names = ['panel-card', 'glass', `is-${panel.kind}`];
   if (wide) names.push('is-wide');
   if (leaving) names.push('is-leaving');
@@ -57,9 +50,9 @@ export function PanelCard({ panel, index, wide, onFocus, onAction, onClose }: Pr
       <span className="panel-sheen" aria-hidden="true" />
       <header className="panel-head">
         <div>
-          <p className="eyebrow panel-kind">{KIND_LABELS[panel.kind]}</p>
+          <p className="eyebrow panel-kind">{kit.label}</p>
           <h2 className="panel-title">{panel.title}</h2>
-          <p className="panel-help muted small">{PANEL_HELP[panel.kind]}</p>
+          <p className="panel-help muted small">{kit.help}</p>
         </div>
         <button type="button" className="panel-close" aria-label={`Close ${panel.title}`} onClick={() => setLeaving(true)}>
           <Icon name="close" size={15} />

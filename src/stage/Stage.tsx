@@ -18,6 +18,7 @@ import { PanelCard } from './PanelCard.tsx';
 import { SceneNav, type ScenePins, type SceneTab } from './SceneNav.tsx';
 import { SceneStrip } from './SceneStrip.tsx';
 import type { Panel, PanelAction, PanelFocus } from './panel-spec.ts';
+import { isWide } from './panels/registry.tsx';
 import './stage.css';
 
 export interface StageProps {
@@ -40,19 +41,6 @@ export interface StageProps {
   mind?: string;
   /** The controls for the keeper at work (Pause / Resume, Change course, Stop). */
   control?: WorkControl;
-}
-
-/** Whether a panel takes the full width of the stage grid (the rest pair up two by two). */
-function isWide(panel: Panel): boolean {
-  switch (panel.kind) {
-    case 'cards': return panel.cards.length > 2;
-    case 'facts': return panel.facts.length > 4;
-    case 'sliders': return panel.variables.length > 2;
-    case 'table': case 'steps': case 'files': case 'text': case 'chart':
-    case 'diagram': case 'timeline': case 'folder': case 'flashcards': case 'approval': case 'draft':
-      return true;
-    default: return false;
-  }
 }
 
 export function Stage({ panels, activity, working, onFocus, onAction, onClose, keeperName, scenes, current, onScene, phase, mind, pins, control }: StageProps) {
