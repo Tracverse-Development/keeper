@@ -1,7 +1,7 @@
 //! Opening things for the person: an app by name, a website. Inputs are checked here so a name
 //! can never be a path or a flag and an address is only ever http(s).
 
-use super::super::{input, Ability, Access, Done, ALL};
+use super::super::{input, Ability, Access, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 
@@ -10,14 +10,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "open-app",
         how: "{\"name\": \"Notes\"} opens a Mac app by name",
         access: Access::Open,
-        platforms: ALL, modes: &["assistant"],
+        platforms: ALL, modes: &["assistant"], instant: Instant::No,
         run: |input, _| Box::pin(async move { open_app(input) }),
     },
     Ability {
         id: "open-website",
         how: "{\"url\": \"https://umojaark.com\"} opens a website in the browser",
         access: Access::Open,
-        platforms: ALL, modes: &["assistant"],
+        platforms: ALL, modes: &["assistant"], instant: Instant::No,
         run: |input, _| Box::pin(async move { open_website(input) }),
     },
 ];

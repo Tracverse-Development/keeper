@@ -5,8 +5,9 @@
 //! one that is stopped early records nothing. One session at a time; it does not survive
 //! quitting Keeper (nothing is held past that: reminders reload from the graph at launch).
 //!
-//! Started with words ("focus for 25 minutes", "start a focus session"; the command palette
-//! sends the same words); `focus_state` tells the window what to show.
+//! Started and stopped with words (the `start-focus` and `stop-focus` abilities in
+//! `sdk::packs::day`; the command palette sends the same words); `focus_state` tells the window
+//! what to show.
 
 use std::sync::Mutex;
 
@@ -36,18 +37,6 @@ static SESSION: Mutex<Option<Session>> = Mutex::new(None);
 
 fn current() -> Option<Session> {
     SESSION.lock().ok()?.clone()
-}
-
-/// The words that start a session ("focus for 40 minutes", "start a pomodoro") or end one.
-pub const STARTS: &str = r"(?i)^(?:please\s+)?(?:(?:let(?:'s| us)|i want to|help me)\s+)?(?:start|begin|do)?\s*(?:a |my )?(?:focus(?: session| time| timer)?|pomodoro)(?:\s+(?:for|of)\s+(\d{1,3})\s*(?:min(?:ute)?s?)?)?\s*[.!]?$|^(?:please\s+)?(?:let me |help me )?focus\s+for\s+(\d{1,3})\s*(?:min(?:ute)?s?)\s*[.!]?$";
-pub const STOPS: &str = r"(?i)^(?:please\s+)?(?:stop|end|cancel|finish)\s+(?:the |my |this )?(?:focus(?: session| time| timer)?|pomodoro)\s*[.!]?$";
-
-/// The minutes a start phrase asks for (absent: the default); None when out of range.
-pub fn minutes_asked(captures: &regex::Captures) -> Option<u32> {
-    match captures.get(1).or_else(|| captures.get(2)) {
-        Some(m) => m.as_str().parse().ok().filter(|n| (MIN_MINUTES..=MAX_MINUTES).contains(n)),
-        None => Some(DEFAULT_MINUTES),
-    }
 }
 
 /// Start a session for `keeper` (replacing none: a running one must be ended first).
@@ -120,50 +109,9 @@ pub fn focus_stop(app: AppHandle) -> Option<Session> {
     stop(&app)
 }
 
-/// The instant answer to "focus for 25 minutes" / "stop the focus session" (`fastlane`), or
-/// None when the words are about something else.
-pub fn answer(app: &AppHandle, keeper: &str, said: &str) -> Option<String> {
-    use std::sync::OnceLock;
-    static START: OnceLock<regex::Regex> = OnceLock::new();
-    static STOP: OnceLock<regex::Regex> = OnceLock::new();
-    let s = said.trim();
-    if STOP.get_or_init(|| regex::Regex::new(STOPS).expect("pattern")).is_match(s) {
-        return Some(match stop(app) {
-            Some(ended) => format!("Focus session ended early, with {} of {} minutes left. Your reminders are back on.", minutes_left(&ended, time::now()), ended.minutes),
-            None => "There's no focus session running.".into(),
-        });
-    }
-    let captures = START.get_or_init(|| regex::Regex::new(STARTS).expect("pattern")).captures(s)?;
-    let Some(minutes) = minutes_asked(&captures) else {
-        return Some(format!("A focus session is between {MIN_MINUTES} and {MAX_MINUTES} minutes."));
-    };
-    Some(match start(app, keeper, minutes) {
-        Ok(session) => format!("Focus session started: {} minutes. I'll hold your reminders until it ends.", session.minutes),
-        Err(e) => e.to_string(),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn asked(said: &str) -> Option<Option<u32>> {
-        regex::Regex::new(STARTS).unwrap().captures(said).map(|c| minutes_asked(&c))
-    }
-
-    #[test]
-    fn the_words_that_start_and_stop_a_session() {
-        assert_eq!(asked("start a focus session"), Some(Some(DEFAULT_MINUTES)));
-        assert_eq!(asked("Focus for 40 minutes"), Some(Some(40)));
-        assert_eq!(asked("let's do a pomodoro"), Some(Some(DEFAULT_MINUTES)));
-        assert_eq!(asked("start a focus session for 50 min"), Some(Some(50)));
-        assert_eq!(asked("focus for 500 minutes"), Some(None), "out of range is said, not started");
-        assert_eq!(asked("help me focus on my essay about rivers"), None, "a real question goes to the mind");
-        assert_eq!(asked("what is a pomodoro"), None);
-        let stops = regex::Regex::new(STOPS).unwrap();
-        assert!(stops.is_match("stop the focus session") && stops.is_match("End my pomodoro."));
-        assert!(!stops.is_match("stop"));
-    }
 
     #[test]
     fn minutes_left_round_up_and_never_go_below_zero() {

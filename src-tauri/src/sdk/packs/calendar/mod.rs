@@ -4,7 +4,11 @@
 
 pub mod heads_up;
 
-use super::super::{agenda, input, Ability, Access, Cx, Done, ALL};
+use std::sync::OnceLock;
+
+use regex::Regex;
+
+use super::super::{agenda, input, instant, Ability, Access, Cx, Done, Instant, ALL};
 use crate::kernel::{time, DeskError, Result};
 use crate::pim::{Access as PimAccess, Event};
 
@@ -12,9 +16,18 @@ pub const ABILITIES: &[Ability] = &[Ability {
     id: "upcoming",
     how: "{\"day\": \"tomorrow\"} shows what's on that day (\"today\" or \"tomorrow\"): calendar events and reminders together, in time order, as an agenda",
     access: Access::Personal,
-    platforms: ALL, modes: &["assistant", "companion"],
+    platforms: ALL, modes: &["assistant", "companion"], instant: Instant::Also(tomorrow_words),
     run: |input, cx| Box::pin(upcoming(input, cx)),
 }];
+
+/// "What's on tomorrow?", "what do I have tomorrow?" (whole phrasings; "what's on today" is the
+/// morning brief).
+const TOMORROW_ASKS: &str = r"(?i)^(?:please\s+)?(?:what(?:'s| is) on (?:for )?tomorrow|what do i have (?:on |going on )?tomorrow|what(?:'s| is) (?:my day|happening) tomorrow)\s*[?.!]?$";
+
+fn tomorrow_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::pattern(&R, TOMORROW_ASKS).is_match(said.trim()).then(|| serde_json::json!({ "day": "tomorrow" }))
+}
 
 /// The calendar's events between two instants, read only with the person's permission, and the
 /// words to say when it could not be read (None when there is nothing to say). `ask`: the person
@@ -76,6 +89,13 @@ async fn upcoming(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
 #[cfg(test)]
 mod tests {
     use super::agenda::Day;
+
+    #[test]
+    fn tomorrow_phrasings_ask_for_tomorrow() {
+        assert_eq!(super::tomorrow_words("What's on tomorrow?").unwrap()["day"], "tomorrow");
+        assert_eq!(super::tomorrow_words("what do I have tomorrow").unwrap()["day"], "tomorrow");
+        assert_eq!(super::tomorrow_words("what's on tomorrow's news"), None);
+    }
 
     #[test]
     fn a_days_agenda_in_one_sentence() {

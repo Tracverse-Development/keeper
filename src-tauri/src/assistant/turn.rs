@@ -137,7 +137,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         }
     };
     let thinking = Instant::now();
-    let answer = source::find(app, state, memory, keeper, &ctx, &chat, approved.is_some(), &progress).await;
+    let answer = source::find(app, state, memory, keeper, &ctx, &chat, approved.is_some(), at_the_mac, &progress).await;
     let (thought, mind) = (answer.thought, answer.mind);
     // The mode that answered (the chat's, or the one the turn switched to).
     let switched = answer.switched.is_some();

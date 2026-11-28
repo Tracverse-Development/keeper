@@ -125,8 +125,8 @@ mod live_tests {
         println!("{list:?}");
         assert_eq!(list.len(), 2, "the same name is one routine");
         assert_eq!(list.iter().find(|r| r.id == "friday-tidy").unwrap().request, "Tidy my Downloads and Desktop", "the later save replaced the first");
-        assert_eq!(crate::fastlane::routines::expand(&memory, "run my Friday tidy").await.as_deref(), Some("Tidy my Downloads and Desktop"));
-        assert_eq!(crate::fastlane::routines::expand(&memory, "run my tests").await, None, "no such routine: left as said");
+        assert_eq!(crate::sdk::packs::routines::expand(&memory, "run my Friday tidy").await.as_deref(), Some("Tidy my Downloads and Desktop"));
+        assert_eq!(crate::sdk::packs::routines::expand(&memory, "run my tests").await, None, "no such routine: left as said");
         memory.forget_routine("friday-tidy").await.unwrap();
         assert_eq!(memory.routines().await.unwrap().len(), 1);
     }

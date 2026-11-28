@@ -7,7 +7,6 @@ mod backup;
 mod brain;
 mod commands;
 mod dkg;
-mod fastlane;
 mod feelings;
 mod focus;
 mod health;

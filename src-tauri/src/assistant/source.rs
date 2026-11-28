@@ -1,5 +1,6 @@
 //! Where a turn's answer comes from: a Chain of Responsibility, cheapest first.
-//! 1. `fastlane`  an instant answer with no AI (find my file, open a folder, the brief, my facts)
+//! 1. instant    an ability the person's words ask for, run with no AI (`sdk::instant`: find my
+//!               file, open a folder, the brief, my facts, my battery)
 //! 2. the scene cache  this exact question was answered (or prepared in the background) before
 //! 3. `approval`  the keeper would act on the computer: show the plan, wait for Approve
 //! 4. the engine  the keeper's brain; panel follow-ups use the quick helper model when set
@@ -8,6 +9,7 @@ use serde_json::json;
 use tauri::Emitter;
 
 use crate::brain::{self, Context, MindUsed, Progress, Thought};
+use crate::sdk::{ActionRequest, Cx};
 use crate::kernel::events;
 use crate::kernel::settings::KeeperProfile;
 use crate::memory::Memory;
@@ -35,10 +37,12 @@ fn mind(id: &str, label: &str) -> MindUsed {
 /// turn moves there once (its brief, skills and tools) and that mode answers. The person hears
 /// "Switching to … mode for this." first (founder 2026-11-26: modes are locked to their scope).
 /// A quick question is only borrowed: answered by that mode quietly, the chat stays (`handoff`).
-pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
+/// `at_the_mac`: asked at this Mac, not over the phone link (an instant ability's `Cx`).
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, at_the_mac: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     // The first answer's own "Switching to …" words are held: whether to say them is decided below.
     let hold = handoff::HoldSwitchLine::new(progress);
-    let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, &|p| hold.feed(p)).await;
+    let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, at_the_mac, &|p| hold.feed(p)).await;
     let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m) && super::child_mode(m, crate::kernel::child_lock::on()) == *m) else {
         hold.release();
         return answer;
@@ -57,7 +61,7 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
     let base = super::turn::base_context(state, &moved, &ctx.said);
     let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), attached: ctx.attached.clone(), may_act: base.may_act && ctx.attached.is_none(), ..base };
-    let mut next = answer_in(app, state, memory, &moved, &ctx, chat, approved, progress).await;
+    let mut next = answer_in(app, state, memory, &moved, &ctx, chat, approved, at_the_mac, progress).await;
     next.thought.switch_mode = None;
     if quiet {
         if !handoff::is_real_work(&next.thought) {
@@ -72,7 +76,8 @@ pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memo
     next
 }
 
-async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
+#[allow(clippy::too_many_arguments)]
+async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, at_the_mac: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
     // A message that came with material (a dropped file) is about that material: the mind reads
     // it. No instant answer, no cached scene (the same words about another file differ).
     // Testing only (KEEPER_TEST_LINK): "/run <ability> <input>" runs that ability with no mind.
@@ -82,7 +87,7 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
     }
     let fresh = ctx.attached.is_some();
     if !fresh {
-        if let Some(thought) = crate::fastlane::answer(app, memory, keeper, &ctx.said).await {
+        if let Some(thought) = instant(app, state, memory, keeper, &ctx.said, at_the_mac).await {
             return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false, switched: None };
         }
     }
@@ -149,6 +154,21 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
         mind.label = format!("{} (quick)", mind.label);
     }
     Answer { thought, mind, cached: false, switched: None }
+}
+
+/// Step 1: the ability the person's words ask for, with no mind (`sdk::instant`), or None.
+/// An `Instant::Also` ability is handed to the turn like a request from the mind (the mode's
+/// rules apply and it is recorded as a `desk:Action`); an `Instant::Only` one is run here, and
+/// its sentence and panels are the answer.
+async fn instant(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, said: &str, at_the_mac: bool) -> Option<Thought> {
+    let (ability, input) = crate::sdk::instant::asked(said, &crate::keepers::kit::roles::get(&keeper.role))?;
+    let request = ActionRequest { skill: ability.id.into(), input };
+    if !ability.instant.only() {
+        return Some(Thought { actions: vec![request], ..Thought::default() });
+    }
+    let cx = Cx { app, memory, reminders: &state.reminders, keeper: &keeper.id, at_the_mac };
+    let outcome = crate::sdk::run(&request, &cx).await;
+    Some(Thought { reply: outcome.summary, core_panels: outcome.panels, ..Thought::default() })
 }
 
 /// Why a turn stayed on this computer (shown under the answer).
