@@ -7,6 +7,8 @@ export type VoiceEvent =
   | { type: 'listening'; on: boolean; mode?: string }
   | { type: 'woken'; keeper?: string }
   | { type: 'following'; keeper?: string; seconds: number }
+  /** Always listening heard a sentence without the keeper's name (shown a moment, never kept). */
+  | { type: 'overheard'; text: string }
   | { type: 'speech-start' }
   | { type: 'word'; length: number }
   | { type: 'mouth'; value: number }

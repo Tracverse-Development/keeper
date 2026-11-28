@@ -464,3 +464,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Root cause:** the voice helper refused to listen whenever Speech Recognition was not already granted, without ever asking; each new ad-hoc-signed build is a new app to macOS, so the grant is lost on update (DESK-SIGN-001). The window showed only a sentence, and the Hands-free switch did not ask either.
 - **Fix:** the helper asks macOS when the permission was never asked (Speech Recognition, then the microphone) and starts once granted; a refusal says which page to open and carries `needs`. The dock shows "Open Speech Recognition settings" / "Open Microphone settings" (new `settings_pane_open`, known panes only). Turning Hands-free on asks for the permissions at once.
 - **Guard:** `open.rs` test `the_permission_pages_a_keeper_needs_have_addresses`; the helper's paths are manual (a microphone and macOS prompts are needed).
+
+### FIX-0061 — Hands-free said "Listening for Trini Boi" but never answered: the name was matched only as spelled (2026-11-28)
+- **Area:** `src-tauri/src/voice/wake.rs` (`find_name`, `sounds_like`), `src-tauri/src/voice/mod.rs` (`overheard`), `src/voice/attention.ts`, `src/voice/useVoice.ts`
+- **Symptom (founder):** "i keep saying trini boy, it says it's listening but no response".
+- **Root cause:** the wake word matched the keeper's name as a substring of what the recogniser wrote. The keeper is named "Trini Boi"; Apple's recogniser writes ordinary words ("Trini boy", "Trinny boy"), so no sentence ever matched, and an ignored sentence was silent, so it looked broken.
+- **Fix:** names are matched by sound over the heard words (oy/oi, y/i, doubled letters, ee/ea, ph/f, one sound off in a longer name; one or several words: "triniboy" or "trini boy"). A sentence without the name now shows for 5 s "I heard “…”. Say “Trini Boi” first, then what you need." (never kept).
+- **Guard:** wake test `a_name_is_heard_as_a_recogniser_writes_it` (four spellings; "tiny toy", "Trinidad", "the boy" ignored); attention test for the overheard line.

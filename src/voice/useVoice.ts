@@ -46,6 +46,9 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
         case 'woken':
           setState((s) => ({ ...s, attention: attentionFrom('woken', Date.now()) }));
           break;
+        case 'overheard':
+          setState((s) => (s.attention?.kind === 'woken' ? s : { ...s, attention: attentionFrom('overheard', Date.now(), undefined, e.text) }));
+          break;
         case 'following':
           setState((s) => ({ ...s, attention: attentionFrom('following', Date.now(), e.seconds) }));
           break;

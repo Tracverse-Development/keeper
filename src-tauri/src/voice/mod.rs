@@ -264,7 +264,15 @@ fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
                     let _ = app.emit(events::VOICE_EVENT, json!({ "type": "woken", "keeper": ids.get(i) }));
                     None
                 }
-                wake::Heard::Ignore => None,
+                wake::Heard::Ignore => {
+                    // Shown for a moment, never kept: so the person sees it heard them, and that it
+                    // waits for its name (it is otherwise silent, which reads as broken).
+                    let heard: String = text.trim().chars().take(80).collect();
+                    if heard.chars().filter(|c| c.is_alphanumeric()).count() > 2 {
+                        let _ = app.emit(events::VOICE_EVENT, json!({ "type": "overheard", "text": heard }));
+                    }
+                    None
+                }
             }
         }
         Mode::Off => None,
