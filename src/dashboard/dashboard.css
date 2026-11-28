@@ -291,3 +291,6 @@
 .dashboard.has-stage .dock-field { min-width: 0; }
 .dashboard.has-stage .send { padding-inline: var(--space-4); }
 .dashboard.has-stage .caption-line { font-size: var(--text-md); }
+.hands-free { cursor: pointer; color: var(--text); }
+.hands-free.is-on { border-color: rgba(120, 220, 160, 0.45); }
+.hands-free .dot { width: 7px; height: 7px; }
