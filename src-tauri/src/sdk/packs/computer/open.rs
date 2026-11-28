@@ -40,6 +40,8 @@ const PANES: &[(&[&str], &str)] = &[
     (&["notifications"], "com.apple.Notifications-Settings.extension"),
     (&["focus", "do not disturb"], "com.apple.Focus-Settings.extension"),
     (&["privacy", "security", "privacy and security", "permissions"], "com.apple.settings.PrivacySecurity.extension"),
+    (&["speech recognition", "speech"], "com.apple.preference.security?Privacy_SpeechRecognition"),
+    (&["microphone", "mic"], "com.apple.preference.security?Privacy_Microphone"),
     (&["keyboard"], "com.apple.Keyboard-Settings.extension"),
     (&["trackpad"], "com.apple.Trackpad-Settings.extension"),
     (&["mouse"], "com.apple.Mouse-Settings.extension"),
@@ -60,7 +62,7 @@ const PANES: &[(&[&str], &str)] = &[
 ];
 
 /// The Settings address for a pane the person named ("Wi-Fi", "privacy & security"), or None.
-pub(super) fn pane_address(said: &str) -> Option<String> {
+pub fn pane_address(said: &str) -> Option<String> {
     let key = said.trim().to_lowercase().replace('&', "and").replace(" settings", "").replace(" pane", "");
     let key = key.trim();
     PANES.iter().find(|(names, _)| names.contains(&key)).map(|(_, id)| format!("x-apple.systempreferences:{id}"))
@@ -119,5 +121,11 @@ mod tests {
         for outside in ["/etc", "~/../../etc", "../..", "~/not-a-real-folder-4821"] {
             assert!(show_in_finder(&serde_json::json!({ "path": outside })).is_err(), "{outside}");
         }
+    }
+
+    #[test]
+    fn the_permission_pages_a_keeper_needs_have_addresses() {
+        assert_eq!(super::pane_address("speech recognition").as_deref(), Some("x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition"));
+        assert_eq!(super::pane_address("Microphone").as_deref(), Some("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"));
     }
 }

@@ -201,6 +201,8 @@ export const core = {
   /** Erase one fact from a keeper's graph (the active keeper when none is named). */
   forgetFact: (id: string, keeper?: string) => invoke<void>('memory_forget_fact', { id, keeper }),
   voiceAuthorize: () => invoke<void>('voice_authorize'),
+  /** Opens one page of System Settings by name ("speech recognition", "microphone"). */
+  settingsPaneOpen: (name: string) => invoke<void>('settings_pane_open', { name }),
   listenOnce: () => invoke<void>('voice_listen_once'),
   stopListening: () => invoke<void>('voice_stop'),
   /** `queue`: say it after what is being said (a reply's rest after its first sentence). */

@@ -315,6 +315,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         speaking={voice.speaking}
         partial={voice.partial}
         voiceError={voice.error}
+        voiceNeeds={voice.needs}
         attention={voice.attention}
         assistantName={name}
         transcriptOpen={railOpen}
@@ -332,7 +333,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
             style={keeper.style ?? 'balanced'}
             onMode={switchMode}
             onStyle={(style) => void changeKeeper({ style })}
-            handsFree={{ on: settings.alwaysListening, name, onToggle: () => void core.saveSettings({ alwaysListening: !settings.alwaysListening }).then(setSettings).catch((e) => assistant.announce(sentence(e), name)) }}
+            handsFree={{ on: settings.alwaysListening, name, onToggle: () => { if (!settings.alwaysListening) void core.voiceAuthorize().catch(() => undefined); void core.saveSettings({ alwaysListening: !settings.alwaysListening }).then(setSettings).catch((e) => assistant.announce(sentence(e), name)); } }}
           />
         )}
         onMic={voice.listen}

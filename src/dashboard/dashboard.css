@@ -305,3 +305,4 @@
 .captions { transition: opacity 900ms var(--ease); }
 .captions.is-resting { opacity: 0.28; }
 .captions.is-resting:hover, .captions.is-resting:focus-within { opacity: 1; transition-duration: 200ms; }
+.voice-fix { margin-left: var(--space-2); vertical-align: middle; }

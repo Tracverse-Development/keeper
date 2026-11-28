@@ -16,12 +16,14 @@ export interface VoiceState {
   speaking: boolean;
   mouth: number;
   error: string | null;
+  /** The permission macOS refused, when that is the error (the dock offers its Settings page). */
+  needs: 'speech' | 'microphone' | null;
   /** Woken by its name, or still in conversation after answering (always-listening mode). */
   attention: Attention | null;
 }
 
 export function useVoice(onCommand: (text: string, keeper: string) => void) {
-  const [state, setState] = useState<VoiceState>({ level: 0, partial: '', listening: false, speaking: false, mouth: 0, error: null, attention: null });
+  const [state, setState] = useState<VoiceState>({ level: 0, partial: '', listening: false, speaking: false, mouth: 0, error: null, needs: null, attention: null });
   const mouthTarget = useRef(0);
   const commandRef = useRef(onCommand);
   commandRef.current = onCommand;
@@ -62,7 +64,7 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
           setState((s) => ({ ...s, speaking: false, mouth: 0 }));
           break;
         case 'error':
-          setState((s) => ({ ...s, error: e.message, listening: false }));
+          setState((s) => ({ ...s, error: e.message, needs: e.needs ?? null, listening: false }));
           break;
         case 'stopped':
           setState((s) => ({ ...s, listening: false, speaking: false }));
@@ -103,7 +105,7 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
   return {
     ...state,
     listen: () => {
-      setState((s) => ({ ...s, error: null }));
+      setState((s) => ({ ...s, error: null, needs: null }));
       core.hush().catch(() => undefined);
       core.listenOnce().catch(fail);
     },

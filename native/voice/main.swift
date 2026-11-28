@@ -12,7 +12,7 @@
 //   stdout {"type":"ready","onDevice":true} {"type":"level","value":0.4} {"type":"partial","text":"…"}
 //          {"type":"final","text":"…"} {"type":"listening","on":true} {"type":"speech-start"}
 //          {"type":"word","length":5} {"type":"mouth","value":0.6} {"type":"speech-end"} {"type":"authorized","speech":"…","mic":true}
-//          {"type":"voices","voices":[…]} {"type":"error","message":"…"}
+//          {"type":"voices","voices":[…]} {"type":"error","message":"…","needs":"speech"|"microphone"?}
 // PIM (calendar and contacts, request/response by "id"): see pim.swift.
 // Documents (the text of a PDF, the words in a picture, by "id"): see documents.swift.
 
@@ -43,14 +43,47 @@ final class Listener {
 
     var onDevice: Bool { recognizer?.supportsOnDeviceRecognition ?? false }
 
+    /// macOS said no to `what` ("speech" or "microphone"): the window shows the sentence and a
+    /// button that opens that exact Settings page (`needs`).
+    private func refuse(_ what: String) {
+        let words = what == "speech"
+            ? "Keeper isn't allowed to recognise speech. Turn on Keeper in Settings, Privacy & Security, Speech Recognition."
+            : "Keeper isn't allowed to use the microphone. Turn on Keeper in Settings, Privacy & Security, Microphone."
+        emit(["type": "error", "message": words, "needs": what])
+    }
+
     func start(mode: String) {
         stop(emitState: false)
         guard let recognizer, recognizer.isAvailable else {
             emit(["type": "error", "message": "Speech recognition is not available on this Mac right now."])
             return
         }
-        guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
-            emit(["type": "error", "message": "Speech recognition is not allowed yet. Allow Keeper in System Settings, Privacy & Security, Speech Recognition."])
+        // Never asked yet (a new install, or a new build macOS treats as a new app): ask now and
+        // start once it is allowed, instead of refusing with a sentence the person must act on.
+        switch SFSpeechRecognizer.authorizationStatus() {
+        case .authorized: break
+        case .notDetermined:
+            SFSpeechRecognizer.requestAuthorization { status in
+                DispatchQueue.main.async {
+                    if status == .authorized { self.start(mode: mode) } else { self.refuse("speech") }
+                }
+            }
+            return
+        default:
+            refuse("speech")
+            return
+        }
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized: break
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                DispatchQueue.main.async {
+                    if granted { self.start(mode: mode) } else { self.refuse("microphone") }
+                }
+            }
+            return
+        default:
+            refuse("microphone")
             return
         }
         self.mode = mode

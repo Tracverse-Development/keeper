@@ -235,6 +235,14 @@ pub async fn memory_forget_fact(state: State<'_, AppState>, id: String, keeper: 
     Ok(())
 }
 
+/// Opens one page of System Settings by name ("speech recognition", "microphone"): the window's
+/// buttons beside a permission macOS refused. Only the known pages (`sdk::packs::computer::open`).
+#[tauri::command]
+pub fn settings_pane_open(name: String) -> Result<()> {
+    let address = crate::sdk::packs::computer::open::pane_address(&name).ok_or_else(|| DeskError::Invalid("I don't know that page of Settings.".into()))?;
+    crate::platform::open_url(&address)
+}
+
 #[tauri::command]
 pub async fn voice_authorize(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     state.voice.authorize(&app).await

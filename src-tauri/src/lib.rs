@@ -208,6 +208,7 @@ pub fn run() {
             commands::memory_overview,
             commands::memory_forget_fact,
             commands::voice_authorize,
+            commands::settings_pane_open,
             commands::voice_listen_once,
             commands::voice_stop,
             commands::voice_speak,

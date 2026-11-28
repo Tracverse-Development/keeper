@@ -14,4 +14,5 @@ export type VoiceEvent =
   | { type: 'authorized'; speech: string; mic: boolean; onDevice: boolean }
   | { type: 'voices'; voices: { name: string; language: string; quality: number }[] }
   | { type: 'stopped' }
-  | { type: 'error'; message: string };
+  /** `needs`: the permission macOS refused, so the window can open that page of Settings. */
+  | { type: 'error'; message: string; needs?: 'speech' | 'microphone' };

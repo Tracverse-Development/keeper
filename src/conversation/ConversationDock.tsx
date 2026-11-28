@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
+import { core } from '../kernel/ipc';
 import { attentionWords, type Attention } from '../voice/attention.ts';
 import { Captions } from './Captions';
 import type { Exchange } from './useAssistant';
@@ -20,6 +21,8 @@ interface Props {
   speaking: boolean;
   partial: string;
   voiceError: string | null;
+  /** The permission macOS refused (the error line offers its Settings page). */
+  voiceNeeds?: 'speech' | 'microphone' | null;
   /** Woken by its name, or still in conversation after answering (shown as "Yes? Kofi is listening."). */
   attention?: Attention | null;
   assistantName: string;
@@ -83,7 +86,16 @@ export function ConversationDock(p: Props) {
     <div className="dock">
       {!p.transcriptOpen && <Captions exchange={p.exchanges.at(-1)} assistantName={p.assistantName} onReadAll={() => p.onTranscript(true)} narrow={p.narrow} />}
       <div className="dock-status" aria-live="polite">
-        {refusal ? <span className="error-line">{refusal}</span> : p.partial ? <span className="hearing">{p.partial}</span> : attention ? <span className="attentive">{attention}</span> : p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
+        {refusal ? <span className="error-line">{refusal}</span> : p.partial ? <span className="hearing">{p.partial}</span> : attention ? <span className="attentive">{attention}</span> : p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? (
+          <span className="error-line">
+            {p.voiceError}
+            {p.voiceNeeds && (
+              <button type="button" className="btn btn-small voice-fix" onClick={() => void core.settingsPaneOpen(p.voiceNeeds === 'speech' ? 'speech recognition' : 'microphone')}>
+                Open {p.voiceNeeds === 'speech' ? 'Speech Recognition' : 'Microphone'} settings
+              </button>
+            )}
+          </span>
+        ) : null}
       </div>
       {p.tray}
       {p.modeBar}
