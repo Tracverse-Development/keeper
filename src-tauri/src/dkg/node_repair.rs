@@ -6,18 +6,14 @@
 //!
 //! `node-ui.db` holds the node dashboard's own state, never the person's memories (those are in
 //! the triple store). So before Keeper starts its node again, `repair` checks that file with the
-//! system's `sqlite3` (`PRAGMA quick_check`) and, when it is damaged, moves it and its journal files
+//! system's `sqlite3` (`platform::sqlite_quick_check`) and, when it is damaged, moves it and its journal files
 //! aside (renamed `…damaged-<time>`, kept, never deleted); the node makes a fresh one. Other
 //! databases are only checked by the person's choice (they hold data).
 
 use std::path::{Path, PathBuf};
 
-use tokio::process::Command;
-
 /// The node's dashboard database: safe to set aside, the node rebuilds it.
 pub const DASHBOARD_DB: &str = "node-ui.db";
-/// The system `sqlite3` (macOS ships it; elsewhere it may be missing, and nothing is checked).
-const SQLITE: &str = "/usr/bin/sqlite3";
 
 /// True when `quick_check`'s answer says the database is damaged: anything but a lone "ok"
 /// (a failed check that printed nothing counts as damaged only when sqlite3 said so).
@@ -37,12 +33,11 @@ pub fn set_aside_name(file: &Path, at_unix: u64) -> PathBuf {
 /// it repaired something (the caller then starts the node). Missing file or no `sqlite3`: false.
 pub async fn repair(node_home: &Path) -> bool {
     let db = node_home.join(DASHBOARD_DB);
-    if !db.exists() || !Path::new(SQLITE).exists() {
+    if !db.exists() {
         return false;
     }
-    let Ok(out) = Command::new(SQLITE).arg(&db).arg("PRAGMA quick_check;").output().await else { return false };
-    let answer = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
-    if !is_damaged(&answer, out.status.success()) {
+    let Some((answer, succeeded)) = crate::platform::sqlite_quick_check(&db).await else { return false };
+    if !is_damaged(&answer, succeeded) {
         return false;
     }
     let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
@@ -82,7 +77,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         assert!(!super::repair(&dir).await, "no file: nothing to do");
         std::fs::write(dir.join(super::DASHBOARD_DB), b"this is not a database at all, it is damaged").unwrap();
-        if std::path::Path::new(super::SQLITE).exists() {
+        if crate::platform::sqlite_quick_check(&dir.join(super::DASHBOARD_DB)).await.is_some() {
             assert!(super::repair(&dir).await, "a damaged file is set aside");
             assert!(!dir.join(super::DASHBOARD_DB).exists());
             assert!(std::fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().starts_with("node-ui.db.damaged-")));

@@ -40,6 +40,13 @@ pub fn app_installed(name: &str) -> bool {
     os::app_installed(name)
 }
 
+/// A SQLite database's own health check (`PRAGMA quick_check`) with the system's sqlite3: its
+/// answer (stdout and stderr) and whether sqlite3 succeeded. None where the system has no sqlite3
+/// (nothing is checked then). Only reads the file.
+pub async fn sqlite_quick_check(db: &std::path::Path) -> Option<(String, bool)> {
+    os::sqlite_quick_check(db).await
+}
+
 pub fn open_url(url: &str) -> Result<()> {
     os::open_url(url)
 }

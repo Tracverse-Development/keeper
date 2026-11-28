@@ -33,6 +33,15 @@ fn app_folders() -> Vec<std::path::PathBuf> {
     folders
 }
 
+pub async fn sqlite_quick_check(db: &std::path::Path) -> Option<(String, bool)> {
+    let sqlite = std::path::Path::new("/usr/bin/sqlite3");
+    if !sqlite.exists() {
+        return None;
+    }
+    let out = tokio::process::Command::new(sqlite).arg(db).arg("PRAGMA quick_check;").output().await.ok()?;
+    Some((format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr)), out.status.success()))
+}
+
 pub fn app_installed(name: &str) -> bool {
     let wanted = format!("{}.app", name.trim().to_lowercase());
     // A plain name only: never a path, so nothing outside the app folders is looked at.
