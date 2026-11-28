@@ -8,6 +8,17 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.19.3] - 2026-11-28
+
+The Forge works for everyone, and the Studio is tidier.
+
+### Fixed
+- **Forge from words works without Claude.** With no AI connected (or Claude not signed in),
+  "a cosy green scarf with cream stripes" failed; Keeper now reads plain descriptions itself:
+  the item you name, its colours, fast or slow (FIX-0059).
+- Soul cards stack as one tidy list; the Feelings line reads as a sentence.
+- Your keeper stays awake while you go through the Studio's tabs.
+
 ## [0.19.2] - 2026-11-28
 
 Your keeper's memory recovers by itself.
