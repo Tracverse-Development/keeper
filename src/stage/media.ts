@@ -54,8 +54,13 @@ export function byline(item: MediaItem): string {
   return [item.channel, item.length].filter((s): s is string => Boolean(s && s.trim())).join(' · ');
 }
 
-/** The embed address to load once the person pressed Play (it starts at once: they asked). */
-export function playingEmbed(url: string): string | null {
+/**
+ * The player page to load once the person pressed Play: Keeper's own loopback page
+ * (`player` = `http://127.0.0.1:<port>`, from the core's `stage::player`), which embeds YouTube's
+ * privacy-enhanced player. YouTube refuses to play inside the app's own address (Error 153).
+ */
+export function playingEmbed(url: string, player: string): string | null {
   const embed = youtubeEmbed(url);
-  return embed && `${embed}?autoplay=1&rel=0`;
+  const id = embed?.split('/embed/')[1];
+  return id && /^http:\/\/127\.0\.0\.1:\d+$/.test(player) ? `${player}/youtube/${id}` : null;
 }

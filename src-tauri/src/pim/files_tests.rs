@@ -79,3 +79,13 @@ async fn live_pim_recent_day_is_fast() {
     println!("recent(1, 8) in {took:?}: {:?}", found.iter().map(|f| &f.name).collect::<Vec<_>>());
     assert!(took < Duration::from_millis(1000), "the brief's file list is quick");
 }
+
+// FIX-0051: with Spotlight off (the test VM) "find my notes" found nothing; the fallback walk
+// keeps files whose name holds every word asked for.
+#[test]
+fn a_name_holds_every_word_asked_for() {
+    assert!(name_matches(Path::new("/x/notes.txt"), "notes"));
+    assert!(name_matches(Path::new("/x/Kitchen-notes 2025.md"), "kitchen notes"));
+    assert!(!name_matches(Path::new("/x/recipes.txt"), "notes"));
+    assert!(!name_matches(Path::new("/x/notes.txt"), "  "));
+}

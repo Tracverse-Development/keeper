@@ -53,7 +53,7 @@ const UNITS: &[Unit] = &[
     unit("tsp", &["tsp", "teaspoon", "teaspoons"], Kind::Volume, 0.004_928_921_593_75),
     unit("tbsp", &["tbsp", "tablespoon", "tablespoons"], Kind::Volume, 0.014_786_764_781_25),
     unit("fl oz", &["fl oz", "floz", "fluid ounce", "fluid ounces"], Kind::Volume, 0.029_573_529_562_5),
-    unit("cup", &["cup", "cups"], Kind::Volume, 0.236_588_236_5),
+    unit("cups", &["cup", "cups"], Kind::Volume, 0.236_588_236_5),
     unit("pt", &["pt", "pint", "pints"], Kind::Volume, 0.473_176_473),
     unit("qt", &["qt", "quart", "quarts"], Kind::Volume, 0.946_352_946),
     unit("gal", &["gal", "gallon", "gallons"], Kind::Volume, 3.785_411_784),

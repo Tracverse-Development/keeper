@@ -8,9 +8,9 @@
  * Under the player: the title, who made it and how long it runs, and the other choices (two
  * alternatives to a found video, or the person's other movies) as buttons that swap it.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { localMediaSrc } from '../../kernel/ipc';
+import { core, localMediaSrc } from '../../kernel/ipc';
 import { urlHost } from '../activity.ts';
 import { byline, mediaItems, mediaKind, playingEmbed, type MediaItem } from '../media.ts';
 import type { PanelProps } from './panel-props.ts';
@@ -22,6 +22,22 @@ function source(item: MediaItem): string {
   return `From ${urlHost(item.url)}`;
 }
 
+/** The loopback player's address, asked of the core once and kept. */
+let playerBase: Promise<string> | null = null;
+const loopbackPlayer = () => (playerBase ??= core.mediaPlayerBase());
+
+function YouTubePlayer({ item }: { item: MediaItem }) {
+  const [base, setBase] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    loopbackPlayer().then(setBase, () => setFailed(true));
+  }, []);
+  const src = base ? playingEmbed(item.url, base) : null;
+  if (failed) return <p className="media-failed">I couldn't start the video player.</p>;
+  if (!src) return <div className="media-frame" aria-busy="true" />;
+  return <iframe className="media-frame" src={src} title={item.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen sandbox="allow-scripts allow-same-origin allow-presentation" />;
+}
+
 function Player({ item }: { item: MediaItem }) {
   const [failed, setFailed] = useState(false);
   const kind = mediaKind(item);
@@ -31,9 +47,7 @@ function Player({ item }: { item: MediaItem }) {
     return <p className="media-failed">I couldn't play this. {why}</p>;
   }
   const fail = () => setFailed(true);
-  if (kind === 'youtube') {
-    return <iframe className="media-frame" src={playingEmbed(item.url) ?? undefined} title={item.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation" />;
-  }
+  if (kind === 'youtube') return <YouTubePlayer item={item} />;
   if (kind === 'video') return <video className="media-frame" src={src} controls autoPlay preload="metadata" onError={fail} />;
   if (kind === 'audio') return <div className="media-audio"><span className="media-audio-note" aria-hidden="true">♪</span><audio src={src} controls autoPlay preload="metadata" onError={fail} /></div>;
   return <img className="media-img" src={src} alt={item.title} loading="lazy" referrerPolicy="no-referrer" onError={fail} />;

@@ -8,6 +8,7 @@
 mod cap;
 mod echo;
 pub mod local_media;
+pub mod player;
 pub mod open;
 pub mod panel;
 pub mod stream;

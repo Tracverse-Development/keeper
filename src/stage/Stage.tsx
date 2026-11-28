@@ -79,7 +79,7 @@ export function Stage({ panels, activity, working, onFocus, onAction, onClose, k
         {showActivity && <ActivityPanel activity={activity} working={working} keeperName={keeperName} phase={phase} mind={mind} control={control} />}
         <div className="stage-grid">
           {visible.map((panel, i) => (
-            <PanelCard key={panel.id} panel={panel} index={i} wide={isWide(panel)} onFocus={onFocus} onAction={onAction} onClose={closePanel} />
+            <PanelCard key={panel.id} panel={panel} index={i} wide={visible.length === 1 || isWide(panel)} onFocus={onFocus} onAction={onAction} onClose={closePanel} />
           ))}
         </div>
       </div>

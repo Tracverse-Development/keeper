@@ -345,3 +345,61 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** at launch the main window shrinks to the screen's room (minus the menu bar and Dock), never below 900 x 620, and is centred.
 - **Guard:** `window_fit.rs` test `a_small_screen_gets_a_window_that_fits_and_a_big_one_keeps_the_design`.
 - **Evidence:** check.sh in the commit; seen again in the VM after the next build.
+
+### FIX-0043 — A Mac change timed out while macOS was still asking for permission (2026-11-28)
+- **Area:** `src-tauri/src/platform/controls_macos.rs` (`MAY_ASK`)
+- **Symptom:** in the test VM, "dark mode on" answered "Keeper may need permission…" after 10 s while the "control System Events" dialog was still on screen; the dialog then vanished and macOS treated it as refused.
+- **Root cause:** every control call shared a 10 s limit, too short for a person to read and answer a permission dialog.
+- **Fix:** calls that can make macOS ask first (AppleScript to another app, lock, screenshot) get 90 s; plain calls keep 10 s.
+- **Guard:** none automatic (a timing of a system dialog); the limit is named and explained beside the constant.
+- **Evidence:** seen in the VM; check.sh in the commit.
+
+### FIX-0044 — YouTube videos would not play inside Keeper (Error 153) (2026-11-28)
+- **Area:** new `src-tauri/src/stage/player.rs`, `src/stage/media.ts` (`playingEmbed`), `src/stage/panels/MediaPanel.tsx`, `tauri.conf.json` (`frame-src`)
+- **Symptom:** pressing Play on a found video showed "Video player configuration error, Error 153" in the panel (also when the embed is opened as a page on its own).
+- **Root cause:** YouTube's embedded player now requires the address of the page it is embedded in; Keeper's window has an app address (`tauri://`) that is never sent.
+- **Fix:** a small loopback server (127.0.0.1, random port) serves a one-line page that embeds the privacy-enhanced player; the panel loads that page, so YouTube sees a normal address. It answers only `/youtube/<valid id>`.
+- **Guard:** `player.rs` tests (only a valid id gets a page; loopback only); `media.test.ts` (the panel only ever loads the loopback player).
+- **Evidence:** check.sh in the commit; proven in the VM after the rebuild.
+
+### FIX-0045 — An agenda's Delete button covered the reminder's words (2026-11-28)
+- **Area:** `src/stage/panels-work.css` (agenda row), `src/stage/Stage.tsx` (a lone panel is wide), `src/stage/stage.css` (the stage heading)
+- **Symptom:** on a 1024-px screen "stretch" ran under its Delete button, "call the plumber" broke one word per line, and the card used half the Stage with the rest empty; a long scene title made "Biscuit is showing you" stack in four lines.
+- **Root cause:** Delete was absolutely positioned over a narrow card; a single panel kept its half-width column; the heading's eyebrow could shrink.
+- **Fix:** Delete is its own column beside the entry; a panel shown alone takes the full width; the eyebrow keeps one line and the scene title gives way.
+- **Guard:** visual, proven by VM screenshots before and after (`misc/studio-preview/lineup/vm-*`).
+- **Evidence:** the VM pass.
+
+### FIX-0046 — The set-progress notes covered Send and the microphone (2026-11-28)
+- **Area:** `src/dashboard/dashboard.css` (`.set-toasts`)
+- **Symptom:** "Deep Space: 1 of 5 ready" sat over the message box's buttons.
+- **Fix:** the notes sit above the message row, bottom right.
+- **Guard:** visual (VM screenshot).
+
+### FIX-0047 — The draft's Save row was half under the scene strip (2026-11-28)
+- **Area:** `src/stage/panels-draft.css`, `src/stage/panels/registry.tsx` (draft help line)
+- **Symptom:** on a 768-px screen Throw away / Change something / Save were cut by the strip; after saving, the card still said "Nothing is saved until you press Save."
+- **Fix:** the button row sticks to the bottom while the changes scroll, the changes list is capped at 38% of the window height, and the help line no longer claims nothing is saved.
+- **Guard:** `registry.test.ts` (help line rules); visual in the VM.
+
+### FIX-0048 — "500 ml is 2.113 cup" (2026-11-28)
+- **Area:** `src-tauri/src/sdk/packs/everyday/` (`counted_unit`, the cups unit)
+- **Fix:** word units are counted (cup / cups, day / days…); symbols never change.
+- **Guard:** test `word_units_are_counted_and_symbols_never_change`.
+
+### FIX-0049 — "Added Dentist to your Calendar calendar" (2026-11-28)
+- **Area:** `src-tauri/src/sdk/packs/personal.rs` (`added_words`)
+- **Fix:** the default calendar is "your calendar".
+- **Guard:** test `the_default_calendar_is_just_your_calendar`.
+
+### FIX-0050 — "What's on today" said "Nothing on your calendar" when it could not read it (2026-11-28)
+- **Area:** `src-tauri/src/sdk/packs/calendar/mod.rs` (`read_events`)
+- **Symptom:** with the calendar permission dialog unanswered, the answer came after 120 s as "Nothing on your calendar or reminders today."
+- **Fix:** asked and still unanswered says so: answer the question macOS is showing, then ask again.
+- **Guard:** none automatic (needs the system dialog); the case is a named match arm with the reason.
+
+### FIX-0051 — "Find my notes" found nothing on a Mac with Spotlight off (2026-11-28)
+- **Area:** `src-tauri/src/pim/files.rs` (`find`, `walk_where`, `name_matches`)
+- **Symptom:** the test VM has Spotlight indexing off; `~/Documents/notes.txt` was not found.
+- **Fix:** when Spotlight finds nothing, Desktop, Documents and Downloads are walked by name (bounded, never inside a git working tree) before saying so; the recent-files walk shares the same walker.
+- **Guard:** `files_tests.rs` test `a_name_holds_every_word_asked_for`.

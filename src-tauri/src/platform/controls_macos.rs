@@ -17,6 +17,10 @@ use crate::kernel::{DeskError, Result};
 
 const OSASCRIPT: &str = "/usr/bin/osascript";
 const QUICK: Duration = Duration::from_secs(10);
+/// A call that can make macOS ask the person for permission first (controlling another app,
+/// recording the screen): long enough to read the question and answer it. With 10 s the call
+/// ended while the dialog was still open, and macOS took that as a refusal (FIX-0043).
+const MAY_ASK: Duration = Duration::from_secs(90);
 /// A Shortcut may take a while (it can ask the person something); it is stopped after this.
 const SHORTCUT_LIMIT: Duration = Duration::from_secs(120);
 
@@ -24,7 +28,7 @@ const SHORTCUT_LIMIT: Duration = Duration::from_secs(120);
 static AWAKE: Mutex<Option<Child>> = Mutex::new(None);
 
 async fn applescript(script: &str, args: &[&str], failed: &str) -> Result<()> {
-    tool_output(Command::new(OSASCRIPT).arg("-e").arg(script).args(args), QUICK, failed).await.map(drop)
+    tool_output(Command::new(OSASCRIPT).arg("-e").arg(script).args(args), MAY_ASK, failed).await.map(drop)
 }
 
 /// The appearance script: only `true` or `false` is ever written into it.
@@ -80,7 +84,7 @@ pub async fn display_sleep() -> Result<()> {
 const LOCK_SCRIPT: &str = "ObjC.import('Foundation'); $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/login.framework').load; ObjC.bindFunction('SACLockScreenImmediate', ['int', []]); $.SACLockScreenImmediate();";
 
 pub async fn lock_screen() -> Result<()> {
-    tool_output(Command::new(OSASCRIPT).args(["-l", "JavaScript", "-e", LOCK_SCRIPT]), QUICK, "I couldn't lock the screen.").await.map(drop)
+    tool_output(Command::new(OSASCRIPT).args(["-l", "JavaScript", "-e", LOCK_SCRIPT]), MAY_ASK, "I couldn't lock the screen.").await.map(drop)
 }
 
 /// `screencapture -x` (silent: no shutter sound) of the whole screen into a private temporary
@@ -90,7 +94,7 @@ pub async fn screenshot() -> Result<Vec<u8>> {
     let _ = getrandom::getrandom(&mut nonce);
     let file = std::env::temp_dir().join(format!("keeper-screen-{}.png", hex::encode(nonce)));
     let failed = "I couldn't take a screenshot. Keeper may need Screen Recording permission (System Settings, Privacy & Security).";
-    let taken = tool_output(Command::new("/usr/sbin/screencapture").args(["-x", "-t", "png"]).arg(&file), QUICK, failed).await;
+    let taken = tool_output(Command::new("/usr/sbin/screencapture").args(["-x", "-t", "png"]).arg(&file), MAY_ASK, failed).await;
     let bytes = taken.ok().and_then(|_| std::fs::read(&file).ok());
     let _ = std::fs::remove_file(&file);
     bytes.filter(|b| !b.is_empty()).ok_or_else(|| DeskError::Io(failed.into()))

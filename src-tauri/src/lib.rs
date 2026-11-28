@@ -174,6 +174,7 @@ pub fn run() {
             memory::chats::chat_change,
             memory::chats::chats_search,
             commands::memory_restore_fact,
+            stage::player::media_player_base,
             updater::whats_new::whats_new,
             updater::whats_new::whats_new_seen,
             keepers::kit_commands::pack_check,

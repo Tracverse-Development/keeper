@@ -24,7 +24,18 @@ pub const ABILITIES: &[Ability] = &[
 /// The calendar validates the span (RFC 3339, end after start, at most a year).
 async fn add_event(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
     let event = crate::pim::create_event(cx.app, input::text(input, "title")?, input::text(input, "start")?, input::text(input, "end")?).await?;
-    Ok(Done::said(format!("Added \"{}\" to your {} calendar.", event.title, event.calendar)))
+    Ok(Done::said(added_words(&event.title, &event.calendar)))
+}
+
+/// "Added "Dentist" to your Work calendar."; a calendar called just "Calendar" (the default)
+/// is "your calendar", never "your Calendar calendar".
+fn added_words(title: &str, calendar: &str) -> String {
+    let named = calendar.trim();
+    if named.is_empty() || named.eq_ignore_ascii_case("calendar") {
+        format!("Added \"{title}\" to your calendar.")
+    } else {
+        format!("Added \"{title}\" to your {named} calendar.")
+    }
 }
 
 async fn find_contact(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
@@ -34,4 +45,14 @@ async fn find_contact(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
         return Ok(Done::answer(format!("I couldn't find {name} in your contacts.")));
     }
     Ok(Done::answer(found.iter().map(|c| format!("{}: {}", c.name, c.phones.iter().chain(&c.emails).cloned().collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")))
+}
+
+#[cfg(test)]
+mod tests {
+    // FIX-0049: "Added "Dentist appointment" to your Calendar calendar."
+    #[test]
+    fn the_default_calendar_is_just_your_calendar() {
+        assert_eq!(super::added_words("Dentist", "Calendar"), "Added \"Dentist\" to your calendar.");
+        assert_eq!(super::added_words("Dentist", "Work"), "Added \"Dentist\" to your Work calendar.");
+    }
 }

@@ -109,6 +109,8 @@ export const core = {
   systemLive: () => invoke<SystemLive>('system_live'),
   /** Open what a panel shows: a web page in the browser, or a file in your home (open, or show in the Finder). */
   stageOpen: (target: string, how: 'open' | 'reveal' = 'open') => invoke<void>('stage_open', { target, how }),
+  /** Where Keeper's own YouTube player page is served (`http://127.0.0.1:<port>`; `stage::player`). */
+  mediaPlayerBase: () => invoke<string>('media_player_base'),
   /** A keeper's draft of a text file: load it, change its text by hand, save it over the file (refused if the file changed meanwhile), or throw it away. */
   draftView: (draft: string) => invoke<DraftView>('draft_view', { draft }),
   draftEdit: (draft: string, text: string) => invoke<DraftView>('draft_edit', { draft, text }),

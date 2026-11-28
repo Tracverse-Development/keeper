@@ -28,8 +28,10 @@ test('each item plays in the right player', () => {
 });
 
 test('pressing Play starts the privacy-enhanced player at once', () => {
-  assert.equal(playingEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0');
-  assert.equal(playingEmbed('https://evil.example/x'), null);
+  // FIX-0044: the player page comes from Keeper's loopback server, never the app's own address.
+  assert.equal(playingEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'http://127.0.0.1:50123'), 'http://127.0.0.1:50123/youtube/dQw4w9WgXcQ');
+  assert.equal(playingEmbed('https://evil.example/x', 'http://127.0.0.1:50123'), null);
+  assert.equal(playingEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://evil.example'), null, 'only the loopback player');
 });
 
 test('a file on this computer is named by its file name', () => {

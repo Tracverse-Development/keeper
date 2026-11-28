@@ -133,6 +133,7 @@ pub async fn find(query: &str, limit: usize) -> Result<Vec<FileHit>> {
     let safe = sanitise(query).ok_or_else(|| DeskError::Invalid("Tell me what to look for.".into()))?;
     let limit = limit.clamp(1, MAX_LIMIT);
     let home = home()?;
+    let places: Vec<PathBuf> = ["Desktop", "Documents", "Downloads"].iter().map(|f| home.join(f)).filter(|p| p.is_dir()).collect();
     let name_scope = [home.clone(), PathBuf::from("/Applications")];
     let content_scope = [home];
     let (by_name, by_content) = (name_query(&safe), content_query(&safe));
@@ -142,7 +143,21 @@ pub async fn find(query: &str, limit: usize) -> Result<Vec<FileHit>> {
         (Err(e), Err(_)) => return Err(e),
         (n, c) => (n.unwrap_or_default(), c.unwrap_or_default()),
     };
+    if names.is_empty() && contents.is_empty() {
+        // Spotlight found nothing, which is also what a Mac with indexing off says (seen in the
+        // test VM): look through the person's own folders by name before saying so (FIX-0051).
+        let wanted = safe.to_lowercase();
+        let named = tokio::task::spawn_blocking(move || walk_where(&places, |path, _| name_matches(path, &wanted))).await.unwrap_or_default();
+        return Ok(rank(named, Vec::new(), &safe, limit));
+    }
     Ok(rank(names, contents, &safe, limit))
+}
+
+/// A file whose name holds every word asked for ("notes" finds "notes.txt", "kitchen notes" finds
+/// "Kitchen-notes 2025.md"), ignoring case.
+fn name_matches(path: &Path, wanted: &str) -> bool {
+    let name = path.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
+    !wanted.trim().is_empty() && wanted.split_whitespace().all(|word| name.contains(word))
 }
 
 pub async fn recent(days: u32, limit: usize) -> Result<Vec<FileHit>> {
@@ -208,9 +223,14 @@ pub async fn of_type(content_type: &str, name: Option<&str>, folders: &[PathBuf]
     Ok(hits)
 }
 
-/// Files under `folders` changed since `cutoff`, at most `WALK_DEPTH` deep and `WALK_ENTRIES` seen,
-/// never inside a git working tree.
+/// Files under `folders` changed since `cutoff` (the bounded `walk_where`).
 fn walk(folders: &[PathBuf], cutoff: SystemTime) -> Vec<FileHit> {
+    walk_where(folders, |_, meta| meta.modified().map(|m| m >= cutoff).unwrap_or(false))
+}
+
+/// Files under `folders` that `keep` (path, metadata) chooses, at most `WALK_DEPTH` deep and
+/// `WALK_ENTRIES` seen, never inside a git working tree.
+fn walk_where(folders: &[PathBuf], keep: impl Fn(&Path, &std::fs::Metadata) -> bool) -> Vec<FileHit> {
     let mut out = Vec::new();
     let mut seen = 0usize;
     let mut stack: Vec<(PathBuf, usize)> = folders.iter().map(|f| (f.clone(), 0)).collect();
@@ -235,7 +255,7 @@ fn walk(folders: &[PathBuf], cutoff: SystemTime) -> Vec<FileHit> {
                 }
                 continue;
             }
-            if meta.modified().map(|m| m >= cutoff).unwrap_or(false) {
+            if keep(&path, &meta) {
                 out.extend(hit(&path));
             }
         }

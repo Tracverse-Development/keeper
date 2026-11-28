@@ -22,7 +22,18 @@ fn calculate(input: &serde_json::Value) -> Result<Done> {
 fn convert(input: &serde_json::Value) -> Result<Done> {
     let value = input["value"].as_f64().or_else(|| input::optional(input, "value").and_then(|v| maths::evaluate(v).ok())).ok_or_else(|| DeskError::Invalid("That needs a value to convert.".into()))?;
     let (result, from, to) = units::convert(value, input::text(input, "from")?, input::text(input, "to")?).map_err(DeskError::Invalid)?;
-    Ok(Done::said(format!("{} {from} is {} {to}.", maths::shown(value), maths::shown(round_for_show(result)))))
+    let result = round_for_show(result);
+    Ok(Done::said(format!("{} {} is {} {}.", maths::shown(value), counted_unit(value, from), maths::shown(result), counted_unit(result, to))))
+}
+
+/// A unit as said after its amount: the word units (cups, days, weeks, acres, hectares, knots)
+/// lose their "s" for exactly one ("1 cup", "2.113 cups"); symbols (ml, km, °C) never change.
+fn counted_unit(amount: f64, unit: &'static str) -> &'static str {
+    const WORDS: [(&str, &str); 6] = [("cups", "cup"), ("days", "day"), ("weeks", "week"), ("acres", "acre"), ("hectares", "hectare"), ("knots", "knot")];
+    match WORDS.iter().find(|(many, _)| *many == unit) {
+        Some((_, one)) if amount == 1.0 => one,
+        _ => unit,
+    }
 }
 
 /// Four significant decimals is what a person wants from a conversion (3.1069 miles, not 3.106855961).
@@ -38,6 +49,15 @@ fn round_for_show(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+
+    // FIX-0048: "500 ml is 2.113 cup".
+    #[test]
+    fn word_units_are_counted_and_symbols_never_change() {
+        assert_eq!(super::counted_unit(2.113, "cups"), "cups");
+        assert_eq!(super::counted_unit(1.0, "cups"), "cup");
+        assert_eq!(super::counted_unit(1.0, "days"), "day");
+        assert_eq!(super::counted_unit(1.0, "ml"), "ml");
+    }
 
     use super::*;
 

@@ -199,7 +199,7 @@ export const PANELS: { [K in PanelKind]: PanelKit<K> } = {
   },
   draft: {
     label: 'Draft to save',
-    help: 'Nothing is saved until you press Save. Change it first if you like.',
+    help: 'Check the change, edit it if you like, and Save it yourself.',
     wide: true,
     draw: DraftPanel,
   },

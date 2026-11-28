@@ -17,6 +17,9 @@
   animation: stage-wash 700ms var(--ease) both;
 }
 .stage-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-1); animation: fade-up 480ms var(--ease) both; }
+/* The eyebrow keeps one line; the scene's long title is what gives way (it stacked in four lines). */
+.stage-head > .eyebrow { flex: 0 0 auto; white-space: nowrap; }
+.stage-head > :not(.eyebrow):not(.stage-dismiss) { min-width: 0; }
 .stage-dismiss { gap: var(--space-2); height: 28px; }
 .stage-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: var(--space-2) var(--space-2) var(--space-8); margin: 0 calc(-1 * var(--space-2));
