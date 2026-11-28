@@ -54,20 +54,25 @@ SCENARIOS = {
         ('Write a short, polite email to my landlord asking when the heating will be fixed.', {'text'}, {'quiz', 'live', 'approval'}),
     ]),
     'media': ('assistant', [
-        ('Show me a video on how to tie a tie.', {'media', 'steps'}, {'quiz', 'live', 'approval'}),
-        ('Play a short video about how volcanoes erupt.', {'media'}, {'live', 'approval'}),
+        ('Show me a video on how to tie a tie.', {'media'}, {'quiz', 'live', 'approval', 'web'}),
+        ('Play a short video about how volcanoes erupt.', {'media'}, {'live', 'approval', 'web'}),
     ]),
     'files': ('system', [
-        ('Show me what is in /tmp/keeper-bench/notes.txt', {'file', 'text'}, {'quiz'}),
-        ('Fix the spelling mistakes in /tmp/keeper-bench/notes.txt', {'approval', 'file'}, {'quiz'}),
+        ('Show me what is in /tmp/keeper-bench/notes.txt', {'draft', 'file', 'text'}, {'quiz'}),
+        ('Fix the spelling mistakes in /tmp/keeper-bench/notes.txt', {'draft'}, {'quiz', 'approval'}),
     ]),
     'reminders': ('assistant', [
-        ('Remind me tomorrow at 9am to call the dentist.', NONE | {'agenda'}, {'quiz', 'live'}),
-        ('What reminders do I have?', {'agenda', 'checklist', 'table', 'text'}, {'quiz', 'live'}),
+        ('Remind me tomorrow at 9am to call the dentist.', {'agenda'}, {'quiz', 'live'}),
+        ('What reminders do I have?', {'agenda'}, {'quiz', 'live'}),
     ]),
     'kids': ('tutor', [
         ('Explain fractions to my 8 year old using pizza.', TEACH, {'live', 'approval'}),
         ('Now give her three practice questions.', CHECK | {'steps', 'cards'}, {'live', 'approval'}),
+    ]),
+    'computer': ('assistant', [
+        ("What's my battery at?", {'table'}, {'quiz', 'approval'}),
+        ('How many cups is 500 ml?', NONE | {'table', 'text'}, {'quiz', 'approval'}),
+        ("What time is it in Tokyo?", NONE | {'table', 'text'}, {'quiz', 'approval'}),
     ]),
     'switch': ('system', [
         ('How do I make banana bread?', TEACH | {'checklist'}, {'live', 'approval'}),

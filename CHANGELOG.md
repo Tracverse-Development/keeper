@@ -8,6 +8,47 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.17.0] - 2026-11-27
+
+Keepers that are genuinely useful, built on the new Keeper SDK.
+
+### Added
+- **Edit in Keeper, then save.** Ask a keeper to change a text file ("fix the spelling in
+  notes.txt") and the file opens in Keeper with the changes shown line by line, removed and
+  added, as they arrive. Edit it yourself if you like, then Save, Change something, or Throw
+  away. Nothing touches the real file until you press Save, and Keeper will not overwrite a file
+  that changed while you were looking.
+- **Watch it work, pause it, change its course.** The working card shows each step as it happens
+  (which file, which command) and the time worked. Pause freezes the job in place; Resume carries
+  on; Change course lets you type a correction ("leave the heading alone") and the keeper picks up
+  from where it was, not from the start. Typing while it works offers "Send as a correction".
+- **Real videos, inside Keeper.** "Show me a video on how to tie a tie" finds one real video and
+  plays it in place (with two others to swap to), never a search page. Movies and songs on your
+  Mac play inside Keeper too ("play my holiday video", "find my movies"). Nothing loads until you
+  press Play.
+- **Calendar heads-ups.** Before each event on your calendar a keeper tells you it is coming up
+  (10 minutes before by default; 5, 15, 30 or off in Settings, Reminders and calendar).
+- **Reminders you can see.** Setting a reminder shows it with your next few; "what reminders do I
+  have" and "what's on tomorrow" show an agenda of reminders and events, with Delete on each
+  reminder.
+- **Things a keeper can do on your Mac:** battery, Wi-Fi, disk space, open apps, the time in any
+  city, your Shortcuts (list and run), show a folder in the Finder, open a System Settings pane,
+  look up a word; and, when you ask: dark mode, volume, keep the Mac awake, sleep the display,
+  lock the screen, copy text, take a screenshot, make a note in Notes. Exact sums and unit
+  conversions everywhere. A paired phone can ask and look, but never change your Mac.
+- **The Keeper SDK.** Everything a keeper can do is an ability in a pack, built to one contract,
+  so new abilities are one entry each (docs/design/keeper-sdk.md).
+
+### Fixed
+- A reminder was said twice, and "what reminders do I have" contradicted itself (FIX-0039).
+- A lesson replayed from memory said "Switching to Tutor mode" when nothing switched (FIX-0033).
+- A keeper switched modes just to answer a one-line fact (FIX-0034).
+- A storage question repeated the same number in four panels (FIX-0035).
+- The setup step bar's "Welcome" ran into the next step on smaller screens (FIX-0036).
+- A chart's unit was cut inside its brackets (FIX-0037).
+- Stop left the command the keeper was running still going (FIX-0038).
+- "Show me a video" gave a search page instead of a video (FIX-0040).
+
 ## [0.16.1] - 2026-11-27
 
 ### Fixed

@@ -129,6 +129,7 @@ impl Drafts {
     }
 
     /// The drafts in `folder` (tests use a folder of their own).
+    #[cfg(test)]
     pub fn in_folder(folder: impl Into<PathBuf>) -> Drafts {
         Drafts { folder: folder.into() }
     }
