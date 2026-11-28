@@ -5,13 +5,14 @@
  * `useChats`, `useAssistant`, `useVoice`, `useDashboardEvents`) and the pure rules (`mood.ts`,
  * `person-name.ts`).
  */
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
+import { CharacterStage, DEFAULT_WEARABLES } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
 import { TranscriptRail } from '../conversation/TranscriptRail';
 import { useTranscript } from '../conversation/useTranscript';
-import { keepersBeside, setTranscript, toggleKeepers, type Sides } from './side-layout.ts';
+import { setTranscript, toggleKeepers, type Sides } from './side-layout.ts';
+import { useSideFit } from './useSideFit.ts';
 import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
 import { useHanded } from '../conversation/useHanded';
@@ -36,7 +37,8 @@ import { TopBar } from './TopBar';
 import type { Touch } from '../kernel/ipc';
 import { UpdateBanner } from './UpdateBanner';
 import { withFactHalo } from './halo';
-import { HAPPY_MS, useDashboardEvents } from './useDashboardEvents';
+import { useDashboardEvents } from './useDashboardEvents';
+import { useReactions } from './useReactions';
 import { CanDoPage } from './CanDoPage';
 import { WhatsNew } from './WhatsNew';
 import { StagePill } from './StagePill';
@@ -65,7 +67,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   /** Words that land Settings on a section when it opens ("backup"). */
   const [settingsFind, setSettingsFind] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
-  const [happyUntil, setHappyUntil] = useState(0);
+  const foldKeepers = useCallback(() => setPanelOpen(false), []);
   const lastTouch = useRef(0);
   const speakRef = useRef<(t: string, queue?: boolean) => void>(() => undefined);
 
@@ -73,10 +75,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const keeper = keepers.active;
   const kit = useKit();
   const chats = useChats(keeper?.id ?? null);
-  const celebrate = () => setHappyUntil(Date.now() + HAPPY_MS);
-  // One-shot emotes on real events (each call plays once).
-  const [emote, setEmote] = useState<{ name: Emote; n: number }>({ name: 'wave', n: 0 });
-  const play = (name: Emote) => setEmote((e) => ({ name, n: e.n + 1 }));
+  const { happyUntil, celebrate, emote, play, stirs, stir } = useReactions();
 
   const assistant = useAssistant(keeper?.id ?? null, (r: TurnResult, said: string) => {
     stage.take(r, said);
@@ -152,6 +151,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
   // The Stage's panels take the side of the window; the Transcript waits until they close.
   const railOpen = transcript.open && !stage.showing;
   const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stage.showing };
+  useSideFit(sidebarOpen, railOpen || memoryOpen, foldKeepers);
   const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (stage.showing && !next.stage) stage.close(); };
 
   // ⌘K / Ctrl+K anywhere opens the command palette.
@@ -251,7 +251,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         </div>
       )}
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} stir={stirs} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage
@@ -280,7 +280,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         counts={events.counts}
         alwaysListening={settings.alwaysListening}
         openMic={!settings.wakeWord}
-        onMemory={() => { if (!memoryOpen) setPanelOpen(keepersBeside(panelOpen, window.innerWidth)); setMemoryOpen(!memoryOpen); }}
+        onMemory={() => setMemoryOpen((o) => !o)}
         onSettings={() => setSettingsOpen(true)}
         onStudio={() => setStudioOpen(true)}
         extra={<><FocusChip refreshKey={assistant.exchanges.length} /><button type="button" className="pill pill-button" onClick={() => setCanDoOpen(true)}>What I can do</button></>}
@@ -318,12 +318,12 @@ export function Dashboard({ initial }: { initial: Settings }) {
         attention={voice.attention}
         assistantName={name}
         transcriptOpen={railOpen}
-        narrow={stage.showing}
+        narrow={stage.showing || railOpen || memoryOpen}
         onTranscript={(open) => applySides(setTranscript(sides, open, window.innerWidth))}
         onSend={sendMessage}
         compose={compose}
         onCorrect={assistant.correct}
-        onType={() => voice.speaking && void voice.hush()}
+        onType={() => { stir(); if (voice.speaking) void voice.hush(); }}
         tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (
           <ModeBar
@@ -338,7 +338,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMic={voice.listen}
         onStop={stop}
       />
-      {railOpen && <TranscriptRail exchanges={assistant.exchanges} busy={assistant.busy} assistantName={name} onSend={sendMessage} onClose={() => transcript.setOpen(false)} />}
+      {railOpen && <TranscriptRail onRead={stir} exchanges={assistant.exchanges} busy={assistant.busy} assistantName={name} onSend={sendMessage} onClose={() => transcript.setOpen(false)} />}
       <WhatsNew />
       <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place, find) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? (setSettingsFind(find ?? ''), setSettingsOpen(true)) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
       <CommandPalette

@@ -15,9 +15,11 @@ interface Props {
   assistantName: string;
   onSend: (text: string) => void;
   onClose: () => void;
+  /** The person is reading (scrolling the conversation): the keeper stays awake. */
+  onRead?: () => void;
 }
 
-export function TranscriptRail({ exchanges, busy, assistantName, onSend, onClose }: Props) {
+export function TranscriptRail({ exchanges, busy, assistantName, onSend, onClose, onRead }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });
@@ -30,7 +32,7 @@ export function TranscriptRail({ exchanges, busy, assistantName, onSend, onClose
           ✕
         </button>
       </div>
-      <div className="transcript-feed" ref={scroller}>
+      <div className="transcript-feed" ref={scroller} onScroll={onRead}>
         {exchanges.length === 0 ? (
           <p className="muted small">Nothing said yet. Talk to {assistantName} and the whole conversation shows here.</p>
         ) : (

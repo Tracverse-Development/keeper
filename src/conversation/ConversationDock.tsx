@@ -27,14 +27,14 @@ interface Props {
   transcriptOpen: boolean;
   /** Opens or closes the Transcript. */
   onTranscript: (open: boolean) => void;
-  /** Beside the Stage's panels: the keeper's column is narrow, so the captions are shorter. */
+  /** The keeper's column is narrow (the Stage, the Transcript or Memory beside it): shorter captions. */
   narrow?: boolean;
   onSend: (text: string) => void;
   /** Words put in the box for the person to finish (a draft's "Change something"); a new `at` puts them in again. */
   compose?: { text: string; at: number } | null;
   /** Change course while the keeper works; resolves with a refusal to show, or null. */
   onCorrect?: (text: string) => Promise<string | null>;
-  /** The person started typing (the keeper stops talking so it does not talk over them). */
+  /** The person is typing (each change: the keeper stops talking over them and stays awake). */
   onType?: () => void;
   /** The mode and style controls, shown above the message box. */
   modeBar?: React.ReactNode;
@@ -111,7 +111,7 @@ export function ConversationDock(p: Props) {
           placeholder={`Talk to ${p.assistantName}…`}
           value={text}
           onChange={(e) => {
-            if (text === '' && e.target.value !== '') p.onType?.();
+            if (e.target.value !== '') p.onType?.();
             setText(e.target.value);
           }}
           onKeyDown={(e) => {

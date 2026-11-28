@@ -170,6 +170,7 @@ export function createCharacter(canvas: HTMLCanvasElement, options: CreateCharac
     setMouth: (openness) => animator.setMouth(openness),
     lookAt: (x, y) => animator.lookAt(x, y),
     pulseMemory: () => animator.pulseMemory(),
+    stir: () => animator.stir(),
     setSkin(id: string) {
       const next = resolveSkinId(id);
       if (disposed || next === skinId) return;

@@ -301,3 +301,7 @@
 /* A chip never breaks its own words ("HANDS-FREE"); a narrow bar wraps whole chips instead. */
 .mode-pick { white-space: nowrap; flex: none; }
 .mode-bar { flex-wrap: wrap; justify-content: center; }
+/* Captions rest (dim) a while after a reply; pointing at them or keyboard focus brings them back. */
+.captions { transition: opacity 900ms var(--ease); }
+.captions.is-resting { opacity: 0.28; }
+.captions.is-resting:hover, .captions.is-resting:focus-within { opacity: 1; transition-duration: 200ms; }

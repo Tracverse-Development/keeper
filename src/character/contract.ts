@@ -55,6 +55,11 @@ export interface Character {
    */
   pulseMemory(): void;
   /**
+   * Someone is here (typing to it, reading the conversation): the quiet spell is over, so it
+   * does not doze off in front of a person who is busy with it.
+   */
+  stir(): void;
+  /**
    * Swap the look live (`SKINS` lists the ids; an unknown id falls back to the default
    * robot). The old skin shrinks away as the new one grows in, then the old is freed.
    */

@@ -231,6 +231,11 @@ export class Animator {
     this.director.emote(name, this.time);
   }
 
+  /** Someone is busy with the keeper (typing, reading): it stays awake (`EmoteDirector.activity`). */
+  stir(): void {
+    this.director.activity();
+  }
+
   /** A memory spark from the chest into the worn halo (nothing when no halo is worn). */
   pulseMemory(): void {
     this.parts.skins.active.sparkOrigin.getWorldPosition(this.scratch);

@@ -12,7 +12,8 @@
  * `wearables` swaps what it wears (compared by content, so a new array with the same parts
  * does nothing) and `work` (0..1) drives the working animations.
  *
- * `memoryPulse` is a counter: every increase sends one spark into the memory halo.
+ * `memoryPulse` is a counter: every increase sends one spark into the memory halo. `stir` is a
+ * counter too: every increase means someone is busy with the keeper, so it stays awake.
  *
  * The keeper's own body: `look` repaints its paint zones live, `habits` sets what it does when
  * idle (and how soon it naps), and the moment effects arrive inside `wearables` (a part in slot
@@ -38,6 +39,8 @@ export interface CharacterStageProps {
   mouth: number;
   /** Increments trigger `pulseMemory()`. */
   memoryPulse: number;
+  /** Counter: someone is typing to it or reading the conversation (each increase keeps it awake). */
+  stir?: number;
   /** A one-shot emote: each new `n` plays `name` once (`Character.emote`). */
   emote?: { name: Emote; n: number };
   /** What it wears (`PARTS` ids plus effect values). Default: `DEFAULT_WEARABLES`. */
@@ -146,6 +149,9 @@ export function CharacterStage(props: CharacterStageProps) {
     if (memoryPulse > lastPulse.current) characterRef.current?.pulseMemory();
     lastPulse.current = memoryPulse;
   }, [memoryPulse]);
+  useEffect(() => {
+    if (props.stir) characterRef.current?.stir();
+  }, [props.stir]);
 
   const lastTurn = useRef(props.turnAround ?? 0);
   useEffect(() => {
