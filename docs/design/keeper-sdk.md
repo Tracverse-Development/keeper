@@ -43,9 +43,9 @@ Rules:
 | `calendar/` | `upcoming` (and the heads-up watch) | Personal | all |
 | `day/` | `brief`, `recent-work`, `week-review`, `start-focus`, `stop-focus` (words only) | Memory to Personal | all |
 | `personal` | `add-event`, `find-contact` | Personal | all |
-| `desktop` | `open-app`, `open-website` | Open | all |
+| `desktop/` | `open-app`, `open-website` | Open | all |
 | `files/` | `edit-file`, `show-file`; `find`: `find-files`, `show-folder`, `open-folder` (words only) | Look, Open | all |
-| `core` | `recall-actions`, `ask-memory`, `switch-engine`; `what-you-know`, `tidy-memory` (words only) | Memory | all |
+| `core` | `recall-actions`, `ask-memory`, `switch-engine`, `health` (the Settings health checks as a table); `what-you-know`, `tidy-memory` (words only) | Memory, Look | all |
 | `computer/look` | `battery`, `wifi`, `open-apps`, `time-in` (a city, country or IANA zone), `list-shortcuts`: macOS; `disk-space`, `computer-status` (words only): all | Look | Mac (disk, status: all) |
 | `computer/open` | `show-in-finder` (home folder only), `open-settings` (a pane by its everyday name), `define-word` (the Dictionary) | Open | Mac |
 | `computer/change` | `dark-mode`, `set-volume` (0-100 or mute; no sound), `keep-awake` (0-480 minutes; Keeper owns the one `caffeinate`), `screen-off`, `lock-screen`, `copy-text`, `screenshot` (silent, into Pictures/Keeper, shown as a file panel), `new-note` (Apple Notes), `run-shortcut` (only one of the person's own, by name) | Change | Mac |
@@ -77,8 +77,7 @@ the abilities, not written beside them. An ability's `instant` names a matcher, 
 the person's whole words into the ability's input (`{}` when it needs none), or None:
 
 - `Instant::Also(reads)`: the mind may ask for it too, and these words also run it at once, in the
-  modes that offer it (`battery`, `wifi`, `disk-space`, `list-reminders`, `upcoming` for "what's on
-  tomorrow"). The turn runs it with the mind's requests: the mode's rules apply and it is recorded
+  modes that offer it (every everyday ability: see the table below). The turn runs it with the mind's requests: the mode's rules apply and it is recorded
   as a `desk:Action`.
 - `Instant::Only(reads)`: only these words run it, in EVERY mode (the person said exactly this),
   and the mind never hears of it: no catalogue line, no mode lists it, the Studio does not offer
@@ -97,13 +96,35 @@ brief). `sdk/instant_tests.rs` holds the table of representative phrasings and w
 captured from the fast lane before it moved into the SDK.
 
 Writing one: a `const ASKS: &str` with the whole phrasing, a `fn …_words(said) -> Option<Value>`
-beside the ability (`instant::whole` for no input, `instant::pattern` to read captures), and
-`instant: Instant::Only(…_words)` on the ability. Engine-style JSON panels go through
+beside the ability, in its pack (a `words.rs` / `<area>_words.rs` file where there are several;
+`instant::whole` for no input, `instant::pattern` to read captures, `instant::seconds_in` for "10
+minutes" / "an hour", `instant::to_second_person` for the person's words said back), and
+`instant: Instant::Also(…_words)` or `Instant::Only(…_words)` on the ability. Guard the words
+with what the ability can really do: an app only when it is installed (`platform::app_installed`),
+a place only when its time zone is known, a sum only when it is digits and operators that work
+out, units only when both are known and of one kind. A phrasing that is unclear ("remind me at
+5": morning or evening?) goes to the mind.
+
+The built-in mind (`brain/reflex.rs`) has NO copies of these: it is conversation and memory only
+(name, "remember that", statements, recall, greetings, the time here, help). Before FIX-0053 it
+held its own `remind`, `open` and `switch engine` rules, which misread "show me a video…" as an
+app and could not read "remind me in 10 minutes to…"; a reflex test now pins its rule list. Engine-style JSON panels go through
 `Done::showing_raw` (checked and capped by `stage::read`, like the mind's).
 
 | Ability | Pack | Words |
 |---|---|---|
 | `find-files`, `show-folder`, `open-folder` | `files/find` | "find my NZCC deck", "where is my Downloads folder", "open my documents" |
+| `remind` (Also) | `reminders/words` | "remind me to stretch in 10 minutes", "remind me in an hour to call Maya", "remind me to pray at 5:30 pm", "remind me at 5pm to …" (a bare "at 5" or a day word goes to the mind) |
+| `list-reminders` (Also) | `reminders/` | "what reminders do I have" |
+| `upcoming` (Also) | `calendar/` | "what's on tomorrow" |
+| `open-app`, `open-website` (Also) | `desktop/words` | "open Notes" (installed apps only; never a folder, a Settings pane or a file), "open youtube.com", "go to bbc.co.uk" |
+| `battery`, `wifi`, `disk-space` (Also) | `computer/look` | "what's my battery", "what Wi-Fi am I on", "how much space do I have" |
+| `time-in`, `list-shortcuts` (Also) | `computer/look_words` | "what time is it in Tokyo", "time in Paris" (known places only), "what shortcuts do I have" |
+| `open-settings`, `define-word` (Also) | `computer/open_words` | "open Wi-Fi settings", "define grace", "what does serendipity mean" (one word) |
+| `dark-mode`, `set-volume`, `keep-awake`, `screenshot`, `lock-screen`, `screen-off`, `new-note`, `run-shortcut` (Also; at the Mac only) | `computer/change_words` | "turn on dark mode", "switch to light mode", "set the volume to 30", "mute", "keep my Mac awake for 2 hours", "stop keeping my Mac awake", "take a screenshot", "lock my Mac", "turn off the display", "make a note: …", "note that …", "run my Morning shortcut" |
+| `calculate`, `convert` (Also) | `everyday/words` | "what's 15% of 86", "what is 12 * 7", "calculate …" (digits and operators only), "convert 5 km to miles", "5 km in miles", "how many cups is 500 ml" |
+| `find-video` (Also), `find-movies` (Also) | `video/words`, `video/` | "show me a video on how to tie a tie", "play a short video about volcanoes", "find my movies" |
+| `switch-engine`, `health` (Also) | `core` | "switch your brain to Claude", "use Codex", "is everything working?", "run a health check" |
 | `computer-status` | `computer/look` | "how's my computer", "system status" |
 | `brief`, `recent-work`, `week-review`, `start-focus`, `stop-focus` | `day/` | "brief me", "good morning", "what was I working on yesterday", "how was my week", "focus for 25 minutes" |
 | `what-you-know`, `tidy-memory` | `core` | "what do you know about me", "tidy my memory" |
