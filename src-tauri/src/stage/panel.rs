@@ -141,6 +141,9 @@ pub struct AgendaItem {
     pub detail: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<AgendaKind>,
+    /// A reminder row's id (16 hex characters): the panel offers Delete for it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

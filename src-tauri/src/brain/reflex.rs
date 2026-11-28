@@ -129,7 +129,7 @@ fn memory_question(said: &str, _: &Context) -> Option<Thought> {
     } else if lower.contains("how much do you know") || lower.contains("how big is your memory") {
         "memory-size"
     } else if lower.contains("upcoming reminders") || lower.contains("what reminders") {
-        "reminders-upcoming"
+        return Some(action("list-reminders", json!({})));
     } else {
         return None;
     };

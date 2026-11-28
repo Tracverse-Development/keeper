@@ -48,7 +48,7 @@ export function PanelBody({ panel, onPick, onAction }: Props) {
     case 'folder': return <FolderPanel panel={panel} onPick={onPick} />;
     case 'sliders': return <SlidersPanel panel={panel} onPick={onPick} />;
     case 'flashcards': return <FlashcardsPanel panel={panel} onPick={onPick} onAction={onAction} />;
-    case 'agenda': return <AgendaPanel panel={panel} onPick={onPick} />;
+    case 'agenda': return <AgendaPanel panel={panel} onPick={onPick} onAction={onAction} />;
     case 'checklist': return <ChecklistPanel panel={panel} onPick={onPick} onAction={onAction} />;
     case 'form': return <FormPanel panel={panel} onPick={onPick} onAction={onAction} />;
     case 'approval': return <ApprovalPanel panel={panel} onPick={onPick} onAction={onAction} />;

@@ -1,6 +1,7 @@
 /**
  * The window's side of "panels you work in", "say the reply first" and the morning brief:
  * - a panel action (tick, answer, flashcard, form, forget, pin) is written to the keeper's graph;
+ *   a reminder deleted from an agenda is erased (`reminderCancel`);
  *   a submitted form is also sent as the next message, so the keeper carries on with it;
  *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated
  * - the reply's first sentence, then the whole reply, arrive before the panels finish
@@ -69,6 +70,16 @@ export function usePanelActions(deps: Deps) {
     const d = ref.current;
     if (a.type === 'approve' || a.type === 'deny') {
       await d.decide(a.token, a.type === 'approve');
+      return;
+    }
+    // A reminder deleted from an agenda: erased from the keeper's graph, it will not fire.
+    if (a.type === 'reminder-delete') {
+      try {
+        await core.reminderCancel(a.reminderId, d.keeper ?? undefined);
+        d.changed();
+      } catch (e) {
+        d.announce(sentence(e));
+      }
       return;
     }
     try {

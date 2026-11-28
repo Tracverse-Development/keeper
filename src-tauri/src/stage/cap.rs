@@ -153,7 +153,7 @@ impl Panel {
             Panel::Agenda { id: i, title, items } => Panel::Agenda {
                 id: id(&i),
                 title: clip(&title, MAX_SHORT),
-                items: items.into_iter().take(MAX_ITEMS).map(|a| AgendaItem { time: clip_opt(&a.time, 30), title: clip(&a.title, 160), detail: clip_opt(&a.detail, 300), kind: a.kind }).collect(),
+                items: items.into_iter().take(MAX_ITEMS).map(|a| AgendaItem { time: clip_opt(&a.time, 30), title: clip(&a.title, 160), detail: clip_opt(&a.detail, 300), kind: a.kind, id: a.id.filter(|r| r.len() == 16 && r.chars().all(|c| c.is_ascii_hexdigit())) }).collect(),
             },
             Panel::Checklist { id: i, title, items } => Panel::Checklist {
                 id: id(&i),

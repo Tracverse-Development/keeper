@@ -43,11 +43,11 @@
 /* ---------- agenda ---------- */
 .agenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .agenda li { animation: slide-right 480ms var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms + 400ms); }
-.agenda-item { width: 100%; display: grid; grid-template-columns: 64px 32px minmax(0, 1fr); align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2); cursor: pointer; text-align: left;
+.agenda-item { width: 100%; display: grid; grid-template-columns: 80px 32px minmax(0, 1fr); align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2); cursor: pointer; text-align: left;
   border-radius: var(--radius); border: 1px solid var(--border); background: color-mix(in srgb, var(--navy-950) 42%, transparent);
   transition: border-color 200ms var(--ease), background 200ms var(--ease), transform 200ms var(--ease); }
 .agenda-item:hover { border-color: var(--border-strong); background: var(--accent-soft); transform: translateX(3px); }
-.agenda-time { font-size: var(--text-base); font-weight: 700; text-align: right; color: var(--gold-300); font-variant-numeric: tabular-nums; }
+.agenda-time { font-size: var(--text-base); font-weight: 700; text-align: right; color: var(--gold-300); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .agenda-time.is-any { font-size: var(--text-2xs); font-weight: 600; color: var(--text-muted); }
 .agenda-icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--gold-300); background: var(--accent-soft); }
 .agenda-item.is-reminder .agenda-icon { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
@@ -55,6 +55,13 @@
 .agenda-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .agenda-title { font-size: var(--text-base); font-weight: 600; color: var(--cream-50); }
 .agenda-detail { font-size: var(--text-sm); color: var(--text-muted); }
+.agenda-day { display: block; font-size: var(--text-2xs); font-weight: 600; color: var(--text-muted); }
+/* A reminder row: its Delete sits inside the row's right edge (a button cannot hold a button). */
+.agenda-row { position: relative; }
+.agenda-row:has(.agenda-delete) .agenda-item { padding-right: 104px; }
+.agenda-delete { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); }
+.agenda-row.is-deleted .agenda-item { opacity: 0.55; cursor: default; transform: none; }
+.agenda-row.is-deleted .agenda-title { text-decoration: line-through; }
 
 /* ---------- checklist ---------- */
 .check-progress { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }

@@ -31,7 +31,7 @@ async fn find_contact(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
     let name = input::optional(input, "name").unwrap_or_default();
     let found = crate::pim::find_contacts(cx.app, name, 3).await?;
     if found.is_empty() {
-        return Ok(Done::said(format!("I couldn't find {name} in your contacts.")));
+        return Ok(Done::answer(format!("I couldn't find {name} in your contacts.")));
     }
-    Ok(Done::said(found.iter().map(|c| format!("{}: {}", c.name, c.phones.iter().chain(&c.emails).cloned().collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")))
+    Ok(Done::answer(found.iter().map(|c| format!("{}: {}", c.name, c.phones.iter().chain(&c.emails).cloned().collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")))
 }

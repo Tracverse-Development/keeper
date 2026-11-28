@@ -56,8 +56,8 @@ export function useDashboardEvents({ keeper, assistant, onCelebrate }: Hooks) {
       setPulse((p) => p + 1);
       setNow(Date.now());
     });
-    const offSays = on<{ text: string }>(EVENTS.assistantSays, (s) => {
-      assistant.announce(s.text, 'Reminder');
+    const offSays = on<{ text: string; reason?: string }>(EVENTS.assistantSays, (s) => {
+      assistant.announce(s.text, s.reason === 'calendar' ? 'Coming up' : 'Reminder');
       onCelebrate();
     });
     const offPhone = on<{ said: string; result: TurnResult }>(EVENTS.phoneTurn, (p) => assistant.record(p.said, p.result));

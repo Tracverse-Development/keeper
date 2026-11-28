@@ -8,7 +8,6 @@ use crate::brain::Thought;
 use crate::kernel::settings::KeeperProfile;
 use crate::kernel::time;
 use crate::memory::Memory;
-use crate::pim::Access;
 
 /// Files listed by name in the brief (screenshots are counted, not listed).
 const BRIEF_FILES: usize = 8;
@@ -43,29 +42,12 @@ pub async fn recent_work(days: u32, when: &str) -> Thought {
 pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProfile) -> Thought {
     let now = time::now();
     let tomorrow = now + chrono::Duration::hours(30);
-    let mut agenda: Vec<serde_json::Value> = Vec::new();
-
     // The calendar is read only with permission; asking for the brief is a fine moment to ask
     // for it, and a refused or failed read is said out loud, never shown as an empty day.
-    let (mut calendar, _) = crate::pim::access(app).await;
-    if calendar == Access::NotAsked {
-        calendar = crate::pim::request_access(app).await.0;
-    }
-    let (events, calendar_note) = match calendar {
-        Access::Allowed => match crate::pim::events(app, &time::iso(now), &time::iso(tomorrow)).await {
-            Ok(events) => (events, None),
-            Err(_) => (Vec::new(), Some("I couldn't read your calendar just now.")),
-        },
-        Access::Denied => (Vec::new(), Some("I can't see your calendar: allow Keeper in System Settings, Privacy & Security, Calendars.")),
-        Access::NotAsked | Access::Unsupported => (Vec::new(), None),
-    };
-    for e in events.iter().take(10) {
-        agenda.push(json!({ "time": if e.all_day { "All day".to_string() } else { clock(&e.start) }, "title": e.title, "detail": e.location, "kind": "event" }));
-    }
-    let reminders = memory.upcoming_reminders().await.unwrap_or_default();
-    for r in reminders.iter().filter(|r| time::parse_iso(&r.due_at).is_some_and(|d| d < tomorrow)).take(10) {
-        agenda.push(json!({ "time": clock(&r.due_at), "title": r.text, "kind": "reminder" }));
-    }
+    let (events, calendar_note) = crate::sdk::packs::calendar::read_events(app, now, tomorrow, true).await;
+    let reminders: Vec<_> = memory.upcoming_reminders().await.unwrap_or_default().into_iter().filter(|r| time::parse_iso(&r.due_at).is_some_and(|d| d < tomorrow)).collect();
+    // Events and reminders in one time order (`sdk::agenda`, the same rows "what's on tomorrow" shows).
+    let agenda = crate::sdk::agenda::rows(&events, &reminders, now);
 
     let args = [("days".to_string(), "2".to_string())].into_iter().collect();
     let done: Vec<serde_json::Value> = memory

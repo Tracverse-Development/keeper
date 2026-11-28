@@ -27,9 +27,11 @@
 //! }
 //! ```
 
+pub mod agenda;
 pub mod input;
 pub mod packs;
 pub mod registry;
+pub mod watch;
 
 use std::future::Future;
 use std::pin::Pin;
@@ -68,6 +70,9 @@ pub struct Outcome {
     /// What it shows on the Stage (a draft, a video, an agenda), after the mind's own panels.
     #[serde(skip)]
     pub panels: Vec<crate::stage::Panel>,
+    /// The summary is the answer to a question (see [`Done::answer`]).
+    #[serde(skip)]
+    pub answers: bool,
 }
 
 /// What a finished ability hands back: the sentence to say, the panels to show, rarely an [`Effect`].
@@ -76,12 +81,21 @@ pub struct Done {
     pub summary: String,
     pub effect: Option<Effect>,
     pub panels: Vec<crate::stage::Panel>,
+    /// The summary answers a question the person asked (see [`Done::answer`]).
+    pub answers: bool,
 }
 
 impl Done {
     /// The usual answer: one sentence, nothing to show.
     pub fn said(summary: impl Into<String>) -> Done {
         Done { summary: summary.into(), ..Done::default() }
+    }
+
+    /// The answer to a question ("what reminders do I have"): one sentence that IS the answer.
+    /// The mind wrote its own reply before this ran, so it could only guess; the keeper says this
+    /// sentence instead of that guess (`assistant::turn::compose_reply`).
+    pub fn answer(summary: impl Into<String>) -> Done {
+        Done { answers: true, ..Done::said(summary) }
     }
 
     /// Adds a panel to show with the sentence (`Done::said("…").showing(panel)`).
