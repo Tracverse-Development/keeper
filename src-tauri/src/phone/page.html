@@ -38,6 +38,22 @@
   .plan button.no { background: transparent; color: var(--cream); border: 1px solid var(--line); }
   ol.steps { margin: 8px 0 0 18px; padding: 0; font-size: 14px; }
   label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-left: auto; }
+  /* Panels: what the keeper shows with an answer, drawn as plain text (never parsed as HTML). */
+  .panel { align-self: stretch; padding: 12px 14px; border-radius: 16px; background: rgba(21,28,51,.75); border: 1px solid var(--line); animation: up .35s ease both; }
+  .panel .k { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+  .panel h2 { margin: 2px 0 8px; font: 500 17px Georgia, "New York", serif; }
+  .panel p { margin: 0 0 6px; }
+  .panel ul, .panel ol { margin: 4px 0 0 18px; padding: 0; }
+  .panel li { margin: 3px 0; }
+  .panel .muted { color: var(--muted); font-size: 13px; }
+  .panel table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .panel th, .panel td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .panel th { color: var(--gold2); font-weight: 600; }
+  .panel .scroll { overflow-x: auto; }
+  .panel a.go { display: inline-block; margin-top: 6px; padding: 8px 14px; border-radius: 18px; background: linear-gradient(180deg, #e3b06a, #b57b2c); color: #070a16; font-weight: 600; text-decoration: none; }
+  .panel a { color: var(--gold2); }
+  .panel .choice { display: block; width: 100%; margin: 6px 0 0; height: auto; padding: 10px 14px; text-align: left; background: rgba(7,10,22,.7); color: var(--cream); border: 1px solid var(--line); font-weight: 500; }
+  .panel .choice.right { border-color: #6fd39a; } .panel .choice.wrong { border-color: #e2786a; }
 </style>
 </head>
 <body>
@@ -84,10 +100,63 @@
     yes.onclick = () => decide(true); no.onclick = () => decide(false);
     row.append(yes, no); el.append(list, row);
   }
+  // A panel the keeper showed, as a card on the phone. Every word is set with textContent; a link
+  // is only ever http(s). Kinds the phone cannot draw well say they are on the Mac.
+  const KINDS = { text: 'Notes', table: 'Table', steps: 'Steps', cards: 'Cards', quiz: 'Quiz', chart: 'Numbers', timeline: 'Timeline', flashcards: 'Flashcards', agenda: 'Agenda', checklist: 'Checklist', facts: 'What I know', sources: 'Sources', media: 'Watch', web: 'Web' };
+  const el = (tag, cls, words) => { const e = document.createElement(tag); if (cls) e.className = cls; if (words != null) e.textContent = words; return e; };
+  const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u : null);
+  const list = (tag, items, line) => { const l = el(tag); for (const it of items || []) l.appendChild(el('li', null, line(it))); return l; };
+  function link(href, words, cls) { const url = safeUrl(href); if (!url) return el('span', 'muted', words); const a = el('a', cls, words); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
+  function panelCard(p) {
+    const card = el('section', 'panel');
+    card.append(el('div', 'k', KINDS[p.kind] || 'On your Mac'), el('h2', null, p.title || ''));
+    switch (p.kind) {
+      case 'text': card.appendChild(el('p', null, p.body)); if (p.bullets) card.appendChild(list('ul', p.bullets, (b) => b)); break;
+      case 'table': {
+        const wrap = el('div', 'scroll'), t = el('table'), head = el('tr');
+        for (const c of p.columns || []) head.appendChild(el('th', null, c));
+        t.appendChild(head);
+        for (const r of p.rows || []) { const tr = el('tr'); for (const c of r) tr.appendChild(el('td', null, c)); t.appendChild(tr); }
+        wrap.appendChild(t); card.appendChild(wrap); if (p.caption) card.appendChild(el('p', 'muted', p.caption)); break;
+      }
+      case 'steps': card.appendChild(list('ol', p.steps, (s) => s.label + (s.detail ? ': ' + s.detail : ''))); break;
+      case 'cards': card.appendChild(list('ul', p.cards, (c) => (c.emoji ? c.emoji + ' ' : '') + c.title + ': ' + c.body)); break;
+      case 'chart': card.appendChild(list('ul', (p.labels || []).map((l, i) => [l, p.values[i]]), ([l, v]) => l + ': ' + v + (p.unit ? ' ' + p.unit : ''))); break;
+      case 'timeline': card.appendChild(list('ul', p.events, (e) => e.when + ': ' + e.title + (e.detail ? ' (' + e.detail + ')' : ''))); break;
+      case 'agenda': card.appendChild(list('ul', p.items, (i) => (i.time ? i.time + ' · ' : '') + i.title + (i.detail ? ' (' + i.detail + ')' : ''))); break;
+      case 'checklist': card.appendChild(list('ul', p.items, (i) => (i.done ? '☑ ' : '☐ ') + i.text)); break;
+      case 'facts': card.appendChild(list('ul', p.facts, (f) => f.text)); break;
+      case 'sources': { const l = el('ul'); for (const i of p.items || []) { const li = el('li'); li.appendChild(link(i.url, i.title)); if (i.note) li.appendChild(el('div', 'muted', i.note)); l.appendChild(li); } card.appendChild(l); break; }
+      case 'web': if (p.summary) card.appendChild(el('p', null, p.summary)); card.appendChild(link(p.url, 'Open the page', 'go')); break;
+      case 'media':
+        if (p.channel || p.length) card.appendChild(el('p', 'muted', [p.channel, p.length].filter(Boolean).join(' · ')));
+        if (safeUrl(p.url)) card.appendChild(link(p.url, 'Watch', 'go'));
+        else card.appendChild(el('p', 'muted', 'It plays on your Mac.'));
+        break;
+      case 'quiz': {
+        card.appendChild(el('p', null, p.question));
+        const why = el('p', 'muted');
+        (p.choices || []).forEach((c, i) => {
+          const b = el('button', 'choice', c);
+          b.onclick = () => { b.classList.add(i === p.answer ? 'right' : 'wrong'); why.textContent = (i === p.answer ? 'Right. ' : 'Not quite. ') + (p.explain || ''); };
+          card.appendChild(b);
+        });
+        card.appendChild(why); break;
+      }
+      case 'flashcards': {
+        for (const c of p.cards || []) { const b = el('button', 'choice', c.front); let back = false; b.onclick = () => { back = !back; b.textContent = back ? c.back : c.front; }; card.appendChild(b); }
+        break;
+      }
+      default: card.appendChild(el('p', 'muted', 'Open Keeper on your Mac to see this.'));
+    }
+    return card;
+  }
   function show(r) {
     if (r.chat) chat = r.chat;
     const el = bubble('them', r.reply, r.learned && r.learned.length ? 'Remembered: ' + r.learned.join('; ') : r.mind);
     if (r.plan && r.plan.steps && r.plan.steps.length) planButtons(el, r.plan);
+    for (const p of r.panelSpecs || []) if (p.kind !== 'approval') feed.appendChild(panelCard(p));
+    feed.scrollTop = feed.scrollHeight;
     say(r.reply);
   }
   // One phone session is one chat on the keeper (its id comes back with each reply).

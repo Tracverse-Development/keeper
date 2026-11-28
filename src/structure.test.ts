@@ -229,3 +229,11 @@ test('dialogs: every role="dialog" screen closes on Escape', () => {
     assert.ok(/useEscape\(|'Escape'/.test(text), `${relative(web, f)} is a dialog with no Escape`);
   }
 });
+
+// The phone page shows what the keeper said and showed as text only: a reply or a panel is never
+// parsed as HTML on the phone (the link carries the conversation over the LAN).
+test('phone: the phone page never parses an answer as HTML', () => {
+  const page = readFileSync(join(core, 'phone/page.html'), 'utf8');
+  for (const sink of ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'eval(']) assert.ok(!page.includes(sink), `phone/page.html uses ${sink}`);
+  assert.match(page, /safeUrl/, 'links are checked to be http(s)');
+});
