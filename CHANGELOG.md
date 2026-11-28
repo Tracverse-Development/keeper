@@ -8,6 +8,34 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.21.0] - 2026-11-28
+
+The web inside Keeper, and Hands-free that hears its name.
+
+### Added
+- **Web pages open inside Keeper.** "Go to wikipedia.org" opens the page right beside your keeper,
+  with back, forward, reload, an address you can change, "Open in my browser" and close. Say "in
+  my browser" or "in Safari" to open it outside instead. Well-known sites open by name too: "go
+  to my Gmail", "open YouTube", "open Google Drive". Videos play right there.
+- **Your keeper sees the page you have open.** Ask about it ("what does this page say?", "what
+  are the headlines?") and it answers from the page. Anything written on a page is treated as
+  something to read, never as orders to follow.
+- **Forms filled for you.** "Fill this in with my name and email": your keeper fills the fields
+  and outlines each one in gold so you can check them. It presses links and ordinary buttons for
+  you, but a button that sends, submits, pays, buys, deletes or posts is always yours to press.
+- **Passwords, safely.** When a page needs a password, your keeper opens a locked box under the
+  browser's toolbar. What you type goes straight into the page's password field and nowhere else:
+  your keeper never sees it, and it is never kept or written to a log.
+
+### Fixed
+- **Hands-free now wakes when you call its name the way people say it.** A keeper named "Trini
+  Boi" was heard as "Trini boy" and never woke. Names are now matched by how they sound. When it
+  hears a sentence without its name, it shows what it heard and reminds you to say its name first
+  (FIX-0061).
+- The browser's address follows sites that change pages without reloading (a YouTube video, a
+  Gmail message).
+- While a web page is open, the keepers list folds away so your keeper stays in view beside it.
+
 ## [0.20.0] - 2026-11-28
 
 Documents, email and your apps, just by asking.

@@ -47,8 +47,40 @@ pub fn quit_words(said: &str) -> Option<Value> {
     (!not_an_app && valid_app_name(&name) && crate::platform::app_installed(&name)).then(|| json!({ "name": name }))
 }
 
-/// `{"url"}` for "open youtube.com": an http(s) address or a bare domain (never a file name).
+/// Websites people name without an address ("go to my Gmail", "open YouTube"): the name as said
+/// (lower case, spaces removed) and the address it means. Only sites nobody has as a Mac app.
+const KNOWN_SITES: &[(&str, &str)] = &[
+    ("gmail", "https://mail.google.com/"),
+    ("googlemail", "https://mail.google.com/"),
+    ("youtube", "https://www.youtube.com/"),
+    ("google", "https://www.google.com/"),
+    ("googledrive", "https://drive.google.com/"),
+    ("googledocs", "https://docs.google.com/"),
+    ("googlecalendar", "https://calendar.google.com/"),
+    ("outlook", "https://outlook.live.com/"),
+    ("hotmail", "https://outlook.live.com/"),
+    ("yahoomail", "https://mail.yahoo.com/"),
+    ("icloud", "https://www.icloud.com/"),
+    ("facebook", "https://www.facebook.com/"),
+    ("instagram", "https://www.instagram.com/"),
+    ("wikipedia", "https://www.wikipedia.org/"),
+    ("amazon", "https://www.amazon.com/"),
+    ("linkedin", "https://www.linkedin.com/"),
+    ("netflix", "https://www.netflix.com/"),
+];
+
+const OPEN_KNOWN_SITE: &str = r"(?i)^(?:please\s+)?(?:open|go to|visit|take me to|check|show me)\s+(?:up\s+)?(?:my\s+|the\s+)?([a-z][a-z ]{1,20}?)(?:\s+(?:account|inbox|email|mail|page|site|website))?(\s+in\s+(?:my\s+(?:own\s+)?browser|safari|chrome))?\s*[.!]?$";
+
+/// `{"url"}` for "open youtube.com": an http(s) address, a bare domain (never a file name), or
+/// a well-known site said by name ("go to my Gmail": `KNOWN_SITES`).
 pub fn site_words(said: &str) -> Option<Value> {
+    static K: OnceLock<Regex> = OnceLock::new();
+    if let Some(c) = instant::pattern(&K, OPEN_KNOWN_SITE).captures(said.trim()) {
+        let name: String = c[1].to_lowercase().split_whitespace().collect();
+        if let Some((_, url)) = KNOWN_SITES.iter().find(|(n, _)| *n == name) {
+            return Some(if c.get(2).is_some() { json!({ "url": url, "outside": true }) } else { json!({ "url": url }) });
+        }
+    }
     static R: OnceLock<Regex> = OnceLock::new();
     let c = instant::pattern(&R, OPEN_SITE).captures(said.trim())?;
     let raw = c[1].trim_end_matches(['.', '!', ',']);
@@ -108,5 +140,15 @@ mod tests {
         assert_eq!(site_words("go to gmail.com"), Some(json!({ "url": "gmail.com" })));
         assert_eq!(site_words("open gmail.com in my browser"), Some(json!({ "url": "gmail.com", "outside": true })));
         assert_eq!(site_words("open youtube.com in Safari."), Some(json!({ "url": "youtube.com", "outside": true })));
+    }
+
+    #[test]
+    fn well_known_sites_open_by_name() {
+        assert_eq!(site_words("go to my gmail"), Some(json!({ "url": "https://mail.google.com/" })));
+        assert_eq!(site_words("Check my Gmail inbox."), Some(json!({ "url": "https://mail.google.com/" })));
+        assert_eq!(site_words("open YouTube"), Some(json!({ "url": "https://www.youtube.com/" })));
+        assert_eq!(site_words("open Google Drive in Safari"), Some(json!({ "url": "https://drive.google.com/", "outside": true })));
+        assert_eq!(site_words("open my notes"), None);
+        assert_eq!(site_words("open Mail"), None);
     }
 }
