@@ -206,9 +206,11 @@ pub async fn of_type(content_type: &str, name: Option<&str>, folders: &[PathBuf]
     let safe = name.and_then(sanitise);
     let limit = limit.clamp(1, MAX_LIMIT);
     let folders: Vec<PathBuf> = folders.iter().filter(|p| p.is_dir()).cloned().collect();
+    // Spotlight with indexing off answers "nothing" rather than failing (the test VM), so an
+    // empty answer walks the folders too (FIX-0051's sibling: "find my movies" found none).
     let mut hits = match spotlight_hits(&type_query(content_type, safe.as_deref()), &folders).await {
-        Ok(h) => h,
-        Err(_) => {
+        Ok(h) if !h.is_empty() => h,
+        _ => {
             let scope = folders.clone();
             let mut walked = tokio::task::spawn_blocking(move || walk(&scope, SystemTime::UNIX_EPOCH)).await.unwrap_or_default();
             if let Some(q) = &safe {

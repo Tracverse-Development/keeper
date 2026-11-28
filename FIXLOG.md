@@ -402,7 +402,7 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Area:** `src-tauri/src/pim/files.rs` (`find`, `walk_where`, `name_matches`)
 - **Symptom:** the test VM has Spotlight indexing off; `~/Documents/notes.txt` was not found.
 - **Fix:** when Spotlight finds nothing, Desktop, Documents and Downloads are walked by name (bounded, never inside a git working tree) before saying so; the recent-files walk shares the same walker.
-- **Guard:** `files_tests.rs` test `a_name_holds_every_word_asked_for`.
+- **Guard:** `files_tests.rs` test `a_name_holds_every_word_asked_for`. Sibling fixed the same day: `of_type` (find my movies) also walked only when Spotlight failed, not when it found nothing.
 
 ### FIX-0052 — "Find my movies" looked for files named "movies" (2026-11-28)
 - **Area:** `src-tauri/src/sdk/packs/files/find.rs` (`find_words`), `sdk/packs/video/mod.rs` (`find-movies` instant phrasings, `is_movies_word`)
