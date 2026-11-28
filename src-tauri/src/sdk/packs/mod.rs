@@ -20,6 +20,7 @@
 //!   routines   save, list and forget routines by name (instant-only); "run my …" is expanded
 //!   clipboard  work on what was copied in any app, at the Mac only (instant-only)
 
+pub mod browser;
 pub mod calendar;
 pub mod clipboard;
 pub mod computer;

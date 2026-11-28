@@ -23,6 +23,13 @@ pub fn browser_go(app: AppHandle, how: String) -> Result<()> {
     super::go(&app, &how)
 }
 
+/// The person typed a password in Keeper's secure box: it goes into that one password field of
+/// the page and nowhere else (never logged, never kept, never to the mind).
+#[tauri::command]
+pub async fn browser_password(app: AppHandle, field: String, value: String) -> Result<()> {
+    super::page::password(&app, &field, &value).await
+}
+
 #[tauri::command]
 pub fn browser_close(app: AppHandle) -> Result<BrowserState> {
     super::close(&app)

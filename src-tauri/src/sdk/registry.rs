@@ -15,6 +15,7 @@ const PACKS: &[&[Ability]] = &[
     packs::files::ABILITIES,
     packs::files::find::ABILITIES,
     packs::mail::ABILITIES,
+    packs::browser::ABILITIES,
     packs::video::ABILITIES,
     packs::core::ABILITIES,
     packs::computer::look::ABILITIES,

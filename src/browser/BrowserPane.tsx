@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { core } from '../kernel/ipc';
 import { hostOf } from './browser-view.ts';
+import { PasswordRow } from './PasswordRow';
 import type { Browser } from './useBrowser';
 
 export function BrowserPane({ browser }: { browser: Browser }) {
@@ -60,6 +61,7 @@ export function BrowserPane({ browser }: { browser: Browser }) {
         </button>
         <button type="button" className="btn btn-ghost btn-icon" onClick={() => void browser.close()} aria-label="Close the browser">✕</button>
       </form>
+      <PasswordRow />
       <div className="browser-frame" ref={frame}>
         <p className="muted small">Opening the page…</p>
       </div>

@@ -32,3 +32,5 @@ pub const MODE_SWITCHED: &str = "assistant://mode-switched";
 pub const LEVEL_UP: &str = "keeper://level-up";
 /// Keeper's browser changed: `browser::BrowserState` ({ open, url }).
 pub const BROWSER_STATE: &str = "browser://state";
+/// A page in Keeper's browser wants a password: { field, label, host }; the window opens its secure box.
+pub const BROWSER_PASSWORD: &str = "browser://password";

@@ -15,6 +15,8 @@ mod status_macos;
 mod controls_macos;
 #[cfg(target_os = "macos")]
 mod mail_macos;
+#[cfg(target_os = "macos")]
+mod browser_macos;
 mod status;
 #[cfg(target_os = "macos")]
 use macos as os;
@@ -39,6 +41,12 @@ pub struct Unread {
     pub from: String,
     pub subject: String,
     pub received: String,
+}
+
+/// Runs a fixed script (`browser::scripts`) in Keeper's browser page, in an isolated world the page
+/// cannot see, and returns its string answer.
+pub async fn browser_script(view: &tauri::Webview, script: String) -> Result<String> {
+    os::browser_script(view, script).await
 }
 
 /// Opens the person's own mail app on a filled-in `mailto:` link; nothing is sent.

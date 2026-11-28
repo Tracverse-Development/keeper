@@ -216,6 +216,7 @@ pub fn run() {
             browser::commands::browser_close,
             browser::commands::browser_state,
             browser::commands::browser_out,
+            browser::commands::browser_password,
             commands::voice_listen_once,
             commands::voice_stop,
             commands::voice_speak,

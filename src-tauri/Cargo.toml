@@ -50,3 +50,12 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+# Keeper's browser reads and fills its page through WebKit's own evaluateJavaScript in an isolated
+# content world (platform/browser_macos.rs). The same crate versions wry already builds: nothing
+# new is downloaded, only these features of them are switched on.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+block2 = "0.6.2"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSError", "NSObject"] }
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKWebView", "WKContentWorld", "WKFrameInfo"] }

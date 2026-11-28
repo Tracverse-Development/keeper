@@ -141,15 +141,15 @@ export function Dashboard({ initial }: { initial: Settings }) {
   }, [keeper?.id]);
   const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
-  const sidebarOpen = panelOpen && !stage.showing;
-  const transcript = useTranscript();
-  // The Stage's panels take the side of the window; the Transcript waits until they close.
   const browser = useBrowser(); // A page open inside Keeper takes the Stage area, like the Stage's panels.
   const stageArea = stage.showing || browser.open;
+  const sidebarOpen = panelOpen && !stageArea;
+  const transcript = useTranscript();
+  // The Stage's panels take the side of the window; the Transcript waits until they close.
   const railOpen = transcript.open && !stageArea;
-  const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stage.showing };
+  const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stageArea };
   useSideFit(sidebarOpen, railOpen || memoryOpen, foldKeepers);
-  const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (stage.showing && !next.stage) stage.close(); };
+  const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (!next.stage) { if (stage.showing) stage.close(); if (browser.open) void browser.close(); } };
 
   // ⌘K / Ctrl+K anywhere opens the command palette.
   useEffect(() => {

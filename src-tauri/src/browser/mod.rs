@@ -12,6 +12,8 @@
 //! page's address.
 
 pub mod commands;
+pub mod page;
+pub mod scripts;
 
 use std::sync::Mutex;
 

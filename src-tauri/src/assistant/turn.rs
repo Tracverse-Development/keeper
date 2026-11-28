@@ -60,6 +60,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     // A change to one named text file is drafted where the person sees it (`edit-file`), never
     // planned and done out of sight: the mind gets the file's text and no tools.
     let editing = (attached.is_none() && approved.is_none() && role.allows("edit-file")).then(|| sdk::packs::files::editing_material(said, &sdk::drafts::Drafts::here())).flatten();
+    // The page open in Keeper's browser, in front of the person: the keeper sees what they see.
+    let page = if attached.is_none() && editing.is_none() && role.allows("fill-form") { crate::browser::page::material_now(app).await } else { None };
     // The keeper's mood, when its mode allows one and the person has not turned it off.
     let soul = state.soul(&keeper.soul);
     // No simulated mood on a child profile.
@@ -70,7 +72,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         // An approved plan is computer work whatever its words were. A message that came with
         // material is about reading it: no tools on that turn.
         may_act: attached.is_none() && editing.is_none() && (base.may_act || (approved.is_some() && base.can_act)),
-        attached: attached.as_ref().map(super::attach::Attached::block).or(editing),
+        attached: attached.as_ref().map(super::attach::Attached::block).or(editing).or(page),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         elsewhere: recall.elsewhere.clone(),

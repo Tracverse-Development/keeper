@@ -37,6 +37,8 @@ export const EVENTS = {
   levelUp: 'keeper://level-up',
   /** Keeper's browser changed: { open, url } (`browser`). */
   browserState: 'browser://state',
+  /** A page in Keeper's browser wants a password: { field, label, host } (`ask-password`). */
+  browserPassword: 'browser://password',
 } as const;
 
 /**
@@ -211,6 +213,8 @@ export const core = {
   browserClose: () => invoke<BrowserState>('browser_close'),
   browserState: () => invoke<BrowserState>('browser_state'),
   browserOut: () => invoke<void>('browser_out'),
+  /** A password typed in Keeper's secure box, into one password field of the page (never kept). */
+  browserPassword: (field: string, value: string) => invoke<void>('browser_password', { field, value }),
   /** Opens one page of System Settings by name ("speech recognition", "microphone"). */
   settingsPaneOpen: (name: string) => invoke<void>('settings_pane_open', { name }),
   listenOnce: () => invoke<void>('voice_listen_once'),
