@@ -17,7 +17,7 @@ const KIND_LABELS: Record<PanelKind, string> = {
   cards: 'Ideas', quiz: 'Quick check', chart: 'Chart', files: 'Files',
   diagram: 'Diagram', timeline: 'Timeline', folder: 'Folder', sliders: 'What if', flashcards: 'Practice',
   agenda: 'Agenda', checklist: 'Checklist', form: 'Fill this in', approval: 'Plan to approve', facts: 'What I know',
-  sources: 'Sources', live: 'Live', media: 'Watch', web: 'Visit', file: 'File',
+  sources: 'Sources', live: 'Live', media: 'Watch', web: 'Visit', file: 'File', draft: 'Draft to save',
 };
 
 /** How long the "Asking about …" line stays after a click. */

@@ -61,3 +61,22 @@ pub fn write_private(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()
     }
     std::fs::rename(tmp, path)
 }
+
+/// Where Keeper keeps the drafts of files a keeper is editing (`<app home>/drafts`).
+pub fn drafts_home() -> PathBuf {
+    app_home().join("drafts")
+}
+
+/// The folders where the person's own files live, as real paths: their home and the temporary
+/// folders (`/tmp` and the system's own). A file a keeper opens, shows or edits must be inside one.
+pub fn persons_places() -> Vec<PathBuf> {
+    let mut places: Vec<PathBuf> = dirs::home_dir().into_iter().collect();
+    places.push(PathBuf::from("/tmp"));
+    places.push(std::env::temp_dir());
+    places.into_iter().filter_map(|p| p.canonicalize().ok()).collect()
+}
+
+/// A real (already resolved) path inside one of `persons_places`.
+pub fn in_persons_places(real: &std::path::Path) -> bool {
+    persons_places().iter().any(|place| real.starts_with(place))
+}

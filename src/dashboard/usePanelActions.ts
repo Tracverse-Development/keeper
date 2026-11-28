@@ -2,7 +2,8 @@
  * The window's side of "panels you work in", "say the reply first" and the morning brief:
  * - a panel action (tick, answer, flashcard, form, forget, pin) is written to the keeper's graph;
  *   a submitted form is also sent as the next message, so the keeper carries on with it;
- *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated
+ *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated;
+ *   a draft's "Change something" puts its opening in the talk box (nothing is written or sent)
  * - the reply's first sentence, then the whole reply, arrive before the panels finish
  *   (`earlyReply`): each is spoken at once, the later ones queued after what is being said and
  *   only the part not already said (`unsaid`); the final result speaks whatever is left
@@ -30,6 +31,8 @@ interface Deps {
   brief: () => Promise<void>;
   /** Send a message to the keeper (a submitted form continues the conversation). */
   send: (text: string) => void;
+  /** Put words in the talk box for the person to finish, without sending (a draft's "Change something"). */
+  compose: (text: string) => void;
   /** Called when the graph changed (forget/pin), so counts and drawers refresh. */
   changed: () => void;
 }
@@ -69,6 +72,10 @@ export function usePanelActions(deps: Deps) {
     const d = ref.current;
     if (a.type === 'approve' || a.type === 'deny') {
       await d.decide(a.token, a.type === 'approve');
+      return;
+    }
+    if (a.type === 'compose') {
+      d.compose(a.text);
       return;
     }
     try {

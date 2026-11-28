@@ -27,6 +27,7 @@
 //! }
 //! ```
 
+pub mod drafts;
 pub mod input;
 pub mod packs;
 pub mod registry;

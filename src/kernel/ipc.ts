@@ -8,6 +8,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { Chat, ChatFound } from './ipc-chats';
+import type { DraftSaved, DraftView } from './ipc-drafts';
 import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, Fact, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
 import type { FeelingsInfo, FocusSession, HealthCheck, PackTrust, PhotoSaved, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { ChangeEntry, Spending } from './ipc-usage';
@@ -38,6 +39,7 @@ export type * from './ipc-wardrobe';
 export type * from './ipc-studio';
 export type * from './ipc-usage';
 export type * from './ipc-chats';
+export type * from './ipc-drafts';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -97,6 +99,11 @@ export const core = {
   systemLive: () => invoke<SystemLive>('system_live'),
   /** Open what a panel shows: a web page in the browser, or a file in your home (open, or show in the Finder). */
   stageOpen: (target: string, how: 'open' | 'reveal' = 'open') => invoke<void>('stage_open', { target, how }),
+  /** A keeper's draft of a text file: load it, change its text by hand, save it over the file (refused if the file changed meanwhile), or throw it away. */
+  draftView: (draft: string) => invoke<DraftView>('draft_view', { draft }),
+  draftEdit: (draft: string, text: string) => invoke<DraftView>('draft_edit', { draft, text }),
+  draftSave: (draft: string, keeper?: string) => invoke<DraftSaved>('draft_save', { draft, keeper }),
+  draftDiscard: (draft: string) => invoke<void>('draft_discard', { draft }),
   /** The keeper's simulated feelings, and resetting them. */
   keeperFeelings: (keeper?: string, mode?: string) => invoke<FeelingsInfo>('keeper_feelings', { keeper, mode }),
   feelingsReset: (keeper?: string) => invoke<FeelingsInfo>('feelings_reset', { keeper }),

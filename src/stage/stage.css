@@ -4,6 +4,7 @@
 @import './panels.css';
 @import './panels-visual.css';
 @import './panels-work.css';
+@import './panels-draft.css';
 
 .stage-area {
   position: absolute; z-index: 3; top: 52px; right: 14px; bottom: var(--stage-bottom, 118px);

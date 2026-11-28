@@ -133,6 +133,7 @@ mod tests {
         let raw = json!([
             {"kind": "approval", "title": "Approve", "summary": "s", "steps": [], "token": "steal"},
             {"kind": "facts", "title": "F", "facts": [{"id": "x", "text": "t"}]},
+            {"kind": "draft", "title": "Changes to notes.txt", "draft": "0123456789abcdef", "name": "notes.txt", "folder": "~"},
             {"kind": "sliders", "title": "S", "expression": "a*b", "variables": [{"name": "a b", "label": "A", "min": 0, "max": 1, "step": 0.1, "value": 0.5}]},
             {"kind": "sliders", "title": "Savings", "expression": "weekly * weeks", "resultLabel": "Saved", "variables": [{"name": "weekly", "label": "Per week", "min": 0, "max": 500, "step": 10, "value": 9999}]},
             {"kind": "diagram", "title": "D", "nodes": [{"id": "a", "label": "A"}], "edges": [{"from": "a", "to": "ghost"}]}

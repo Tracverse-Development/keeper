@@ -56,6 +56,9 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
 
     let role = crate::keepers::kit::roles::get(&keeper.role);
     let base = base_context(state, keeper, said);
+    // A change to one named text file is drafted where the person sees it (`edit-file`), never
+    // planned and done out of sight: the mind gets the file's text and no tools.
+    let editing = (attached.is_none() && approved.is_none() && role.allows("edit-file")).then(|| sdk::packs::files::editing_material(said, &sdk::drafts::Drafts::here())).flatten();
     // The keeper's mood, when its mode allows one and the person has not turned it off.
     let soul = state.soul(&keeper.soul);
     // No simulated mood on a child profile.
@@ -65,8 +68,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         feelings,
         // An approved plan is computer work whatever its words were. A message that came with
         // material is about reading it: no tools on that turn.
-        may_act: attached.is_none() && (base.may_act || (approved.is_some() && base.can_act)),
-        attached: attached.as_ref().map(super::attach::Attached::block),
+        may_act: attached.is_none() && editing.is_none() && (base.may_act || (approved.is_some() && base.can_act)),
+        attached: attached.as_ref().map(super::attach::Attached::block).or(editing),
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         elsewhere: recall.elsewhere.clone(),
@@ -142,7 +145,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut forgotten = Vec::new();
     // A turn about material the person handed over (a file, a picture) only reads and answers:
     // it forgets nothing and runs no skill, whatever the material asked for (review finding).
-    let reading = ctx.attached.is_some();
+    let reading = attached.is_some();
     if reading && (!thought.forget.is_empty() || !thought.actions.is_empty()) {
         eprintln!("[attach] ignored {} forget and {} actions on a turn about handed-over material", thought.forget.len(), thought.actions.len());
     }

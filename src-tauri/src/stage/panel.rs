@@ -232,5 +232,8 @@ pub enum Panel {
     Approval { #[serde(default)] id: String, title: String, summary: String, steps: Vec<PlanStep>, token: String },
     /// Only the core writes these (from the graph); engines' facts panels are dropped.
     Facts { #[serde(default)] id: String, title: String, facts: Vec<FactRow> },
+    /// A keeper's draft of a change to one text file, beside the old text, for the person to save
+    /// (`sdk::drafts`; the window loads the text by `draft`). Only the core writes these.
+    Draft { #[serde(default)] id: String, title: String, draft: String, name: String, folder: String, #[serde(default)] why: Option<String> },
 }
 
