@@ -69,6 +69,9 @@ async fn start_and_wait() -> Result<bool> {
     if answers(&home()).await {
         return Ok(false);
     }
+    // A node that keeps dying at start may have a damaged dashboard file (FIX-0058): set it aside
+    // first, so this start (or its supervisor's next restart) comes up with a fresh one.
+    super::node_repair::repair(&home()).await;
     run_dkg("start").await?;
     let started = std::time::Instant::now();
     while started.elapsed() < START_WAIT {

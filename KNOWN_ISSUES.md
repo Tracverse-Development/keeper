@@ -38,3 +38,5 @@
 - [ ] **DESK-A11Y-001** — Text size and keyboard focus rings are done; a full screen-reader pass (VoiceOver through every screen) has not been made. (2026-11-26, Low)
 
 - [ ] **DESK-COAT-001** — Coats (fur, feathers) are obtained, never picked, but there is no way to obtain one yet (founder 2026-11-28: "we'll flesh that out later"). Until then a keeper has a coat only if it already wore one (`KeeperProfile.obtained`). A restored backup keeps the coats its file names: a backup is the person's own unsigned file, so it is not a proof of obtaining. Packs never carry a coat. (2026-11-28, Low)
+
+- [ ] **DESK-NODE-DB-001** — The DKG node (10.0.26) exits at every start when its dashboard database `node-ui.db` is damaged, instead of rebuilding it, and writes the error only to its supervisor's output. Keeper now repairs this one file (FIX-0058); other damaged node databases (vector store, finalization inbox) are not repaired automatically. Worth reporting upstream when the founder chooses. (2026-11-28, Medium)

@@ -4,6 +4,7 @@
  * are additive, so nothing is silently deleted). The Questions tab asks the graph any question
  * from the core's catalog. `keeper` is the active keeper's id; changing it reloads everything.
  */
+import { useRetry } from '../kernel/use-retry';
 import { mindName } from '../kernel/mind-words.ts';
 import { useEffect, useRef, useState } from 'react';
 
@@ -40,11 +41,17 @@ export function MemoryDrawer({ open, onClose, refreshKey, keeper }: { open: bool
         if (current.current !== asked) return;
         setData(o);
         setError(null);
+        setReadFailed(false);
       })
       .catch((e) => {
-        if (current.current === asked) setError(sentence(e));
+        if (current.current !== asked) return;
+        setError(sentence(e));
+        setReadFailed(true);
       });
   };
+  // Read again while open when the read failed (the memory node may still be starting).
+  const [readFailed, setReadFailed] = useState(false);
+  useRetry(open && readFailed, () => void load());
   // Another keeper is another graph: drop the last one's records before reading the new one.
   useEffect(() => {
     setData(null);

@@ -9,6 +9,7 @@
 pub mod client;
 pub mod literal;
 pub mod node;
+pub mod node_repair;
 pub mod own_node;
 pub mod place;
 pub mod runtime;

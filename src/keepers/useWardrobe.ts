@@ -5,6 +5,7 @@
  * change comes back as the whole wardrobe (who wears what), and `onChanged` reloads the keepers so
  * the character on the stage is redressed at once. Loads when `open` turns true.
  */
+import { useRetry } from '../kernel/use-retry';
 import { useCallback, useEffect, useState } from 'react';
 
 import { core, sentence, type GiveMode, type NewWardrobeItem, type Wardrobe } from '../kernel/ipc';
@@ -13,17 +14,27 @@ export function useWardrobe(open: boolean, onChanged: () => void) {
   const [wardrobe, setWardrobe] = useState<Wardrobe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A failed READ is tried again while open (the memory node may still be starting); a refused
+  // change is not (its message stays for the person).
+  const [readFailed, setReadFailed] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  const read = useCallback(() => {
     core
       .wardrobe()
       .then((w) => {
         setWardrobe(w);
         setError(null);
+        setReadFailed(false);
       })
-      .catch((e) => setError(sentence(e)));
-  }, [open]);
+      .catch((e) => {
+        setError(sentence(e));
+        setReadFailed(true);
+      });
+  }, []);
+  useEffect(() => {
+    if (open) read();
+  }, [open, read]);
+  useRetry(open && readFailed, read);
 
   const run = useCallback(
     (change: Promise<Wardrobe>): Promise<boolean> => {
