@@ -219,3 +219,13 @@ test('changelog: the current version has an entry, on top, and versions are in o
   const rank = (h: RegExpMatchArray) => Number(h[1]) * 1e6 + Number(h[2]) * 1e3 + Number(h[3]);
   for (let i = 1; i < heads.length; i++) assert.ok(rank(heads[i - 1]) > rank(heads[i]), `${heads[i][0].trim()} is out of order`);
 });
+
+// A dialog over the window closes on Escape (CLAUDE.md §1: Back/Close work both ways). The VM pass
+// found What's new ignoring it while typing reached the message box behind it.
+test('dialogs: every role="dialog" screen closes on Escape', () => {
+  for (const f of files(web, /\.tsx$/)) {
+    const text = readFileSync(f, 'utf8');
+    if (!text.includes('role="dialog"')) continue;
+    assert.ok(/useEscape\(|'Escape'/.test(text), `${relative(web, f)} is a dialog with no Escape`);
+  }
+});

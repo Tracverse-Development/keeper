@@ -6,6 +6,7 @@
 import { useState } from 'react';
 
 import { core, sentence, type Soul } from '../kernel/ipc';
+import { useEscape } from '../kernel/use-escape';
 
 const BLANK: Soul = { id: '', name: '', summary: '', traits: [], tone: '', humor: 5, formality: 3, emoji: false, catchphrases: [], greeting: '', pokeLines: [], patLines: [], rules: [], builtin: false };
 const lines = (v: string) => v.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -34,6 +35,7 @@ export function SoulEditor({ start, onClose, onSaved }: { start: Soul | null; on
     }
   };
 
+  useEscape(true, onClose);
   return (
     <div className="sheet-backdrop is-open" onClick={onClose}>
       <section className="sheet glass soul-editor" role="dialog" aria-label="Soul" onClick={(e) => e.stopPropagation()}>

@@ -49,6 +49,9 @@ struct Shared {
     active: String,
     /// Always-listening needs the wake word (false = open mic: every sentence is a command).
     wake_required: bool,
+    /// The keeper (index) a spoken command just went to: when it finishes speaking its answer,
+    /// the conversation stays open for a follow-up (`wake::FOLLOW_WINDOW`).
+    answering: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -62,7 +65,7 @@ pub struct Voice {
 
 impl Voice {
     pub fn new() -> Voice {
-        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true })), replies: Arc::new(Replies::default()), order: Arc::new(AsyncMutex::new(())) }
+        Voice { stdin: Arc::new(AsyncMutex::new(None)), shared: Arc::new(Mutex::new(Shared { mode: Mode::Off, wake: wake::Wake::default(), keepers: Vec::new(), active: String::new(), wake_required: true, answering: None })), replies: Arc::new(Replies::default()), order: Arc::new(AsyncMutex::new(())) }
     }
 
     pub fn set_keepers(&self, keepers: Vec<(String, String)>, active: String) {
@@ -108,6 +111,9 @@ impl Voice {
                 let _ = app.emit(events::VOICE_EVENT, &event);
                 if event["type"] == "final" {
                     route_final(&app, &shared, event["text"].as_str().unwrap_or_default());
+                }
+                if event["type"] == "speech-end" {
+                    keep_conversation_open(&app, &shared);
                 }
             }
             // The helper ended (crash or quit): the next call starts a fresh one.
@@ -220,6 +226,20 @@ impl Voice {
     }
 }
 
+/// The keeper that was answering a spoken command has finished speaking: the next sentence goes
+/// to it without its name for `wake::FOLLOW_WINDOW`, and the window is told (it shows the keeper
+/// still listening).
+fn keep_conversation_open(app: &AppHandle, shared: &Arc<Mutex<Shared>>) {
+    let Ok(mut s) = shared.lock() else { return };
+    let Some(index) = s.answering.take() else { return };
+    if s.mode != Mode::Always || !s.wake_required {
+        return;
+    }
+    s.wake.follow(index, std::time::Instant::now() + wake::FOLLOW_WINDOW);
+    let keeper = s.keepers.get(index).map(|(id, _)| id.clone());
+    let _ = app.emit(events::VOICE_EVENT, json!({ "type": "following", "keeper": keeper, "seconds": wake::FOLLOW_WINDOW.as_secs() }));
+}
+
 fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
     let Ok(mut s) = shared.lock() else { return };
     let active = s.active.clone();
@@ -235,8 +255,11 @@ fn route_final(app: &AppHandle, shared: &Arc<Mutex<Shared>>, text: &str) {
             let names: Vec<String> = s.keepers.iter().map(|(_, n)| n.clone()).collect();
             let active_index = s.keepers.iter().position(|(id, _)| *id == active).unwrap_or(0);
             let ids: Vec<String> = s.keepers.iter().map(|(id, _)| id.clone()).collect();
-            match s.wake.hear(text, &names, active_index) {
-                wake::Heard::Command(i, c) => Some((ids.get(i).cloned().unwrap_or_default(), c)),
+            match s.wake.hear(text, &names, active_index, std::time::Instant::now()) {
+                wake::Heard::Command(i, c) => {
+                    s.answering = Some(i);
+                    Some((ids.get(i).cloned().unwrap_or_default(), c))
+                }
                 wake::Heard::Woken(i) => {
                     let _ = app.emit(events::VOICE_EVENT, json!({ "type": "woken", "keeper": ids.get(i) }));
                     None

@@ -429,3 +429,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Symptom:** a level 5 robot's Inventory began with level 15 wings "only for humans" and an item "only for the God Keeper".
 - **Fix:** items this keeper can put on now (fits its body, level reached) come first; rarity, worn and name order follow.
 - **Guard:** `inventory-view.test.ts` "what the keeper can put on now comes first".
+
+### FIX-0056 — What's new ignored Escape, and typing went to the message box behind it (2026-11-28)
+- **Area:** `src/dashboard/WhatsNew.tsx`, `src/keepers/SoulEditor.tsx`, `src/keepers/NewKeeperDialog.tsx`
+- **Symptom:** in the VM after updating to 0.18.1, Escape did not close What's new, and words typed while it was open were sent as a message behind it.
+- **Root cause:** the dialog had no Escape handler and took no focus, so the message box (autoFocus) kept the keyboard; two other dialogs also lacked Escape (same class).
+- **Fix:** What's new closes on Escape (`useEscape`), is `aria-modal` and focuses "Got it"; the soul editor and the new-keeper dialog close on Escape.
+- **Guard:** `structure.test.ts` "dialogs: every role=\"dialog\" screen closes on Escape".

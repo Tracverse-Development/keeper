@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { core, EVENTS, on, sentence, type VoiceEvent } from '../kernel/ipc';
+import { attentionFrom, type Attention } from './attention.ts';
 
 export interface VoiceState {
   level: number;
@@ -15,10 +16,12 @@ export interface VoiceState {
   speaking: boolean;
   mouth: number;
   error: string | null;
+  /** Woken by its name, or still in conversation after answering (always-listening mode). */
+  attention: Attention | null;
 }
 
 export function useVoice(onCommand: (text: string, keeper: string) => void) {
-  const [state, setState] = useState<VoiceState>({ level: 0, partial: '', listening: false, speaking: false, mouth: 0, error: null });
+  const [state, setState] = useState<VoiceState>({ level: 0, partial: '', listening: false, speaking: false, mouth: 0, error: null, attention: null });
   const mouthTarget = useRef(0);
   const commandRef = useRef(onCommand);
   commandRef.current = onCommand;
@@ -37,6 +40,12 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
           break;
         case 'listening':
           setState((s) => ({ ...s, listening: e.on, level: e.on ? s.level : 0, partial: e.on ? s.partial : '' }));
+          break;
+        case 'woken':
+          setState((s) => ({ ...s, attention: attentionFrom('woken', Date.now()) }));
+          break;
+        case 'following':
+          setState((s) => ({ ...s, attention: attentionFrom('following', Date.now(), e.seconds) }));
           break;
         case 'speech-start':
           setState((s) => ({ ...s, speaking: true }));
@@ -60,7 +69,10 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
           break;
       }
     });
-    const offCommands = on<{ text: string; keeper: string }>(EVENTS.voiceCommand, (c) => commandRef.current(c.text, c.keeper ?? ''));
+    const offCommands = on<{ text: string; keeper: string }>(EVENTS.voiceCommand, (c) => {
+      setState((s) => ({ ...s, attention: null }));
+      commandRef.current(c.text, c.keeper ?? '');
+    });
     return () => {
       offEvents();
       offCommands();
@@ -79,6 +91,13 @@ export function useVoice(onCommand: (text: string, keeper: string) => void) {
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [state.speaking]);
+
+  // The attention lapses on its own (the window shows it only while it lasts).
+  useEffect(() => {
+    if (!state.attention) return;
+    const timer = window.setTimeout(() => setState((s) => ({ ...s, attention: null })), Math.max(0, state.attention.until - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [state.attention]);
 
   const fail = (e: unknown) => setState((s) => ({ ...s, error: sentence(e) }));
   return {

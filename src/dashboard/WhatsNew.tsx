@@ -3,9 +3,10 @@
  * the person last looked (built into the app from CHANGELOG.md, so it says exactly what was
  * released). "Got it" marks them seen; they can always be read again in the changelog.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { core, type ChangeEntry } from '../kernel/ipc';
+import { useEscape } from '../kernel/use-escape';
 import { changeLine } from './whats-new-text.ts';
 
 export function WhatsNew() {
@@ -15,14 +16,15 @@ export function WhatsNew() {
     core.whatsNew().then(setEntries).catch(() => undefined);
   }, []);
 
-  if (entries.length === 0) return null;
-  const close = () => {
+  const close = useCallback(() => {
     setEntries([]);
     void core.whatsNewSeen().catch(() => undefined);
-  };
+  }, []);
+  useEscape(entries.length > 0, close);
+  if (entries.length === 0) return null;
   return (
     <div className="sheet-backdrop is-open" onClick={close}>
-      <section className="whats-new glass" role="dialog" aria-label="What's new in Keeper" onClick={(e) => e.stopPropagation()}>
+      <section className="whats-new glass" role="dialog" aria-modal="true" aria-label="What's new in Keeper" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
             <p className="eyebrow">What's new</p>
@@ -50,7 +52,8 @@ export function WhatsNew() {
           ))}
         </div>
         <div className="row">
-          <button type="button" className="btn btn-primary" onClick={close}>
+          {/* Focus starts here, so typing while it is open never reaches the message box behind it. */}
+          <button type="button" className="btn btn-primary" onClick={close} autoFocus>
             Got it
           </button>
         </div>

@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 import { SKINS } from '../character';
 import { sentence, type RoleInfo, type Soul } from '../kernel/ipc';
+import { useEscape } from '../kernel/use-escape';
 import { PackImport } from './PackImport';
 
 interface Props {
@@ -38,6 +39,7 @@ export function NewKeeperDialog({ roles, souls, onClose, onCreate, onImported }:
     }
   };
 
+  useEscape(true, onClose);
   return (
     <div className="sheet-backdrop is-open" onClick={onClose}>
       <section className="sheet glass new-keeper" role="dialog" aria-label="Add a keeper" onClick={(e) => e.stopPropagation()}>

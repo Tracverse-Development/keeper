@@ -18,8 +18,6 @@
 /* ---------- the conversation dock ---------- */
 .dock { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(760px, calc(100% - 32px)); z-index: 4;
   display: flex; flex-direction: column; gap: var(--space-3); }
-.dock-feed { max-height: 34vh; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) 2px;
-  mask-image: linear-gradient(180deg, transparent 0, black 28px); -webkit-mask-image: linear-gradient(180deg, transparent 0, black 28px); }
 .exchange { display: flex; flex-direction: column; gap: var(--space-2); animation: fade-up 420ms var(--ease) both; }
 .bubble { margin: 0; max-width: 85%; padding: var(--space-3) var(--space-4); border-radius: 18px; font-size: var(--text-md); line-height: 1.5; }
 .bubble p { margin: 0; }
@@ -153,7 +151,6 @@
 .stage-frame { position: absolute; inset: 0; transition: right 650ms var(--ease); }
 .dashboard.has-stage .stage-frame { right: 62%; }
 .dashboard.has-stage .dock { left: 19%; width: min(420px, calc(38% - 32px)); }
-.dashboard.has-stage .dock-feed { max-height: 26vh; }
 .dashboard.has-stage { --stage-left: 38%; --stage-bottom: 24px; }
 
 .scenes-pill { position: absolute; top: 60px; right: 18px; z-index: 6; animation: fade-up 400ms var(--ease) both; color: var(--gold-300); }
@@ -241,3 +238,45 @@
 .bubble.you.correction { padding: var(--space-2) var(--space-4); font-size: var(--text-sm); background: transparent; border-style: dashed; color: var(--gold-300); }
 /* While the keeper works: send what was typed as a correction, or queue it. */
 .dock-choice { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ---------- captions and the Transcript: the keeper is never covered ----------
+   The latest exchange shows as captions under the keeper (no card, no wall of text); the whole
+   conversation lives in the Transcript rail at the side. The keeper's canvas stops above the
+   message box and, with the Transcript open, beside it, so text and character never overlap. */
+.dashboard { --rail-w: 400px; --dock-reserve: 128px; --left-inset: 76px; --right-inset: 0px; }
+.dashboard.has-panel { --left-inset: 280px; }
+.dashboard.has-transcript { --right-inset: calc(var(--rail-w) + 18px); }
+.stage-frame { bottom: var(--dock-reserve); transition: right 650ms var(--ease), left 650ms var(--ease);
+  /* The stage fades out above the message box instead of ending on a hard edge. */
+  mask-image: linear-gradient(180deg, black 82%, transparent); -webkit-mask-image: linear-gradient(180deg, black 82%, transparent); }
+.dashboard.has-transcript .stage-frame { right: var(--right-inset); }
+.dashboard.has-panel.has-transcript .stage-frame { left: var(--left-inset); }
+.dashboard.has-transcript .dock, .dashboard.has-panel.has-transcript .dock {
+  left: calc(var(--left-inset) + (100% - var(--left-inset) - var(--right-inset)) / 2);
+  width: min(680px, calc(100% - var(--left-inset) - var(--right-inset) - 32px)); }
+
+.captions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); text-align: center; padding: 0 var(--space-4);
+  animation: fade-up 360ms var(--ease) both; }
+.caption-you { margin: 0; max-width: 100%; font-size: var(--text-sm); color: var(--gold-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caption-you::before { content: 'You: '; color: var(--text-muted); }
+.caption-line { margin: 0; max-width: 64ch; font-family: var(--font-serif); font-size: var(--text-lg); line-height: 1.45; color: var(--cream-50);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 18px rgba(7, 10, 22, 0.95); }
+.caption-line.is-live .caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--gold-300); animation: caret-blink 900ms steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .caption-line.is-live .caret { animation: none; } .captions { animation: none; } }
+.caption-more { border: 1px solid var(--border); background: rgba(7, 10, 22, 0.55); color: var(--text-muted); border-radius: 999px;
+  padding: 2px var(--space-3); font-size: var(--text-xs); cursor: pointer; }
+.caption-more:hover { color: var(--text); border-color: var(--border-strong); }
+.transcript-toggle.is-on { color: var(--gold-300); }
+
+.transcript { position: absolute; top: 64px; right: 18px; bottom: 22px; width: var(--rail-w); z-index: 5; display: flex; flex-direction: column;
+  border-radius: var(--radius); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); animation: fade-up 360ms var(--ease) both; }
+.transcript-head { display: flex; align-items: center; justify-content: space-between; }
+.transcript-head .eyebrow { margin: 0; }
+.transcript-feed { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-1) var(--space-2) 0; }
+.transcript-feed .bubble { max-width: 92%; font-size: var(--text-base); }
+/* A narrow window: the Transcript lies over the Stage's right side; the keeper keeps the rest. */
+@media (max-width: 1100px) { .dashboard { --rail-w: 340px; } }
+.attentive { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--gold-300); font-family: var(--font-serif); font-size: var(--text-lg); }
+.attentive::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-300); box-shadow: 0 0 0 0 rgba(240, 201, 138, 0.6); animation: attentive 1.6s var(--ease) infinite; }
+@keyframes attentive { 70% { box-shadow: 0 0 0 10px rgba(240, 201, 138, 0); } 100% { box-shadow: 0 0 0 0 rgba(240, 201, 138, 0); } }
+@media (prefers-reduced-motion: reduce) { .attentive::before { animation: none; } }

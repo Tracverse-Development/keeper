@@ -9,6 +9,8 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
+import { TranscriptRail } from '../conversation/TranscriptRail';
+import { useTranscript, WIDE_ENOUGH_FOR_BOTH } from '../conversation/useTranscript';
 import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
 import { useHanded } from '../conversation/useHanded';
@@ -144,6 +146,9 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const sidebarOpen = panelOpen && !stage.showing;
+  const transcript = useTranscript();
+  // The Stage's panels take the side of the window; the Transcript waits until they close.
+  const railOpen = transcript.open && !stage.showing;
 
   // ⌘K / Ctrl+K anywhere opens the command palette.
   useEffect(() => {
@@ -230,11 +235,12 @@ export function Dashboard({ initial }: { initial: Settings }) {
       .then((turns) => {
         assistant.showChat(id, turns);
         stage.fromTurns(turns);
+        transcript.setOpen(true);
       })
       .catch((e) => assistant.announce(sentence(e), name));
 
   return (
-    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${handed.over ? 'is-dropping' : ''}`}>
+    <main className={`dashboard ${sidebarOpen ? 'has-panel' : ''} ${stage.showing ? 'has-stage' : ''} ${railOpen ? 'has-transcript' : ''} ${handed.over ? 'is-dropping' : ''}`}>
       {handed.over && (
         <div className="drop-hint" aria-live="polite">
           <span>Drop it on {name}</span>
@@ -314,9 +320,10 @@ export function Dashboard({ initial }: { initial: Settings }) {
         speaking={voice.speaking}
         partial={voice.partial}
         voiceError={voice.error}
+        attention={voice.attention}
         assistantName={name}
-        full={sidebarOpen && assistant.chatId !== ''}
-        compact={stage.showing}
+        transcriptOpen={railOpen}
+        onTranscript={(open) => { transcript.setOpen(open); if (open && stage.showing) stage.close(); if (open && window.innerWidth < WIDE_ENOUGH_FOR_BOTH) setPanelOpen(false); }}
         onSend={sendMessage}
         compose={compose}
         onCorrect={assistant.correct}
@@ -334,6 +341,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         onMic={voice.listen}
         onStop={stop}
       />
+      {railOpen && <TranscriptRail exchanges={assistant.exchanges} busy={assistant.busy} assistantName={name} onSend={sendMessage} onClose={() => transcript.setOpen(false)} />}
       <WhatsNew />
       <CanDoPage open={canDoOpen} keeperName={name} onSay={(words) => void assistant.send(words)} onOpen={(place, find) => (place === 'studio' ? setStudioOpen(true) : place === 'settings' ? (setSettingsFind(find ?? ''), setSettingsOpen(true)) : setMemoryOpen(true))} onClose={() => setCanDoOpen(false)} />
       <CommandPalette

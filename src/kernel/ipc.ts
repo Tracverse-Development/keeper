@@ -45,6 +45,7 @@ export const EVENTS = {
 export const localMediaSrc = (path: string): string => convertFileSrc(path, 'keeper-media');
 
 export type * from './ipc-types';
+export type * from './ipc-voice';
 export type * from './ipc-wardrobe';
 export type * from './ipc-studio';
 export type * from './ipc-usage';

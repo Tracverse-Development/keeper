@@ -361,22 +361,6 @@ export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | '
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'redirected' | 'remembering' | 'done';
 
-export type VoiceEvent =
-  | { type: 'ready'; onDevice: boolean }
-  | { type: 'level'; value: number }
-  | { type: 'partial'; text: string }
-  | { type: 'final'; text: string }
-  | { type: 'listening'; on: boolean; mode?: string }
-  | { type: 'woken' }
-  | { type: 'speech-start' }
-  | { type: 'word'; length: number }
-  | { type: 'mouth'; value: number }
-  | { type: 'speech-end' }
-  | { type: 'authorized'; speech: string; mic: boolean; onDevice: boolean }
-  | { type: 'voices'; voices: { name: string; language: string; quality: number }[] }
-  | { type: 'stopped' }
-  | { type: 'error'; message: string };
-
 /** What a panel action changed (`stage_action`). */
 export interface ActionDone {
   /** Right quiz answers in a row, after a quiz answer. */
