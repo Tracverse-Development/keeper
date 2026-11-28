@@ -10,6 +10,11 @@ pub mod read_commands;
 #[cfg(target_os = "macos")]
 mod spotlight_macos;
 #[cfg(target_os = "macos")]
+mod status_macos;
+#[cfg(target_os = "macos")]
+mod controls_macos;
+mod status;
+#[cfg(target_os = "macos")]
 use macos as os;
 
 #[cfg(not(target_os = "macos"))]
@@ -23,6 +28,7 @@ use std::time::Duration;
 use crate::kernel::Result;
 
 pub use pictures::{save_png, PICTURES_FOLDER};
+pub use status::{Battery, Volume, WiFi, ZoneTime, MAX_AWAKE_MINUTES};
 
 pub fn open_app(name: &str) -> Result<()> {
     os::open_app(name)
@@ -30,6 +36,12 @@ pub fn open_app(name: &str) -> Result<()> {
 
 pub fn open_url(url: &str) -> Result<()> {
     os::open_url(url)
+}
+
+/// Open a file or folder with its usual app (a folder opens in the Finder). The caller checks
+/// the path (`sdk::packs::computer::home_path`: inside the person's home, absolute).
+pub fn open_path(path: &std::path::Path) -> Result<()> {
+    os::open_path(path)
 }
 
 /// Show a file in the system file manager (Finder on macOS).
@@ -120,4 +132,72 @@ pub enum GroupSignal {
 /// `brain::engines::cli::spawn`). Only for groups Keeper started and owns; never any other pid.
 pub fn signal_group(leader: u32, signal: GroupSignal) -> Result<()> {
     os::signal_group(leader, signal)
+}
+
+// What a keeper can look at and change on this computer (`sdk::packs::computer`). Each reads or
+// changes one thing, with argv only; systems without it answer in plain words.
+
+/// The battery now; `None` on a computer without one (a desktop).
+pub async fn battery() -> Result<Option<Battery>> {
+    os::battery().await
+}
+
+/// The Wi-Fi connection now (network, signal, channel). Takes a few seconds on macOS.
+pub async fn wifi() -> Result<WiFi> {
+    os::wifi().await
+}
+
+/// The apps open in the Dock now (not background helpers), in the system's order.
+pub async fn open_apps() -> Result<Vec<String>> {
+    os::open_apps().await
+}
+
+/// The time now in an IANA time zone ("Asia/Tokyo"); an unknown zone is an error, never UTC.
+pub async fn time_in_zone(zone: &str) -> Result<ZoneTime> {
+    os::time_in_zone(zone).await
+}
+
+/// The names of the person's Shortcuts (the Shortcuts app), and running one by its exact name.
+pub async fn shortcuts() -> Result<Vec<String>> {
+    os::shortcuts().await
+}
+
+pub async fn run_shortcut(name: &str) -> Result<()> {
+    os::run_shortcut(name).await
+}
+
+/// Dark mode on or off (the system appearance; reversible by the same call).
+pub async fn set_dark_mode(on: bool) -> Result<()> {
+    os::set_dark_mode(on).await
+}
+
+/// The output volume: a level 0-100, or muted / unmuted. Plays no sound.
+pub async fn set_volume(volume: Volume) -> Result<()> {
+    os::set_volume(volume).await
+}
+
+/// Keep the computer and display awake for `minutes` (1 to [`MAX_AWAKE_MINUTES`]), or stop with 0. Keeper owns the
+/// one process that holds it awake: a new request replaces it, and it ends when Keeper quits.
+pub fn keep_awake(minutes: u32) -> Result<()> {
+    os::keep_awake(minutes)
+}
+
+/// Put the display to sleep now (it locks too when the person's settings ask for a password).
+pub async fn display_sleep() -> Result<()> {
+    os::display_sleep().await
+}
+
+/// Lock the screen now (the person signs back in to return).
+pub async fn lock_screen() -> Result<()> {
+    os::lock_screen().await
+}
+
+/// A silent picture of the whole screen, as PNG bytes (the caller saves it).
+pub async fn screenshot() -> Result<Vec<u8>> {
+    os::screenshot().await
+}
+
+/// A new note in the system's notes app with `title` and `body` (plain text).
+pub async fn new_note(title: &str, body: &str) -> Result<()> {
+    os::new_note(title, body).await
 }

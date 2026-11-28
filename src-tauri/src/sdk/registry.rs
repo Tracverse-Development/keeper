@@ -1,11 +1,23 @@
 //! The registry: the one list of packs, and every question asked of the abilities (Registry
 //! pattern). Only abilities for the system this build runs on are offered or run.
 
-use super::{packs, this_platform, Ability, ActionRequest, Cx, Outcome};
+use super::{packs, this_platform, Ability, Access, ActionRequest, Cx, Outcome};
 use crate::keepers::kit::roles::Role;
 
 /// Every pack, in the order the mind hears them. A new pack is one line here.
-const PACKS: &[&[Ability]] = &[packs::reminders::ABILITIES, packs::calendar::ABILITIES, packs::personal::ABILITIES, packs::desktop::ABILITIES, packs::files::ABILITIES, packs::video::ABILITIES, packs::core::ABILITIES];
+const PACKS: &[&[Ability]] = &[
+    packs::reminders::ABILITIES,
+    packs::calendar::ABILITIES,
+    packs::personal::ABILITIES,
+    packs::desktop::ABILITIES,
+    packs::files::ABILITIES,
+    packs::video::ABILITIES,
+    packs::core::ABILITIES,
+    packs::computer::look::ABILITIES,
+    packs::computer::open::ABILITIES,
+    packs::computer::change::ABILITIES,
+    packs::everyday::ABILITIES,
+];
 
 /// Every watch (what keepers check on their own, `sdk::watch`). A new watch is one line here.
 pub const WATCHES: &[&super::watch::Watch] = &[&packs::calendar::heads_up::HEADS_UP];
@@ -31,10 +43,18 @@ pub fn catalogue_for(mode: &Role) -> String {
     if list.is_empty() { "(none in this mode)".into() } else { list.join("\n") }
 }
 
+/// Whether an ability with this access may run for a request made at the Mac (`at_the_mac`) or
+/// over the phone link: a phone can ask and look, never change this Mac.
+pub fn may_run_from(access: Access, at_the_mac: bool) -> bool {
+    at_the_mac || access != Access::Change
+}
+
 /// Runs what the mind asked for; any failure becomes an [`Outcome`] the keeper can say.
 pub async fn run(req: &ActionRequest, cx: &Cx<'_>) -> Outcome {
     let input = req.input.to_string();
     let result = match find(&req.skill) {
+        // A phone on the Wi-Fi can ask and look, but never change this Mac (lock it, turn the volume up).
+        Some(ability) if !may_run_from(ability.access, cx.at_the_mac) => Err(crate::kernel::DeskError::Invalid("That changes this Mac, so it can only be asked for at the Mac itself.".into())),
         Some(ability) => (ability.run)(&req.input, cx).await,
         None => Err(crate::kernel::DeskError::Invalid(format!("I don't have a skill called {} yet.", req.skill))),
     };
@@ -47,6 +67,17 @@ pub async fn run(req: &ActionRequest, cx: &Cx<'_>) -> Outcome {
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
+
+    use crate::sdk::Access;
+
+    #[test]
+    fn a_phone_can_look_but_never_change_this_mac() {
+        assert!(super::may_run_from(Access::Change, true));
+        assert!(!super::may_run_from(Access::Change, false));
+        for access in [Access::Memory, Access::Look, Access::Personal, Access::Open] {
+            assert!(super::may_run_from(access, false), "{access:?}");
+        }
+    }
 
     #[test]
     fn every_ability_has_its_own_name_and_says_how_to_call_it() {
@@ -65,6 +96,25 @@ mod tests {
         // The built-in modes list skills by name: a rename would silently take one away.
         for id in ["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file", "list-reminders", "upcoming", "find-video", "play-file", "find-movies"] {
             assert!(super::PACKS.iter().flat_map(|p| p.iter()).any(|a| a.id == id), "{id} is missing");
+        }
+    }
+
+    #[test]
+    fn every_skill_a_built_in_mode_lists_exists() {
+        for mode in crate::keepers::kit::roles::builtins() {
+            for id in mode.skills.iter().filter(|s| s.as_str() != "*") {
+                assert!(super::PACKS.iter().flat_map(|p| p.iter()).any(|a| a.id == id), "{} lists {id}, which no pack has", mode.id);
+            }
+        }
+    }
+
+    #[test]
+    fn modes_that_do_not_operate_the_computer_change_nothing_on_it() {
+        use super::super::Access;
+        for mode in crate::keepers::kit::roles::builtins().into_iter().filter(|m| !m.uses_computer()) {
+            for a in super::PACKS.iter().flat_map(|p| p.iter()).filter(|a| mode.allows(a.id)) {
+                assert!(a.access < Access::Open, "{} may use {}, which opens or changes things", mode.id, a.id);
+            }
         }
     }
 }

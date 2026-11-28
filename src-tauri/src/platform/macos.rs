@@ -1,12 +1,15 @@
 //! macOS: `open` for apps and pages, `osascript` for notifications, `scutil` for the name,
-//! `mdfind` for files (`spotlight_macos.rs`).
+//! `mdfind` for files (`spotlight_macos.rs`), what the Mac reports about itself
+//! (`status_macos.rs`) and the settings a keeper may change when asked (`controls_macos.rs`).
 //! Arguments are always passed as separate argv entries, never through a shell.
 
 use std::process::Command;
 
 use crate::kernel::{DeskError, Result};
 
+pub use super::controls_macos::{display_sleep, keep_awake, lock_screen, new_note, run_shortcut, screenshot, set_dark_mode, set_volume};
 pub use super::spotlight_macos::spotlight;
+pub use super::status_macos::{battery, open_apps, shortcuts, time_in_zone, wifi};
 
 pub const TARGET_TRIPLE: &str = if cfg!(target_arch = "aarch64") { "aarch64-apple-darwin" } else { "x86_64-apple-darwin" };
 
@@ -25,6 +28,21 @@ pub fn open_app(name: &str) -> Result<()> {
 
 pub fn open_url(url: &str) -> Result<()> {
     run(Command::new("/usr/bin/open").arg(url), "open that page")
+}
+
+pub fn open_path(path: &std::path::Path) -> Result<()> {
+    run(Command::new("/usr/bin/open").arg(path), "open that")
+}
+
+/// Runs a system tool (argv only, never a shell) and returns what it printed, or `failed` as a
+/// plain sentence when it fails or takes longer than `within` (the tool is stopped then).
+/// `tool_output(Command::new("/usr/bin/pmset").args(["-g", "batt"]), Duration::from_secs(5), "I couldn't read the battery.")`
+pub(super) async fn tool_output(cmd: &mut tokio::process::Command, within: std::time::Duration, failed: &str) -> Result<String> {
+    let run = cmd.env("LC_ALL", "en_US.UTF-8").kill_on_drop(true).output();
+    match tokio::time::timeout(within, run).await {
+        Ok(Ok(out)) if out.status.success() => Ok(String::from_utf8_lossy(&out.stdout).into_owned()),
+        _ => Err(DeskError::Io(failed.to_string())),
+    }
 }
 
 /// AppleScript string literal: backslashes and quotes escaped, so the text stays text.

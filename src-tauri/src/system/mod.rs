@@ -66,7 +66,8 @@ struct Readers {
 
 static LIVE: OnceLock<Option<Mutex<Readers>>> = OnceLock::new();
 
-const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+/// Bytes in a gigabyte (binary, as the live panel shows).
+pub const GB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 pub fn live() -> Live {
     let readers = LIVE.get_or_init(|| Some(Mutex::new(Readers { sys: System::new().ok()?, nets: sysinfo::Networks::new_with_refreshed_list().ok()?, last: std::time::Instant::now() })));
@@ -82,11 +83,7 @@ pub fn live() -> Live {
     let real: Vec<(&sysinfo::NetworkData, std::net::Ipv4Addr)> = r.nets.iter().filter_map(|(_, n)| n.ip_networks().iter().find_map(|ip| match ip.addr { std::net::IpAddr::V4(v4) if on_a_network(v4) => Some((n, v4)), _ => None })).collect();
     let net_address = real.iter().max_by_key(|(n, _)| n.total_received() + n.total_transmitted()).map(|(_, ip)| ip.to_string()).unwrap_or_default();
     let (total_down, total_up) = real.iter().fold((0u64, 0u64), |(d, u), (n, _)| (d + n.total_received(), u + n.total_transmitted()));
-    let disks = sysinfo::Disks::new_with_refreshed_list().ok();
-    let list: Vec<&sysinfo::Disk> = disks.as_ref().map(|d| d.into_iter().collect()).unwrap_or_default();
-    // The startup disk (mounted at /), or the biggest one.
-    let disk = list.iter().copied().find(|d| d.mount_point() == std::path::Path::new("/")).or_else(|| list.iter().copied().max_by_key(|d| d.total_space()));
-    let (disk_total, disk_free) = disk.map(|d| (d.total_space() as f64, d.available_space() as f64)).unwrap_or((0.0, 0.0));
+    let Space { total: disk_total, free: disk_free } = startup_disk().unwrap_or(Space { total: 0.0, free: 0.0 });
     let mut top: Vec<(String, f32)> = r.sys.processes().values().map(|p| (p.name().to_string_lossy().to_string(), p.cpu_usage())).filter(|(_, c)| *c > 0.5).collect();
     top.sort_by(|a, b| b.1.total_cmp(&a.1));
     top.truncate(5);
@@ -105,6 +102,28 @@ pub fn live() -> Live {
         disk_total_gb: disk_total / GB,
         top,
     }
+}
+
+/// A disk's size and the space still free on it, in bytes.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Space {
+    pub total: f64,
+    pub free: f64,
+}
+
+impl Space {
+    pub fn used(&self) -> f64 {
+        (self.total - self.free).max(0.0)
+    }
+}
+
+/// The startup disk (mounted at /), or the biggest one; `None` when no disk can be read. Used by
+/// the live panel and the `disk-space` ability.
+pub fn startup_disk() -> Option<Space> {
+    let disks = sysinfo::Disks::new_with_refreshed_list().ok()?;
+    let list: Vec<&sysinfo::Disk> = (&disks).into_iter().collect();
+    let disk = list.iter().copied().find(|d| d.mount_point() == std::path::Path::new("/")).or_else(|| list.iter().copied().max_by_key(|d| d.total_space()))?;
+    Some(Space { total: disk.total_space() as f64, free: disk.available_space() as f64 })
 }
 
 /// An address that means "on a network": not loopback, not the self-assigned 169.254 range.

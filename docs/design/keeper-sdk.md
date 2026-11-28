@@ -32,3 +32,32 @@ Rules:
 - A change to a text file is a DRAFT (`sdk::drafts`, the `edit-file` ability): the person sees it beside the old text and only their Save writes the file (refused if the file changed meanwhile).
 - Read and write the person's things on this computer only; nothing leaves it without the person asking.
 - Each pack has unit tests for its input checks; `registry` tests that names are unique.
+
+## The packs
+
+| Pack | Abilities | Access | Systems |
+|---|---|---|---|
+| `reminders/` | `remind` (and the clock behind it: repeats, snooze, what came due while closed) | Memory | all |
+| `personal` | `add-event`, `find-contact` | Personal | all |
+| `desktop` | `open-app`, `open-website` | Open | all |
+| `core` | `recall-actions`, `ask-memory`, `switch-engine` | Memory | all |
+| `computer/look` | `battery`, `wifi`, `open-apps`, `time-in` (a city, country or IANA zone), `list-shortcuts`: macOS; `disk-space`: all | Look | Mac (disk: all) |
+| `computer/open` | `show-in-finder` (home folder only), `open-settings` (a pane by its everyday name), `define-word` (the Dictionary) | Open | Mac |
+| `computer/change` | `dark-mode`, `set-volume` (0-100 or mute; no sound), `keep-awake` (0-480 minutes; Keeper owns the one `caffeinate`), `screen-off`, `lock-screen`, `copy-text`, `screenshot` (silent, into Pictures/Keeper, shown as a file panel), `new-note` (Apple Notes), `run-shortcut` (only one of the person's own, by name) | Change | Mac |
+| `everyday/` | `calculate` (`maths`: + - * / ^, brackets, %, sqrt), `convert` (`units`: length, weight, cooking volume, temperature, speed, area, data, time; never money) | Memory | all |
+
+How the computer packs are built:
+- Every OS call is one `platform` function (`platform/mod.rs`), done in `status_macos.rs` (readings)
+  or `controls_macos.rs` (changes), with a twin in `unsupported.rs` that answers in plain words.
+- Tools run with argv only and a time limit. Scripts are fixed text built from checked values (a
+  bool, a number 0-100); the person's words (a note) reach AppleScript only as `argv` items.
+- Each tool's reply is read by a pure parser tested on real output (`pmset`, `system_profiler`,
+  `lsappinfo`, `date`); each change's arguments are built by a pure, tested function.
+- Readings that are better seen than said come with a panel: battery and Wi-Fi as tables, disk
+  space as a chart, open apps and Shortcuts as lists, a screenshot as a file.
+- The instant lane (`fastlane/computer.rs`) answers "what's my battery", "what Wi-Fi am I on" and
+  "how much space do I have" by NAMING the ability; the turn runs it like any request, so the
+  mode's rules apply and there is one implementation.
+- Modes: System Administrator has every ability; Assistant the everyday ones (all but
+  `run-shortcut`); Companion and Researcher only `calculate`, `convert` (and Companion
+  `time-in`). A registry test keeps every mode that does not operate the computer below `Open`.

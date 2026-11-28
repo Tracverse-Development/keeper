@@ -96,7 +96,13 @@ storage is left, how busy the computer is) gets the live panel and at most one t
 finding things on their computer (you can look, never change), opening apps and websites, and answering questions. To change the words \
 of one text file, draft it with edit-file (they see it and save it themselves). For other changes to files, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
-        skills: &["remind", "list-reminders", "upcoming", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file", "find-video", "play-file", "find-movies"],
+        skills: &[
+            "remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine",
+            "list-reminders", "upcoming", "show-file", "edit-file", "find-video", "play-file", "find-movies",
+            // This computer, everyday: look, open, and the small reversible changes asked for in words.
+            "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word",
+            "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert",
+        ],
         mood: false,
     },
     Builtin {
@@ -113,7 +119,7 @@ and one line on what it supports. Never invent a source or a URL. You do not ope
 already found is answered from those findings; search again only for facts you do not have yet. Explain any \
 technical term (SMD, p-value, meta-analysis) in plain words the first time.",
         tools: Tools::Web,
-        skills: &["recall-actions", "ask-memory", "find-video"],
+        skills: &["recall-actions", "ask-memory", "find-video", "calculate", "convert"],
         mood: false,
     },
     Builtin {
@@ -136,7 +142,7 @@ praise effort. Give the full answer only when the person asks for it or has trie
         brief: "Your mode: this person's companion. Your domain is their day: conversation, learning together, reminders, \
 routines and wellbeing. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "find-video"],
+        skills: &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "find-video", "time-in", "calculate", "convert"],
         mood: true,
     },
 ];

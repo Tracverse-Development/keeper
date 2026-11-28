@@ -5,6 +5,8 @@
 //! - "find my NZCC deck", "where is my resume"   Spotlight → a files panel (`pim::find_files`)
 //! - "where is my Downloads folder", "open my documents"  a live folder view (`folders`)
 //! - "how's my computer", "system status"         CPU and memory → a chart panel
+//! - "what's my battery", "what Wi-Fi am I on", "how much space do I have"  the computer
+//!   pack's own abilities, run by the turn (`computer`)
 //! - "brief me", "good morning", "what's on today" the morning brief (`brief`)
 //! - "what do you know about me"                   your facts → a facts panel (forget / pin)
 //! - "week in review", "how was my week"          the week from memory (`week`)
@@ -16,6 +18,7 @@
 
 pub mod brief;
 pub mod clip;
+pub mod computer;
 pub mod folders;
 pub mod routines;
 pub mod week;
@@ -69,6 +72,10 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         let path = folders::known(&c[1])?;
         crate::platform::open_url(&path.display().to_string()).ok()?;
         return Some(folders::view(&path, true));
+    }
+
+    if let Some(thought) = computer::answer(&keeper.role, s) {
+        return Some(thought);
     }
 
     if re(&SYSTEM, r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$").is_match(s) {

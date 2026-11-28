@@ -74,6 +74,19 @@ export const CAN_DO: readonly Group[] = [
     ],
   },
   {
+    id: 'mac',
+    title: 'Around your Mac',
+    examples: [
+      { title: "What's my battery?", hint: 'Charge, charging or not, and the time left.', say: "What's my battery?" },
+      { title: 'How much space do I have?', hint: 'Free and used space on your startup disk.', say: 'How much space do I have?' },
+      { title: 'What time is it in Tokyo?', hint: 'The time anywhere, and how far ahead or behind you it is.', say: 'What time is it in Tokyo?' },
+      { title: 'Turn on dark mode', hint: 'Switches the Mac to dark; ask again to switch back.', say: 'Turn on dark mode' },
+      { title: 'Keep my Mac awake for an hour', hint: 'No sleeping while you read or present; it lets go by itself.', say: 'Keep my Mac awake for an hour' },
+      { title: 'Take a screenshot', hint: 'Silent, saved in Pictures/Keeper and shown here.', say: 'Take a screenshot' },
+      { title: 'What Shortcuts do I have?', hint: 'Your Shortcuts, listed; then ask me to run one by its name.', say: 'What Shortcuts do I have?' },
+    ],
+  },
+  {
     id: 'yours',
     title: 'Make it yours',
     examples: [

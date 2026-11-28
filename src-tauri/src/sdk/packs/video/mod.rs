@@ -15,7 +15,7 @@ pub const ABILITIES: &[Ability] = &[
     Ability {
         id: "find-video",
         how: "{\"query\": \"how to tie a tie four in hand\", \"short\": true} finds ONE real YouTube video and shows it playing in place (with two others to swap to); use it whenever the person wants to watch or see a video, never a search link or a made-up address",
-        access: Access::Open,
+        access: Access::Look,
         platforms: ALL,
         run: |input, cx| Box::pin(find_video(input, cx)),
     },

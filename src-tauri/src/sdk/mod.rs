@@ -110,11 +110,11 @@ impl Done {
 /// profile can be limited by it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)] // `Look` and `Change` are for the packs that read or change this computer.
 pub enum Access {
     /// Only the keeper's own memory graph.
     Memory,
-    /// Reads this computer (files, settings, status) and changes nothing.
+    /// Reads this computer (files, settings, status) or looks something up the person asked for
+    /// (a video search), shown inside Keeper; changes nothing.
     Look,
     /// The person's own records: calendar, contacts.
     Personal,
@@ -136,6 +136,9 @@ pub enum Platform {
 /// Every system (an ability made only of the keeper's own memory, or of `platform` calls that
 /// answer in plain words where a system lacks them).
 pub const ALL: &[Platform] = &[Platform::Mac, Platform::Windows, Platform::Linux];
+
+/// Only on macOS (an ability made of Mac calls that other systems do not have yet).
+pub const MAC: &[Platform] = &[Platform::Mac];
 
 /// The system this build runs on.
 pub const fn this_platform() -> Platform {
@@ -171,4 +174,7 @@ pub struct Cx<'a> {
     pub reminders: &'a packs::reminders::Scheduler,
     /// The keeper acting (a repeating reminder is written back to its memory each time).
     pub keeper: &'a str,
+    /// Asked by someone at this Mac (the window, the talk window), not over the phone link. An
+    /// `Access::Change` ability runs only then (`registry::run`).
+    pub at_the_mac: bool,
 }

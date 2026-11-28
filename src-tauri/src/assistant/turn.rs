@@ -19,7 +19,7 @@ use super::compose::compose_reply;
 use crate::sdk::{self, Cx, Effect, Outcome};
 use crate::state::AppState;
 
-pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>, attached: Option<super::attach::Attached>) -> Result<TurnResult> {
+pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, keeper: &KeeperProfile, chat: &str, said: &str, approved: Option<&[crate::stage::panel::PlanStep]>, attached: Option<super::attach::Attached>, at_the_mac: bool) -> Result<TurnResult> {
     let started = Instant::now();
     // What the record keeps of a message that came with material: its words and the file's
     // name, never the material itself.
@@ -162,7 +162,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     let mut outcomes = Vec::new();
     if !reading && !thought.actions.is_empty() {
         phase(app, "acting", "");
-        let cx = Cx { app, memory, reminders: &state.reminders, keeper: &keeper.id };
+        let cx = Cx { app, memory, reminders: &state.reminders, keeper: &keeper.id, at_the_mac };
         for request in thought.actions.iter().take(4) {
             // A role only uses the skills it is allowed (a companion does not open apps).
             if !role.allows(&request.skill) {

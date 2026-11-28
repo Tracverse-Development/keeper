@@ -113,7 +113,7 @@ pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: St
         Some(input) => Some(attach::read(&input, Some(&app)).await?),
         None => None,
     };
-    let result = run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached).await;
+    let result = run_turn_with(&app, &state, keeper.as_deref().unwrap_or(""), chat.as_deref().unwrap_or(""), &text, mode.as_deref().unwrap_or(""), attached, true).await;
     if let Err(e) = &result {
         // The failure, never the message that caused it.
         crate::kernel::log::error("turn", &e.to_string());
@@ -121,10 +121,16 @@ pub async fn assistant_turn(app: AppHandle, state: State<'_, AppState>, text: St
     result
 }
 
-/// One turn, from the window, the talk window or the phone link.
-/// `mode`: the mode this chat is in (a `keepers::kit::roles` id; "" = the keeper's default).
+/// One turn asked at this Mac (the morning brief). `mode`: the mode this chat is in (a
+/// `keepers::kit::roles` id; "" = the keeper's default).
 pub async fn run_turn(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str) -> Result<TurnResult> {
-    run_turn_with(app, state, keeper_id, chat, text, mode, None).await
+    run_turn_with(app, state, keeper_id, chat, text, mode, None, true).await
+}
+
+/// One turn from the phone link: everything a turn at the Mac does, except abilities that
+/// change this Mac (`sdk::Access::Change`).
+pub async fn run_phone_turn(app: &AppHandle, state: &AppState, chat: &str, text: &str, mode: &str) -> Result<TurnResult> {
+    run_turn_with(app, state, "", chat, text, mode, None, false).await
 }
 
 /// The mode a chat runs in. On a child profile: always the BUILT-IN Tutor (with no tools, never an
@@ -141,8 +147,9 @@ pub(crate) fn child_mode(mode: &str, child: bool) -> String {
 /// The skills a child may have a keeper use (nothing that opens apps or pages).
 const SAFE_FOR_A_CHILD: [&str; 2] = ["remind", "ask-memory"];
 
-/// `run_turn` with material the person handed over (`attach`).
-async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str, attached: Option<attach::Attached>) -> Result<TurnResult> {
+/// `run_turn` with material the person handed over (`attach`); `at_the_mac`: not over the phone link.
+#[allow(clippy::too_many_arguments)]
+async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat: &str, text: &str, mode: &str, attached: Option<attach::Attached>, at_the_mac: bool) -> Result<TurnResult> {
     let said = text.trim();
     if said.is_empty() {
         return Err(DeskError::Invalid("Say something first.".into()));
@@ -165,7 +172,7 @@ async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat:
     // "Run my Friday tidy": the routine's own request is what the keeper is asked.
     let routine = crate::fastlane::routines::expand(&memory, said).await;
     let said = routine.as_deref().unwrap_or(said);
-    let result = turn::turn(app, &memory, state, &keeper, chat, said, None, attached).await?;
+    let result = turn::turn(app, &memory, state, &keeper, chat, said, None, attached, at_the_mac).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
     Ok(result)
 }

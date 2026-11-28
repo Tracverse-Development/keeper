@@ -37,3 +37,51 @@ pub fn open_in_terminal(_program: &std::path::Path, _path: &std::ffi::OsStr) -> 
 pub fn signal_group(_: u32, _: super::GroupSignal) -> Result<()> {
     Err(DeskError::Invalid("Pausing work is not supported on this system yet.".into()))
 }
+
+pub fn open_path(_: &std::path::Path) -> Result<()> {
+    not_yet("Opening files and folders")
+}
+
+// What a keeper looks at and changes on the computer (`platform::battery` and the rest).
+fn not_yet<T>(what: &str) -> Result<T> {
+    Err(DeskError::Invalid(format!("{what} is not supported on this system yet.")))
+}
+pub async fn battery() -> Result<Option<super::Battery>> {
+    not_yet("Reading the battery")
+}
+pub async fn wifi() -> Result<super::WiFi> {
+    not_yet("Reading Wi-Fi")
+}
+pub async fn open_apps() -> Result<Vec<String>> {
+    not_yet("Listing open apps")
+}
+pub async fn time_in_zone(_: &str) -> Result<super::ZoneTime> {
+    not_yet("The world clock")
+}
+pub async fn shortcuts() -> Result<Vec<String>> {
+    not_yet("Shortcuts")
+}
+pub async fn run_shortcut(_: &str) -> Result<()> {
+    not_yet("Shortcuts")
+}
+pub async fn set_dark_mode(_: bool) -> Result<()> {
+    not_yet("Changing the appearance")
+}
+pub async fn set_volume(_: super::Volume) -> Result<()> {
+    not_yet("Changing the volume")
+}
+pub fn keep_awake(_: u32) -> Result<()> {
+    not_yet("Keeping the computer awake")
+}
+pub async fn display_sleep() -> Result<()> {
+    not_yet("Sleeping the display")
+}
+pub async fn lock_screen() -> Result<()> {
+    not_yet("Locking the screen")
+}
+pub async fn screenshot() -> Result<Vec<u8>> {
+    not_yet("Taking a screenshot")
+}
+pub async fn new_note(_: &str, _: &str) -> Result<()> {
+    not_yet("Making a note")
+}
