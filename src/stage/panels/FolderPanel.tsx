@@ -2,8 +2,10 @@
  * A folder panel: a live view of one folder while (or after) the keeper works in it. The path
  * is breadcrumbs, a summary counts the changes, and entries land one by one like a running
  * process: added in green, removed struck through in red, moved with an arrow to where it went,
- * kept muted. Clicking an entry asks about it.
+ * kept muted. Clicking an entry opens it in Keeper's file viewer (a moved one where it went; a
+ * removed one asks about it).
  */
+import { openInFiles } from '../../files';
 import { Breadcrumbs } from '../Breadcrumbs.tsx';
 import { folderEntryWhat } from '../focus.ts';
 import { Icon } from '../icons.tsx';
@@ -31,7 +33,7 @@ export function FolderPanel({ panel, onPick }: PanelProps<'folder'>) {
           const change = entry.change ?? 'kept';
           return (
             <li key={`${entry.name}-${i}`} style={stagger(i)}>
-              <button type="button" className={`entry is-${change}`} onClick={() => onPick(folderEntryWhat(entry, panel.path))}>
+              <button type="button" className={`entry is-${change}`} onClick={() => (change === 'removed' ? onPick(folderEntryWhat(entry, panel.path)) : openInFiles(change === 'moved' && entry.to ? `${entry.to}/${entry.name}` : `${panel.path}/${entry.name}`))}>
                 <span className={`entry-icon is-${entry.kind}`}><Icon name={entry.kind === 'folder' ? 'folder' : 'file'} size={16} /></span>
                 <span className="entry-name">{entry.name}</span>
                 {change === 'moved' && entry.to && (

@@ -8,10 +8,22 @@ use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "show-in-finder", how: "{\"path\": \"~/Documents/Taxes\"} opens a folder in the Finder, or shows a file there (only inside the person's home folder)", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { show_in_finder(input) }) },
+    Ability { id: "show-files", how: "{\"path\": \"~/Documents/Taxes\"} shows a folder or a file INSIDE Keeper, beside you: folders to go through, pictures, documents, videos and songs to play, text files to edit and save. Use this to show any file or folder unless the person asks for the Finder", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, cx| Box::pin(async move { show_files(input, cx) }) },
+    Ability { id: "show-in-finder", how: "{\"path\": \"~/Documents/Taxes\"} opens a folder in the Finder, or shows a file there, ONLY when the person asks for the Finder (inside their home folder)", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |input, _| Box::pin(async move { show_in_finder(input) }) },
     Ability { id: "open-settings", how: "{\"pane\": \"wifi\"} opens System Settings at a pane: wifi, bluetooth, network, sound, displays, battery, appearance, wallpaper, notifications, focus, privacy, keyboard, trackpad, mouse, accessibility, general, software update, storage, users, lock screen, desktop and dock, sharing, date and time, login items, time machine, printers", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::Also(settings_words), run: |input, _| Box::pin(async move { open_settings(input) }) },
     Ability { id: "define-word", how: "{\"word\": \"grace\"} opens a word in the Dictionary app", access: Access::Open, platforms: MAC, modes: &["assistant"], instant: Instant::Also(define_words), run: |input, _| Box::pin(async move { define_word(input) }) },
 ];
+
+fn show_files(input: &serde_json::Value, cx: &super::super::super::Cx<'_>) -> Result<Done> {
+    let said = input::text(input, "path")?;
+    let path = crate::explorer::place(said)?;
+    if !cx.at_the_mac {
+        return Err(DeskError::Invalid("Keeper's file viewer is on the Mac; ask me there.".into()));
+    }
+    crate::explorer::show(cx.app, &path);
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "your home folder".into());
+    Ok(Done::said(format!("Here's {name}, in Keeper.")))
+}
 
 fn show_in_finder(input: &serde_json::Value) -> Result<Done> {
     let said = input::text(input, "path")?;

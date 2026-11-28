@@ -8,6 +8,7 @@ mod browser;
 mod brain;
 mod commands;
 mod dkg;
+mod explorer;
 mod feelings;
 mod focus;
 mod health;
@@ -217,6 +218,9 @@ pub fn run() {
             browser::commands::browser_state,
             browser::commands::browser_out,
             browser::commands::browser_password,
+            explorer::commands::files_list,
+            explorer::commands::files_preview,
+            explorer::commands::files_edit,
             commands::voice_listen_once,
             commands::voice_stop,
             commands::voice_speak,

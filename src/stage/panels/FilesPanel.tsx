@@ -1,7 +1,9 @@
 /**
  * A files panel: what was done to which files, one row each, with an icon per action, the path
- * as breadcrumb chips and, for a move, an arrow to where it went. Clicking a row asks about it.
+ * as breadcrumb chips and, for a move, an arrow to where it went. Clicking a row opens it in
+ * Keeper's file viewer (a deleted one asks about it).
  */
+import { openInFiles } from '../../files';
 import { Breadcrumbs } from '../Breadcrumbs.tsx';
 import { fileWhat } from '../focus.ts';
 import { Icon } from '../icons.tsx';
@@ -17,7 +19,7 @@ export function FilesPanel({ panel, onPick }: PanelProps<'files'>) {
     <ul className="files">
       {panel.items.map((item, i) => (
         <li key={i} style={stagger(i)}>
-          <button type="button" className={`file-row is-${item.action}`} onClick={() => onPick(fileWhat(item.action, item.path))}>
+          <button type="button" className={`file-row is-${item.action}`} onClick={() => (item.action === 'delete' ? onPick(fileWhat(item.action, item.path)) : openInFiles(item.to ?? item.path))}>
             <span className="file-icon"><Icon name={item.action} size={17} /></span>
             <span className="file-action">{ACTION_WORDS[item.action] ?? item.action}</span>
             <span className="file-paths">

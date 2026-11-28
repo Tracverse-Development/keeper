@@ -102,7 +102,7 @@ pub fn check_path(path: &str) -> Result<PathBuf> {
 }
 
 /// Inside Keeper's own folder (keys, settings, the outbox) or the memory node's.
-fn private_to_keeper(path: &Path) -> bool {
+pub fn private_to_keeper(path: &Path) -> bool {
     let own = [crate::kernel::paths::app_home(), crate::kernel::paths::own_node_home()];
     own.iter().filter_map(|d| std::fs::canonicalize(d).ok()).any(|d| path.starts_with(&d))
 }

@@ -117,6 +117,21 @@ pub async fn document_text(path: &std::path::Path) -> Result<String> {
     }
 }
 
+/// A picture of a file as Quick Look draws it (a document's first page, a HEIC photo), as PNG
+/// bytes `size` pixels wide; made in a fresh temporary folder that is removed after.
+pub async fn quick_look_png(path: &std::path::Path, size: u32) -> Result<Vec<u8>> {
+    let out = std::env::temp_dir().join(format!("keeper-look-{}-{}", std::process::id(), crate::kernel::time::now().timestamp_millis()));
+    std::fs::create_dir_all(&out).map_err(|_| DeskError::Io("I couldn't make a picture of that file.".into()))?;
+    let look = tokio::process::Command::new("/usr/bin/qlmanage").arg("-t").arg("-s").arg(size.to_string()).arg("-o").arg(&out).arg(path).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).kill_on_drop(true).status();
+    let made = tokio::time::timeout(std::time::Duration::from_secs(15), look).await;
+    let picture = std::fs::read_dir(&out).ok().and_then(|mut d| d.find_map(|e| e.ok().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "png")))).and_then(|p| std::fs::read(p).ok());
+    let _ = std::fs::remove_dir_all(&out);
+    match (made, picture) {
+        (Ok(Ok(_)), Some(png)) => Ok(png),
+        _ => Err(DeskError::Invalid("Quick Look couldn't draw that file.".into())),
+    }
+}
+
 /// The text on the clipboard (`pbpaste`; empty when it holds no text).
 pub async fn clipboard_read() -> Result<String> {
     let out = tokio::process::Command::new("/usr/bin/pbpaste").env("LC_CTYPE", "UTF-8").output().await.map_err(|_| DeskError::Io("I couldn't read the clipboard.".into()))?;

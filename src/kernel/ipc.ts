@@ -9,11 +9,12 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import type { Chat, ChatFound } from './ipc-chats';
 import type { DraftSaved, DraftView } from './ipc-drafts';
+import type { FileListing, FilePreview } from './ipc-files';
 import type { ActionDone, Answer, PimAccess, PinnedScene, ElevenVoice, EngineId, EngineStatus, FolderAccess, FoundNode, GraphReady, Imported, KeeperChange, KeeperList, KeeperSaved, KitCatalog, Overview, PhoneStatus, QuestionInfo, Scan, Settings, SettingsChange, ShortcutStatus, Soul, Fact, SystemLoad, Turn, TurnResult, UpdateStatus, VoiceEngine } from './ipc-types';
 import type { FeelingsInfo, FocusSession, HealthCheck, PackTrust, PhotoSaved, SeasonNow, PersonalKind, PersonalPicture, RoleInfo, StudioInfo, SystemLive, Touch, TouchReply } from './ipc-studio';
 import type { ChangeEntry, Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
-import type { PanelAction } from './panel-spec';
+import type { Panel, PanelAction } from './panel-spec';
 
 /** The keeper's work in progress (`brain::engines::control::WorkState`). */
 export type WorkState = 'idle' | 'running' | 'paused';
@@ -37,6 +38,8 @@ export const EVENTS = {
   levelUp: 'keeper://level-up',
   /** Keeper's browser changed: { open, url } (`browser`). */
   browserState: 'browser://state',
+  /** Keeper's file viewer opens at a path: { path }. */
+  filesShow: 'files://show',
   /** A page in Keeper's browser wants a password: { field, label, host } (`ask-password`). */
   browserPassword: 'browser://password',
 } as const;
@@ -56,6 +59,7 @@ export type * from './ipc-studio';
 export type * from './ipc-usage';
 export type * from './ipc-chats';
 export type * from './ipc-drafts';
+export type * from './ipc-files';
 
 /** Commands. A rejected promise carries the core's plain-language sentence. */
 export const core = {
@@ -213,6 +217,10 @@ export const core = {
   browserClose: () => invoke<BrowserState>('browser_close'),
   browserState: () => invoke<BrowserState>('browser_state'),
   browserOut: () => invoke<void>('browser_out'),
+  /** Keeper's file viewer: a folder's entries (a file: its folder, the file selected), a file's preview, a text file as a draft to edit. */
+  filesList: (path: string) => invoke<FileListing>('files_list', { path }),
+  filesPreview: (path: string) => invoke<FilePreview>('files_preview', { path }),
+  filesEdit: (path: string) => invoke<Panel>('files_edit', { path }),
   /** A password typed in Keeper's secure box, into one password field of the page (never kept). */
   browserPassword: (field: string, value: string) => invoke<void>('browser_password', { field, value }),
   /** Opens one page of System Settings by name ("speech recognition", "microphone"). */

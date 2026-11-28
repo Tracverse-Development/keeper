@@ -15,22 +15,23 @@ export interface Held {
   more: number;
 }
 
-export function useHanded(): { over: boolean; held: Held | null; error: string | null; clear: () => void } {
+export function useHanded(): { over: boolean; held: Held | null; error: string | null; clear: () => void; hand: (path: string) => void } {
   const [over, setOver] = useState(false);
   const [held, setHeld] = useState<Held | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const take = (what: Handed, more: number) => {
+    setError(null);
+    core
+      .attachPeek(what)
+      .then((peek) => setHeld({ what, peek, more }))
+      .catch((e) => {
+        setHeld(null);
+        setError(sentence(e));
+      });
+  };
+
   useEffect(() => {
-    const take = (what: Handed, more: number) => {
-      setError(null);
-      core
-        .attachPeek(what)
-        .then((peek) => setHeld({ what, peek, more }))
-        .catch((e) => {
-          setHeld(null);
-          setError(sentence(e));
-        });
-    };
     const offFiles = onFileDrop((e) => {
       setOver(e.kind === 'over');
       if (e.kind !== 'drop') return;
@@ -54,6 +55,8 @@ export function useHanded(): { over: boolean; held: Held | null; error: string |
       window.removeEventListener('dragover', onDragOver);
       window.removeEventListener('drop', onDrop);
     };
+    // `take` only sets state; listening once is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
@@ -64,5 +67,7 @@ export function useHanded(): { over: boolean; held: Held | null; error: string |
       setHeld(null);
       setError(null);
     },
+    /** Hands a file to the keeper as if it were dropped (the file viewer's "Ask … about it"). */
+    hand: (path: string) => take({ path }, 0),
   };
 }

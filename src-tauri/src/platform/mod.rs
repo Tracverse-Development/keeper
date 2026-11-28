@@ -43,6 +43,11 @@ pub struct Unread {
     pub received: String,
 }
 
+/// A picture of a file as Quick Look draws it (PNG bytes, `size` pixels wide).
+pub async fn quick_look_png(path: &std::path::Path, size: u32) -> Result<Vec<u8>> {
+    os::quick_look_png(path, size).await
+}
+
 /// Runs a fixed script (`browser::scripts`) in Keeper's browser page, in an isolated world the page
 /// cannot see, and returns its string answer.
 pub async fn browser_script(view: &tauri::Webview, script: String) -> Result<String> {

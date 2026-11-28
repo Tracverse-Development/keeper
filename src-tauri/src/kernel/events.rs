@@ -34,3 +34,5 @@ pub const LEVEL_UP: &str = "keeper://level-up";
 pub const BROWSER_STATE: &str = "browser://state";
 /// A page in Keeper's browser wants a password: { field, label, host }; the window opens its secure box.
 pub const BROWSER_PASSWORD: &str = "browser://password";
+/// Keeper's file viewer opens at a path: { path } (`explorer::show`).
+pub const FILES_SHOW: &str = "files://show";

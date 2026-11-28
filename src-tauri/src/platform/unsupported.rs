@@ -91,6 +91,9 @@ pub async fn lock_screen() -> Result<()> {
 pub async fn screenshot() -> Result<Vec<u8>> {
     not_yet("Taking a screenshot")
 }
+pub async fn quick_look_png(_: &std::path::Path, _: u32) -> Result<Vec<u8>> {
+    not_yet("A picture of a file")
+}
 pub async fn browser_script(_: &tauri::Webview, _: String) -> Result<String> {
     not_yet("Reading a page in Keeper's browser")
 }

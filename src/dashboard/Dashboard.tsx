@@ -44,6 +44,7 @@ import { WhatsNew } from './WhatsNew';
 import { StagePill } from './StagePill';
 import { useWarmMind } from './useWarmMind';
 import { BrowserPane, useBrowser } from '../browser';
+import { FilesPane, useFiles } from '../files';
 import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
@@ -142,14 +143,15 @@ export function Dashboard({ initial }: { initial: Settings }) {
   const pins = usePinnedScenes({ keeper: keeper?.id ?? null, current: stage.scenes[stage.current], show: stage.show, onError: (m) => assistant.announce(m, keeper?.name ?? 'Keeper') });
   // The keepers panel steps aside (animated) while the stage shows a lesson or the agent's work.
   const browser = useBrowser(); // A page open inside Keeper takes the Stage area, like the Stage's panels.
-  const stageArea = stage.showing || browser.open;
+  const files = useFiles(stage.panels); // Keeper's file viewer takes the same area; new panels close it.
+  const stageArea = stage.showing || browser.open || files.open;
   const sidebarOpen = panelOpen && !stageArea;
   const transcript = useTranscript();
   // The Stage's panels take the side of the window; the Transcript waits until they close.
   const railOpen = transcript.open && !stageArea;
   const sides: Sides = { keepers: panelOpen, transcript: transcript.open, stage: stageArea };
   useSideFit(sidebarOpen, railOpen || memoryOpen, foldKeepers);
-  const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (!next.stage) { if (stage.showing) stage.close(); if (browser.open) void browser.close(); } };
+  const applySides = (next: Sides) => { setPanelOpen(next.keepers); transcript.setOpen(next.transcript); if (!next.stage) { if (stage.showing) stage.close(); if (browser.open) void browser.close(); files.close(); } };
 
   // ⌘K / Ctrl+K anywhere opens the command palette.
   useEffect(() => {
@@ -250,7 +252,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       <div className="stage-frame">
         <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} stir={stirs} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
-      {browser.open ? <BrowserPane browser={browser} /> : stage.showing && (
+      {browser.open ? <BrowserPane browser={browser} /> : files.open ? <FilesPane files={files} keeperName={name} onAsk={(t) => assistant.send(t)} onHand={handed.hand} onAction={(a) => void actions.act(a)} /> : stage.showing && (
         <Stage
           panels={stage.panels}
           activity={stage.activity}
@@ -322,7 +324,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         compose={compose}
         onCorrect={assistant.correct}
         onType={() => { stir(); if (voice.speaking) void voice.hush(); }}
-        tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
+        trayShown={Boolean(handed.held || handed.error)} tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (
           <ModeBar
             modes={keepers.list?.roles ?? []}

@@ -12,6 +12,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 
+import { fileSaved } from '../../files';
 import { core, sentence } from '../../kernel/ipc';
 import type { DraftLine, DraftSaved, DraftView } from '../../kernel/ipc-drafts.ts';
 import { changeOpening, changeWords, readDraftView, revealOrder, stepMs } from '../draft-view.ts';
@@ -58,7 +59,9 @@ export function DraftPanel({ panel, onPick, onAction }: ActingPanelProps<'draft'
 
   const save = () => run(async () => {
     if (editing !== null) setView(checked(await core.draftEdit(panel.draft, editing)));
-    setEnded({ saved: await core.draftSave(panel.draft) });
+    const saved = await core.draftSave(panel.draft);
+    setEnded({ saved });
+    fileSaved(saved.path);
   });
   const doneEditing = () => run(async () => {
     if (editing === null) return;

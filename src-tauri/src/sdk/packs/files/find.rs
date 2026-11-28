@@ -3,9 +3,11 @@
 //!
 //! - `find-files`   "find my NZCC deck", "where did I save my resume": Spotlight, shown as files
 //! - `show-folder`  "where is my Downloads folder", "what's in my Desktop": a live folder view
-//! - `open-folder`  "open my documents": the folder opened in the file manager, and its view
+//! - `open-folder`  "open my documents": the folder opened in Keeper's own file viewer
+//!                  (`explorer`); "open my documents in the Finder" opens the file manager
 //!
-//! A folder view shows the newest entries first (at most 30, hidden files left out).
+//! At the Mac a folder opens in Keeper's file viewer, beside the keeper; over the phone link it
+//! is a folder view (the newest entries first, at most 30, hidden files left out).
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -23,7 +25,7 @@ pub const ABILITIES: &[Ability] = &[
         how: "\"where is my Downloads folder\", \"what's in my Desktop\": a known folder as a live folder view, newest first",
         access: Access::Look,
         platforms: ALL, modes: &[], instant: Instant::Only(show_words),
-        run: |input, _| Box::pin(async move { Ok(view(&folder(input)?, false)) }),
+        run: |input, cx| Box::pin(async move { Ok(inside(cx, &folder(input)?)) }),
     },
     Ability {
         id: "find-files",
@@ -34,10 +36,10 @@ pub const ABILITIES: &[Ability] = &[
     },
     Ability {
         id: "open-folder",
-        how: "\"open my documents\": a known folder opened in the file manager, and shown as a folder view",
+        how: "\"open my documents\": a known folder opened in Keeper's file viewer (\"… in the Finder\": the file manager)",
         access: Access::Open,
         platforms: ALL, modes: &[], instant: Instant::Only(open_words),
-        run: |input, _| Box::pin(async move { open(input) }),
+        run: |input, cx| Box::pin(async move { open(input, cx) }),
     },
 ];
 
@@ -45,7 +47,7 @@ pub const ABILITIES: &[Ability] = &[
 const SHOW_ASKS: &str = r"(?i)^(?:please\s+)?(?:where(?:'s| is)|show(?: me)?|what(?:'s| is) in)\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?\s*[?.]?$";
 /// "find MY …": "find the area of a circle" is maths, for the mind.
 const FIND_ASKS: &str = r"(?i)^(?:please\s+)?(?:find|locate|where(?:'s| is| are| did i (?:put|save)))\s+my\s+(.{2,80}?)\s*\??$";
-const OPEN_ASKS: &str = r"(?i)^(?:please\s+)?open\s+(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|music|movies|home)(?:\s+folder)?\s*\.?$";
+const OPEN_ASKS: &str = r"(?i)^(?:please\s+)?open\s+(?:up\s+)?(?:my\s+|the\s+)?(downloads|documents|desktop|pictures|photos|music|movies|videos|home)(?:\s+folder)?(\s+in\s+(?:the\s+)?finder)?\s*\.?$";
 
 /// How many entries a folder view shows.
 const SHOWN: usize = 30;
@@ -70,7 +72,7 @@ fn find_words(said: &str) -> Option<serde_json::Value> {
 
 fn open_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
-    instant::pattern(&R, OPEN_ASKS).captures(said).map(|c| json!({ "folder": c[1].to_lowercase() }))
+    instant::pattern(&R, OPEN_ASKS).captures(said).map(|c| if c.get(2).is_some() { json!({ "folder": c[1].to_lowercase(), "finder": true }) } else { json!({ "folder": c[1].to_lowercase() }) })
 }
 
 /// The person's well-known folder for a word ("downloads", "desktop"…).
@@ -103,10 +105,22 @@ async fn find(input: &serde_json::Value) -> Result<Done> {
     Ok(Done::said(said).showing_raw(json!([{ "kind": "files", "title": format!("Looking for {query}"), "items": items }])))
 }
 
-fn open(input: &serde_json::Value) -> Result<Done> {
+fn open(input: &serde_json::Value, cx: &super::super::super::Cx<'_>) -> Result<Done> {
     let path = folder(input)?;
-    crate::platform::open_url(&path.display().to_string())?;
-    Ok(view(&path, true))
+    if input.get("finder").and_then(|f| f.as_bool()) == Some(true) {
+        crate::platform::open_url(&path.display().to_string())?;
+        return Ok(view(&path, true));
+    }
+    Ok(inside(cx, &path))
+}
+
+/// At the Mac: the folder opens in Keeper's file viewer. Over the phone link: a folder view.
+pub fn inside(cx: &super::super::super::Cx<'_>, path: &Path) -> Done {
+    if !cx.at_the_mac {
+        return view(path, false);
+    }
+    crate::explorer::show(cx.app, path);
+    Done::said(format!("Here's {}, in Keeper. Press a folder to go in, or a file to see it.", crate::explorer::shown(path)))
 }
 
 /// A folder view of `path`: its newest entries, and a sentence saying where it is (`opened`: it
@@ -154,7 +168,8 @@ mod tests {
         assert!(find_words("find the area of a circle").is_none(), "maths goes to the mind");
         assert_eq!(show_words("where is my Downloads folder").unwrap()["folder"], "downloads");
         assert_eq!(open_words("Open the documents folder.").unwrap()["folder"], "documents");
-        assert!(open_words("open my photos").is_none(), "only the folders the file manager opens by name");
+        assert_eq!(open_words("open my photos").unwrap()["folder"], "photos");
+        assert_eq!(open_words("open my downloads in the Finder").unwrap(), json!({ "folder": "downloads", "finder": true }));
     }
 
     #[test]

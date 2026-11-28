@@ -43,6 +43,8 @@ interface Props {
   modeBar?: React.ReactNode;
   /** What the person handed over and has not sent yet (a dropped file), above the message box. */
   tray?: React.ReactNode;
+  /** A tray is showing (a file handed over): the last caption steps aside so the taller dock never climbs onto the keeper. */
+  trayShown?: boolean;
   onMic: () => void;
   onStop: () => void;
 }
@@ -84,7 +86,7 @@ export function ConversationDock(p: Props) {
 
   return (
     <div className="dock">
-      {!p.transcriptOpen && <Captions exchange={p.exchanges.at(-1)} assistantName={p.assistantName} onReadAll={() => p.onTranscript(true)} narrow={p.narrow} />}
+      {!p.transcriptOpen && !p.trayShown && <Captions exchange={p.exchanges.at(-1)} assistantName={p.assistantName} onReadAll={() => p.onTranscript(true)} narrow={p.narrow} />}
       <div className="dock-status" aria-live="polite">
         {refusal ? <span className="error-line">{refusal}</span> : p.partial ? <span className="hearing">{p.partial}</span> : attention ? <span className="attentive">{attention}</span> : p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? (
           <span className="error-line">

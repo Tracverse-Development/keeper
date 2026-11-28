@@ -258,9 +258,9 @@ mod tests {
     #[test]
     fn the_built_in_modes_offer_what_they_offered_before_abilities_named_their_modes() {
         // The lists as roles.rs held them on 2026-11-27, before each ability named its own modes,
-        // plus what was added on purpose since (2026-11-28: write-document, draft-email, check-email, quit-app, fill-form, press, ask-password).
+        // plus what was added on purpose since (2026-11-28: write-document, draft-email, check-email, quit-app, fill-form, press, ask-password, show-files).
         let before: &[(&str, &[&str])] = &[
-            ("assistant", &["write-document", "draft-email", "check-email", "quit-app", "fill-form", "press", "ask-password", "remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "list-reminders", "upcoming", "show-file", "edit-file", "find-video", "play-file", "find-movies", "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word", "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert", "health"]),
+            ("assistant", &["write-document", "draft-email", "check-email", "quit-app", "fill-form", "press", "ask-password", "show-files", "remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "list-reminders", "upcoming", "show-file", "edit-file", "find-video", "play-file", "find-movies", "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word", "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert", "health"]),
             ("researcher", &["write-document", "recall-actions", "ask-memory", "find-video", "calculate", "convert"]),
             ("tutor", &["write-document", "remind", "list-reminders", "ask-memory", "find-video"]),
             ("companion", &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "find-video", "time-in", "calculate", "convert"]),
