@@ -91,6 +91,9 @@ pub async fn lock_screen() -> Result<()> {
 pub async fn screenshot() -> Result<Vec<u8>> {
     not_yet("Taking a screenshot")
 }
+pub async fn quit_app(_: &str) -> Result<()> {
+    not_yet("Quitting apps")
+}
 pub fn compose_mail(_: &str) -> Result<()> {
     Err(DeskError::Invalid("Opening an email is not supported on this system yet.".into()))
 }

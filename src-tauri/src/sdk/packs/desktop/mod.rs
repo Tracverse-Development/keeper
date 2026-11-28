@@ -1,14 +1,22 @@
 //! Opening things for the person: an app by name, a website. Inputs are checked here so a name
 //! can never be a path or a flag and an address is only ever http(s). "Open Notes" and "open
-//! youtube.com" run them with no mind (`words`).
+//! youtube.com" run them with no mind (`words`); "switch to Safari" brings an open app to the front.
+//! `quit-app` asks an app to quit (it still offers to save; never Keeper itself).
 
 mod words;
 
-use super::super::{input, Ability, Access, Done, Instant, ALL};
+use super::super::{input, Ability, Access, Done, Instant, ALL, MAC};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
+    Ability {
+        id: "quit-app",
+        how: "{\"name\": \"Safari\"} quits a Mac app by name, the polite way (it still asks to save unsaved work)",
+        access: Access::Change,
+        platforms: MAC, modes: &["assistant"], instant: Instant::Also(words::quit_words),
+        run: |input, _| Box::pin(quit_app(input)),
+    },
     Ability {
         id: "open-app",
         how: "{\"name\": \"Notes\"} opens a Mac app by name",
@@ -37,6 +45,15 @@ fn open_app(input: &serde_json::Value) -> Result<Done> {
     }
     platform::open_app(name)?;
     Ok(Done::said(format!("Opened {name}.")))
+}
+
+async fn quit_app(input: &serde_json::Value) -> Result<Done> {
+    let name = input::text(input, "name")?;
+    if !valid_app_name(name) || name.eq_ignore_ascii_case("keeper") {
+        return Err(DeskError::Invalid("That doesn't look like an app I can quit.".into()));
+    }
+    platform::quit_app(name).await?;
+    Ok(Done::said(format!("I asked {name} to quit. If it had unsaved work, it asks you first.")))
 }
 
 /// Only http(s) addresses; a bare domain gets https.

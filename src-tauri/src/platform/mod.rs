@@ -240,6 +240,11 @@ pub async fn screenshot() -> Result<Vec<u8>> {
 }
 
 /// A new note in the system's notes app with `title` and `body` (plain text).
+/// Asks a Mac app to quit (the app may ask the person to save first). The caller checks the name.
+pub async fn quit_app(name: &str) -> Result<()> {
+    os::quit_app(name).await
+}
+
 pub async fn new_note(title: &str, body: &str) -> Result<()> {
     os::new_note(title, body).await
 }

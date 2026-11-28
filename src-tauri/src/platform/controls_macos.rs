@@ -115,6 +115,13 @@ pub async fn new_note(title: &str, body: &str) -> Result<()> {
     applescript(NOTE_SCRIPT, &[&note_html(title, body)], "I couldn't make the note. Keeper may need permission to use Notes (System Settings, Privacy & Security, Automation).").await
 }
 
+const QUIT_SCRIPT: &str = "on run argv\ntell application (item 1 of argv) to quit\nend run";
+
+/// Asks the app named `name` (checked by the caller) to quit; it may first ask to save.
+pub async fn quit_app(name: &str) -> Result<()> {
+    applescript(QUIT_SCRIPT, &[name], &format!("I couldn't quit {name}. Keeper may need permission to control it (System Settings, Privacy & Security, Automation).")).await
+}
+
 pub async fn run_shortcut(name: &str) -> Result<()> {
     if name.starts_with('-') {
         return Err(DeskError::Invalid("That isn't the name of a Shortcut.".into()));

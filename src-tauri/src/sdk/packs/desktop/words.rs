@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 use super::super::super::instant;
 use super::{normalise_url, valid_app_name};
 
-const OPEN_APP: &str = r"(?i)^(?:please\s+)?(?:open|launch|start)\s+(?:up\s+)?(?:the\s+)?(.{2,40}?)(?:\s+app)?\s*[.!]?$";
+const OPEN_APP: &str = r"(?i)^(?:please\s+)?(?:open|launch|start|switch\s+to|bring\s+up)\s+(?:up\s+)?(?:the\s+)?(.{2,40}?)(?:\s+app)?\s*[.!]?$";
 const OPEN_SITE: &str = r"(?i)^(?:please\s+)?(?:open|go to|visit|take me to)\s+(?:the\s+)?(?:website\s+|site\s+)?(\S{3,200})\s*[.!]?$";
 
 /// Endings that make a name with a dot a file, not a website ("open notes.txt").
@@ -32,6 +32,19 @@ pub fn app_words(said: &str) -> Option<Value> {
     let someone_elses = lower.starts_with("my ") || (lower.ends_with(" settings") && lower != "system settings") || lower.ends_with(" folder") || lower.contains('.');
     let a_folder = super::super::files::find::known(&lower).is_some();
     (!someone_elses && !a_folder && valid_app_name(&name) && crate::platform::app_installed(&name)).then(|| json!({ "name": name }))
+}
+
+const QUIT_APP: &str = r"(?i)^(?:please\s+)?(?:quit|close)\s+(?:the\s+)?(.{2,40}?)(?:\s+app)?\s*[.!]?$";
+
+/// `{"name"}` for "quit Safari" / "close the Music app" when an app by that name is installed
+/// (never Keeper itself, and not "close my window", which is not an app).
+pub fn quit_words(said: &str) -> Option<Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let c = instant::pattern(&R, QUIT_APP).captures(said.trim())?;
+    let name = instant::clean(&c[1]);
+    let lower = name.to_lowercase();
+    let not_an_app = lower.starts_with("my ") || lower.starts_with("this ") || lower == "keeper" || lower.contains('.');
+    (!not_an_app && valid_app_name(&name) && crate::platform::app_installed(&name)).then(|| json!({ "name": name }))
 }
 
 /// `{"url"}` for "open youtube.com": an http(s) address or a bare domain (never a file name).
@@ -75,5 +88,17 @@ mod tests {
         assert_eq!(app_words("open Notes"), Some(json!({ "name": "Notes" })));
         assert_eq!(app_words("launch the Calculator app."), Some(json!({ "name": "Calculator" })));
         assert_eq!(app_words("open system settings"), Some(json!({ "name": "system settings" })));
+    }
+
+    #[test]
+    fn quit_names_an_installed_app_never_keeper_or_a_window() {
+        for not_an_app in ["close my window", "quit keeper", "close notes.txt", "close this", "quit smoking"] {
+            assert!(quit_words(not_an_app).is_none(), "{not_an_app}");
+        }
+        if crate::platform::app_installed("Safari") {
+            assert_eq!(quit_words("quit Safari"), Some(json!({ "name": "Safari" })));
+            assert_eq!(quit_words("close the Safari app."), Some(json!({ "name": "Safari" })));
+            assert_eq!(app_words("switch to Safari"), Some(json!({ "name": "Safari" })));
+        }
     }
 }
