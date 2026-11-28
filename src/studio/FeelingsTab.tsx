@@ -37,7 +37,7 @@ export function FeelingsTab({ keeper, onToggle }: { keeper: KeeperProfile; onTog
         <input type="checkbox" checked={!keeper.feelingsOff} onChange={(e) => onToggle(!e.target.checked)} />
         <span>
           {keeper.name} has feelings
-          <span className="muted small"> · a simulated mood in {info?.modesWithMood.length ? info.modesWithMood.join(', ') : 'Companion'} mode, for warmth</span>
+          <span className="muted small feelings-where">A simulated mood in {info?.modesWithMood.length ? info.modesWithMood.join(', ') : 'Companion'} {(info?.modesWithMood.length ?? 1) > 1 ? 'modes' : 'mode'}, for warmth.</span>
         </span>
       </label>
       {error && <p className="error-line small">{error}</p>}

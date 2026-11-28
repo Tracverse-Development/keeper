@@ -90,6 +90,8 @@ interface Props {
 export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onSaved, keeperNames, modes = [] }: Props) {
   const { info, error, reload } = useStudio(keeper.id, open);
   const [tab, setTab] = useState<Tab>('look');
+  // Each tab the person opens keeps the keeper awake: it is being looked after, not left alone.
+  const [visits, setVisits] = useState(0);
   const [zone, setZone] = useState<string | null>(null);
   const [look, setLook] = useState<Record<string, ZoneLook>>(keeper.look ?? {});
   const [habits, setHabits] = useState<Record<string, number>>(keeper.habits ?? {});
@@ -221,7 +223,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
             <div key={g.name} className="studio-navgroup" role="group" aria-label={g.name}>
               <span className="studio-navgroup-name">{g.name}</span>
               {g.tabs.map((t) => (
-                <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>
+                <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`studio-tabbtn ${tab === t.id ? 'is-on' : ''}`} onClick={() => { setTab(t.id); setVisits((n) => n + 1); }}>
                   {t.name}
                 </button>
               ))}
@@ -230,6 +232,7 @@ export function StudioPage({ open, keeper, soulName, souls, onSoul, onClose, onS
         </nav>
         <section className="studio-stage" aria-label={`${keeper.name}, as you are making it`}>
           <CharacterStage
+            stir={visits}
             className="studio-character"
             skin={(usesWardrobe && outfit?.skin) || keeper.skin}
             wearables={usesWardrobe && outfit ? outfit.wearables : keeper.wearables}
