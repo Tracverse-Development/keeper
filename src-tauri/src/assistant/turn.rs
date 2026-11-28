@@ -203,7 +203,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         }
     }
 
-    let mut panels = crate::stage::read(&thought.panels);
+    // A text panel that only says the reply again is dropped (FIX-0035).
+    let mut panels = crate::stage::without_echoes(&reply, crate::stage::read(&thought.panels));
     panels.extend(thought.core_panels.iter().cloned());
     // What the abilities show (a draft, a video, an agenda) follows the mind's own panels.
     panels.extend(outcomes.iter().flat_map(|o| o.panels.iter().cloned()));

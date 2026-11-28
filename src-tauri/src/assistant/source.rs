@@ -13,7 +13,7 @@ use crate::kernel::settings::KeeperProfile;
 use crate::memory::Memory;
 use crate::state::AppState;
 
-use super::approval;
+use super::{approval, handoff};
 
 /// Follow-ups sent by pointing at a panel (`focusQuestion` in the window) start like this.
 const FOLLOW_UP: &str = "About \"";
@@ -34,22 +34,39 @@ fn mind(id: &str, label: &str) -> MindUsed {
 /// The answer, in the chat's mode; when the engine says the request belongs to another mode, the
 /// turn moves there once (its brief, skills and tools) and that mode answers. The person hears
 /// "Switching to … mode for this." first (founder 2026-11-26: modes are locked to their scope).
+/// A quick question is only borrowed: answered by that mode quietly, the chat stays (`handoff`).
 pub(super) async fn find(app: &tauri::AppHandle, state: &AppState, memory: &Memory, keeper: &KeeperProfile, ctx: &Context, chat: &str, approved: bool, progress: &(dyn Fn(Progress) + Sync)) -> Answer {
-    let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, progress).await;
-    let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m) && super::child_mode(m, crate::kernel::child_lock::on()) == *m) else { return answer };
+    // The first answer's own "Switching to …" words are held: whether to say them is decided below.
+    let hold = handoff::HoldSwitchLine::new(progress);
+    let answer = answer_in(app, state, memory, keeper, ctx, chat, approved, &|p| hold.feed(p)).await;
+    let Some(target) = answer.thought.switch_mode.clone().filter(|m| m != &keeper.role && crate::keepers::kit::roles::exists(m) && super::child_mode(m, crate::kernel::child_lock::on()) == *m) else {
+        hold.release();
+        return answer;
+    };
+    let role = crate::keepers::kit::roles::get(&target);
+    let quiet = handoff::borrows_quietly(&ctx.said, &role);
     // The window's picker (and the mode its next message is sent in) follows now, not when the
     // answer is done: a message typed meanwhile was sent in the old mode and switched again.
-    let _ = app.emit(events::MODE_SWITCHED, json!({ "keeper": keeper.id, "mode": target }));
+    let announce = || {
+        let _ = app.emit(events::MODE_SWITCHED, json!({ "keeper": keeper.id, "mode": target }));
+    };
+    if !quiet {
+        announce();
+        progress(Progress::ReplyText(handoff::announcement(&role.title)));
+    }
     let moved = KeeperProfile { role: target.clone(), ..keeper.clone() };
     let base = super::turn::base_context(state, &moved, &ctx.said);
     let ctx = Context { facts: ctx.facts.clone(), recent: ctx.recent.clone(), elsewhere: ctx.elsewhere.clone(), attached: ctx.attached.clone(), may_act: base.may_act && ctx.attached.is_none(), ..base };
-    // What was said so far ("Switching to Researcher mode for this.") stays; the answer follows it.
-    progress(Progress::ReplyText(" ".into()));
     let mut next = answer_in(app, state, memory, &moved, &ctx, chat, approved, progress).await;
     next.thought.switch_mode = None;
-    let title = crate::keepers::kit::roles::get(&target).title;
+    if quiet {
+        if !handoff::is_real_work(&next.thought) {
+            return next;
+        }
+        announce();
+    }
     if !next.thought.reply.to_lowercase().contains("switching") {
-        next.thought.reply = format!("Switching to {title} mode for this. {}", next.thought.reply);
+        next.thought.reply = format!("{}{}", handoff::announcement(&role.title), next.thought.reply);
     }
     next.switched = Some(target);
     next
@@ -73,7 +90,8 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
             for p in &scene.panels {
                 progress(Progress::Panel(p.clone()));
             }
-            let thought = Thought { reply: scene.reply, panels: serde_json::to_value(&scene.panels).unwrap_or_default(), ..Thought::default() };
+            // A replay never claims a switch (`replay_reply`): the turn stays in the chat's mode.
+            let thought = Thought { reply: scene.replay_reply().to_string(), panels: serde_json::to_value(&scene.panels).unwrap_or_default(), ..Thought::default() };
             return Answer { thought, mind: mind("cache", "From memory (instant)"), cached: true, switched: None };
         }
     }
