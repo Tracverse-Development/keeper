@@ -1,15 +1,14 @@
 //! The week in review: one scene built from the keeper's own graph, no AI and nothing sent
 //! anywhere: how much you talked each day, what it learned about you (forgettable right there),
 //! what it did for you, the chats you had and the reminders still ahead. Asked with "week in
-//! review", "how was my week" and the like.
+//! review", "how was my week" and the like (the `week-review` ability).
 
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Local, Utc};
 use serde_json::json;
 
-use crate::brain::Thought;
-use crate::kernel::settings::KeeperProfile;
+use super::super::super::Done;
 use crate::kernel::time;
 use crate::memory::{Chat, Fact, Memory, Reminder};
 use crate::stage::panel::FactRow;
@@ -21,10 +20,10 @@ const SHOWN: usize = 8;
 
 /// The phrasings that mean the week in review (whole requests only; anything else is a question
 /// for the mind).
-pub const ASKS: &str = r"(?i)^(?:please\s+)?(?:(?:show (?:me )?)?(?:my |the |our )?week(?:ly)? (?:in )?review|review (?:my|our|the) week|how (?:was|did) (?:my|our|the) week(?: go)?|what did we do (?:this|last) week|(?:my|our) week)\s*[?.!]?$";
+pub(super) const ASKS: &str = r"(?i)^(?:please\s+)?(?:(?:show (?:me )?)?(?:my |the |our )?week(?:ly)? (?:in )?review|review (?:my|our|the) week|how (?:was|did) (?:my|our|the) week(?: go)?|what did we do (?:this|last) week|(?:my|our) week)\s*[?.!]?$";
 
 /// One thing the keeper did, as the review shows it.
-pub struct Done {
+pub struct Deed {
     pub at: String,
     pub what: String,
 }
@@ -34,7 +33,7 @@ pub struct Week {
     pub facts: Vec<Fact>,
     /// When each turn of the week happened.
     pub turns: Vec<String>,
-    pub done: Vec<Done>,
+    pub done: Vec<Deed>,
     pub chats: Vec<Chat>,
     pub reminders: Vec<Reminder>,
 }
@@ -59,10 +58,10 @@ fn per_day(turns: &[String], today: DateTime<Local>) -> (Vec<String>, Vec<f64>) 
 }
 
 /// The spoken summary and the scene. Pure: `now` is passed in.
-pub fn review(week: &Week, keeper_name: &str, now: DateTime<Utc>) -> Thought {
+pub fn review(week: &Week, keeper_name: &str, now: DateTime<Utc>) -> Done {
     let today = now.with_timezone(&Local);
     if week.turns.is_empty() && week.facts.is_empty() && week.done.is_empty() {
-        return Thought { reply: "It was a quiet week: we didn't talk, so there is nothing to review yet.".into(), ..Thought::default() };
+        return Done::said("It was a quiet week: we didn't talk, so there is nothing to review yet.");
     }
     let mut panels = Vec::new();
     let (labels, values) = per_day(&week.turns, today);
@@ -81,7 +80,6 @@ pub fn review(week: &Week, keeper_name: &str, now: DateTime<Utc>) -> Thought {
     }
     // What it learned is shown as facts, so anything wrong can be forgotten on the spot.
     let learned: Vec<FactRow> = week.facts.iter().take(40).map(|f| FactRow { id: f.id.clone(), text: f.text.clone(), category: f.category.clone() }).collect();
-    let core_panels = if learned.is_empty() { vec![] } else { vec![Panel::Facts { id: "week-facts".into(), title: "What I learned about you this week".into(), facts: learned }] };
 
     let mut parts = vec![format!("This week we exchanged {} across {}.", count(week.turns.len(), "message", "messages"), count(week.chats.len().max(1), "chat", "chats"))];
     if !week.facts.is_empty() {
@@ -93,29 +91,33 @@ pub fn review(week: &Week, keeper_name: &str, now: DateTime<Utc>) -> Thought {
     if !week.reminders.is_empty() {
         parts.push(format!("{} still ahead.", if week.reminders.len() == 1 { "One reminder is".to_string() } else { format!("{} reminders are", week.reminders.len()) }));
     }
-    Thought { reply: parts.join(" "), panels: serde_json::Value::Array(panels), core_panels, ..Thought::default() }
+    let done = Done::said(parts.join(" ")).showing_raw(serde_json::Value::Array(panels));
+    if learned.is_empty() {
+        return done;
+    }
+    done.showing(Panel::Facts { id: "week-facts".into(), title: "What I learned about you this week".into(), facts: learned })
 }
 
 /// Read the week from the keeper's graph (bounded questions from the catalog) and compose it.
 /// Fails closed: if the conversations cannot be read, it says so instead of showing an empty week.
-pub async fn compose(memory: &Memory, keeper: &KeeperProfile) -> Thought {
+pub async fn compose(memory: &Memory, keeper_name: &str) -> Done {
     let now = time::now();
     let since = now - Duration::days(DAYS);
     let within = |iso: &str| time::parse_iso(iso).is_some_and(|t| t >= since);
     let args: HashMap<String, String> = [("days".to_string(), DAYS.to_string())].into_iter().collect();
     let Ok((turn_rows, _)) = memory.ask("turns-recent", &args).await else {
-        return Thought { reply: "I couldn't read your memory just now, so I can't review the week. Try again in a moment.".into(), ..Thought::default() };
+        return Done::said("I couldn't read your memory just now, so I can't review the week. Try again in a moment.");
     };
     let turns = turn_rows.iter().filter_map(|r| r.get("at").cloned()).collect();
     let facts = memory.facts().await.map(|(f, _)| f.into_iter().filter(|f| within(&f.at)).collect()).unwrap_or_default();
     let done = memory
         .ask("actions-recent", &args)
         .await
-        .map(|(rows, _)| rows.iter().filter(|r| !r.get("skill").is_some_and(|s| s.starts_with("agent:"))).filter_map(|r| Some(Done { at: r.get("at")?.clone(), what: r.get("outcome")?.clone() })).collect())
+        .map(|(rows, _)| rows.iter().filter(|r| !r.get("skill").is_some_and(|s| s.starts_with("agent:"))).filter_map(|r| Some(Deed { at: r.get("at")?.clone(), what: r.get("outcome")?.clone() })).collect())
         .unwrap_or_default();
     let chats = memory.chats().await.map(|c| c.into_iter().filter(|c| within(&c.at)).collect()).unwrap_or_default();
     let reminders = memory.upcoming_reminders().await.unwrap_or_default();
-    review(&Week { facts, turns, done, chats, reminders }, &keeper.name, now)
+    review(&Week { facts, turns, done, chats, reminders }, keeper_name, now)
 }
 
 #[cfg(test)]
@@ -132,23 +134,23 @@ mod tests {
         let week = Week {
             facts: vec![Fact::new("Your cat is Biscuit", "person", &at(1, now))],
             turns: vec![at(0, now), at(0, now), at(2, now)],
-            done: vec![Done { at: at(1, now), what: "Opened Notes.".into() }],
+            done: vec![Deed { at: at(1, now), what: "Opened Notes.".into() }],
             chats: vec![Chat { id: "c1".into(), title: "Planning the week".into(), at: at(2, now), pinned: false }],
             reminders: vec![Reminder::new("Call Maya", &time::iso(now + Duration::days(1)), &at(0, now))],
         };
         let t = review(&week, "Trini Boi", now);
-        assert_eq!(t.reply, "This week we exchanged 3 messages across 1 chat. I learned 1 new thing about you. I did 1 thing for you. One reminder is still ahead.");
-        let panels = t.panels.as_array().unwrap();
-        assert_eq!(panels[0]["labels"].as_array().unwrap().len(), 7, "all seven days, quiet ones too");
-        assert_eq!(panels[0]["values"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).sum::<f64>(), 3.0);
-        assert_eq!(panels[2]["title"], "What Trini Boi did for you");
-        assert!(matches!(&t.core_panels[0], Panel::Facts { facts, .. } if facts.len() == 1), "what it learned can be forgotten there");
+        assert_eq!(t.summary, "This week we exchanged 3 messages across 1 chat. I learned 1 new thing about you. I did 1 thing for you. One reminder is still ahead.");
+        let Panel::Chart { labels, values, .. } = &t.panels[0] else { panic!("the week's chart comes first") };
+        assert_eq!(labels.len(), 7, "all seven days, quiet ones too");
+        assert_eq!(values.iter().sum::<f64>(), 3.0);
+        assert!(matches!(&t.panels[2], Panel::Timeline { title, .. } if title == "What Trini Boi did for you"));
+        assert!(matches!(t.panels.last(), Some(Panel::Facts { facts, .. }) if facts.len() == 1), "what it learned can be forgotten there");
     }
 
     #[test]
     fn a_quiet_week_says_so_and_only_whole_requests_are_the_review() {
         let t = review(&Week { facts: vec![], turns: vec![], done: vec![], chats: vec![], reminders: vec![] }, "K", Utc::now());
-        assert!(t.reply.contains("quiet week") && t.panels.is_null());
+        assert!(t.summary.contains("quiet week") && t.panels.is_empty());
         let asks = regex::Regex::new(ASKS).unwrap();
         for yes in ["week in review", "Show me my week in review", "How was my week?", "what did we do this week", "review my week", "my weekly review"] {
             assert!(asks.is_match(yes), "{yes}");

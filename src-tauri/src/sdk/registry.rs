@@ -8,6 +8,8 @@ use crate::keepers::kit::roles::Role;
 const PACKS: &[&[Ability]] = &[
     packs::reminders::ABILITIES,
     packs::calendar::ABILITIES,
+    // Before `core`: "Good morning! What do you know about me?" is the brief.
+    packs::day::ABILITIES,
     packs::personal::ABILITIES,
     packs::desktop::ABILITIES,
     packs::files::ABILITIES,

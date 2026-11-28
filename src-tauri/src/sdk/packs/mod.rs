@@ -15,6 +15,7 @@
 pub mod calendar;
 pub mod computer;
 pub mod core;
+pub mod day;
 pub mod desktop;
 pub mod everyday;
 pub mod files;

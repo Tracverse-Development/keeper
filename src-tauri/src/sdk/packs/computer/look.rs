@@ -16,6 +16,7 @@ pub const ABILITIES: &[Ability] = &[
     Ability { id: "battery", how: "{} says how much battery is left and whether it is charging", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::Also(battery_words), run: |_, _| Box::pin(battery()) },
     Ability { id: "wifi", how: "{} says which Wi-Fi network the Mac is on and how strong the signal is", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::Also(wifi_words), run: |_, _| Box::pin(wifi()) },
     Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, modes: &["assistant"], instant: Instant::Also(disk_words), run: |_, _| Box::pin(async { disk_space() }) },
+    Ability { id: "computer-status", how: "\"how's my computer\", \"system status\": the processor and memory load right now, as a chart", access: Access::Look, platforms: ALL, modes: &[], instant: Instant::Only(status_words), run: |_, _| Box::pin(async { Ok(status()) }) },
     Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(open_apps()) },
     Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], instant: Instant::No, run: |input, _| Box::pin(time_in(input)) },
     Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], instant: Instant::No, run: |_, _| Box::pin(list_shortcuts()) },
@@ -26,6 +27,14 @@ pub const ABILITIES: &[Ability] = &[
 const BATTERY_ASKS: &str = r"(?i)^(?:please\s+)?(?:what(?:'s| is) my battery(?: level| at)?|how much battery (?:do i have|is left|have i got)(?: left)?|battery(?: level| status)?|is my (?:mac|laptop|computer) charging|how(?:'s| is) my battery)\s*[?.!]?$";
 const WIFI_ASKS: &str = r"(?i)^(?:please\s+)?(?:what wi-?fi am i on|which wi-?fi (?:am i on|is this)|what(?:'s| is) my wi-?fi(?: signal| network)?|how(?:'s| is) my wi-?fi(?: signal)?|wi-?fi (?:signal|status))\s*[?.!]?$";
 const DISK_ASKS: &str = r"(?i)^(?:please\s+)?(?:how much (?:free )?(?:disk |storage )?space (?:do i have|is left|have i got)(?: left)?(?: on (?:my|this) (?:mac|computer|disk|drive))?|(?:free )?disk space|how full is (?:my|this) (?:disk|drive|mac|computer))\s*[?.!]?$";
+
+/// "How's my computer?", "system status", "how much memory am I using".
+const STATUS_ASKS: &str = r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$";
+
+fn status_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::whole(&R, STATUS_ASKS, said)
+}
 
 fn battery_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
@@ -40,6 +49,14 @@ fn wifi_words(said: &str) -> Option<serde_json::Value> {
 fn disk_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
     instant::whole(&R, DISK_ASKS, said)
+}
+
+/// The processor and memory load now, in a sentence and a chart.
+fn status() -> Done {
+    let load = crate::system::read();
+    let words = if load.cpu > 80.0 { "working hard" } else if load.cpu > 40.0 { "fairly busy" } else { "calm" };
+    Done::said(format!("Your computer is {words}: processor at {:.0}%, memory at {:.0}%.", load.cpu, load.memory))
+        .showing_raw(serde_json::json!([{ "kind": "chart", "title": "Right now", "labels": ["Processor", "Memory"], "values": [load.cpu.round(), load.memory.round()], "unit": "%" }]))
 }
 
 async fn battery() -> Result<Done> {

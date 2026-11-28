@@ -13,10 +13,8 @@
 //! - "shorten what I copied"                       the clipboard's text (`clip`)
 //! - "focus for 25 minutes"                        a focus session (`crate::focus`)
 
-pub mod brief;
 pub mod clip;
 pub mod routines;
-pub mod week;
 
 use std::sync::OnceLock;
 
@@ -40,28 +38,7 @@ fn shown(reply: String, panels: serde_json::Value) -> Thought {
 
 pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProfile, said: &str) -> Option<Thought> {
     let s = said.trim();
-    static SYSTEM: OnceLock<Regex> = OnceLock::new();
-    static BRIEF: OnceLock<Regex> = OnceLock::new();
     static FACTS: OnceLock<Regex> = OnceLock::new();
-    static RECENT: OnceLock<Regex> = OnceLock::new();
-
-    if re(&SYSTEM, SYSTEM_WORDS).is_match(s) {
-        let load = crate::system::read();
-        let words = if load.cpu > 80.0 { "working hard" } else if load.cpu > 40.0 { "fairly busy" } else { "calm" };
-        return Some(shown(
-            format!("Your computer is {words}: processor at {:.0}%, memory at {:.0}%.", load.cpu, load.memory),
-            json!([{ "kind": "chart", "title": "Right now", "labels": ["Processor", "Memory"], "values": [load.cpu.round(), load.memory.round()], "unit": "%" }]),
-        ));
-    }
-
-    if re(&BRIEF, BRIEF_WORDS).is_match(s) {
-        return Some(brief::compose(app, memory, keeper).await);
-    }
-
-    // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
-    if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
-        return Some(shown(reply, json!([])));
-    }
 
     // "tidy my memory": facts a newer one has made out of date, each with Forget beside it.
     static TIDY: OnceLock<Regex> = OnceLock::new();
@@ -90,17 +67,6 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(thought);
     }
 
-    static WEEK: OnceLock<Regex> = OnceLock::new();
-    if re(&WEEK, week::ASKS).is_match(s) {
-        return Some(week::compose(memory, keeper).await);
-    }
-
-    if let Some(c) = re(&RECENT, RECENT_WORK).captures(s) {
-        let rest = c.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_default();
-        let (days, when) = if rest.contains("today") { (1, "today") } else if rest.contains("yesterday") { (2, "since yesterday") } else if rest.contains("week") { (7, "this week") } else { (3, "lately") };
-        return Some(brief::recent_work(days, when).await);
-    }
-
     if re(&FACTS, FACTS_WORDS).is_match(s) {
         let (facts, _) = memory.facts().await.ok()?;
         if facts.is_empty() {
@@ -113,15 +79,10 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     None
 }
 
-const SYSTEM_WORDS: &str = r"(?i)^(?:how(?:'s| is) my (?:computer|mac|system)|system status|how much (?:memory|ram|cpu)\b.*)\??$";
-const BRIEF_WORDS: &str = r"(?i)^(?:brief me|morning brief|good morning|what(?:'s| is) on (?:today|my day)|catch me up)\b.*$";
 const FACTS_WORDS: &str = r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)";
 
 /// "Tidy my memory", "clean up your memory", "what's out of date in my memory?".
 const TIDY_MEMORY: &str = r"(?i)^(?:please\s+)?(?:(?:tidy|clean)(?:\s+up)?\s+(?:my|your)\s+memory|what(?:'s| is)\s+out of date in\s+(?:my|your)\s+memory)\s*[?.!]?$";
-
-/// "What was I working on yesterday?", "what files did I change today", "my recent files".
-const RECENT_WORK: &str = r"(?i)^(?:please\s+)?(?:can you (?:see|tell me|show me)\s+)?(?:what (?:was i|were i|have i been|i was|i have been|i(?:.ve)? been) (?:working on|doing on (?:my|the) (?:computer|mac))|what (?:files )?did i (?:work on|change|edit)|(?:show (?:me )?)?(?:my )?recent (?:files|work))\b([^?]*)\??$";
 
 #[cfg(test)]
 mod tests {
@@ -136,18 +97,6 @@ mod tests {
         if let Some((ability, _)) = crate::sdk::instant::asked(s, &role) {
             return Some(ability.id);
         }
-        if m(SYSTEM_WORDS) {
-            return Some("computer-status");
-        }
-        if m(BRIEF_WORDS) {
-            return Some("brief");
-        }
-        if m(crate::focus::STOPS) {
-            return Some("stop-focus");
-        }
-        if m(crate::focus::STARTS) {
-            return Some("start-focus");
-        }
         if m(TIDY_MEMORY) {
             return Some("tidy-memory");
         }
@@ -157,7 +106,7 @@ mod tests {
         if let Some(id) = routines::which(s) {
             return Some(id);
         }
-        let later: [(&str, &'static str); 4] = [(clip::ASKS, "work-on-copied"), (week::ASKS, "week-review"), (RECENT_WORK, "recent-work"), (FACTS_WORDS, "what-you-know")];
+        let later: [(&str, &'static str); 2] = [(clip::ASKS, "work-on-copied"), (FACTS_WORDS, "what-you-know")];
         later.iter().find(|(p, _)| m(p)).map(|(_, id)| *id)
     }
 
@@ -231,15 +180,5 @@ mod tests {
         let r = re(&R, TIDY_MEMORY);
         assert!(r.is_match("Tidy my memory") && r.is_match("please clean up your memory.") && r.is_match("What's out of date in my memory?"));
         assert!(!r.is_match("tidy my downloads") && !r.is_match("clean up my memory card photos"));
-    }
-
-    #[test]
-    fn recent_work_phrasings() {
-        static R: OnceLock<Regex> = OnceLock::new();
-        let r = re(&R, RECENT_WORK);
-        assert_eq!(r.captures("Can you see what I was working on yesterday?").unwrap()[1].trim(), "yesterday");
-        assert!(r.is_match("what files did I change today"));
-        assert!(r.is_match("show me my recent files"));
-        assert!(!r.is_match("what was I saying about the embolism?"), "conversation goes to the brain");
     }
 }

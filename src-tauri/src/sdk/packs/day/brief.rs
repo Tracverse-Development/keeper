@@ -1,11 +1,11 @@
 //! The morning brief: one scene, built from the keeper's own graph and this computer, no AI:
 //! today's reminders and calendar (agenda), what the keeper did lately (timeline), files that
-//! changed (folder), and a spoken summary. Shown on the first open of the day and on "brief me".
+//! changed (folder), and a spoken summary. Shown on the first open of the day and on "brief me"
+//! (the `brief` ability); `recent_work` is "what was I working on yesterday" (`recent-work`).
 
 use serde_json::json;
 
-use crate::brain::Thought;
-use crate::kernel::settings::KeeperProfile;
+use super::super::super::Done;
 use crate::kernel::time;
 use crate::memory::Memory;
 
@@ -28,18 +28,19 @@ fn file_entries(files: &[crate::pim::FileHit]) -> Vec<serde_json::Value> {
 }
 
 /// "What was I working on yesterday?": the files changed in the last `days` days, at once.
-pub async fn recent_work(days: u32, when: &str) -> Thought {
+pub async fn recent_work(days: u32, when: &str) -> Done {
     let files = crate::pim::recent_files(days, 30).await.unwrap_or_default();
     if files.is_empty() {
-        return Thought { reply: format!("I don't see any files you changed {when}."), ..Thought::default() };
+        return Done::said(format!("I don't see any files you changed {when}."));
     }
     let entries = file_entries(&files);
     let first = files.iter().find(|f| !f.name.starts_with("Screen")).map(|f| f.name.clone()).unwrap_or_else(|| files[0].name.clone());
     let reply = format!("{} {when}, newest first. The latest is {first}.", if entries.len() == 1 { "Here's the file you changed".to_string() } else { format!("Here are the {} files you changed", entries.len()) });
-    Thought { reply, panels: json!([{ "kind": "folder", "title": format!("Files you changed {when}"), "path": "~", "entries": entries }]), ..Thought::default() }
+    Done::said(reply).showing_raw(json!([{ "kind": "folder", "title": format!("Files you changed {when}"), "path": "~", "entries": entries }]))
 }
 
-pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProfile) -> Thought {
+/// The morning brief for the keeper called `keeper_name`, from its memory and this computer.
+pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper_name: &str) -> Done {
     let now = time::now();
     let tomorrow = now + chrono::Duration::hours(30);
     // The calendar is read only with permission; asking for the brief is a fine moment to ask
@@ -66,7 +67,7 @@ pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperPro
         panels.push(json!({ "kind": "folder", "title": "Files you changed lately", "path": "~", "entries": entries }));
     }
     if !done.is_empty() {
-        panels.push(json!({ "kind": "timeline", "title": format!("What {} did lately", keeper.name), "events": done }));
+        panels.push(json!({ "kind": "timeline", "title": format!("What {keeper_name} did lately"), "events": done }));
     }
     let greeting = match chrono::Local::now().format("%H").to_string().parse::<u32>().unwrap_or(9) {
         0..=11 => "Good morning",
@@ -83,7 +84,7 @@ pub async fn compose(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperPro
         Some(note) => format!("{reply} {note}"),
         None => reply,
     };
-    Thought { reply, panels: serde_json::Value::Array(panels), ..Thought::default() }
+    Done::said(reply).showing_raw(serde_json::Value::Array(panels))
 }
 
 #[cfg(test)]
