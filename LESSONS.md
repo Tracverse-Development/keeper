@@ -80,3 +80,8 @@
 - **Context:** the `time-in` ability (Keeper 0.17.0, lane os) asks `date` for the time with `TZ=<zone>`. For a zone it does not know, `date` prints UTC with no error, so "the time in Atlantis" (or a typo of a real zone) would come back confidently wrong. The same week, `system_profiler` returned the Wi-Fi name as the literal text `<redacted>`.
 - **Lesson:** before trusting a system tool's answer, find what it does with input it cannot use (a default, a placeholder, a silent fallback) and check for that case in our code, so the keeper says "I don't know" rather than a plausible wrong answer.
 - **Rule added:** `platform/status_macos.rs` checks the zone file exists before `date` runs and treats `<redacted>` as no name (both tested); new platform readers get a test for the tool's fallback output.
+
+### LES-017 — A commit waits for check.sh's exit code, never a filtered view of its output (2026-11-28)
+- **Context:** twice in one session a commit went in with a failing structure guard (a file at 401 lines; an OS tool named outside `platform/`), because `check.sh | grep "pass|fail"` showed the passing counts of one stage and hid the failing test's name.
+- **Lesson:** a grep or tail over a check's output is a view, not a verdict; the exit status is the verdict.
+- **Rule added:** run `bash scripts/check.sh > /dev/null 2>&1; echo $?` (or `&&` the commit onto it) before every commit; read the failure only when it is not 0.
