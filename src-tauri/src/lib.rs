@@ -46,6 +46,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(hotkey::plugin())
+        // Local videos and songs play inside Keeper from `keeper-media:`; every request is
+        // checked against the person's media folders (stage::local_media), off the main thread.
+        .register_asynchronous_uri_scheme_protocol(stage::local_media::SCHEME, |_cx, request, responder| {
+            tauri::async_runtime::spawn_blocking(move || responder.respond(stage::local_media::serve(&request)));
+        })
         .setup(|app| {
             let handle = app.handle().clone();
             let reminders = Scheduler::new(move |reminder| {
