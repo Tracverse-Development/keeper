@@ -18,8 +18,9 @@ cleanup() {
   "$tart" delete "$name" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
-# keeper-vm3 is the test VM that accepts the login key; the copy is wiped of Keeper first.
-base="${PROOF_BASE:-keeper-vm3}"
+# keeper-test is the test VM that accepts the login key (rebuilt 2026-11-27 from the stock
+# macOS Sequoia image); the copy is wiped of Keeper first.
+base="${PROOF_BASE:-keeper-test}"
 echo "== fresh VM $name from $base"
 "$tart" clone "$base" "$name"
 "$tart" run --no-graphics "$name" > "$log" 2>&1 &
