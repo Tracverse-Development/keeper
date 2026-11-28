@@ -1,7 +1,13 @@
-//! Umoja's built-in mind: no model, no network. It learns plain statements about the person,
-//! answers from the DKG facts it was handed, forgets on request, tells the time, opens apps
-//! and websites and sets reminders. Each rule is one function (a Chain of Responsibility:
-//! the first rule that recognises the words answers), so a new rule is one new function.
+//! Umoja's built-in mind: no model, no network. It is conversation and memory only: it learns
+//! plain statements about the person, answers from the DKG facts it was handed, forgets on
+//! request, greets, tells the time here and says what it can do. Each rule is one function (a
+//! Chain of Responsibility: the first rule that recognises the words answers), so a new rule is
+//! one new function.
+//!
+//! Things a keeper DOES (a reminder, opening an app, dark mode, a video, the time in Tokyo) are
+//! never rules here: they are SDK abilities whose own phrasings run them before any mind is
+//! asked (`sdk::instant`, `Instant::Also`), so there is one implementation for every mind
+//! (FIX-0053; a test keeps this list free of them).
 
 use std::sync::OnceLock;
 
@@ -10,15 +16,31 @@ use serde_json::json;
 
 use super::context::{Context, Learned, Thought};
 use crate::memory::Fact;
+use crate::sdk::instant::{clean, to_second_person};
 use crate::sdk::ActionRequest;
 
 type Rule = fn(&str, &Context) -> Option<Thought>;
 
-const RULES: &[Rule] = &[switch_engine, memory_question, forget, remind, open, my_name_is, remember_that, statement, recall_all, recall_actions, ask_name, time_now, greeting, help, question_about_me];
+/// Every rule by name, in the order they are tried.
+const RULES: &[(&str, Rule)] = &[
+    ("memory_question", memory_question),
+    ("forget", forget),
+    ("my_name_is", my_name_is),
+    ("remember_that", remember_that),
+    ("statement", statement),
+    ("recall_all", recall_all),
+    ("recall_actions", recall_actions),
+    ("ask_name", ask_name),
+    ("time_now", time_now),
+    ("greeting", greeting),
+    ("help", help),
+    ("question_about_me", question_about_me),
+];
 
+/// The built-in mind's answer to what was said (a rule's, or the fallback).
 pub fn think(ctx: &Context) -> Thought {
     let said = ctx.said.trim();
-    RULES.iter().find_map(|rule| rule(said, ctx)).unwrap_or_else(|| fallback(ctx))
+    RULES.iter().find_map(|(_, rule)| rule(said, ctx)).unwrap_or_else(|| fallback(ctx))
 }
 
 fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
@@ -27,41 +49,6 @@ fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
 
 fn reply(text: impl Into<String>) -> Thought {
     Thought { reply: text.into(), ..Thought::default() }
-}
-
-fn clean(s: &str) -> String {
-    s.trim().trim_end_matches(['.', '!', '?', ',']).trim().to_string()
-}
-
-/// "I love my sister" → "You love your sister": the assistant remembers in the second person.
-pub fn to_second_person(text: &str) -> String {
-    let swapped: Vec<String> = text
-        .split_whitespace()
-        .map(|w| {
-            let lower = w.to_lowercase();
-            let core = lower.trim_end_matches([',', '.', '!', '?']);
-            let tail = &lower[core.len()..];
-            let swapped = match core {
-                "i" => "you",
-                "i'm" | "im" => "you're",
-                "i've" => "you've",
-                "i'll" => "you'll",
-                "i'd" => "you'd",
-                "am" => "are",
-                "my" => "your",
-                "mine" => "yours",
-                "me" => "you",
-                "myself" => "yourself",
-                _ => return w.to_string(),
-            };
-            format!("{swapped}{tail}")
-        })
-        .collect();
-    let mut out = swapped.join(" ");
-    if let Some(first) = out.get(0..1) {
-        out = first.to_uppercase() + &out[1..];
-    }
-    out
 }
 
 fn learned(text: String, category: &str) -> Thought {
@@ -74,13 +61,48 @@ fn lower_first(s: &str) -> String {
     c.next().map(|f| f.to_lowercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
-fn my_name_is(said: &str, _: &Context) -> Option<Thought> {
+/// Words that end a name: "My name is Amos and I love cricket" is Amos (and the rest is heard too).
+const AFTER_A_NAME: &[&str] = &["and", "but", "so", "or", "&", "because", "who", "i", "i'm", "from"];
+/// The most words a name is taken to have.
+const NAME_WORDS: usize = 4;
+
+/// "My name is Amos", "call me Ada": the name is learned, and what follows it ("and I love
+/// cricket") is learned too when it is a statement the `statement` rule understands. The name
+/// stops at punctuation or a joining word (FIX-0053: "Amos and I love cricket" was the name).
+fn my_name_is(said: &str, ctx: &Context) -> Option<Thought> {
     static R: OnceLock<Regex> = OnceLock::new();
-    let caps = re(&R, r"(?i)^(?:hi|hello|hey)?[, ]*(?:my name is|my name's|call me|i am called|i'm called)\s+([\p{L}][\p{L}' -]{0,40})").captures(said)?;
-    let name = clean(&caps[1]);
+    let caps = re(&R, r"(?i)^(?:hi|hello|hey)?[, ]*(?:my name is|my name's|call me|i am called|i'm called)\s+(\p{L}.*)$").captures(said)?;
+    let (name, rest) = split_name(&caps[1]);
+    if name.is_empty() {
+        return None;
+    }
     let mut t = learned(format!("Your name is {name}"), "identity");
     t.reply = format!("Lovely to meet you, {name}. I've written your name into your memory graph.");
+    if let Some(more) = statement(&rest, ctx) {
+        let also: Vec<String> = more.remember.iter().map(|l| lower_first(&l.text)).collect();
+        t.reply = format!("Lovely to meet you, {name}. I've written your name into your memory graph, and that {}.", join_naturally(&also));
+        t.remember.extend(more.remember);
+    }
     Some(t)
+}
+
+/// "Amos and I love cricket" → ("Amos", "I love cricket"); "Mary Jane." → ("Mary Jane", "").
+fn split_name(words: &str) -> (String, String) {
+    let (head, after_mark) = match words.find([',', '.', '!', '?', ';']) {
+        Some(at) => (&words[..at], words[at + 1..].trim_start_matches([',', '.', '!', '?', ';', ' '])),
+        None => (words, ""),
+    };
+    let all: Vec<&str> = head.split_whitespace().collect();
+    let stop = all.iter().position(|w| AFTER_A_NAME.contains(&w.to_lowercase().as_str())).unwrap_or(all.len());
+    let name: Vec<&str> = all[..stop].iter().take(NAME_WORDS).copied().filter(|w| w.chars().all(|c| c.is_alphabetic() || "'-".contains(c))).collect();
+    // A joining word is dropped ("and I love cricket" → "I love cricket"); "I" starts the statement.
+    let rest_words = match all.get(stop) {
+        Some(w) if w.eq_ignore_ascii_case("i") || w.eq_ignore_ascii_case("i'm") => &all[stop..],
+        Some(_) => &all[stop + 1..],
+        None => &all[all.len()..],
+    };
+    let rest = [rest_words.join(" "), after_mark.to_string()].into_iter().filter(|p| !p.trim().is_empty()).collect::<Vec<_>>().join(". ");
+    (clean(&name.join(" ")), rest.trim().to_string())
 }
 
 fn remember_that(said: &str, _: &Context) -> Option<Thought> {
@@ -128,27 +150,10 @@ fn memory_question(said: &str, _: &Context) -> Option<Thought> {
         "agent-steps"
     } else if lower.contains("how much do you know") || lower.contains("how big is your memory") {
         "memory-size"
-    } else if lower.contains("upcoming reminders") || lower.contains("what reminders") {
-        return Some(action("list-reminders", json!({})));
     } else {
         return None;
     };
     Some(action("ask-memory", json!({ "question": question })))
-}
-
-/// "Switch your brain to Claude", "use Codex", "change your engine to the local model".
-fn switch_engine(said: &str, _: &Context) -> Option<Thought> {
-    static R: OnceLock<Regex> = OnceLock::new();
-    let caps = re(&R, r"(?i)^(?:please\s+)?(?:switch|change|set|swap|use|think with)\s+(?:your\s+)?(?:brain|engine|mind|model)?\s*(?:to|with)?\s*(?:the\s+)?(claude(?: code)?|codex|gemini|hermes|ollama|local model|local|built-in(?: mind)?|builtin|reflex)\b").captures(said)?;
-    let engine = match caps[1].to_lowercase().as_str() {
-        s if s.starts_with("claude") => "claude",
-        "codex" => "codex",
-        "gemini" => "gemini",
-        "hermes" => "hermes",
-        "ollama" | "local model" | "local" => "ollama",
-        _ => "reflex",
-    };
-    Some(action("switch-engine", json!({ "engine": engine })))
 }
 
 fn forget(said: &str, _: &Context) -> Option<Thought> {
@@ -156,37 +161,6 @@ fn forget(said: &str, _: &Context) -> Option<Thought> {
     let caps = re(&R, r"(?i)^(?:please\s+)?forget(?:\s+that|\s+about)?\s+(.{3,})").captures(said)?;
     let what = clean(&caps[1]);
     Some(Thought { reply: String::new(), forget: vec![to_second_person(&what)], ..Thought::default() })
-}
-
-fn remind(said: &str, _: &Context) -> Option<Thought> {
-    static IN: OnceLock<Regex> = OnceLock::new();
-    static AT: OnceLock<Regex> = OnceLock::new();
-    if let Some(c) = re(&IN, r"(?i)^remind me (?:to |that |about )?(.+?) in (\d{1,4}) ?(seconds?|secs?|minutes?|mins?|hours?|hrs?)\.?$").captures(said) {
-        let n: i64 = c[2].parse().ok()?;
-        let unit = c[3].to_lowercase();
-        let minutes = if unit.starts_with('h') { n * 60 } else if unit.starts_with('s') { 0 } else { n };
-        let seconds = if unit.starts_with('s') { n } else { minutes * 60 };
-        return Some(action("remind", json!({ "text": to_second_person(&clean(&c[1])), "inSeconds": seconds })));
-    }
-    if let Some(c) = re(&AT, r"(?i)^remind me (?:to |that |about )?(.+?) at (\d{1,2})(?::(\d{2}))? ?(am|pm)?\.?$").captures(said) {
-        let mut hour: u32 = c[2].parse().ok()?;
-        let minute: u32 = c.get(3).map(|m| m.as_str().parse().unwrap_or(0)).unwrap_or(0);
-        match c.get(4).map(|m| m.as_str().to_lowercase()) {
-            Some(ref p) if p == "pm" && hour < 12 => hour += 12,
-            Some(ref p) if p == "am" && hour == 12 => hour = 0,
-            _ => {}
-        }
-        return Some(action("remind", json!({ "text": to_second_person(&clean(&c[1])), "atLocal": format!("{hour:02}:{minute:02}") })));
-    }
-    None
-}
-
-fn open(said: &str, _: &Context) -> Option<Thought> {
-    static R: OnceLock<Regex> = OnceLock::new();
-    let caps = re(&R, r"(?i)^(?:please\s+)?(?:open|launch|start|go to|show me)\s+(?:the\s+)?(.{2,60}?)(?:\s+app)?\.?$").captures(said)?;
-    let target = clean(&caps[1]);
-    let looks_like_site = target.contains('.') && !target.contains(' ');
-    Some(if looks_like_site { action("open-website", json!({ "url": target })) } else { action("open-app", json!({ "name": target })) })
 }
 
 fn action(skill: &str, input: serde_json::Value) -> Thought {
@@ -218,9 +192,14 @@ fn ask_name(said: &str, ctx: &Context) -> Option<Thought> {
     })
 }
 
+/// The time HERE. "What time is it in Tokyo?" is the `time-in` ability's (its phrasings run it
+/// first); a place it does not know is not answered with the local time (FIX-0053).
 fn time_now(said: &str, ctx: &Context) -> Option<Thought> {
     static R: OnceLock<Regex> = OnceLock::new();
     re(&R, r"(?i)(what time is it|what's the time|the time\??$|what(?:'s| is) (?:the date|today)|what day is it)").find(said)?;
+    if said.to_lowercase().contains(" in ") {
+        return None;
+    }
     Some(reply(format!("It's {}.", ctx.now_local)))
 }
 
@@ -236,8 +215,15 @@ fn greeting(said: &str, ctx: &Context) -> Option<Thought> {
 fn help(said: &str, _: &Context) -> Option<Thought> {
     static R: OnceLock<Regex> = OnceLock::new();
     re(&R, r"(?i)(what can you do|help me|how do you work|what are you)").find(said)?;
-    Some(reply("I'm your personal assistant, and my memory lives on your own DKG node. Tell me about yourself and I'll remember it. I can recall it later, set reminders, open apps and websites, and tell you what I've done."))
+    Some(reply(WITHOUT_AN_AI))
 }
+
+/// What works with no AI connected, said truthfully: memory, and the abilities whose own words
+/// run them (`sdk::instant`; which ones depends on the mode, System Administrator has them all).
+const WITHOUT_AN_AI: &str = "I'm using my built-in mind, so I work without an AI. Tell me about yourself and I'll remember it on your own memory node and recall it later. \
+I can also do quick things at once: set a reminder (\"remind me in 10 minutes to stretch\"), open an app or a website, show you a video (\"show me a video on how to tie a tie\"), \
+tell the time here or in another city, work out a sum or a conversion, turn dark mode on, take a screenshot, and check that everything is working. \
+For open conversation, connect an AI in Settings.";
 
 /// A question about the person ("what's my favourite drink?") answered from the recalled facts.
 fn question_about_me(said: &str, ctx: &Context) -> Option<Thought> {
@@ -255,10 +241,18 @@ fn question_about_me(said: &str, ctx: &Context) -> Option<Thought> {
 }
 
 fn fallback(ctx: &Context) -> Thought {
+    // "Remind me to call Maya at 5" needs am or pm; the remind ability's words take a clear time.
+    if said_starts(&ctx.said, "remind me") {
+        return reply("Tell me when, and I'll set it: \"remind me to call Maya at 5 pm\" or \"remind me in 10 minutes to stretch\".");
+    }
     reply(format!(
-        "I'm using my built-in mind right now, so I can remember what you tell me about yourself, recall it, set reminders and open apps. For open conversation, connect a local model in Settings. {} is listening.",
+        "I'm using my built-in mind right now, so I can remember what you tell me about yourself and recall it, and do quick things: reminders, opening apps and websites, videos, the time anywhere, sums, and your Mac's settings. For open conversation, connect an AI in Settings. {} is listening.",
         ctx.assistant_name
     ))
+}
+
+fn said_starts(said: &str, words: &str) -> bool {
+    said.trim().to_lowercase().starts_with(words)
 }
 
 fn identity(facts: &[Fact], prefix: &str) -> Option<String> {
@@ -298,22 +292,54 @@ mod tests {
     }
 
     #[test]
-    fn reminders_open_and_forget_become_requests() {
-        let r = think(&ctx("remind me to call Maya in 10 minutes", vec![]));
-        assert_eq!(r.actions[0].skill, "remind");
-        assert_eq!(r.actions[0].input["inSeconds"], 600);
-        let o = think(&ctx("open Notes", vec![]));
-        assert_eq!(o.actions[0].input["name"], "Notes");
-        let w = think(&ctx("open umojaark.com", vec![]));
-        assert_eq!(w.actions[0].skill, "open-website");
-        let e = think(&ctx("switch your brain to Claude Code", vec![]));
-        assert_eq!((e.actions[0].skill.as_str(), e.actions[0].input["engine"].as_str()), ("switch-engine", Some("claude")));
-        assert_eq!(think(&ctx("use codex", vec![])).actions[0].input["engine"], "codex");
+    fn memory_questions_and_forgetting_become_requests() {
         let q = think(&ctx("what did you do today?", vec![]));
         assert_eq!((q.actions[0].skill.as_str(), q.actions[0].input["question"].as_str(), q.actions[0].input["days"].as_str()), ("ask-memory", Some("actions-recent"), Some("1")));
         assert_eq!(think(&ctx("what did we talk about this week", vec![])).actions[0].input["question"], "turns-recent");
         let f = think(&ctx("forget that I live in Port of Spain", vec![]));
         assert_eq!(f.forget, vec!["You live in Port of Spain".to_string()]);
+    }
+
+    // FIX-0053: "My name is Amos and I love cricket" saved the name as "Amos and I love cricket".
+    #[test]
+    fn a_name_stops_at_a_joining_word_and_the_rest_is_learned_too() {
+        let t = think(&ctx("My name is Amos and I love cricket", vec![]));
+        let learned: Vec<(&str, &str)> = t.remember.iter().map(|l| (l.text.as_str(), l.category.as_str())).collect();
+        assert_eq!(learned, vec![("Your name is Amos", "identity"), ("You love cricket", "preference")]);
+        assert!(t.reply.contains("Amos") && t.reply.contains("you love cricket"), "{}", t.reply);
+        for (said, name) in [("Hi, my name is Mary Jane.", "Mary Jane"), ("my name is Ada, I live in Port of Spain", "Ada"), ("call me Ishmael!", "Ishmael"), ("My name's Kwame but everyone calls me K", "Kwame")] {
+            assert_eq!(think(&ctx(said, vec![])).remember[0].text, format!("Your name is {name}"), "{said}");
+        }
+        let place = think(&ctx("my name is Ada, I live in Port of Spain", vec![]));
+        assert_eq!(place.remember[1].text, "You live in Port of Spain");
+        assert_eq!(think(&ctx("My name is Kwame but everyone calls me K", vec![])).remember.len(), 1, "not a statement: only the name");
+    }
+
+    // FIX-0053: the built-in mind held its own copies of abilities (remind, open, switch engine,
+    // list reminders) that misread "show me a video…" as an app and "remind me in 10 minutes
+    // to…" as nothing. Those are abilities now, run by their own words before any mind.
+    #[test]
+    fn the_built_in_mind_holds_no_ability_rules() {
+        let names: Vec<&str> = RULES.iter().map(|(name, _)| *name).collect();
+        assert_eq!(names, ["memory_question", "forget", "my_name_is", "remember_that", "statement", "recall_all", "recall_actions", "ask_name", "time_now", "greeting", "help", "question_about_me"]);
+        let system = crate::keepers::kit::roles::get("system");
+        for said in ["remind me to call Maya in 10 minutes", "remind me in 10 minutes to stretch", "open Notes", "open umojaark.com", "switch your brain to Claude Code", "What reminders do I have?", "show me a video on how to tie a tie", "turn on dark mode"] {
+            assert!(think(&ctx(said, vec![])).actions.is_empty(), "{said} is not the built-in mind's");
+            assert!(crate::sdk::instant::asked(said, &system).is_some(), "{said} is an ability's own words");
+        }
+    }
+
+    #[test]
+    fn the_time_here_is_not_the_time_elsewhere() {
+        assert_eq!(think(&ctx("what time is it?", vec![])).reply, "It's Tuesday 25 November 2026, 10:42.");
+        assert!(!think(&ctx("what time is it in Atlantis?", vec![])).reply.contains("10:42"));
+    }
+
+    #[test]
+    fn help_says_what_works_without_an_ai() {
+        let said = think(&ctx("what can you do?", vec![])).reply;
+        assert!(said.contains("without an AI") && said.contains("remind me in 10 minutes") && said.contains("video"), "{said}");
+        assert!(think(&ctx("remind me to call Maya at 5", vec![])).reply.contains("5 pm"), "an unclear time is asked about");
     }
 
     #[test]

@@ -1,10 +1,13 @@
-//! The keeper itself: asking its memory graph, what it has done for the person, and which mind
-//! it thinks with; and, only by their words, what it knows about the person (`what-you-know`)
-//! and what in its memory is out of date (`tidy-memory`), each as facts to forget or pin.
+//! The keeper itself: asking its memory graph, what it has done for the person, which mind it
+//! thinks with ("switch your brain to Claude" also runs `switch-engine` with no mind), whether
+//! everything it needs is working (`health`: the same checks as Settings, as a table); and, only
+//! by their words, what it knows about the person (`what-you-know`) and what in its memory is
+//! out of date (`tidy-memory`), each as facts to forget or pin.
 
 use std::sync::OnceLock;
 
 use regex::Regex;
+use tauri::Manager;
 
 use super::super::{input, instant, Ability, Access, Cx, Done, Effect, Instant, ALL};
 use crate::kernel::{DeskError, Result};
@@ -31,8 +34,15 @@ pub const ABILITIES: &[Ability] = &[
         id: "switch-engine",
         how: "{\"engine\": \"claude\"} changes which engine you think with: claude, codex, gemini, hermes, ollama or reflex",
         access: Access::Memory,
-        platforms: ALL, modes: &["assistant", "companion"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant", "companion"], instant: Instant::Also(engine_words),
         run: |input, _| Box::pin(async move { switch_engine(input) }),
+    },
+    Ability {
+        id: "health",
+        how: "{} runs every health check now (memory node, memory, mind, voice, calendar, spending) and shows what each found, problems first",
+        access: Access::Look,
+        platforms: ALL, modes: &["assistant"], instant: Instant::Also(health_words),
+        run: |_, cx| Box::pin(health(cx)),
     },
     Ability {
         id: "tidy-memory",
@@ -55,6 +65,10 @@ const TIDY_ASKS: &str = r"(?i)^(?:please\s+)?(?:(?:tidy|clean)(?:\s+up)?\s+(?:my
 /// Anywhere in what was said ("so, what do you know about me?"); the abilities before this one
 /// in the registry (the brief) are tried first.
 const KNOW_ASKS: &str = r"(?i)(what do you (?:know|remember) about me|what have you learned about me|show (?:me )?(?:your|my) memory)";
+/// "Switch your brain to Claude", "use Codex", "change your engine to the local model".
+const ENGINE_ASKS: &str = r"(?i)^(?:please\s+)?(?:switch|change|set|swap|use|think with)\s+(?:your\s+)?(?:brain|engine|mind|model)?\s*(?:to|with)?\s*(?:the\s+)?(claude(?: code)?|codex|gemini|hermes|ollama|local model|local|built-in(?: mind)?|builtin|reflex)\s*[.!]?$";
+/// "Is everything working?", "run a health check", "is anything broken?".
+const HEALTH_ASKS: &str = r"(?i)^(?:please\s+)?(?:is everything (?:working|ok|okay|alright|all right)|(?:run|do) a (?:health )?check(?:[- ]?up)?|health check|is anything (?:broken|wrong)|check (?:that )?everything(?: is)? working)\s*[?.!]?$";
 /// The most facts a panel lists.
 const MOST_FACTS: usize = 40;
 const UNREADABLE: &str = "I couldn't read your memory just now. Try again in a moment.";
@@ -62,6 +76,63 @@ const UNREADABLE: &str = "I couldn't read your memory just now. Try again in a m
 fn tidy_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
     instant::whole(&R, TIDY_ASKS, said)
+}
+
+/// `{"engine"}` for "switch your brain to Claude" (a whole phrasing: "use Claude to write my
+/// essay" is for the mind).
+fn engine_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let c = instant::pattern(&R, ENGINE_ASKS).captures(said.trim())?;
+    let engine = match c[1].to_lowercase().as_str() {
+        s if s.starts_with("claude") => "claude",
+        "codex" => "codex",
+        "gemini" => "gemini",
+        "hermes" => "hermes",
+        "ollama" | "local model" | "local" => "ollama",
+        _ => "reflex",
+    };
+    Some(serde_json::json!({ "engine": engine }))
+}
+
+fn health_words(said: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    instant::whole(&R, HEALTH_ASKS, said)
+}
+
+/// Every health check, run now (`health::all`, the list Settings shows), said in one line and
+/// shown as a table, problems first.
+async fn health(cx: &Cx<'_>) -> Result<Done> {
+    let state = cx.app.state::<crate::state::AppState>();
+    let checks = crate::health::all(cx.app, &state).await;
+    Ok(Done::answer(health_sentence(&checks)).showing(health_table(&checks)))
+}
+
+/// The summary, then each problem's own words ("1 thing is not working. Voice: the voice helper is missing…").
+fn health_sentence(checks: &[crate::health::Check]) -> String {
+    let problems: Vec<String> = checks.iter().filter(|c| c.level != crate::health::Level::Ok).map(|c| format!("{}: {}", c.name, c.detail)).collect();
+    [crate::health::summary(checks)].into_iter().chain(problems).collect::<Vec<_>>().join(" ")
+}
+
+/// Problems first, then things to know, then what is fine (the Settings list's order); a
+/// problem's state cell glows.
+fn health_table(checks: &[crate::health::Check]) -> Panel {
+    use crate::health::Level;
+    let rank = |l: Level| match l {
+        Level::Bad => 0,
+        Level::Warn => 1,
+        Level::Ok => 2,
+    };
+    let mut sorted: Vec<&crate::health::Check> = checks.iter().collect();
+    sorted.sort_by_key(|c| rank(c.level));
+    let state = |l: Level| match l {
+        Level::Ok => "Fine",
+        Level::Warn => "To know",
+        Level::Bad => "Not working",
+    };
+    let rows = sorted.iter().map(|c| vec![serde_json::Value::from(c.name), serde_json::Value::from(state(c.level)), serde_json::Value::from(c.detail.as_str())]).collect();
+    let highlight = sorted.iter().enumerate().filter(|(_, c)| c.level == Level::Bad).map(|(row, _)| crate::stage::panel::Cell { row, col: 1 }).collect();
+    let caption = Some("The same checks as Settings, under Health, where each fix is one button.".to_string());
+    Panel::Table { id: "health".into(), title: "Is everything working?".into(), caption, columns: vec!["Check".into(), "State".into(), "What I found".into()], rows, highlight }
 }
 
 fn know_words(said: &str) -> Option<serde_json::Value> {
@@ -131,6 +202,29 @@ mod tests {
     fn tidy_memory_phrasings() {
         assert!(super::tidy_words("Tidy my memory").is_some() && super::tidy_words("please clean up your memory.").is_some() && super::tidy_words("What's out of date in my memory?").is_some());
         assert!(super::tidy_words("tidy my downloads").is_none() && super::tidy_words("clean up my memory card photos").is_none());
+    }
+
+    #[test]
+    fn the_engine_and_health_phrasings() {
+        assert_eq!(super::engine_words("switch your brain to Claude Code").unwrap()["engine"], "claude");
+        assert_eq!(super::engine_words("use codex").unwrap()["engine"], "codex");
+        assert_eq!(super::engine_words("change your engine to the local model.").unwrap()["engine"], "ollama");
+        assert!(super::engine_words("use claude to write my essay").is_none());
+        assert!(super::health_words("Is everything working?").is_some() && super::health_words("run a health check").is_some());
+        assert!(super::health_words("is everything working at the church").is_none());
+    }
+
+    #[test]
+    fn health_is_said_and_shown_problems_first() {
+        use crate::health::{Check, Level};
+        let checks = vec![
+            Check { id: "node", name: "Memory node", level: Level::Ok, detail: "Running.".into(), fix: None },
+            Check { id: "voice", name: "Voice", level: Level::Bad, detail: "The voice helper is missing.".into(), fix: None },
+        ];
+        assert_eq!(super::health_sentence(&checks), "1 thing is not working. Voice: The voice helper is missing.");
+        let super::Panel::Table { rows, highlight, .. } = super::health_table(&checks) else { panic!("a table") };
+        assert_eq!((rows[0][0].as_str(), rows[0][1].as_str()), (Some("Voice"), Some("Not working")));
+        assert_eq!(highlight, vec![crate::stage::panel::Cell { row: 0, col: 1 }]);
     }
 
     #[test]

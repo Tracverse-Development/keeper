@@ -7,6 +7,9 @@ pub const TARGET_TRIPLE: &str = "unsupported";
 pub fn open_app(_: &str) -> Result<()> {
     Err(DeskError::Invalid("Opening apps is not supported on this system yet.".into()))
 }
+pub fn app_installed(_: &str) -> bool {
+    false
+}
 pub fn open_url(_: &str) -> Result<()> {
     Err(DeskError::Invalid("Opening pages is not supported on this system yet.".into()))
 }

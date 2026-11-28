@@ -1,16 +1,18 @@
 //! Everyday sums and conversions, the same on every system and with no network: `calculate`
 //! (`maths`: arithmetic, percentages, square roots) and `convert` (`units`: length, weight,
 //! volume, temperature, speed, area, data, time). Exact answers, so the keeper never guesses.
+//! "What's 15% of 86" and "5 km in miles" run them with no mind (`words`).
 
 pub mod maths;
 pub mod units;
+mod words;
 
 use super::super::{input, Ability, Access, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "calculate", how: "{\"sum\": \"15% of 80 + 2^3\"} works out a sum exactly (+ - * / ^, brackets, %, sqrt)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], instant: Instant::No, run: |input, _| Box::pin(async move { calculate(input) }) },
-    Ability { id: "convert", how: "{\"value\": 5, \"from\": \"km\", \"to\": \"miles\"} converts length, weight, cooking volume, temperature, speed, area, data or time (not money)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], instant: Instant::No, run: |input, _| Box::pin(async move { convert(input) }) },
+    Ability { id: "calculate", how: "{\"sum\": \"15% of 80 + 2^3\"} works out a sum exactly (+ - * / ^, brackets, %, sqrt)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], instant: Instant::Also(words::sum_words), run: |input, _| Box::pin(async move { calculate(input) }) },
+    Ability { id: "convert", how: "{\"value\": 5, \"from\": \"km\", \"to\": \"miles\"} converts length, weight, cooking volume, temperature, speed, area, data or time (not money)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], instant: Instant::Also(words::convert_words), run: |input, _| Box::pin(async move { convert(input) }) },
 ];
 
 fn calculate(input: &serde_json::Value) -> Result<Done> {

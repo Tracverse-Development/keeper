@@ -1,9 +1,11 @@
 //! Reminders: the `remind` and `list-reminders` abilities (each shows an agenda), `snooze` (only
 //! by its words: "snooze for 15 minutes"), the clock that delivers them (`clock`) and what
 //! happens around one (`actions`: it comes round again, snooze, delete, what came due while closed).
+//! "Remind me in 10 minutes to stretch" sets one with no mind (`words`).
 
 pub mod actions;
 pub mod clock;
+pub mod words;
 
 pub use clock::Scheduler;
 
@@ -21,7 +23,7 @@ pub const ABILITIES: &[Ability] = &[
         id: "remind",
         how: "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later; add \"repeat\": \"daily\", \"weekdays\" or \"weekly\" (with atLocal) for one that comes back",
         access: Access::Memory,
-        platforms: ALL, modes: &["assistant", "tutor", "companion"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant", "tutor", "companion"], instant: Instant::Also(words::remind_words),
         run: |input, cx| Box::pin(remind(input, cx)),
     },
     Ability {

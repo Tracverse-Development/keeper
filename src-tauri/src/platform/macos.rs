@@ -26,6 +26,24 @@ pub fn open_app(name: &str) -> Result<()> {
     run(Command::new("/usr/bin/open").arg("-a").arg(name), &format!("find an app called {name}"))
 }
 
+/// The folders apps are installed in (the system's own, the shared ones, the person's).
+fn app_folders() -> Vec<std::path::PathBuf> {
+    let mut folders: Vec<std::path::PathBuf> = ["/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities"].iter().map(std::path::PathBuf::from).collect();
+    folders.extend(dirs::home_dir().map(|h| h.join("Applications")));
+    folders
+}
+
+pub fn app_installed(name: &str) -> bool {
+    let wanted = format!("{}.app", name.trim().to_lowercase());
+    // A plain name only: never a path, so nothing outside the app folders is looked at.
+    if name.trim().is_empty() || name.contains('/') {
+        return false;
+    }
+    app_folders().iter().any(|folder| {
+        std::fs::read_dir(folder).map(|entries| entries.flatten().any(|e| e.file_name().to_string_lossy().to_lowercase() == wanted)).unwrap_or(false)
+    })
+}
+
 pub fn open_url(url: &str) -> Result<()> {
     run(Command::new("/usr/bin/open").arg(url), "open that page")
 }

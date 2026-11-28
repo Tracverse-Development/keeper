@@ -1,5 +1,8 @@
 //! Opening things for the person: an app by name, a website. Inputs are checked here so a name
-//! can never be a path or a flag and an address is only ever http(s).
+//! can never be a path or a flag and an address is only ever http(s). "Open Notes" and "open
+//! youtube.com" run them with no mind (`words`).
+
+mod words;
 
 use super::super::{input, Ability, Access, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
@@ -10,14 +13,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "open-app",
         how: "{\"name\": \"Notes\"} opens a Mac app by name",
         access: Access::Open,
-        platforms: ALL, modes: &["assistant"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant"], instant: Instant::Also(words::app_words),
         run: |input, _| Box::pin(async move { open_app(input) }),
     },
     Ability {
         id: "open-website",
         how: "{\"url\": \"https://umojaark.com\"} opens a website in the browser",
         access: Access::Open,
-        platforms: ALL, modes: &["assistant"], instant: Instant::No,
+        platforms: ALL, modes: &["assistant"], instant: Instant::Also(words::site_words),
         run: |input, _| Box::pin(async move { open_website(input) }),
     },
 ];

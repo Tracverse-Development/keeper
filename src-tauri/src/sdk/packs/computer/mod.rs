@@ -3,9 +3,13 @@
 //! of System Settings, a word in the Dictionary) and change when the person asks in words
 //! (`change`: dark mode, volume, staying awake, the display, the lock, the clipboard, a
 //! screenshot, a note, one of their Shortcuts). Every OS call is a `platform` function; these
-//! packs check the input and say what happened.
+//! packs check the input and say what happened. The whole phrasings that run each with no mind
+//! sit beside it (`look_words`, `open_words`, `change_words`).
 
+mod change_words;
 mod cities;
+mod look_words;
+mod open_words;
 pub mod change;
 pub mod look;
 pub mod open;
