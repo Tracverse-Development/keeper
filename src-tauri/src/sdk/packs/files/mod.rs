@@ -1,6 +1,7 @@
 //! Files the person can watch being edited: `edit-file` puts a keeper's change to one text file
-//! in a draft beside the old text (the person saves it, changes it, or throws it away), and
-//! `show-file` shows a text file's words. Neither ever writes the person's file: only the draft
+//! in a draft beside the old text (the person saves it, changes it, or throws it away),
+//! `write-document` drafts a NEW document the same way (Save creates it, never over another),
+//! and `show-file` shows a text file's words. Neither ever writes the person's file: only the draft
 //! panel's Save does (`sdk::drafts`).
 //!
 //! `editing_material` is the turn's side: when the person asks for a change to one named text
@@ -27,6 +28,14 @@ pub const ABILITIES: &[Ability] = &[
         run: |input, _| Box::pin(async move { edit_file(input) }),
     },
     Ability {
+        id: "write-document",
+        how: "{\"name\": \"Party plan.md\", \"folder\": \"~/Documents\", \"text\": \"<the whole document>\", \"why\": \"a plan for Saturday\"} writes a NEW document (.md, .txt or .csv): the person sees it, can change it, and saves it themselves (folder defaults to ~/Documents)",
+        // Writes only a draft in Keeper's own folder; the person's Save creates the file, never over another.
+        access: Access::Look,
+        platforms: ALL, modes: &["assistant", "researcher", "tutor"], instant: Instant::No,
+        run: |input, _| Box::pin(async move { write_document(input) }),
+    },
+    Ability {
         id: "show-file",
         how: "{\"path\": \"~/notes.txt\"} shows a text file's words on the stage (the person can edit and save them there)",
         access: Access::Look,
@@ -43,6 +52,14 @@ fn edit_file(input: &serde_json::Value) -> Result<Done> {
     let name = draft.name();
     let said = if draft.text == draft.original { format!("{name} would stay the same, so there's nothing to save.") } else { format!("Here are my changes to {name}. Nothing is saved until you press Save.") };
     Ok(Done::said(said).showing(draft.panel()))
+}
+
+fn write_document(input: &serde_json::Value) -> Result<Done> {
+    let text = input.get("text").and_then(|v| v.as_str()).ok_or_else(|| crate::kernel::DeskError::Invalid("That needs the document's text.".into()))?;
+    let folder = input::optional(input, "folder").unwrap_or("~/Documents");
+    let draft = Drafts::here().create(folder, input::text(input, "name")?, text, input::optional(input, "why"))?;
+    let (name, place) = drafts::name_and_folder(&draft.path);
+    Ok(Done::said(format!("Here's {name}, for {place}. Change anything you like; it's saved when you press Save.")).showing(draft.panel()))
 }
 
 fn show_file(input: &serde_json::Value) -> Result<Done> {

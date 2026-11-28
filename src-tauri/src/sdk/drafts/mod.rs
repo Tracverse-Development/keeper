@@ -20,6 +20,7 @@
 
 pub mod commands;
 pub mod diff;
+pub mod new_file;
 pub mod place;
 
 use std::path::{Path, PathBuf};
@@ -52,6 +53,9 @@ pub struct Draft {
     pub why: Option<String>,
     pub opened: String,
     pub updated: String,
+    /// A file that does not exist yet (`new_file`): Save creates it, never over another.
+    #[serde(default)]
+    pub new: bool,
 }
 
 /// What the draft panel draws: the file, the change line by line, and the proposed text.
@@ -112,7 +116,7 @@ impl Draft {
     /// the panel, so the person's file is not copied into the chat's record).
     pub fn panel(&self) -> crate::stage::Panel {
         let (name, folder) = name_and_folder(&self.path);
-        let title = if self.text == self.original { name.clone() } else { format!("Changes to {name}") };
+        let title = if self.new { format!("New: {name}") } else if self.text == self.original { name.clone() } else { format!("Changes to {name}") };
         crate::stage::Panel::Draft { id: format!("draft-{}", self.id), title, draft: self.id.clone(), name, folder, why: self.why.clone() }
     }
 }
@@ -164,7 +168,7 @@ impl Drafts {
         let now = time::now_iso();
         let mut draft = match self.get(&id) {
             Ok(d) if d.original_hash == hash(&current) => d,
-            _ => Draft { id, path: real_path, original_hash: hash(&current), text: current.clone(), original: current, why: None, opened: now.clone(), updated: now.clone() },
+            _ => Draft { id, path: real_path, original_hash: hash(&current), text: current.clone(), original: current, why: None, opened: now.clone(), updated: now.clone(), new: false },
         };
         if let Some(t) = text {
             place::fits(t)?;
@@ -194,6 +198,9 @@ impl Drafts {
     /// changed since the draft opened.
     pub fn save(&self, id: &str) -> Result<Draft> {
         let draft = self.get(id)?;
+        if draft.new {
+            return self.save_new(draft);
+        }
         let name = draft.name();
         let real = place::editable(&draft.path)?;
         if real.display().to_string() != draft.path {
@@ -303,7 +310,7 @@ mod tests {
         let panel: crate::stage::Panel = serde_json::from_value(raw.clone()).unwrap();
         assert!(matches!(&panel, crate::stage::Panel::Draft { why: Some(w), .. } if w == "fixed 7 spellings"));
         assert_eq!(serde_json::to_value(&panel).unwrap(), raw, "the same shape both ways");
-        let view = serde_json::to_value(Draft { id: "0123456789abcdef".into(), path: "/tmp/a.txt".into(), original: "teh\n".into(), original_hash: String::new(), text: "the\n".into(), why: None, opened: String::new(), updated: String::new() }.view()).unwrap();
+        let view = serde_json::to_value(Draft { id: "0123456789abcdef".into(), path: "/tmp/a.txt".into(), original: "teh\n".into(), original_hash: String::new(), text: "the\n".into(), why: None, opened: String::new(), updated: String::new(), new: false }.view()).unwrap();
         assert_eq!(view["lines"][0]["parts"][0], serde_json::json!({"text": "teh", "changed": true}));
         assert_eq!((view["added"].as_u64(), view["changed"].as_bool()), (Some(1), Some(true)));
     }

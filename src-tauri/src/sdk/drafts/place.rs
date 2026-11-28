@@ -31,6 +31,45 @@ fn app_data(real: &Path) -> bool {
     dirs::home_dir().and_then(|h| h.join("Library").canonicalize().ok()).is_some_and(|lib| real.starts_with(lib))
 }
 
+/// Kinds of new file a keeper may write: plain text a person opens anywhere.
+pub const NEW_KINDS: &[&str] = &["txt", "md", "markdown", "csv"];
+
+/// Where a NEW file may be written, or why not: a plain name (no folder in it, not hidden) with a
+/// plain-text kind (`NEW_KINDS`; none given means `.md`), in an existing folder inside the
+/// person's own places and not an app's own data, and nothing there by that name yet.
+pub fn creatable(folder: &str, name: &str) -> Result<PathBuf> {
+    let name = name.trim();
+    if name.is_empty() || name.starts_with('.') || name.contains(['/', '\\']) || name.chars().any(char::is_control) || name.chars().count() > 120 {
+        return Err(DeskError::Invalid("Give the new document a plain name, like \"Party plan.md\".".into()));
+    }
+    let name = match Path::new(name).extension().map(|e| e.to_string_lossy().to_lowercase()) {
+        Some(kind) if NEW_KINDS.contains(&kind.as_str()) => name.to_string(),
+        Some(_) => return Err(DeskError::Invalid("I write new documents as plain text: a .md, .txt or .csv file.".into())),
+        None => format!("{name}.md"),
+    };
+    let written = crate::stage::open::expand_home(folder);
+    let dir = written.canonicalize().map_err(|_| DeskError::Invalid("That folder doesn't exist.".into()))?;
+    if !dir.is_dir() || !crate::kernel::paths::in_persons_places(&dir) || app_data(&dir) || dir.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')) {
+        return Err(DeskError::Invalid("I only write new documents in your own folders.".into()));
+    }
+    let target = dir.join(&name);
+    if std::fs::symlink_metadata(&target).is_ok() {
+        return Err(DeskError::Invalid(format!("There's already a file called {name} there. Choose another name, or ask me to change that file.")));
+    }
+    Ok(target)
+}
+
+/// Writes a NEW file at `real` in one step, never over anything (create-new: an existing file
+/// or link there makes it fail).
+pub fn write_new(real: &Path, text: &str) -> Result<()> {
+    let write = || -> std::io::Result<()> {
+        let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(real)?;
+        file.write_all(text.as_bytes())?;
+        file.sync_all()
+    };
+    write().map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { DeskError::Invalid("A file by that name appeared there, so I didn't save over it.".into()) } else { DeskError::Io(format!("I couldn't save it: {e}")) })
+}
+
 /// The whole text of an editable file (already checked by `editable`).
 pub fn read_text(real: &Path) -> Result<String> {
     let bytes = std::fs::read(real).map_err(|_| DeskError::Invalid("I couldn't read that file.".into()))?;
