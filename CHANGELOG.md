@@ -8,6 +8,29 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.21.1] - 2026-11-28
+
+Your files, the web and your music, all inside Keeper, just by asking.
+
+### Added
+- **Your files inside Keeper.** "Open my documents" shows your folders right beside your keeper:
+  press a folder to go in, press a file to see it. Pictures, PDFs and Word documents show as pages,
+  videos and songs play, and a text file can be edited and saved there. Folders and files in your
+  keeper's answers open here too. "Ask your keeper about it" hands any file over. Say "in the
+  Finder" to use the Finder instead.
+- **Keep your files in order by asking.** "Make a folder called Receipts in my documents", or ask
+  your keeper to rename a file, move it to another folder, or put it in the Trash (you can put it
+  back). Nothing is ever written over another file, and your main folders (Documents, Desktop…)
+  stay where they are.
+- **Search, maps and the weather.** "Search the web for growing tomatoes in pots", "directions to
+  Central Park from Times Square", "what's the weather in Tokyo tomorrow": each opens in Keeper.
+- **Music.** "Pause the music", "play my music", "next song", "go back a song", "what's playing".
+
+### Fixed
+- While a web page was open in Keeper, your keeper could only talk: instant answers and actions
+  (filling a form, pressing a link, anything else you asked) did nothing until the page was
+  closed (FIX-0062).
+
 ## [0.21.0] - 2026-11-28
 
 The web inside Keeper, and Hands-free that hears its name.
