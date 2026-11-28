@@ -144,11 +144,11 @@ export interface Settings {
   /** Short conversational turns go to the quick helper model. */
   quickReplies: boolean;
   /** The name and https link put on packs the person shares (absent = none). */
-  makerName?: string;
-  makerLink?: string;
+  makerName?: string; makerLink?: string;
   /** The monthly limit on cloud minds, in dollars (absent or 0 = none). */
   monthlyCapUsd?: number;
   autoUpdate: boolean;
+  /** Minutes before a calendar event for the keeper's heads-up (0 = off; 5, 10, 15 or 30). */ headsUpMinutes: number;
 }
 
 export interface ModelOption {
@@ -357,7 +357,7 @@ export interface Overview {
   traces: QueryTrace[];
 }
 
-export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd'>> & { /** The maker's [name, link] for shared packs; an empty name clears both. */ maker?: [string, string] };
+export type SettingsChange = Partial<Pick<Settings, 'agentActions' | 'voice' | 'voiceEngine' | 'elevenVoiceId' | 'alwaysListening' | 'wakeWord' | 'talkShortcut' | 'autoUpdate' | 'visual' | 'prefetchScenes' | 'fastModel' | 'askBeforeActing' | 'quickReplies' | 'monthlyCapUsd' | 'headsUpMinutes'>> & { /** The maker's [name, link] for shared packs; an empty name clears both. */ maker?: [string, string] };
 
 export type Phase = 'recalling' | 'thinking' | 'acting' | 'redirected' | 'remembering' | 'done';
 

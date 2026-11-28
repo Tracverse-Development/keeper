@@ -35,6 +35,8 @@ pub struct SettingsChange {
     pub fast_model: Option<String>,
     pub ask_before_acting: Option<bool>,
     pub quick_replies: Option<bool>,
+    /// Minutes before a calendar event for the heads-up (0 = off; only the offered leads are kept).
+    pub heads_up_minutes: Option<u32>,
     /// The monthly spending limit in dollars (0 = none).
     pub monthly_cap_usd: Option<f64>,
     /// The maker's name and link put on shared packs (both given together; an empty name clears them).
@@ -70,6 +72,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, AppState>, change: S
         }
         if let Some(q) = change.quick_replies {
             s.quick_replies = q;
+        }
+        if let Some(m) = change.heads_up_minutes.filter(|m| crate::sdk::packs::calendar::heads_up::LEADS.contains(m)) {
+            s.heads_up_minutes = m;
         }
         if let Some((name, link)) = &change.maker {
             // Kept as cleaned (a link that is not a plain https address is dropped).

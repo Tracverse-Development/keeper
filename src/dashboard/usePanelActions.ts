@@ -1,6 +1,7 @@
 /**
  * The window's side of "panels you work in", "say the reply first" and the morning brief:
  * - a panel action (tick, answer, flashcard, form, forget, pin) is written to the keeper's graph;
+ *   a reminder deleted from an agenda is erased (`reminderCancel`);
  *   a submitted form is also sent as the next message, so the keeper carries on with it;
  *   an approval decision runs the plan (or records the no); a quiz streak of 3+ is celebrated;
  *   a draft's "Change something" puts its opening in the talk box (nothing is written or sent)
@@ -76,6 +77,16 @@ export function usePanelActions(deps: Deps) {
     }
     if (a.type === 'compose') {
       d.compose(a.text);
+      return;
+    }
+    // A reminder deleted from an agenda: erased from the keeper's graph, it will not fire.
+    if (a.type === 'reminder-delete') {
+      try {
+        await core.reminderCancel(a.reminderId, d.keeper ?? undefined);
+        d.changed();
+      } catch (e) {
+        d.announce(sentence(e));
+      }
       return;
     }
     try {

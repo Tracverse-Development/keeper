@@ -96,7 +96,7 @@ storage is left, how busy the computer is) gets the live panel and at most one t
 finding things on their computer (you can look, never change), opening apps and websites, and answering questions. To change the words \
 of one text file, draft it with edit-file (they see it and save it themselves). For other changes to files, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
-        skills: &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file"],
+        skills: &["remind", "list-reminders", "upcoming", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "show-file", "edit-file"],
         mood: false,
     },
     Builtin {
@@ -125,7 +125,7 @@ technical term (SMD, p-value, meta-analysis) in plain words the first time.",
 the person already knows, give one small step or hint at a time, and ask a question back. Use a quiz or flashcards panel to practise, and \
 praise effort. Give the full answer only when the person asks for it or has tried. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "ask-memory"],
+        skills: &["remind", "list-reminders", "ask-memory"],
         mood: false,
     },
     Builtin {
@@ -136,7 +136,7 @@ praise effort. Give the full answer only when the person asks for it or has trie
         brief: "Your mode: this person's companion. Your domain is their day: conversation, learning together, reminders, \
 routines and wellbeing. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact"],
+        skills: &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact"],
         mood: true,
     },
 ];

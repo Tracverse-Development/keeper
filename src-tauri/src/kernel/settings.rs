@@ -63,6 +63,10 @@ pub struct KeeperVoice {
     pub id: String,
 }
 
+/// The heads-up before a calendar event when the settings file says nothing, in minutes
+/// (LES-039: a field left out keeps a sensible value).
+pub const DEFAULT_HEADS_UP: u32 = 10;
+
 /// The outfit a keeper wears when nothing was chosen (the look the robot shipped with).
 pub fn default_wearables() -> Vec<WornPart> {
     ["memory-halo", "ark-hull"].iter().map(|p| WornPart { part: p.to_string(), effects: Default::default(), item: Some(format!("part:{p}")), rarity: None, set: None, colour: None }).collect()
@@ -206,6 +210,9 @@ pub struct Settings {
     pub maker_name: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub maker_link: String,
+    /// Minutes before a calendar event the keeper gives a heads-up (0 = off; one of
+    /// `sdk::packs::calendar::heads_up::LEADS`). Missing from an older file: the default, 10.
+    pub heads_up_minutes: u32,
     /// The kit (souls, modes, wardrobe) lives in the `kit` sub-graph of the home graph.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kit_moved: bool,
@@ -253,6 +260,7 @@ impl Default for Settings {
             known_makers: Default::default(),
             maker_name: String::new(),
             maker_link: String::new(),
+            heads_up_minutes: DEFAULT_HEADS_UP,
             kit_moved: false,
             assistant_name: String::new(),
             graph_id: String::new(),
@@ -328,6 +336,14 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_older_settings_file_gives_a_heads_up_ten_minutes_before() {
+        let old: Settings = serde_json::from_str(r#"{"setupComplete": true, "voice": "Samantha"}"#).unwrap();
+        assert_eq!(old.heads_up_minutes, 10);
+        let off: Settings = serde_json::from_str(r#"{"headsUpMinutes": 0}"#).unwrap();
+        assert_eq!(off.heads_up_minutes, 0, "off stays off");
+    }
 
     #[test]
     fn a_single_assistant_file_becomes_keeper_one() {

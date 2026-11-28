@@ -15,6 +15,7 @@ use crate::kernel::{events, time, Result};
 use crate::memory::later::Later;
 use crate::memory::scene_cache::CachedScene;
 use crate::memory::{ActionRecord, Chat, Fact, Memory, Recall, Turn};
+use super::compose::compose_reply;
 use crate::sdk::{self, Cx, Effect, Outcome};
 use crate::state::AppState;
 
@@ -165,7 +166,7 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         for request in thought.actions.iter().take(4) {
             // A role only uses the skills it is allowed (a companion does not open apps).
             if !role.allows(&request.skill) {
-                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None, panels: Vec::new() });
+                outcomes.push(Outcome { skill: request.skill.clone(), input: request.input.to_string(), summary: format!("That isn't part of my job as {}.", role.title), succeeded: false, effect: None, panels: Vec::new(), answers: false });
                 continue;
             }
             let mut outcome = sdk::run(request, &cx).await;
@@ -274,47 +275,6 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         attached: None,
     }
 }
-
-/// The mind's words, then what the skills did (a skill's own sentence is the truth about it).
-
-fn compose_reply(said: &str, outcomes: &[Outcome], forgotten: &[Fact], asked_to_forget: bool) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    if !said.trim().is_empty() {
-        parts.push(said.trim().to_string());
-    }
-    for o in outcomes {
-        if !parts.iter().any(|p| p.contains(&o.summary)) {
-            parts.push(o.summary.clone());
-        }
-    }
-    if asked_to_forget && said.trim().is_empty() {
-        parts.push(if forgotten.is_empty() {
-            "I couldn't find that in your memory graph.".into()
-        } else {
-            format!("Done. I've retracted {} from your memory graph.", forgotten.iter().map(|f| format!("\"{}\"", f.text)).collect::<Vec<_>>().join(", "))
-        });
-    }
-    if parts.is_empty() {
-        "Okay.".into()
-    } else {
-        parts.join(" ")
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn skill_outcomes_are_always_told() {
-        let o = Outcome { skill: "open-app".into(), input: "{}".into(), summary: "Opened Notes.".into(), succeeded: true, effect: None, panels: Vec::new() };
-        assert_eq!(compose_reply("", &[o.clone()], &[], false), "Opened Notes.");
-        assert_eq!(compose_reply("Sure.", &[o], &[], false), "Sure. Opened Notes.");
-        assert_eq!(compose_reply("", &[], &[], true), "I couldn't find that in your memory graph.");
-    }
-}
-
 
 /// The facts shown under an answer as "what I knew": the ones recall handed the mind, without
 /// any the turn itself just forgot (a forgotten fact is never shown again).

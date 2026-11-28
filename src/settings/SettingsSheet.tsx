@@ -13,6 +13,7 @@ import { BackupSection } from './BackupSection';
 import { ChildSection } from './ChildSection';
 import { HealthSection } from './HealthSection';
 import { ReadingSection } from './ReadingSection';
+import { RemindersSection } from './RemindersSection';
 import { RemoveAppSection } from './RemoveAppSection';
 import { ShowingSection } from './ShowingSection';
 import { SpendingSection } from './SpendingSection';
@@ -152,6 +153,9 @@ export function SettingsSheet({ open, settings, keeper, kit, onKitChanged, onOpe
 
         {see.has('showing') && <p className="eyebrow">Showing things</p>}
         {see.has('showing') && <ShowingSection settings={settings} save={save} />}
+
+        {see.has('reminders') && <p className="eyebrow">Reminders and calendar</p>}
+        {see.has('reminders') && <RemindersSection settings={settings} save={save} />}
 
         {see.has('spending') && <p className="eyebrow">Spending</p>}
         {see.has('spending') && open && <SpendingSection settings={settings} save={save} />}

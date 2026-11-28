@@ -12,6 +12,7 @@
 //!   is an expansion done before the turn)
 //! - "shorten what I copied"                       the clipboard's text (`clip`)
 //! - "focus for 25 minutes"                        a focus session (`crate::focus`)
+//! - "what reminders do I have", "what's on tomorrow"  the agenda abilities (`list-reminders`, `upcoming`)
 
 pub mod brief;
 pub mod clip;
@@ -83,6 +84,12 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
         return Some(brief::compose(app, memory, keeper).await);
     }
 
+    // "What reminders do I have?", "what's on tomorrow?": the agenda abilities, at once (when the
+    // mode has them; otherwise the mind answers).
+    if let Some(request) = agenda_request(s).filter(|r| crate::keepers::kit::roles::get(&keeper.role).allows(&r.skill)) {
+        return Some(Thought { actions: vec![request], ..Thought::default() });
+    }
+
     // "focus for 25 minutes", "stop the focus session": the timer starts or ends at once.
     if let Some(reply) = crate::focus::answer(app, &keeper.id, s) {
         return Some(shown(reply, json!([])));
@@ -138,6 +145,25 @@ pub async fn answer(app: &tauri::AppHandle, memory: &Memory, keeper: &KeeperProf
     None
 }
 
+/// "What reminders do I have?", "list my reminders", "my upcoming reminders".
+const REMINDERS: &str = r"(?i)^(?:please\s+)?(?:what reminders do i have|(?:show|list|tell)(?: me)? (?:all )?my reminders|(?:what are )?my (?:upcoming )?reminders|(?:do i have )?any (?:upcoming )?reminders)\s*[?.!]?$";
+/// "What's on tomorrow?", "what do I have tomorrow?".
+const TOMORROW: &str = r"(?i)^(?:please\s+)?(?:what(?:'s| is) on (?:for )?tomorrow|what do i have (?:on |going on )?tomorrow|what(?:'s| is) (?:my day|happening) tomorrow)\s*[?.!]?$";
+
+/// The agenda ability a clear phrasing asks for (None: anything else).
+fn agenda_request(said: &str) -> Option<crate::sdk::ActionRequest> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    static T: OnceLock<Regex> = OnceLock::new();
+    let (skill, input) = if re(&R, REMINDERS).is_match(said) {
+        ("list-reminders", json!({}))
+    } else if re(&T, TOMORROW).is_match(said) {
+        ("upcoming", json!({ "day": "tomorrow" }))
+    } else {
+        return None;
+    };
+    Some(crate::sdk::ActionRequest { skill: skill.into(), input })
+}
+
 /// "Tidy my memory", "clean up your memory", "what's out of date in my memory?".
 const TIDY_MEMORY: &str = r"(?i)^(?:please\s+)?(?:(?:tidy|clean)(?:\s+up)?\s+(?:my|your)\s+memory|what(?:'s| is)\s+out of date in\s+(?:my|your)\s+memory)\s*[?.!]?$";
 
@@ -164,6 +190,18 @@ mod tests {
         assert!(r.is_match("what files did I change today"));
         assert!(r.is_match("show me my recent files"));
         assert!(!r.is_match("what was I saying about the embolism?"), "conversation goes to the brain");
+    }
+
+    #[test]
+    fn reminder_and_tomorrow_phrasings_ask_the_agenda() {
+        let skill = |s: &str| agenda_request(s).map(|r| r.skill);
+        assert_eq!(skill("What reminders do I have?").as_deref(), Some("list-reminders"));
+        assert_eq!(skill("list my reminders").as_deref(), Some("list-reminders"));
+        assert_eq!(skill("any upcoming reminders?").as_deref(), Some("list-reminders"));
+        assert_eq!(skill("What's on tomorrow?").as_deref(), Some("upcoming"));
+        assert_eq!(agenda_request("what do I have tomorrow").unwrap().input["day"], "tomorrow");
+        assert_eq!(skill("remind me to call Maya at 5"), None, "a new reminder goes to the mind");
+        assert_eq!(skill("what's on tomorrow's news"), None);
     }
 
     #[test]

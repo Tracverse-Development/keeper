@@ -23,7 +23,7 @@ export type Panel =
   | { kind: 'folder'; id: string; title: string; path: string; entries: { name: string; kind: 'file' | 'folder'; change?: 'added' | 'removed' | 'moved' | 'kept'; to?: string }[] }
   | { kind: 'sliders'; id: string; title: string; expression: string; resultLabel: string; unit?: string; variables: { name: string; label: string; min: number; max: number; step: number; value: number }[] }
   | { kind: 'flashcards'; id: string; title: string; cards: { front: string; back: string }[] }
-  | { kind: 'agenda'; id: string; title: string; items: { time?: string; title: string; detail?: string; kind?: 'event' | 'reminder' | 'task' }[] }
+  | { kind: 'agenda'; id: string; title: string; items: { time?: string; title: string; detail?: string; kind?: 'event' | 'reminder' | 'task'; /** A reminder row's id: Delete is offered. */ id?: string }[] }
   | { kind: 'checklist'; id: string; title: string; items: { id: string; text: string; done: boolean }[] }
   | { kind: 'form'; id: string; title: string; fields: { id: string; label: string; kind: 'text' | 'number' | 'choice' | 'date'; choices?: string[]; placeholder?: string }[]; submit: string }
   | { kind: 'approval'; id: string; title: string; summary: string; steps: { action: string; target: string; detail?: string }[]; token: string }
@@ -60,7 +60,8 @@ export type PanelAction =
   | { type: 'approve' | 'deny'; token: string }
   | { type: 'forget' | 'pin'; factId: string }
   /** Put words in the talk box for the person to finish (a draft's "Change something"); nothing is sent. */
-  | { type: 'compose'; text: string };
+  | { type: 'compose'; text: string }
+  | { type: 'reminder-delete'; reminderId: string };
 
 /** The follow-up the keeper is asked when the person points at a piece (pure; tested). */
 export function focusQuestion(f: PanelFocus): string {

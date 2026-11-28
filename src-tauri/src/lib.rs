@@ -52,10 +52,7 @@ pub fn run() {
                 let app = handle.clone();
                 tauri::async_runtime::spawn(async move {
                     let state = app.state::<AppState>();
-                    let line = format!("A reminder: {}.", reminder.text.trim_end_matches('.'));
-                    platform::notify("Keeper", &line);
-                    let _ = app.emit(events::ASSISTANT_SAYS, json!({ "text": line, "reason": "reminder" }));
-                    let _ = state.voice.speak(&app, &line, &state.settings().speaking_as_active(), false).await;
+                    sdk::watch::say(&app, &format!("A reminder: {}.", reminder.text.trim_end_matches('.')), "reminder").await;
                     // A repeating reminder is written again for its next time, in its keeper's memory.
                     sdk::packs::reminders::actions::come_round(&state, &reminder).await;
                 });
@@ -64,6 +61,8 @@ pub fn run() {
             app.manage(state);
 
             updater::spawn_auto(app.handle().clone());
+            // What keepers check on their own (a heads-up before a calendar event): `sdk::watch`.
+            sdk::watch::start(app.handle());
 
             // The keeper button (push to talk); a taken shortcut is reported in Settings, not fatal.
             let _ = hotkey::apply(app.handle(), &app.state::<AppState>().settings().talk_shortcut);

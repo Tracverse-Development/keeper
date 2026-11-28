@@ -10,7 +10,8 @@ test('settings: every section is in one real group and no group is empty', () =>
 });
 
 test('settings: a tab shows its own sections; a search finds a section wherever it lives', () => {
-  assert.deepEqual([...shown('how', '')], ['reading', 'showing', 'spending', 'voice', 'button', 'phone']);
+  assert.deepEqual([...shown('how', '')], ['reading', 'showing', 'reminders', 'spending', 'voice', 'button', 'phone']);
+  assert.deepEqual([...shown('keeper', 'heads up')], ['reminders'], 'the heads-up is found by its words');
   assert.deepEqual([...shown('keeper', 'backup')], ['backup'], 'found from another tab');
   assert.deepEqual([...shown('health', 'passcode')], ['child']);
   assert.ok(shown('health', 'microphone').has('voice'));

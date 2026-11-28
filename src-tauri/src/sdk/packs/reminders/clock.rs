@@ -108,6 +108,11 @@ impl Scheduler {
         }
     }
 
+    /// Is a focus session holding reminders at `now`? (Watches do not look meanwhile.)
+    pub fn holding(&self, now: DateTime<Utc>) -> bool {
+        held_for(self.held_until.lock().ok().and_then(|h| *h), now).is_some()
+    }
+
     /// Schedule once; scheduling the same reminder again (a reload) is a no-op.
     pub fn schedule(&self, reminder: Reminder) {
         let Some(due) = time::parse_iso(&reminder.due_at) else { return };
