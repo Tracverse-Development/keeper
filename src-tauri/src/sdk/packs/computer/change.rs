@@ -3,7 +3,7 @@
 //! dark mode, the volume level, staying awake, the display, the lock, the clipboard, a new
 //! screenshot in ~/Pictures/Keeper, a new note, running one of their own Shortcuts.
 
-use super::super::super::{input, Ability, Instant, Access, Done, MAC};
+use super::super::super::{input, Ability, Access, Done, Instant, MAC};
 use crate::kernel::{DeskError, Result};
 use crate::platform::{self, Volume, MAX_AWAKE_MINUTES};
 use crate::stage::Panel;

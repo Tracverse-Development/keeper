@@ -82,11 +82,7 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
     // it. No instant answer, no cached scene (the same words about another file differ).
     let fresh = ctx.attached.is_some();
     if !fresh {
-        let instant = match instant(app, state, memory, keeper, &ctx.said, at_the_mac).await {
-            Some(thought) => Some(thought),
-            None => crate::fastlane::answer(app, memory, keeper, &ctx.said).await,
-        };
-        if let Some(thought) = instant {
+        if let Some(thought) = instant(app, state, memory, keeper, &ctx.said, at_the_mac).await {
             return Answer { thought, mind: mind("instant", "Instant answer (no AI)"), cached: false, switched: None };
         }
     }

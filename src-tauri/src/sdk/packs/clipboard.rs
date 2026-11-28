@@ -5,22 +5,37 @@
 //! be pasted where the person was working. The copied text and a result that replaces it are
 //! never stored (the turn's record keeps only the request and "it's on your clipboard"); an
 //! explanation or summary is an answer in the chat and is kept like any answer.
+//!
+//! One instant-only ability, `work-on-copied` (only its words run it, in every mode). The
+//! clipboard is never read for a phone turn: the ability is `Access::Change`, which
+//! `registry::run` runs only at the Mac, it checks `Cx::at_the_mac` itself, and the phone server
+//! refuses these words before a turn starts ([`asks_for_clipboard`]).
 
 use std::sync::OnceLock;
 
 use regex::Regex;
+use serde_json::json;
 use tauri::Manager;
 
-use crate::brain::{Context, Thought};
+use super::super::{instant, Ability, Access, Cx, Done, Instant, ALL};
+use crate::brain::Context;
 use crate::kernel::settings::KeeperProfile;
 use crate::kernel::{DeskError, Result};
 use crate::state::AppState;
+
+pub const ABILITIES: &[Ability] = &[Ability {
+    id: "work-on-copied",
+    how: "\"shorten what I copied\", \"translate my clipboard into French\": rewrites, shortens, fixes, translates, explains or summarises the copied text (a result that replaces it goes back on the clipboard)",
+    access: Access::Change,
+    platforms: ALL, modes: &[], instant: Instant::Only(copied_words),
+    run: |input, cx| Box::pin(work_on_copied(input, cx)),
+}];
 
 /// The most copied text taken (characters); more than this is a document, not a selection.
 const MAX_CHARS: usize = 8_000;
 
 /// "shorten what I copied", "translate my clipboard into French", "fix the copied text".
-pub const ASKS: &str = r"(?i)^(?:please\s+)?(rewrite|reword|shorten|fix|proofread|correct|explain|summari[sz]e|translate)\s+(?:what i(?:'ve| have)? copied|what(?:'s| is) (?:on|in) (?:my|the) clipboard|(?:my|the) clipboard|the copied text|the text i copied)(?:\s+(?:in|to|into)\s+([\p{L}][\p{L} ]{1,29}?))?\s*[.!]?$";
+const ASKS: &str = r"(?i)^(?:please\s+)?(rewrite|reword|shorten|fix|proofread|correct|explain|summari[sz]e|translate)\s+(?:what i(?:'ve| have)? copied|what(?:'s| is) (?:on|in) (?:my|the) clipboard|(?:my|the) clipboard|the copied text|the text i copied)(?:\s+(?:in|to|into)\s+([\p{L}][\p{L} ]{1,29}?))?\s*[.!]?$";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Task {
@@ -33,10 +48,11 @@ pub enum Task {
 }
 
 impl Task {
-    /// The task a request names; a translation needs its language.
-    pub fn read(captures: &regex::Captures) -> Option<Task> {
-        let language = captures.get(2).map(|m| m.as_str().trim().to_string());
-        Some(match captures[1].to_lowercase().as_str() {
+    /// The task an input names (`{"task": "translate", "language": "French"}`); a translation
+    /// needs its language.
+    pub fn read(input: &serde_json::Value) -> Option<Task> {
+        let language = input["language"].as_str().map(|l| l.trim().to_string()).filter(|l| !l.is_empty());
+        Some(match input["task"].as_str()?.to_lowercase().as_str() {
             "rewrite" | "reword" => Task::Rewrite,
             "shorten" => Task::Shorten,
             "fix" | "proofread" | "correct" => Task::Fix,
@@ -109,38 +125,35 @@ async fn transform(helper: &str, keeper: &KeeperProfile, task: &Task, text: &str
 
 /// Is this a request to work on the clipboard (whatever the task)?
 pub fn asks_for_clipboard(said: &str) -> bool {
-    static ASK: OnceLock<Regex> = OnceLock::new();
-    ASK.get_or_init(|| Regex::new(ASKS).expect("pattern")).is_match(said.trim())
+    copied_words(said.trim()).is_some()
 }
 
-/// The instant answer to a request about what was copied, or None when the words are about
-/// something else.
-pub async fn answer(app: &tauri::AppHandle, keeper: &KeeperProfile, said: &str) -> Option<Thought> {
+/// The task and language the words name.
+fn copied_words(said: &str) -> Option<serde_json::Value> {
     static ASK: OnceLock<Regex> = OnceLock::new();
-    let captures = ASK.get_or_init(|| Regex::new(ASKS).expect("pattern")).captures(said.trim())?;
-    let Some(task) = Task::read(&captures) else {
-        return Some(Thought { reply: "Tell me the language too, like: translate what I copied into French.".into(), ..Thought::default() });
-    };
-    let state = app.state::<AppState>();
-    let said_no = |e: DeskError| Thought { reply: e.to_string(), ..Thought::default() };
+    let captures = instant::pattern(&ASK, ASKS).captures(said)?;
+    Some(json!({ "task": captures[1].to_lowercase(), "language": captures.get(2).map(|m| m.as_str().trim()) }))
+}
+
+/// The clipboard's text worked on: put back (rewrite, shorten, fix, translate) or said (explain,
+/// summarise).
+async fn work_on_copied(input: &serde_json::Value, cx: &Cx<'_>) -> Result<Done> {
+    if !cx.at_the_mac {
+        return Ok(Done::said("I only work on copied text at the Mac itself, not from the phone."));
+    }
+    let Some(task) = Task::read(input) else { return Ok(Done::said("Tell me the language too, like: translate what I copied into French.")) };
+    let state = cx.app.state::<AppState>();
+    let keeper = state.keeper_or_active(cx.keeper)?;
     if keeper.brain == "claude" && crate::kernel::usage::over(state.settings().monthly_cap_usd) {
-        return Some(said_no(DeskError::Invalid("This month's spending limit is reached, so I can't work on that text right now.".into())));
+        return Err(DeskError::Invalid("This month's spending limit is reached, so I can't work on that text right now.".into()));
     }
-    let before = match crate::platform::clipboard_read().await.and_then(copied) {
-        Ok(text) => text,
-        Err(e) => return Some(said_no(e)),
-    };
-    let after = match transform(&state.settings().fast_model, keeper, &task, &before).await {
-        Ok(text) => text,
-        Err(e) => return Some(said_no(e)),
-    };
+    let before = crate::platform::clipboard_read().await.and_then(copied)?;
+    let after = transform(&state.settings().fast_model, &keeper, &task, &before).await?;
     if !task.replaces() {
-        return Some(Thought { reply: after, ..Thought::default() });
+        return Ok(Done::said(after));
     }
-    if let Err(e) = crate::platform::clipboard_write(&after).await {
-        return Some(said_no(e));
-    }
-    Some(Thought { reply: format!("{}. It's on your clipboard: paste it where you were working.", task.done()), ..Thought::default() })
+    crate::platform::clipboard_write(&after).await?;
+    Ok(Done::said(format!("{}. It's on your clipboard: paste it where you were working.", task.done())))
 }
 
 #[cfg(test)]
@@ -148,7 +161,7 @@ mod tests {
     use super::*;
 
     fn task(said: &str) -> Option<Option<Task>> {
-        Regex::new(ASKS).unwrap().captures(said).map(|c| Task::read(&c))
+        copied_words(said).map(|input| Task::read(&input))
     }
 
     #[test]

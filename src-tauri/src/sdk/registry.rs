@@ -20,6 +20,8 @@ const PACKS: &[&[Ability]] = &[
     packs::computer::open::ABILITIES,
     packs::computer::change::ABILITIES,
     packs::everyday::ABILITIES,
+    packs::routines::ABILITIES,
+    packs::clipboard::ABILITIES,
 ];
 
 /// Every watch (what keepers check on their own, `sdk::watch`). A new watch is one line here.

@@ -5,7 +5,7 @@
 pub mod maths;
 pub mod units;
 
-use super::super::{input, Ability, Instant, Access, Done, ALL};
+use super::super::{input, Ability, Access, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
 
 pub const ABILITIES: &[Ability] = &[

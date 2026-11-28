@@ -123,20 +123,17 @@ pub fn snooze_minutes(said: &str) -> Option<Option<i64>> {
     })
 }
 
-/// The instant answer to a snooze: the reminder that fired last comes back in a while. None
-/// when the words are about something else.
-pub async fn snooze(state: &AppState, said: &str) -> Option<String> {
-    let minutes = match snooze_minutes(said)? {
-        Some(m) => m,
-        None => return Some(format!("I can snooze for up to {MAX_SNOOZE} minutes.")),
-    };
-    let Some(last) = state.reminders.last_fired() else { return Some("There's no reminder to snooze: none has gone off since I started.".into()) };
-    let keeper = state.keeper_or_active(&last.keeper).ok()?;
-    let memory = state.memory_for(&keeper).ok()?;
+/// Snooze: the reminder that fired last comes back in `minutes` (None: more than snoozing
+/// allows, said rather than set). The `snooze` ability's work (`super::ABILITIES`).
+pub async fn snooze(state: &AppState, minutes: Option<i64>) -> Result<String> {
+    let Some(minutes) = minutes else { return Ok(format!("I can snooze for up to {MAX_SNOOZE} minutes.")) };
+    let Some(last) = state.reminders.last_fired() else { return Ok("There's no reminder to snooze: none has gone off since I started.".into()) };
+    let keeper = state.keeper_or_active(&last.keeper)?;
+    let memory = state.memory_for(&keeper)?;
     let again = Reminder::new(&last.text, &time::iso(time::now() + Duration::minutes(minutes)), &time::now_iso()).repeating("", &keeper.id);
     memory.write(&again).await;
     state.reminders.schedule(again);
-    Some(format!("Snoozed. I'll remind you to {} again in {minutes} minute{}.", last.text.trim_end_matches('.'), if minutes == 1 { "" } else { "s" }))
+    Ok(format!("Snoozed. I'll remind you to {} again in {minutes} minute{}.", last.text.trim_end_matches('.'), if minutes == 1 { "" } else { "s" }))
 }
 
 /// Delete a reminder: it is erased from the keeper's graph and will not fire.

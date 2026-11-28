@@ -78,7 +78,7 @@ pub async fn document_text(path: &std::path::Path) -> Result<String> {
 }
 
 /// The text on the system clipboard (empty when it holds none), and putting text on it. Read
-/// only when the person asks the keeper to work on what they copied (`fastlane::clip`).
+/// only when the person asks the keeper to work on what they copied (`sdk::packs::clipboard`).
 pub async fn clipboard_read() -> Result<String> {
     os::clipboard_read().await
 }

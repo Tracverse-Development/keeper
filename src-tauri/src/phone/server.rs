@@ -84,7 +84,7 @@ pub fn spawn(server: Arc<tiny_http::Server>, token: String, app: AppHandle) {
                     let mode: String = body["mode"].as_str().unwrap_or_default().chars().filter(|c| c.is_ascii_lowercase()).take(20).collect();
                     // The Mac's clipboard is read only for someone at the Mac, never from a phone on
                     // the network (review finding).
-                    if crate::fastlane::clip::asks_for_clipboard(&text) {
+                    if crate::sdk::packs::clipboard::asks_for_clipboard(&text) {
                         json_reply(req, 200, json!({ "reply": "I only work on copied text at the Mac itself, not from the phone.", "chat": chat }));
                         continue;
                     }

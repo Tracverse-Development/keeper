@@ -1,7 +1,7 @@
 //! The person's own records on this computer: their calendar and contacts (through `pim`, read
 //! and written here and never sent anywhere).
 
-use super::super::{input, Ability, Instant, Access, Cx, Done, ALL};
+use super::super::{input, Ability, Access, Cx, Done, Instant, ALL};
 use crate::kernel::Result;
 
 pub const ABILITIES: &[Ability] = &[

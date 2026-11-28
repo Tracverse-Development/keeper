@@ -1,7 +1,7 @@
 //! Opening things on this computer for the person: a folder or file in the Finder (inside their
 //! home folder only), a pane of System Settings by its everyday name, a word in the Dictionary.
 
-use super::super::super::{input, Ability, Instant, Access, Done, MAC};
+use super::super::super::{input, Ability, Access, Done, Instant, MAC};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 

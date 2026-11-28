@@ -1,7 +1,7 @@
 //! Opening things for the person: an app by name, a website. Inputs are checked here so a name
 //! can never be a path or a flag and an address is only ever http(s).
 
-use super::super::{input, Ability, Instant, Access, Done, ALL};
+use super::super::{input, Ability, Access, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
 use crate::platform;
 

@@ -6,7 +6,7 @@
 pub mod local;
 pub mod youtube;
 
-use super::super::{input, Ability, Instant, Access, Cx, Done, ALL};
+use super::super::{input, Ability, Access, Cx, Done, Instant, ALL};
 use crate::kernel::{DeskError, Result};
 use crate::stage::panel::MediaChoice;
 use crate::stage::Panel;

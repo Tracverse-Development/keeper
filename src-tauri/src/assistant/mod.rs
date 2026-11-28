@@ -170,7 +170,7 @@ async fn run_turn_with(app: &AppHandle, state: &AppState, keeper_id: &str, chat:
     // On a child profile every chat is in a mode with no tools (no computer, no web).
     let keeper = crate::kernel::settings::KeeperProfile { role: child_mode(&keeper.role, crate::kernel::child_lock::on()), ..keeper };
     // "Run my Friday tidy": the routine's own request is what the keeper is asked.
-    let routine = crate::fastlane::routines::expand(&memory, said).await;
+    let routine = crate::sdk::packs::routines::expand(&memory, said).await;
     let said = routine.as_deref().unwrap_or(said);
     let result = turn::turn(app, &memory, state, &keeper, chat, said, None, attached, at_the_mac).await?;
     let _ = app.emit(events::ASSISTANT_REPLY, json!({ "keeper": keeper.id, "chat": result.chat, "reply": result.reply }));
