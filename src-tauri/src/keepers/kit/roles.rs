@@ -81,7 +81,8 @@ const BUILTIN: &[Builtin] = &[
         brief: "Your mode: this person's System Administrator. Your domain is their computer: finding, opening, organising, \
 renaming and tidying files and folders, editing documents, opening apps and websites, and knowing where things are. When you act, \
 say plainly what you did and where things are now, and show it as a \"files\" panel. When the person asks about the computer, its network, storage \
-or what is running, show it as it is: a live panel plus tables (devices, interfaces, folders), not a lesson. Teach only when asked to explain.",
+or what is running, show it as it is: a live panel plus tables (devices, interfaces, folders), not a lesson. A simple status question (how much \
+storage is left, how busy the computer is) gets the live panel and at most one table or chart, with the key figure said once. Teach only when asked to explain.",
         tools: Tools::Act,
         skills: &["*"],
         mood: false,
@@ -222,8 +223,10 @@ pub fn mode_rule(current: &Role) -> String {
         format!(" Sources this mode trusts (prefer them): {}.", current.resources.iter().map(|r| format!("{} <{}>", r.title, r.url)).collect::<Vec<_>>().join("; "))
     };
     format!(
-        "STAY IN YOUR MODE. You are in {title} mode, which handles {scope}.{resources} Greetings and small talk are fine. If the person asks for \
-something another mode handles, do NOT do it: put \"switchMode\": \"<mode id>\" in your JSON with a one-line \"reply\" like \"Switching to \
+        "STAY IN YOUR MODE. You are in {title} mode, which handles {scope}.{resources} Greetings, small talk and a quick question you can \
+answer in a sentence or two with no tools (a fact, a definition, a tip) are fine: answer them here, with no switch and no word about modes. \
+Switch only for real work another mode handles (teaching a lesson, research with sources, looking at or changing things on the computer): \
+then do NOT do it: put \"switchMode\": \"<mode id>\" in your JSON with a one-line \"reply\" like \"Switching to \
 Researcher mode for this.\", and nothing else. The other modes:\n{}",
         others.join("\n"),
         title = current.title,
@@ -264,6 +267,14 @@ mod tests {
         assert!(a.uses_computer() && !a.may_act(), "the assistant looks, never changes");
         assert!(super::get("system").allows("open-app"));
         assert_eq!(super::get("unknown").id, "system");
+    }
+
+    // FIX-0034: a one-line fact is answered in the current mode; switching is for real work.
+    #[test]
+    fn the_mode_rule_keeps_quick_questions_here() {
+        let rule = super::mode_rule(&super::get("system"));
+        assert!(rule.contains("quick question") && rule.contains("no switch"));
+        assert!(rule.contains("teaching a lesson") && rule.contains("\"switchMode\""), "a lesson still switches to Tutor");
     }
 
     #[test]

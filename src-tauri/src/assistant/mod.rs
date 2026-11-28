@@ -13,6 +13,7 @@
 pub mod actions;
 pub mod approval;
 pub mod attach;
+mod handoff;
 mod intent;
 mod speech;
 pub mod persona;

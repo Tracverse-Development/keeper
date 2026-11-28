@@ -6,10 +6,12 @@
 //! table is capped (`cap`) so one answer cannot flood the window. The window renders text only.
 
 mod cap;
+mod echo;
 pub mod open;
 pub mod panel;
 pub mod stream;
 
+pub use echo::without_echoes;
 pub use panel::Panel;
 use panel::MAX_PANELS;
 
@@ -49,11 +51,13 @@ then one \"files\" panel. NEVER create HTML files, web pages or documents and NE
 pub const RULES: &str = "SHOWING THINGS: you have a stage inside this app, and the person likes to see things. When you teach, explain, compare, list, calculate or report \
 what you did, put it in \"panels\" (shown beautifully inside Keeper, clickable so the person can ask about any piece). NEVER create HTML \
 files, web pages or documents and NEVER open a browser just to show something: use panels. Every panel stands on its own: its title says what it shows, and it \
-holds real content, never a placeholder. When you show numbers, a status or a result, the FIRST panel is a text panel that says in a sentence or two what it means for the person. Panel kinds (JSON objects in the \"panels\" \
+holds real content, never a placeholder. When you show numbers, a status or a result, the FIRST panel is a text panel that says in a sentence or two what it means for the person, \
+unless your reply already says it: no panel only repeats your reply, and each figure appears in ONE panel. A SIMPLE STATUS question (how much storage is left, \
+how busy the computer is) gets one live panel and at most one supporting panel (a table or chart). Panel kinds (JSON objects in the \"panels\" \
 array; usually 2 to 4, at most 5, each short: a few lines or items, since the person watches them arrive one by one): {\"kind\":\"text\",\"title\",\"body\",\"bullets\":[]}, {\"kind\":\"table\",\"title\",\"caption\",\"columns\":[],\"rows\":[[]],\"highlight\":[{\"row\":0,\"col\":0}]}, \
 {\"kind\":\"steps\",\"title\",\"steps\":[{\"label\",\"detail\",\"math\"}]}, {\"kind\":\"formula\",\"title\",\"expression\",\"parts\":[{\"symbol\",\"meaning\"}]}, \
 {\"kind\":\"cards\",\"title\",\"cards\":[{\"title\",\"body\",\"emoji\"}]}, {\"kind\":\"quiz\",\"title\",\"question\",\"choices\":[],\"answer\":0,\"explain\"}, \
-{\"kind\":\"chart\",\"title\",\"labels\":[],\"values\":[],\"unit\"}, {\"kind\":\"files\",\"title\",\"items\":[{\"action\":\"open|create|move|edit|delete|find\",\"path\",\"to\"}]}, \
+{\"kind\":\"chart\",\"title\",\"labels\":[],\"values\":[],\"unit\"} (unit short: %, GB, kg), {\"kind\":\"files\",\"title\",\"items\":[{\"action\":\"open|create|move|edit|delete|find\",\"path\",\"to\"}]}, \
 {\"kind\":\"diagram\",\"title\",\"nodes\":[{\"id\",\"label\",\"group\"}],\"edges\":[{\"from\",\"to\",\"label\"}]} (flows, relationships, concepts), \
 {\"kind\":\"timeline\",\"title\",\"events\":[{\"when\",\"title\",\"detail\"}]}, {\"kind\":\"folder\",\"title\",\"path\",\"entries\":[{\"name\",\"kind\":\"file|folder\",\"change\":\"added|removed|moved|kept\",\"to\"}]} (show a folder before/after you change it), \
 {\"kind\":\"sliders\",\"title\",\"expression\":\"weekly * weeks\",\"resultLabel\",\"unit\",\"variables\":[{\"name\",\"label\",\"min\",\"max\",\"step\",\"value\"}]} (what-if calculators; arithmetic only), \

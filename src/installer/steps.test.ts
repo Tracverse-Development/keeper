@@ -54,3 +54,12 @@ test('calendar and contacts are allowed only when both are', () => {
   assert.equal(pimPermission({ calendar: 'allowed', contacts: 'denied' }), 'denied');
   assert.equal(pimPermission({ calendar: 'allowed', contacts: 'allowed' }), 'allowed');
 });
+
+// FIX-0036: on a ~1024 px window "Welcome" was squeezed into a sixth of the row and ran into the
+// "2" dot. The named step keeps its full width (it never shrinks) and its name can only ellipsize.
+test('the named step in the step bar never shrinks under its name', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('./installer.css', import.meta.url), 'utf8');
+  assert.match(css, /\.stepper li\.is-current \{ flex: 1 0 auto;/);
+  assert.match(css, /\.stepper-label \{[^}]*min-width: 0;[^}]*text-overflow: ellipsis;/);
+});

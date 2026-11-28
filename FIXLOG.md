@@ -265,3 +265,43 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** the core emits `assistant://mode-switched` the moment it decides to answer in another mode (the picker follows at once); every change of the chat's mode goes through `follow()`, which updates the ref immediately as well as the state.
 - **Guard:** none automatic: the race lives in a React hook and this repo's window tests are node tests with no React renderer. The ref-and-state helper is the single path (`setMode` is no longer exported raw), and the comment on `follow()` names why.
 - **Evidence:** `scripts/check.sh` (below in the commit).
+
+### FIX-0033 — A lesson replayed from memory said "Switching to Tutor mode for this." (2026-11-27)
+- **Area:** `src-tauri/src/memory/scene_cache.rs` (`CachedScene::replay_reply`), `src-tauri/src/assistant/source.rs` (the scene cache hit). Follows FIX-0032.
+- **Symptom:** in the bench, the "lesson", "lesson-again" and "follow-up" turns answered from the cache all opened with "Switching to Tutor mode for this." while the turn returned `switched: None`: the reply announced a switch that did not happen.
+- **Root cause:** the switch line was stripped only when a scene was SAVED (`without_switch` in `CachedScene::new`); scenes kept before that change still carried it, and the cache hit used `scene.reply` as stored.
+- **Fix:** the replay reads `replay_reply()`, which strips the line on the way out as well, so no replay ever claims a switch whatever was stored.
+- **Guard:** `scene_cache.rs` test `an_old_kept_scene_replays_without_the_switch` (a scene built with the old line, bypassing the save-side cleaning).
+- **Evidence:** `cargo test --lib`: 245 passed, 0 failed.
+
+### FIX-0034 — The keeper switched modes to answer a one-line fact (2026-11-27)
+- **Area:** `src-tauri/src/keepers/kit/roles.rs` (`mode_rule`), new `src-tauri/src/assistant/handoff.rs`, `src-tauri/src/assistant/source.rs` (`find`).
+- **Symptom:** in System Administrator mode, "What's the capital of Japan?" answered "Switching to Assistant mode for this. The capital of Japan is Tokyo." and moved the chat; "I want to run a marathon this spring, any tips?" switched too.
+- **Root cause:** the mode rule allowed only greetings and small talk outside the mode's scope, so any question in another mode's scope (the Assistant's scope names "quick questions") was a switch; and the core announced and moved the chat for every switch the mind asked for.
+- **Fix:** the rule now keeps a quick question answerable in a line or two with no tools in the current mode, and reserves switching for real work (a lesson, research with sources, the computer). Deterministic guard in `handoff`: a short conversational question asked of a talking mode (no web, no computer, never the Tutor) only BORROWS that mode: no announcement, the chat stays; if the borrowed answer turns out to be real work (panels, a skill, a long answer) it is announced as a switch after all. The first answer's own "Switching to …" words are held back (`HoldSwitchLine`) and `find` says the line itself only when it really switches. A lesson request in System Administrator still switches to the Tutor.
+- **Guard:** `handoff.rs` tests `quick_questions_borrow_quietly_and_lessons_switch` (the two bench questions, a lesson, homework, research, tidying files), `panels_or_skills_make_it_real_work`, `a_switch_line_is_held_and_other_words_pass`; `roles.rs` test `the_mode_rule_keeps_quick_questions_here`.
+- **Evidence:** `cargo test --lib`: 245 passed, 0 failed.
+
+### FIX-0035 — A storage question repeated the same free-space figure in four panels (2026-11-27)
+- **Area:** `src-tauri/src/stage/mod.rs` (`RULES`), `src-tauri/src/assistant/approval.rs` (`LOOKING`), `roles.rs` (System Administrator brief), new `src-tauri/src/stage/echo.rs`, `src-tauri/src/assistant/turn.rs`.
+- **Symptom:** "How much storage do I have left?" showed the reply, a text panel, a table, a chart and the live panel, each giving the same free-space number.
+- **Root cause:** the Stage rules asked for a text panel FIRST whenever numbers or a status were shown, and nothing limited a simple status answer, so the mind restated one figure in every kind it could.
+- **Fix:** the rules say no panel only repeats the reply, each figure appears in one panel, and a simple status question gets one live panel plus at most one supporting panel (the same line in the look note and the System Administrator brief). Deterministically, `stage::without_echoes` drops a text panel (no bullets) whose words are nearly all in the reply. Computer-work panels still arrive together (the turn's panel hold is untouched).
+- **Guard:** `echo.rs` tests `a_text_panel_that_restates_the_reply_is_dropped`, `a_text_panel_that_adds_something_stays`.
+- **Evidence:** `cargo test --lib`: 245 passed, 0 failed.
+
+### FIX-0036 — The setup step bar's "Welcome" ran into the "2" on a 1024 px window (2026-11-27)
+- **Area:** `src/installer/installer.css` (`.stepper`).
+- **Symptom:** on the VM's ~1024 px display the first step's name showed as "Welc" overlapping the second step's dot.
+- **Root cause:** all six steps shared the row equally (`flex: 1; min-width: 0`), so the named step got a sixth of ~400 px, narrower than its dot plus "Welcome", and the unclipped name overflowed into its neighbour.
+- **Fix:** the named step never shrinks below its dot and name (`flex: 1 0 auto`, at most half the row) and the name can only ellipsize; the other steps share what is left.
+- **Guard:** `steps.test.ts` "the named step in the step bar never shrinks under its name" (reads the stylesheet); before/after shots at 1024 and 1440 in `misc/studio-preview/lineup/fixes-*.png`.
+- **Evidence:** node tests 591 passed.
+
+### FIX-0037 — A chart's unit was cut inside its brackets ("% absorbed (") (2026-11-27)
+- **Area:** `src-tauri/src/stage/cap.rs` (`clip_unit`), `stage/mod.rs` (chart kind in `RULES`).
+- **Symptom:** a chart showed "% absorbed (" after every value.
+- **Root cause:** the unit was cut at 12 characters wherever that fell; "% absorbed (per dose)" lost everything after the open bracket.
+- **Fix:** a cut that leaves a bracket open ends before the bracket ("% absorbed"); the rules ask for a short unit (%, GB, kg).
+- **Guard:** `cap.rs` test `a_chart_unit_is_never_cut_inside_brackets`.
+- **Evidence:** `cargo test --lib`: 245 passed, 0 failed.

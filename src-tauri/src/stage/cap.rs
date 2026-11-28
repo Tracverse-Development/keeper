@@ -11,6 +11,21 @@ fn clip_opt(s: &Option<String>, max: usize) -> Option<String> {
     s.as_ref().map(|v| clip(v, max)).filter(|v| !v.trim().is_empty())
 }
 
+/// A unit shown after every value: short, and never cut inside brackets ("% absorbed (per dose)"
+/// was shown as "% absorbed (": FIX-0037). A cut that leaves a bracket open ends before it.
+fn clip_unit(unit: &Option<String>) -> Option<String> {
+    const MAX_UNIT: usize = 12;
+    let full = unit.as_deref()?.trim();
+    let mut cut = clip(full, MAX_UNIT);
+    if cut.chars().count() < full.chars().count() {
+        if let Some(open) = cut.rfind('(').filter(|at| !cut[*at..].contains(')')) {
+            cut.truncate(open);
+        }
+    }
+    let cut = cut.trim_end().to_string();
+    (!cut.is_empty()).then_some(cut)
+}
+
 /// A table cell as text (models write numbers and strings alike).
 fn cell_text(v: &serde_json::Value) -> String {
     match v {
@@ -105,7 +120,7 @@ impl Panel {
                 if n == 0 || values.iter().take(n).any(|v| !v.is_finite()) {
                     return None;
                 }
-                Panel::Chart { id: id(&i), title: clip(&title, MAX_SHORT), labels: labels.iter().take(n).map(|l| clip(l, 60)).collect(), values: values[..n].to_vec(), unit: clip_opt(&unit, 12) }
+                Panel::Chart { id: id(&i), title: clip(&title, MAX_SHORT), labels: labels.iter().take(n).map(|l| clip(l, 60)).collect(), values: values[..n].to_vec(), unit: clip_unit(&unit) }
             }
             Panel::Files { id: i, title, items } => Panel::Files {
                 id: id(&i),
@@ -254,5 +269,15 @@ mod empty_tests {
         assert!(Panel::Steps { id: String::new(), title: "How".into(), steps: vec![] }.cap(0).is_none());
         assert!(Panel::Text { id: String::new(), title: "Note".into(), body: "Real words.".into(), bullets: vec![] }.cap(0).is_some());
         assert!(Panel::Live { id: String::new(), title: "Live".into(), metrics: vec![] }.cap(0).is_some(), "a live panel fills itself");
+    }
+
+    // FIX-0037: a long unit was cut inside its brackets ("% absorbed (").
+    #[test]
+    fn a_chart_unit_is_never_cut_inside_brackets() {
+        let unit = |u: &str| clip_unit(&Some(u.to_string()));
+        assert_eq!(unit("% absorbed (per dose)").as_deref(), Some("% absorbed"));
+        assert_eq!(unit("GB").as_deref(), Some("GB"));
+        assert_eq!(unit("kg (dry)").as_deref(), Some("kg (dry)"), "a whole bracket that fits stays");
+        assert_eq!(unit("(per person per day)"), None, "nothing left before the bracket");
     }
 }
