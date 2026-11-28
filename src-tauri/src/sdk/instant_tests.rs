@@ -12,6 +12,16 @@ fn id(said: &str, mode: &str) -> Option<&'static str> {
 /// ability's own words (FIX-0053) with the near misses that must stay with the mind. The rows
 /// that name an app ("open Notes", "open Safari") need a Mac, where those apps are installed.
 const TABLE: &[(&str, &str, Option<&str>)] = &[
+    // 2026-11-28: the web, music and file housekeeping by asking.
+    ("search the web for growing tomatoes in pots", "system", Some("search-web")),
+    ("directions to Central Park from Times Square", "system", Some("map")),
+    ("how do I get to the airport", "assistant", Some("map")),
+    ("what's the weather in Tokyo tomorrow", "system", Some("weather")),
+    ("what's the weather", "assistant", Some("weather")),
+    ("pause the music", "system", Some("music")),
+    ("next song", "assistant", Some("music")),
+    ("make a folder called Receipts in my documents", "system", Some("new-folder")),
+    ("go to my gmail", "assistant", Some("open-website")),
     ("where is my Downloads folder", "assistant", Some("show-folder")),
     ("what's in my desktop", "assistant", Some("show-folder")),
     ("show me my photos", "assistant", Some("show-folder")),

@@ -115,7 +115,7 @@ async fn transform(helper: &str, keeper: &KeeperProfile, task: &Task, text: &str
         let answer = crate::brain::engines::claude::ask_json(SYSTEM, &question, if helper.is_empty() { "haiku" } else { helper }).await?;
         return answer["text"].as_str().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).ok_or_else(|| DeskError::Brain("I couldn't work on that text.".into()));
     }
-    let ctx = Context { said: format!("{} Put the whole result in \"reply\" and nothing else.", question), assistant_name: keeper.name.clone(), identity: String::new(), facts: vec![], recent: vec![], elsewhere: vec![], now_local: String::new(), may_act: false, visual: false, guard: None, can_act: false, job: String::new(), feelings: None, style: String::new(), attached: None };
+    let ctx = Context { said: format!("{} Put the whole result in \"reply\" and nothing else.", question), assistant_name: keeper.name.clone(), identity: String::new(), facts: vec![], recent: vec![], elsewhere: vec![], now_local: String::new(), may_act: false, visual: false, guard: None, can_act: false, job: String::new(), feelings: None, style: String::new(), attached: None, page: None };
     let (thought, mind) = crate::brain::think(keeper, &ctx, &|_| {}).await;
     if mind.id == "reflex" {
         return Err(DeskError::Brain("My mind isn't available for that right now.".into()));

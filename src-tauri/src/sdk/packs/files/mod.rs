@@ -13,6 +13,7 @@
 //! `show-folder`, `open-folder`).
 
 pub mod find;
+pub mod manage;
 
 use super::super::drafts::{self, Drafts};
 use super::super::{input, Ability, Access, Done, Instant, ALL};

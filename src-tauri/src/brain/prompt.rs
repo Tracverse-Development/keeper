@@ -73,7 +73,7 @@ pub fn turn_message(ctx: &Context) -> String {
         )
     };
     let feelings = ctx.feelings.as_deref().map(|f| format!("\n\n{f}")).unwrap_or_default();
-    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}{feelings}\n\nThe person says: {said}{attached}", now = ctx.now_local, said = ctx.said, attached = ctx.attached.as_deref().unwrap_or(""))
+    format!("It is now {now}.\n\nWhat your DKG memory holds about the person:\n{facts}\n\nThis chat so far (its own train of thought):\n{recent}{elsewhere}{feelings}\n\nThe person says: {said}{attached}{page}", now = ctx.now_local, said = ctx.said, attached = ctx.attached.as_deref().unwrap_or(""), page = ctx.page.as_deref().unwrap_or(""))
 }
 
 /// Everything in one text, for engines that take a single prompt.
@@ -148,5 +148,14 @@ mod tests {
         let t = read(r#"{"reply":"Moderate at best.","panels":[{"kind":"text","title":"Why","body":"Eight small trials."},{"kind":"table","title":"Evid"#);
         assert_eq!(t.reply, "Moderate at best.");
         assert_eq!(t.panels.as_array().map(Vec::len), Some(1));
+    }
+
+    // FIX-0062: the open page rides in its own slot, never as `attached` (which stops instant
+    // answers and acting): with a page open the keeper still did nothing but talk.
+    #[test]
+    fn an_open_page_reaches_the_mind_without_being_attached_material() {
+        let ctx = crate::brain::context::Context { said: "pause the music".into(), assistant_name: "K".into(), identity: String::new(), facts: vec![], recent: vec![], elsewhere: vec![], now_local: String::new(), may_act: true, visual: true, guard: None, can_act: true, job: String::new(), feelings: None, style: String::new(), attached: None, page: Some("\n\n<<<MATERIAL the page>>>".into()) };
+        assert!(super::turn_message(&ctx).ends_with("The person says: pause the music\n\n<<<MATERIAL the page>>>"));
+        assert!(ctx.attached.is_none() && ctx.may_act);
     }
 }

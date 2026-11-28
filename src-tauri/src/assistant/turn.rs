@@ -72,7 +72,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
         // An approved plan is computer work whatever its words were. A message that came with
         // material is about reading it: no tools on that turn.
         may_act: attached.is_none() && editing.is_none() && (base.may_act || (approved.is_some() && base.can_act)),
-        attached: attached.as_ref().map(super::attach::Attached::block).or(editing).or(page),
+        attached: attached.as_ref().map(super::attach::Attached::block).or(editing),
+        page,
         facts: recall.facts.clone(),
         recent: recall.recent.clone(),
         elsewhere: recall.elsewhere.clone(),
@@ -275,6 +276,7 @@ pub(super) fn base_context(state: &AppState, keeper: &KeeperProfile, said: &str)
         visual: crate::stage::wants_visual(said, state.settings().visual),
         guard: None,
         attached: None,
+        page: None,
     }
 }
 

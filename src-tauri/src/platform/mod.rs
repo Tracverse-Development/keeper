@@ -43,6 +43,30 @@ pub struct Unread {
     pub received: String,
 }
 
+/// What the person asks their music app to do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MusicDo {
+    Play,
+    Pause,
+    Next,
+    Previous,
+}
+
+/// Play, pause, skip or go back in the person's music app (Apple Music on a Mac).
+pub async fn music(what: MusicDo) -> Result<()> {
+    os::music(what).await
+}
+
+/// The song playing now ("Song by Artist"), or None.
+pub async fn music_now() -> Option<String> {
+    os::music_now().await
+}
+
+/// Moves a file or folder to the Trash, where the person can put it back.
+pub async fn move_to_trash(path: &std::path::Path) -> Result<()> {
+    os::move_to_trash(path).await
+}
+
 /// A picture of a file as Quick Look draws it (PNG bytes, `size` pixels wide).
 pub async fn quick_look_png(path: &std::path::Path, size: u32) -> Result<Vec<u8>> {
     os::quick_look_png(path, size).await

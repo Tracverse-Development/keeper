@@ -91,6 +91,15 @@ pub async fn lock_screen() -> Result<()> {
 pub async fn screenshot() -> Result<Vec<u8>> {
     not_yet("Taking a screenshot")
 }
+pub async fn music(_: super::MusicDo) -> Result<()> {
+    not_yet("Controlling music")
+}
+pub async fn music_now() -> Option<String> {
+    None
+}
+pub async fn move_to_trash(_: &std::path::Path) -> Result<()> {
+    not_yet("Moving to the Trash")
+}
 pub async fn quick_look_png(_: &std::path::Path, _: u32) -> Result<Vec<u8>> {
     not_yet("A picture of a file")
 }

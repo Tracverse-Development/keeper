@@ -41,6 +41,10 @@ pub struct Context {
     /// Material the person handed over with this message (a dropped file's text), already
     /// written as a block for the turn's message (`assistant::attach::Attached::block`).
     pub attached: Option<String>,
+    /// The web page open in Keeper's browser in front of the person, as fenced MATERIAL
+    /// (`browser::page::material`). Unlike `attached` it never stops instant answers or acting:
+    /// the person may ask about the page, or ask for anything else while it is open.
+    pub page: Option<String>,
 }
 
 /// What an engine reports while it works: a tool step it took, or a Stage panel it finished

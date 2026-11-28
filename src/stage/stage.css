@@ -241,3 +241,5 @@
 .file-text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: var(--text-sm); line-height: 1.5; }
 .file-preview-actions { flex-wrap: wrap; }
 .file-preview-body > * { flex-shrink: 0; }
+.file-preview .draft-editor { min-height: 300px; flex-shrink: 0; }
+.file-preview-body { overflow-x: hidden; }

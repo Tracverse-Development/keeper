@@ -9,7 +9,7 @@ use crate::kernel::{DeskError, Result};
 
 pub use super::browser_macos::run_script as browser_script;
 pub use super::mail_macos::{compose as compose_mail, unread as unread_mail};
-pub use super::controls_macos::{quit_app, display_sleep, keep_awake, lock_screen, new_note, run_shortcut, screenshot, set_dark_mode, set_volume};
+pub use super::controls_macos::{move_to_trash, music, music_now, quit_app, display_sleep, keep_awake, lock_screen, new_note, run_shortcut, screenshot, set_dark_mode, set_volume};
 pub use super::spotlight_macos::spotlight;
 pub use super::status_macos::{battery, open_apps, shortcuts, time_in_zone, wifi};
 

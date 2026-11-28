@@ -21,6 +21,8 @@
 //!   clipboard  work on what was copied in any app, at the Mac only (instant-only)
 
 pub mod browser;
+pub mod music;
+pub mod web;
 pub mod calendar;
 pub mod clipboard;
 pub mod computer;

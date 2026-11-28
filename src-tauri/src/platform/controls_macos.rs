@@ -13,6 +13,7 @@ use tokio::process::Command;
 
 use super::macos::tool_output;
 use super::status::{Volume, MAX_AWAKE_MINUTES};
+use super::MusicDo;
 use crate::kernel::{DeskError, Result};
 
 const OSASCRIPT: &str = "/usr/bin/osascript";
@@ -120,6 +121,35 @@ const QUIT_SCRIPT: &str = "on run argv\ntell application (item 1 of argv) to qui
 /// Asks the app named `name` (checked by the caller) to quit; it may first ask to save.
 pub async fn quit_app(name: &str) -> Result<()> {
     applescript(QUIT_SCRIPT, &[name], &format!("{name} didn't quit. It may be waiting for you in one of its own windows (unsaved work or a question); the first time, Keeper may also need permission to control it (System Settings, Privacy & Security, Automation).")).await
+}
+
+/// The Music script: one of four fixed commands, nothing else ever written into it.
+fn music_script(what: MusicDo) -> &'static str {
+    match what {
+        MusicDo::Play => "tell application \"Music\" to play",
+        MusicDo::Pause => "tell application \"Music\" to pause",
+        MusicDo::Next => "tell application \"Music\" to next track",
+        MusicDo::Previous => "tell application \"Music\" to previous track",
+    }
+}
+
+pub async fn music(what: MusicDo) -> Result<()> {
+    applescript(music_script(what), &[], "The Music app didn't answer. The first time, Keeper may need permission to control it (System Settings, Privacy & Security, Automation).").await
+}
+
+/// The song playing in Music now ("Song by Artist"), or None when nothing plays.
+pub async fn music_now() -> Option<String> {
+    let script = "tell application \"Music\"\nif it is running and player state is playing then\nreturn (name of current track) & \" by \" & (artist of current track)\nend if\nend tell\nreturn \"\"";
+    tool_output(Command::new(OSASCRIPT).arg("-e").arg(script), QUICK, "").await.ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+/// Moves a file or folder to the Trash through the Finder (so Put Back works). The path reaches
+/// AppleScript only as `argv`.
+const TRASH_SCRIPT: &str = "on run argv\ntell application \"Finder\" to delete (POSIX file (item 1 of argv) as alias)\nend run";
+
+pub async fn move_to_trash(path: &std::path::Path) -> Result<()> {
+    let shown = path.display().to_string();
+    applescript(TRASH_SCRIPT, &[&shown], "The Finder didn't move that to the Trash. The first time, Keeper may need permission to control the Finder (System Settings, Privacy & Security, Automation).").await
 }
 
 pub async fn run_shortcut(name: &str) -> Result<()> {

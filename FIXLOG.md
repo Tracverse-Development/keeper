@@ -471,3 +471,10 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Root cause:** the wake word matched the keeper's name as a substring of what the recogniser wrote. The keeper is named "Trini Boi"; Apple's recogniser writes ordinary words ("Trini boy", "Trinny boy"), so no sentence ever matched, and an ignored sentence was silent, so it looked broken.
 - **Fix:** names are matched by sound over the heard words (oy/oi, y/i, doubled letters, ee/ea, ph/f, one sound off in a longer name; one or several words: "triniboy" or "trini boy"). A sentence without the name now shows for 5 s "I heard “…”. Say “Trini Boi” first, then what you need." (never kept).
 - **Guard:** wake test `a_name_is_heard_as_a_recogniser_writes_it` (four spellings; "tiny toy", "Trinidad", "the boy" ignored); attention test for the overheard line.
+
+### FIX-0062 — With a page open in Keeper's browser, the keeper only talked: no instant answers, no acting (2026-11-28)
+- **Area:** `src-tauri/src/assistant/turn.rs`, `brain/context.rs` (`Context.page`), `brain/prompt.rs`
+- **Symptom (VM):** after a web search opened in Keeper, "directions to Central Park" and "what's the weather in Tokyo" got the built-in mind's general reply; the instant table maps both correctly.
+- **Root cause:** browser phase 2 handed the open page to the mind through `Context.attached`, the slot for a dropped file, and an attached file means "answer about this": no instant answers (`source.rs` `fresh`) and `may_act` false. So while any page was open, nothing could be done by asking, including `fill-form` and `press` themselves.
+- **Fix:** the page has its own slot, `Context.page`, added to the turn message after any attached material; it changes neither instant answers nor acting.
+- **Guard:** `brain::prompt` test `an_open_page_reaches_the_mind_without_being_attached_material`; instant table rows for the new phrasings (system and assistant modes).
