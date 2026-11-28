@@ -21,6 +21,14 @@ trap cleanup EXIT
 # keeper-test is the test VM that accepts the login key (rebuilt 2026-11-27 from the stock
 # macOS Sequoia image); the copy is wiped of Keeper first.
 base="${PROOF_BASE:-keeper-test}"
+# The feed is served through GitHub's cache: right after a release it can still name the version
+# before. Wait until it names $to, or the proof fails for the cache, not for Keeper (2026-11-28).
+feed="https://github.com/tracverse-development/keeper/releases/latest/download/latest.json"
+for i in $(seq 1 36); do
+  [ "$(curl -sL -m 15 "$feed" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' 2>/dev/null)" = "$to" ] && break
+  [ "$i" = 36 ] && { echo "update-proof: the update feed still does not name $to after 3 minutes"; exit 1; }
+  sleep 5
+done
 echo "== fresh VM $name from $base"
 "$tart" clone "$base" "$name"
 "$tart" run --no-graphics --no-audio "$name" > "$log" 2>&1 &
