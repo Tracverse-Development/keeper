@@ -153,10 +153,17 @@ function shellWords(piece: string): Narration | null {
   }
 }
 
+/** The feed entry for a correction the keeper took mid-turn (`useStageState`), drawn as a marker. */
+export const CHANGED_COURSE = 'Changed course';
+
+/** Is this feed entry a correction marker rather than a step? */
+export const isCourseChange = (step: { tool: string }) => step.tool === CHANGED_COURSE;
+
 /** A step in words a person would say, with the kind of work it is. Never shows the command. */
 export function narrate(tool: string, detail: string): Narration {
   const t = tool.trim().toLowerCase();
   const d = detail.trim();
+  if (tool === CHANGED_COURSE) return { words: `${CHANGED_COURSE}: ${d}`, kind: 'work' };
   if (/^(bash|command|shell|terminal|exec|run)/.test(t)) {
     // A chain is said by what its parts find out: the first two different things, joined.
     const found: Narration[] = [];
@@ -196,4 +203,20 @@ export function groupSteps(steps: { tool: string; detail: string }[]): (Narratio
     else out.push({ ...n, times: 1, step });
   }
   return out;
+}
+
+/**
+ * The tool and what it worked on, short, under a step's words ("Edit · notes/plan.md",
+ * "Bash · ls", "WebFetch · en.wikipedia.org"): enough to see WHAT is being touched without
+ * reading out the command (that stays folded under "what ran").
+ */
+export function stepMeta(tool: string, detail: string): string {
+  const t = tool.trim() || 'step';
+  const d = detail.trim();
+  if (!d) return t;
+  if (/^(bash|command|shell|terminal|exec|run)/i.test(t)) return `${t} · ${d.split(/\s+/)[0].split('/').pop()}`;
+  const kind = detailKind(d);
+  if (kind === 'url') return `${t} · ${urlHost(d)}`;
+  if (kind === 'path') return `${t} · ${breadcrumbs(d, 3).slice(-2).join('/')}`;
+  return `${t} · ${d.length > 40 ? `${d.slice(0, 39)}…` : d}`;
 }

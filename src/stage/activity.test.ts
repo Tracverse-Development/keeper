@@ -65,3 +65,21 @@ test('repeated steps are grouped', () => {
   const g = groupSteps([{ tool: 'Bash', detail: 'arp -an' }, { tool: 'Bash', detail: 'arp -a' }, { tool: 'Read', detail: '~/a.txt' }]);
   assert.deepEqual(g.map((s) => [s.words, s.times]), [['Listing the devices your Mac has seen nearby', 2], ['Reading a.txt', 1]]);
 });
+
+test('a step names its tool and what it touched, never the whole command', async () => {
+  const { stepMeta } = await import('./activity.ts');
+  assert.equal(stepMeta('Edit', '/Users/a/notes/plan.md'), 'Edit · notes/plan.md');
+  assert.equal(stepMeta('Bash', 'ls -la ~/Desktop | head'), 'Bash · ls');
+  assert.equal(stepMeta('Bash', '/usr/sbin/networksetup -getairportnetwork en0'), 'Bash · networksetup');
+  assert.equal(stepMeta('WebFetch', 'https://en.wikipedia.org/wiki/Metre'), 'WebFetch · en.wikipedia.org');
+  assert.equal(stepMeta('Grep', 'heading'), 'Grep · heading');
+  assert.equal(stepMeta('Task', ''), 'Task');
+  assert.ok(stepMeta('WebSearch', 'x'.repeat(80)).length < 55);
+});
+
+test('a correction in the feed is a marker of its own, never grouped with another', async () => {
+  const { CHANGED_COURSE, isCourseChange } = await import('./activity.ts');
+  const g = groupSteps([{ tool: CHANGED_COURSE, detail: 'use metric' }, { tool: CHANGED_COURSE, detail: 'and grams' }]);
+  assert.deepEqual(g.map((s) => s.words), ['Changed course: use metric', 'Changed course: and grams']);
+  assert.ok(isCourseChange(g[0].step) && !isCourseChange({ tool: 'Bash' }));
+});

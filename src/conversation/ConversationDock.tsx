@@ -1,6 +1,8 @@
 /**
  * The bar under the character: the last exchanges, what the microphone is hearing, and the
  * place to type or press the microphone. Enter sends; Escape stops listening or speaking.
+ * While the keeper works, typing offers "Send as a correction" (Enter: it changes course at
+ * once) or "Queue it" (sent after this turn).
  */
 import { useEffect, useRef, useState } from 'react';
 
@@ -12,6 +14,7 @@ import { UndoFact } from './UndoFact';
 import { waitingWords } from './undo-view';
 import { speedWords } from './speed-words';
 import type { Exchange } from './useAssistant';
+import { correctionWords, dockAction } from './work-control.ts';
 
 interface Props {
   exchanges: Exchange[];
@@ -29,6 +32,8 @@ interface Props {
   onSend: (text: string) => void;
   /** Words put in the box for the person to finish (a draft's "Change something"); a new `at` puts them in again. */
   compose?: { text: string; at: number } | null;
+  /** Change course while the keeper works; resolves with a refusal to show, or null. */
+  onCorrect?: (text: string) => Promise<string | null>;
   /** The person started typing (the keeper stops talking so it does not talk over them). */
   onType?: () => void;
   /** The mode and style controls, shown above the message box. */
@@ -61,11 +66,23 @@ export function ConversationDock(p: Props) {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' });
   }, [p.exchanges]);
 
-  const submit = () => {
-    if (!text.trim() || p.busy) return;
-    p.onSend(text);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  useEffect(() => setRefusal(null), [p.busy]);
+
+  /** Send, correct or queue what was typed (`dockAction`; `queue` forces the queue). */
+  const submit = async (queue = false) => {
+    if (!text.trim()) return;
+    const action = queue ? 'queue' : dockAction(p.busy, Boolean(p.onCorrect));
+    if (action === 'correct' && p.onCorrect) {
+      const refused = await p.onCorrect(text);
+      setRefusal(refused);
+      if (refused) return;
+    } else {
+      p.onSend(text);
+    }
     setText('');
   };
+  const choosing = p.busy && Boolean(p.onCorrect) && text.trim() !== '';
 
   return (
     <div className="dock">
@@ -78,6 +95,11 @@ export function ConversationDock(p: Props) {
                 {x.queued && <span className="queued-note">waiting its turn</span>}
               </p>
             )}
+            {x.corrections?.map((c, i) => (
+              <p key={i} className="bubble you correction selectable">
+                {correctionWords(c)}
+              </p>
+            ))}
             {x.result && (
               <div className="bubble them">
                 <p className="selectable">{x.result.reply}</p>
@@ -115,15 +137,26 @@ export function ConversationDock(p: Props) {
         ))}
       </div>
       <div className="dock-status" aria-live="polite">
-        {p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
+        {refusal ? <span className="error-line">{refusal}</span> : p.listening ? <span className="hearing">{p.partial || 'Listening…'}</span> : p.status ? <span className="thinking-words">{p.status}</span> : p.voiceError ? <span className="error-line">{p.voiceError}</span> : null}
       </div>
       {p.tray}
       {p.modeBar}
+      {choosing && (
+        <div className="dock-choice" role="group" aria-label={`${p.assistantName} is working`}>
+          <span className="muted small">{p.assistantName} is working.</span>
+          <button type="button" className="btn btn-primary btn-small" onClick={() => void submit()}>
+            Send as a correction
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => void submit(true)}>
+            Queue it
+          </button>
+        </div>
+      )}
       <form
         className="dock-input glass"
         onSubmit={(e) => {
           e.preventDefault();
-          submit();
+          void submit();
         }}
       >
         <input
@@ -154,8 +187,8 @@ export function ConversationDock(p: Props) {
             </svg>
           )}
         </button>
-        <button type="submit" className="btn btn-primary send" disabled={!text.trim() || p.busy}>
-          {p.busy ? <span className="spinner" /> : 'Send'}
+        <button type="submit" className="btn btn-primary send" disabled={!text.trim() || (p.busy && !p.onCorrect)}>
+          {p.busy && !choosing ? <span className="spinner" /> : p.busy ? 'Correct' : 'Send'}
         </button>
       </form>
     </div>

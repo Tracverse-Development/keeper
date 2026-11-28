@@ -5,7 +5,7 @@
  * `useChats`, `useAssistant`, `useVoice`, `useDashboardEvents`) and the pure rules (`mood.ts`,
  * `person-name.ts`).
  */
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { CharacterStage, DEFAULT_WEARABLES, type Emote } from '../character';
 import { ConversationDock } from '../conversation/ConversationDock';
@@ -13,6 +13,7 @@ import { HandedTray } from '../conversation/HandedTray';
 import { ModeBar } from '../conversation/ModeBar';
 import { useHanded } from '../conversation/useHanded';
 import { useAssistant } from '../conversation/useAssistant';
+import { useWorkControl } from '../conversation/useWorkControl';
 import { core, sentence, type KeeperChange, type Settings, type TurnResult } from '../kernel/ipc';
 import { KeeperSidebar } from '../keepers/KeeperSidebar';
 import { useKit } from '../keepers/useKit';
@@ -39,24 +40,12 @@ import { FocusChip } from './FocusChip';
 import { useFeeling } from './useFeeling';
 import { usePanelActions } from './usePanelActions';
 import { usePinnedScenes } from './usePinnedScenes';
+import { MemoryDrawer, SettingsSheet, StudioPage, useOpened } from './lazy-screens';
 import { useStageState } from './useStageState';
 import './dashboard.css';
 
-// Screens opened now and then load the first time they are opened, so the window itself opens
-// sooner (they stay loaded after that, so closing and reopening keeps their animation).
-const MemoryDrawer = lazy(() => import('../memory/MemoryDrawer').then((m) => ({ default: m.MemoryDrawer })));
-const SettingsSheet = lazy(() => import('../settings/SettingsSheet').then((m) => ({ default: m.SettingsSheet })));
-const StudioPage = lazy(() => import('../studio/StudioPage').then((m) => ({ default: m.StudioPage })));
-
 /** One touch reaction at a time; a burst of clicks is one poke. */
 const TOUCH_GAP_MS = 1500;
-
-/** Which flags have ever been true: a screen loads the first time it is opened and stays. */
-function useOpened<K extends string>(now: Record<K, boolean>): Record<K, boolean> {
-  const ever = useRef({} as Record<K, boolean>);
-  for (const key of Object.keys(now) as K[]) if (now[key]) ever.current[key] = true;
-  return ever.current;
-}
 
 export function Dashboard({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial);
@@ -188,6 +177,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
     voice.hush();
     if (assistant.busy) void core.cancel().catch(() => undefined);
   };
+  const work = useWorkControl(assistant.busy, assistant.correct, stop);
 
   /** A poke or a pat on the character: it answers in its own words, out loud. */
   const touched = (kind: Touch) => {
@@ -251,7 +241,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         </div>
       )}
       <div className="stage-frame">
-        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
+        <CharacterStage className="stage" skin={keeper?.skin ?? 'robot'} wearables={worn} look={keeper?.look} habits={keeper?.habits} work={work.paused ? 0 : stage.work} mood={mood} feeling={body.feeling} voiceLevel={voice.level} mouth={voice.mouth} memoryPulse={events.pulse} emote={emote} onTouch={(kind) => touched(kind)} />
       </div>
       {stage.showing && (
         <Stage
@@ -267,6 +257,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
           onFocus={(f) => assistant.send(focusQuestion(f))}
           onAction={(a) => void actions.act(a)}
           pins={pins}
+          control={work}
           onClose={stage.close}
         />
       )}
@@ -318,7 +309,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
       <ConversationDock
         exchanges={assistant.exchanges}
         busy={assistant.busy}
-        status={phaseWords(assistant.phase, keeper?.graphId ?? '', assistant.detail)}
+        status={work.paused ? `${name} is paused.` : phaseWords(assistant.phase, keeper?.graphId ?? '', assistant.detail)}
         listening={voice.listening}
         speaking={voice.speaking}
         partial={voice.partial}
@@ -328,6 +319,7 @@ export function Dashboard({ initial }: { initial: Settings }) {
         compact={stage.showing}
         onSend={sendMessage}
         compose={compose}
+        onCorrect={assistant.correct}
         onType={() => voice.speaking && void voice.hush()}
         tray={<HandedTray held={handed.held} error={handed.error} busy={assistant.busy} keeperName={name} onAsk={sendMessage} onClear={handed.clear} />}
         modeBar={keeper && (

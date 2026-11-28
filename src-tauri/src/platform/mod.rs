@@ -104,3 +104,20 @@ pub async fn unpack(archive: &std::path::Path, into: &std::path::Path) -> Result
 pub fn open_in_terminal(program: &std::path::Path, path: &std::ffi::OsStr) -> Result<()> {
     os::open_in_terminal(program, path)
 }
+
+/// What `signal_group` asks of a process group Keeper started.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupSignal {
+    /// Stop in place (SIGSTOP): nothing runs until `Continue`.
+    Pause,
+    /// Carry on after a `Pause` (SIGCONT).
+    Continue,
+    /// Ask everything in the group to end (SIGTERM).
+    End,
+}
+
+/// Send `signal` to the process group led by `leader` (a child Keeper spawned in its own group:
+/// `brain::engines::cli::spawn`). Only for groups Keeper started and owns; never any other pid.
+pub fn signal_group(leader: u32, signal: GroupSignal) -> Result<()> {
+    os::signal_group(leader, signal)
+}

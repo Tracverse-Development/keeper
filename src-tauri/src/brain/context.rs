@@ -52,6 +52,8 @@ pub enum Progress<'a> {
     Reply(String),
     /// New words of the reply while it is being written (live typing in the chat).
     ReplyText(String),
+    /// The person changed course with these words; the engine starts again with them (`redirect`).
+    Redirected(String),
 }
 
 /// Something learned about the person, written in the second person ("Your sister is Maya").
@@ -113,4 +115,8 @@ pub struct Thought {
     /// The engine says this belongs to another mode (its id); the core switches and answers there.
     #[serde(default, rename = "switchMode")]
     pub switch_mode: Option<String>,
+    /// The person's corrections this turn ("Changed course: …"), in order (`redirect`; never
+    /// from the model's JSON).
+    #[serde(skip)]
+    pub corrections: Vec<String>,
 }

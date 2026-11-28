@@ -102,6 +102,8 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     };
     let progress = |p: brain::Progress| match p {
         brain::Progress::Step(step) => phase(app, "acting", step),
+        // The person changed course: the window shows "Changed course: …" on this exchange.
+        brain::Progress::Redirected(correction) => phase(app, "redirected", &correction),
         // Work on the computer shows its steps live; its panels wait for the finished answer
         // and arrive together (founder 2026-11-26: panels with no data yet felt wrong).
         // (A live dashboard is the exception: it carries real readings the moment it appears.)
@@ -212,14 +214,15 @@ pub(super) async fn turn(app: &AppHandle, memory: &Memory, state: &AppState, kee
     // What the abilities show (a draft, a video, an agenda) follows the mind's own panels.
     panels.extend(outcomes.iter().flat_map(|o| o.panels.iter().cloned()));
     // A fresh visual answer is kept under its question; a lesson's cards are prepared next.
-    if !answer.cached && ctx.attached.is_none() && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && outcomes.is_empty() && crate::memory::scene_cache::cacheable(said) {
+    if !answer.cached && thought.corrections.is_empty() && ctx.attached.is_none() && ctx.visual && !ctx.may_act && crate::brain::styles::get(&ctx.style).id == crate::brain::styles::DEFAULT && thought.core_panels.is_empty() && outcomes.is_empty() && crate::memory::scene_cache::cacheable(said) {
         if let Some(scene) = CachedScene::new(said, &reply, &panels) {
             later.add(&scene, "scene");
         }
     }
     super::prefetch::spawn(app, keeper, identity, recall.facts.clone(), &panels);
     // The scene is kept with the turn, so reopening the chat brings its panels back.
-    let turn = Turn::new(told, &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&mode_used);
+    // A turn whose course changed keeps the corrections with the person's words.
+    let turn = Turn::new(&crate::brain::redirect::told_with(told, &thought.corrections), &reply, &mind.id, &at, &chat).with_panels(&panels).with_mode(&mode_used);
     writes.push(later.add(&turn, "turn"));
     let app_for_writes = app.clone();
     let (level_keeper, level_memory) = (keeper.id.clone(), memory.clone());

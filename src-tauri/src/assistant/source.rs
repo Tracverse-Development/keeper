@@ -109,7 +109,7 @@ async fn answer_in(app: &tauri::AppHandle, state: &AppState, memory: &Memory, ke
         if let Some(live) = approval::live_panel_for(&ctx.said) {
             progress(Progress::Panel(live));
         }
-        let quiet = |p: Progress| if matches!(p, Progress::Step(_)) { progress(p) };
+        let quiet = |p: Progress| if matches!(p, Progress::Step(_) | Progress::Redirected(_)) { progress(p) };
         return approval::look(keeper, ctx, &quiet).await;
     }
     if ctx.may_act && can_act && mode.may_act() && settings.ask_before_acting && !approved {

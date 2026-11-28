@@ -43,12 +43,15 @@ const PHASE_WORDS: Record<Phase, string> = {
   recalling: 'Querying your DKG…',
   thinking: 'Thinking…',
   acting: 'Working on it…',
+  redirected: 'Changing course…',
   remembering: 'Writing to your memory…',
   done: 'Thinking…',
 };
 
 /** The line shown while the assistant works: its own detail when it sent one. */
 export function phaseLine(phase: Phase, detail: string): string {
+  // A correction's detail is the person's own words: said as the change it is.
+  if (phase === 'redirected' && detail.trim()) return `Changed course: ${detail.trim()}`;
   return detail.trim() || PHASE_WORDS[phase] || 'Thinking…';
 }
 

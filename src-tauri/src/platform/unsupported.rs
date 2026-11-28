@@ -34,3 +34,6 @@ pub async fn spotlight(_: &str, _: &[std::path::PathBuf], _: usize, _: std::time
 pub fn open_in_terminal(_program: &std::path::Path, _path: &std::ffi::OsStr) -> Result<()> {
     Err(crate::kernel::DeskError::Invalid("Open a terminal and run `claude` to sign in.".into()))
 }
+pub fn signal_group(_: u32, _: super::GroupSignal) -> Result<()> {
+    Err(DeskError::Invalid("Pausing work is not supported on this system yet.".into()))
+}

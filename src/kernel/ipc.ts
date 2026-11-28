@@ -15,6 +15,9 @@ import type { ChangeEntry, Spending } from './ipc-usage';
 import type { GiveMode, NewWardrobeItem, Wardrobe } from './ipc-wardrobe';
 import type { PanelAction } from './panel-spec';
 
+/** The keeper's work in progress (`brain::engines::control::WorkState`). */
+export type WorkState = 'idle' | 'running' | 'paused';
+
 export const EVENTS = {
   assistantPhase: 'assistant://phase',
   assistantSays: 'assistant://says',
@@ -165,6 +168,11 @@ export const core = {
   /** Start the next turn's engine now (opening, switching keeper, coming back); returns spares ready. */
   /** The Stop button: end the turn in progress. */
   cancel: () => invoke<void>('assistant_cancel'),
+  /** Pause / resume the engine at work (stopped in place; its time limit waits). Rejects with "Nothing is running right now." */
+  pause: () => invoke<WorkState>('assistant_pause'),
+  resume: () => invoke<WorkState>('assistant_resume'),
+  /** Change course: the engine starts again with this correction and what it has done so far. */
+  redirect: (correction: string) => invoke<void>('assistant_redirect', { correction }),
   /** Keeper installs an engine itself (Claude Code); returns where it is. */
   engineSetup: (engine: string) => invoke<string>('engine_setup', { engine }),
   /** Open Terminal running the engine so the person signs in. */

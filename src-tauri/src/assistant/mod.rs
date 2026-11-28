@@ -202,10 +202,38 @@ pub async fn brief_today(app: AppHandle, state: State<'_, AppState>) -> Result<O
     Ok(Some(run_turn(&app, &state, "", "", "Brief me", "").await?))
 }
 
-/// The Stop button: end the turn in progress (the engine process is killed).
+/// The Stop button: end the turn in progress (the engine process is killed; paused work is
+/// continued first, so nothing is left frozen).
 #[tauri::command]
 pub fn assistant_cancel() {
     crate::brain::engines::cli::cancel();
+}
+
+/// The Pause button: stop the engine in place (its time limit stops counting). Answers the
+/// work's state, or "Nothing is running right now."
+#[tauri::command]
+pub fn assistant_pause() -> Result<crate::brain::engines::control::WorkState> {
+    crate::brain::engines::control::pause().map_err(|e| DeskError::Invalid(e.words().into()))
+}
+
+/// The Resume button: the paused engine carries on where it was.
+#[tauri::command]
+pub fn assistant_resume() -> Result<crate::brain::engines::control::WorkState> {
+    crate::brain::engines::control::resume().map_err(|e| DeskError::Invalid(e.words().into()))
+}
+
+/// Change course: the engine is stopped and starts again with the same request, this
+/// correction and what it had done so far (`brain::redirect`), in the same exchange.
+#[tauri::command]
+pub fn assistant_redirect(correction: String) -> Result<()> {
+    let correction = correction.trim();
+    if correction.is_empty() {
+        return Err(DeskError::Invalid("Say what to change first.".into()));
+    }
+    if correction.chars().count() > MAX_SAID {
+        return Err(DeskError::Invalid("That's a lot at once. Try a shorter correction.".into()));
+    }
+    crate::brain::engines::cli::redirect(correction).map_err(|e| DeskError::Invalid(e.words().into()))
 }
 
 #[cfg(test)]

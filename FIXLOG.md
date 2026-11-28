@@ -305,3 +305,11 @@ Append-only memory of every solved bug: root cause and guard. Format:
 - **Fix:** a cut that leaves a bracket open ends before the bracket ("% absorbed"); the rules ask for a short unit (%, GB, kg).
 - **Guard:** `cap.rs` test `a_chart_unit_is_never_cut_inside_brackets`.
 - **Evidence:** `cargo test --lib`: 245 passed, 0 failed.
+
+### FIX-0038 — Stop left the command the keeper was running alive (2026-11-27)
+- **Area:** `src-tauri/src/brain/engines/cli.rs` (`spawn`, `drive`), `brain/engines/control.rs`, `platform::signal_group`
+- **Symptom:** found while building pause: pressing Stop (or a time-out) ended Claude Code, but a command it had started through its Bash tool (a long `find`, a `sleep`, a script) kept running as an orphan.
+- **Root cause:** `kill_on_drop` kills only the direct child; the engine's own children were in Keeper's process group and nothing ever signalled them.
+- **Fix:** every engine is spawned as the leader of its own process group (`process_group(0)`); a run that ends by Stop, Change course or time-out has its whole group continued (in case it was paused) and asked to end (SIGTERM) before the engine is killed.
+- **Guard:** `brain::engines::cli::tests::a_real_run_pauses_resumes_and_stops_while_paused` starts a real `sh` that runs `sleep 30`, pauses, stops, and checks both the engine and the command are gone (fails with the group signal removed: "the command it ran is gone (state S)").
+- **Evidence:** `cargo test --lib` in the commit.
