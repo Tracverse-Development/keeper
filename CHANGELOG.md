@@ -8,6 +8,29 @@ on GitHub. Fix numbers (FIX-0026) point to `FIXLOG.md`, which holds the cause an
 Versions follow `major.minor.patch`: a new minor for new abilities, a patch for fixes and small
 refinements.
 
+## [0.20.0] - 2026-11-28
+
+Documents, email and your apps, just by asking.
+
+### Added
+- **Write a document.** "Write a one-page plan for a dinner party in my Documents folder": your
+  keeper writes it, you read and change it in Keeper, and it is made when you press Save (never
+  over another file).
+- **Write an email.** Your keeper writes it and opens it in your own mail app (Apple Mail,
+  Outlook…), ready for you to read and press Send. Keeper never sends anything itself. The words
+  show on the Stage too, with Copy for email in your browser.
+- **Check your email.** "Check my email" lists who wrote and what about for your unread emails,
+  never the messages themselves. macOS asks you first.
+- **Quit and switch apps.** "Quit Safari", "switch to Notes". Quitting is the polite way: an app
+  with unsaved work still asks you.
+- What I can do shows Write a document, Write an email and Check my email.
+
+### Fixed
+- **Hands-free could not hear you.** It showed "Listening" while macOS had not allowed Speech
+  Recognition. Turning Hands-free on now asks macOS for speech and microphone permission, and if
+  they are off, the message has a button that opens the right page of Settings (FIX-0060).
+- The Formula panel shows long symbols (CO2, C6H12O6) whole and fits its card.
+
 ## [0.19.4] - 2026-11-28
 
 Your phone shows what your keeper shows.
