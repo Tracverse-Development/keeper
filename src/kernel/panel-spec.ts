@@ -35,6 +35,8 @@ export type Panel =
   // `choices` are other videos to swap to (two alternatives to a found video; a list of movies).
   | { kind: 'media'; id: string; title: string; url: string; caption?: string; path?: string; channel?: string; length?: string; choices?: MediaChoice[] }
   | { kind: 'web'; id: string; title: string; url: string; summary?: string }
+  // An email opened in the person's own mail app (never sent by Keeper): shown by draft-email.
+  | { kind: 'email'; id: string; title: string; to: string[]; subject: string; body: string }
   | { kind: 'file'; id: string; title: string; path: string; note?: string }
   // ---- added in 0.17: a keeper's draft of a change to one text file, saved only by the person ----
   | { kind: 'draft'; id: string; title: string; draft: string; name: string; folder: string; why?: string };

@@ -184,5 +184,6 @@ Today's kinds (label, then what it shows):
 | `live` | Live | This Mac's readings, updating. |
 | `media` | Watch | A video, song or picture, played only on Play. |
 | `web` | Visit | A page to open in the browser. |
+| `email` | Email | An email the keeper opened in the person's own mail app (To, Subject, the words; Copy). Never sent by Keeper. Shown by `draft-email` only. |
 | `file` | File | A file to open or show in Finder. |
 | `draft` | Draft to save | A change to one text file, saved only by the person. |

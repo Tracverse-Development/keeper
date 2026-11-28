@@ -45,6 +45,7 @@ import { TablePanel } from './TablePanel.tsx';
 import { TextPanel } from './TextPanel.tsx';
 import { TimelinePanel } from './TimelinePanel.tsx';
 import { WebPanel } from './WebPanel.tsx';
+import { EmailPanel } from './EmailPanel.tsx';
 
 /** One panel of kind `K`. */
 type PanelOf<K extends PanelKind> = Extract<Panel, { kind: K }>;
@@ -190,6 +191,12 @@ export const PANELS: { [K in PanelKind]: PanelKit<K> } = {
     help: 'Press to open the page in your browser.',
     wide: false,
     draw: WebPanel,
+  },
+  email: {
+    label: 'Email',
+    help: 'It is open in your mail app: read it there and press Send.',
+    wide: false,
+    draw: EmailPanel,
   },
   file: {
     label: 'File',

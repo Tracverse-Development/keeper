@@ -195,3 +195,10 @@
 .source-body { display: flex; flex-direction: column; gap: 2px; }
 .source-title { text-align: left; font-size: var(--text-base); }
 @media (prefers-reduced-motion: reduce) { .live-pulse { animation: none; } .live-fill, .live-bar span, .media-play, .media-veil { transition: none; } }
+
+/* An email the keeper wrote: To and Subject as a small header, the words with their line breaks. */
+.email-card { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.email-head { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--text-sm); width: 100%; }
+.email-head dt { color: var(--text-muted); }
+.email-head dd { margin: 0; color: var(--cream-50); overflow-wrap: anywhere; }
+.email-body { margin: 0; white-space: pre-wrap; line-height: 1.55; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); background: rgba(7, 10, 22, 0.45); border: 1px solid var(--border); width: 100%; }

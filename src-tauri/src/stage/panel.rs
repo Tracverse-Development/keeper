@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub const MAX_PANELS: usize = 6;
 pub const MAX_TEXT: usize = 2400;
 pub const MAX_SHORT: usize = 160;
+/// The longest email an email panel shows (the mail link carries at most this much too).
+pub const MAX_EMAIL: usize = 6000;
 pub const MAX_ITEMS: usize = 24;
 pub const MAX_COLUMNS: usize = 14;
 pub const MAX_ROWS: usize = 24;
@@ -264,6 +266,9 @@ pub enum Panel {
     },
     /// A web page to visit (opens in the browser).
     Web { #[serde(default)] id: String, title: String, url: String, #[serde(default)] summary: Option<String> },
+    /// An email the keeper wrote, opened in the person's own mail app (never sent by Keeper):
+    /// who it is to, the subject and the words, line breaks kept. Shown by `draft-email` only.
+    Email { #[serde(default)] id: String, title: String, #[serde(default)] to: Vec<String>, #[serde(default)] subject: String, #[serde(default)] body: String },
     /// A file the keeper made or found, to open or show in the Finder (a path in the person's home).
     File { #[serde(default)] id: String, title: String, path: String, #[serde(default)] note: Option<String> },
     /// Only the core writes these (the plan before acting); engines' approval panels are dropped.

@@ -22,6 +22,7 @@ const UNREAD_SCRIPT: &str = r#"on run argv
 set wanted to (item 1 of argv) as integer
 set out to ""
 tell application "Mail"
+  if (count of accounts) is 0 then return "none"
   set waiting to (messages of inbox whose read status is false)
   set total to count of waiting
   if total < wanted then set wanted to total
@@ -44,6 +45,9 @@ pub fn compose(mailto: &str) -> Result<()> {
 /// How many unread messages Apple Mail's inbox holds, and the newest `limit` of them.
 pub async fn unread(limit: usize) -> Result<(usize, Vec<Unread>)> {
     let out = tool_output(Command::new("/usr/bin/osascript").arg("-e").arg(UNREAD_SCRIPT).arg(limit.to_string()), MAY_ASK, "I couldn't read your inbox. Keeper may need permission to use Mail (System Settings, Privacy & Security, Automation), and Mail needs an account set up.").await?;
+    if out.trim() == "none" {
+        return Err(DeskError::Invalid("Mail has no email account set up on this Mac yet, so there's no inbox to read. Add your account in Mail, then ask me again.".into()));
+    }
     Ok(parse(&out))
 }
 

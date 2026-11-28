@@ -102,7 +102,7 @@
   }
   // A panel the keeper showed, as a card on the phone. Every word is set with textContent; a link
   // is only ever http(s). Kinds the phone cannot draw well say they are on the Mac.
-  const KINDS = { text: 'Notes', table: 'Table', steps: 'Steps', cards: 'Cards', quiz: 'Quiz', chart: 'Numbers', timeline: 'Timeline', flashcards: 'Flashcards', agenda: 'Agenda', checklist: 'Checklist', facts: 'What I know', sources: 'Sources', media: 'Watch', web: 'Web' };
+  const KINDS = { text: 'Notes', table: 'Table', steps: 'Steps', cards: 'Cards', quiz: 'Quiz', chart: 'Numbers', timeline: 'Timeline', flashcards: 'Flashcards', agenda: 'Agenda', checklist: 'Checklist', facts: 'What I know', sources: 'Sources', media: 'Watch', web: 'Web', email: 'Email' };
   const el = (tag, cls, words) => { const e = document.createElement(tag); if (cls) e.className = cls; if (words != null) e.textContent = words; return e; };
   const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u : null);
   const list = (tag, items, line) => { const l = el(tag); for (const it of items || []) l.appendChild(el('li', null, line(it))); return l; };
@@ -127,6 +127,12 @@
       case 'checklist': card.appendChild(list('ul', p.items, (i) => (i.done ? '☑ ' : '☐ ') + i.text)); break;
       case 'facts': card.appendChild(list('ul', p.facts, (f) => f.text)); break;
       case 'sources': { const l = el('ul'); for (const i of p.items || []) { const li = el('li'); li.appendChild(link(i.url, i.title)); if (i.note) li.appendChild(el('div', 'muted', i.note)); l.appendChild(li); } card.appendChild(l); break; }
+      case 'email': {
+        card.appendChild(el('p', 'muted', 'To: ' + ((p.to || []).join(', ') || 'not filled in yet') + (p.subject ? ' · ' + p.subject : '')));
+        const body = el('p', null, p.body); body.style.whiteSpace = 'pre-wrap'; card.appendChild(body);
+        card.appendChild(el('p', 'muted', 'Open in the mail app on your Mac: press Send there.'));
+        break;
+      }
       case 'web': if (p.summary) card.appendChild(el('p', null, p.summary)); card.appendChild(link(p.url, 'Open the page', 'go')); break;
       case 'media':
         if (p.channel || p.length) card.appendChild(el('p', 'muted', [p.channel, p.length].filter(Boolean).join(' · ')));

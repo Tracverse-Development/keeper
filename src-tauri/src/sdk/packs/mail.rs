@@ -32,8 +32,9 @@ pub const ABILITIES: &[Ability] = &[
 
 /// The most unread messages listed at once.
 const SHOWN: usize = 12;
-/// The most body a mail link carries (mail apps cut long links); longer bodies are refused.
-const MAX_BODY: usize = 6000;
+/// The most body a mail link carries (mail apps cut long links); longer bodies are refused. The
+/// email panel holds the same.
+const MAX_BODY: usize = crate::stage::panel::MAX_EMAIL;
 
 fn check_words(said: &str) -> Option<serde_json::Value> {
     static R: OnceLock<Regex> = OnceLock::new();
@@ -56,7 +57,8 @@ fn draft_email(input: &serde_json::Value) -> Result<Done> {
     crate::platform::compose_mail(&mailto(&to, subject, body))?;
     let who = if to.is_empty() { "an email".to_string() } else { format!("an email to {}", to.join(", ")) };
     let title = if subject.is_empty() { "Your email".to_string() } else { subject.to_string() };
-    Ok(Done::said(format!("I opened {who} in your mail app. Read it over and press Send when it's right; I never send it myself.")).showing(Panel::Text { id: "email-draft".into(), title, body: body.to_string(), bullets: Vec::new() }))
+    let panel = Panel::Email { id: "email-draft".into(), title, to: to.clone(), subject: subject.to_string(), body: body.to_string() };
+    Ok(Done::said(format!("I opened {who} in your mail app. Read it over and press Send when it's right; I never send it myself.")).showing(panel))
 }
 
 async fn check_email() -> Result<Done> {

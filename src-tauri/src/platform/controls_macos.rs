@@ -119,7 +119,7 @@ const QUIT_SCRIPT: &str = "on run argv\ntell application (item 1 of argv) to qui
 
 /// Asks the app named `name` (checked by the caller) to quit; it may first ask to save.
 pub async fn quit_app(name: &str) -> Result<()> {
-    applescript(QUIT_SCRIPT, &[name], &format!("I couldn't quit {name}. Keeper may need permission to control it (System Settings, Privacy & Security, Automation).")).await
+    applescript(QUIT_SCRIPT, &[name], &format!("{name} didn't quit. It may be waiting for you in one of its own windows (unsaved work or a question); the first time, Keeper may also need permission to control it (System Settings, Privacy & Security, Automation).")).await
 }
 
 pub async fn run_shortcut(name: &str) -> Result<()> {

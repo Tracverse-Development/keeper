@@ -86,6 +86,7 @@ fn has_content(p: &Panel) -> bool {
         Panel::Checklist { items, .. } => !items.is_empty(),
         Panel::Form { fields, .. } => !fields.is_empty(),
         Panel::Sources { items, .. } => !items.is_empty(),
+        Panel::Email { subject, body, .. } => !subject.trim().is_empty() || !body.trim().is_empty(),
         Panel::Live { .. } | Panel::Media { .. } | Panel::Web { .. } | Panel::File { .. } | Panel::Approval { .. } | Panel::Facts { .. } | Panel::Draft { .. } => true,
     }
 }
@@ -226,6 +227,13 @@ impl Panel {
                 }
                 Panel::Web { id: id(&i), title: clip(&title, MAX_SHORT), url: url.trim().to_string(), summary: clip_opt(&summary, 400) }
             }
+            Panel::Email { id: i, title, to, subject, body } => Panel::Email {
+                id: id(&i),
+                title: clip(&title, MAX_SHORT),
+                to: to.iter().map(|a| clip(a, 254)).filter(|a| !a.is_empty()).take(10).collect(),
+                subject: clip(&subject, MAX_SHORT),
+                body: clip(&body, MAX_EMAIL),
+            },
             Panel::File { id: i, title, path, note } => {
                 let p = path.trim();
                 if !(p.starts_with("~/") || p.starts_with("/Users/")) || p.contains("..") || p.len() > 500 {
@@ -264,6 +272,7 @@ impl Panel {
         | Panel::Live { id, .. }
         | Panel::Media { id, .. }
         | Panel::Web { id, .. }
+        | Panel::Email { id, .. }
         | Panel::File { id, .. }
         | Panel::Approval { id, .. }
         | Panel::Facts { id, .. }
@@ -310,5 +319,19 @@ mod empty_tests {
         let Some(Panel::Media { choices, channel, length, .. }) = media("https://www.youtube.com/watch?v=dQw4w9WgXcQ", None, choices).cap(0) else { panic!("kept") };
         assert_eq!(choices.iter().map(|c| c.title.as_str()).collect::<Vec<_>>(), ["Good", "Song"]);
         assert_eq!((channel.as_deref(), length.as_deref()), (Some("Nat Geo"), Some("4:59")));
+    }
+
+    #[test]
+    fn an_email_panel_is_capped_and_an_empty_one_dropped() {
+        let long = "x".repeat(MAX_EMAIL + 50);
+        let panel = Panel::Email { id: String::new(), title: "Heating".into(), to: vec!["a@b.co".into(); 15], subject: "Heating repair".into(), body: long };
+        match panel.cap(0) {
+            Some(Panel::Email { to, body, id, .. }) => {
+                assert_eq!((to.len(), body.chars().count()), (10, MAX_EMAIL));
+                assert!(!id.is_empty());
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(Panel::Email { id: String::new(), title: "Empty".into(), to: vec![], subject: " ".into(), body: String::new() }.cap(0).is_none());
     }
 }
