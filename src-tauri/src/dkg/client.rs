@@ -203,7 +203,7 @@ const RETRY_PAUSE_MS: u64 = 400;
 /// A failure worth one more try: the node was not reachable, slow, or busy (never a refusal of
 /// the request itself, which would only fail again).
 fn retryable(why: &str) -> bool {
-    why.contains("took too long") || why.contains("not running") || why.contains("could not be reached") || why.contains("busy or still starting")
+    why.contains("took too long") || why.contains("not running") || why.contains("could not be reached") || why.contains("busy or still starting") || why.contains("still catching up")
 }
 
 fn transport_words(e: &reqwest::Error) -> String {
@@ -219,11 +219,31 @@ fn transport_words(e: &reqwest::Error) -> String {
 /// A node that answered with an error, as a sentence saying what kind: it refused the sign-in,
 /// it is busy, or it rejected the request (with its own short words, never the request's).
 pub fn refused_words(status: u16, said: &str) -> String {
-    let said = said.trim();
+    // A node that is still catching up with its network says so in JSON; the person reads one
+    // plain sentence, never the JSON (found in the VM after the node rebuilt its index).
+    let parsed: Option<serde_json::Value> = serde_json::from_str(said.trim()).ok();
+    let code = parsed.as_ref().and_then(|v| v["code"].as_str()).unwrap_or("");
+    if code == "CONTEXT_GRAPH_READ_AUTHORITY_UNAVAILABLE" {
+        return "Your memory node is still catching up with its network, so it can't read memories yet. Keeper keeps trying.".into();
+    }
+    let said = parsed.as_ref().and_then(|v| v["error"].as_str()).unwrap_or(said).trim();
     let its_words = if said.is_empty() { String::new() } else { format!(" It said: {said}") };
     match status {
         401 | 403 => format!("Your memory node refused Keeper's sign-in. Restart Keeper; if it keeps happening, the node's sign-in token has changed.{its_words}"),
         503 => format!("Your memory node is running but busy or still starting. Try again in a moment.{its_words}"),
         _ => format!("Your memory node answered with an error ({status}).{its_words}"),
+    }
+}
+
+#[cfg(test)]
+mod words_tests {
+    #[test]
+    fn a_node_error_reads_as_a_sentence_not_json() {
+        let catching_up = r#"{"error":"Context Graph read authority is temporarily unavailable; retry once chain and metadata access recover.","code":"CONTEXT_GRAPH_READ_AUTHORITY_UNAVAILABLE","retryable":true}"#;
+        let words = super::refused_words(503, catching_up);
+        assert!(words.contains("still catching up") && !words.contains('{'), "{words}");
+        let other = super::refused_words(400, r#"{"error":"Bad SPARQL","code":"X"}"#);
+        assert_eq!(other, "Your memory node answered with an error (400). It said: Bad SPARQL");
+        assert_eq!(super::refused_words(500, "plain words"), "Your memory node answered with an error (500). It said: plain words");
     }
 }

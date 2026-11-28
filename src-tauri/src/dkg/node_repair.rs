@@ -4,8 +4,10 @@
 //! malformed", SQLITE_CORRUPT in DashboardDB) and its supervisor restarts it every few seconds,
 //! so the keeper's memory is offline for good with no word of why.
 //!
-//! `node-ui.db` holds the node dashboard's own state, never the person's memories (those are in
-//! the triple store). So before Keeper starts its node again, `repair` checks that file with the
+//! `node-ui.db` holds the node dashboard's own state and a cache of what it learned from the chain
+//! (which memory graphs it may read), never the person's memories (those are in the triple
+//! store). Setting it aside costs a wait, not data: the node rebuilds that cache from the chain,
+//! and memory reads answer "still catching up" until it has (minutes on a public endpoint). So before Keeper starts its node again, `repair` checks that file with the
 //! system's `sqlite3` (`platform::sqlite_quick_check`) and, when it is damaged, moves it and its journal files
 //! aside (renamed `…damaged-<time>`, kept, never deleted); the node makes a fresh one. Other
 //! databases are only checked by the person's choice (they hold data).
