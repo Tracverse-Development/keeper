@@ -6,9 +6,9 @@ use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "show-in-finder", how: "{\"path\": \"~/Documents/Taxes\"} opens a folder in the Finder, or shows a file there (only inside the person's home folder)", access: Access::Open, platforms: MAC, run: |input, _| Box::pin(async move { show_in_finder(input) }) },
-    Ability { id: "open-settings", how: "{\"pane\": \"wifi\"} opens System Settings at a pane: wifi, bluetooth, network, sound, displays, battery, appearance, wallpaper, notifications, focus, privacy, keyboard, trackpad, mouse, accessibility, general, software update, storage, users, lock screen, desktop and dock, sharing, date and time, login items, time machine, printers", access: Access::Open, platforms: MAC, run: |input, _| Box::pin(async move { open_settings(input) }) },
-    Ability { id: "define-word", how: "{\"word\": \"grace\"} opens a word in the Dictionary app", access: Access::Open, platforms: MAC, run: |input, _| Box::pin(async move { define_word(input) }) },
+    Ability { id: "show-in-finder", how: "{\"path\": \"~/Documents/Taxes\"} opens a folder in the Finder, or shows a file there (only inside the person's home folder)", access: Access::Open, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(async move { show_in_finder(input) }) },
+    Ability { id: "open-settings", how: "{\"pane\": \"wifi\"} opens System Settings at a pane: wifi, bluetooth, network, sound, displays, battery, appearance, wallpaper, notifications, focus, privacy, keyboard, trackpad, mouse, accessibility, general, software update, storage, users, lock screen, desktop and dock, sharing, date and time, login items, time machine, printers", access: Access::Open, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(async move { open_settings(input) }) },
+    Ability { id: "define-word", how: "{\"word\": \"grace\"} opens a word in the Dictionary app", access: Access::Open, platforms: MAC, modes: &["assistant"], run: |input, _| Box::pin(async move { define_word(input) }) },
 ];
 
 fn show_in_finder(input: &serde_json::Value) -> Result<Done> {

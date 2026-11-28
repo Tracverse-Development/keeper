@@ -32,6 +32,11 @@ pub fn find(id: &str) -> Option<&'static Ability> {
     all().find(|a| a.id == id)
 }
 
+/// The abilities a built-in mode offers by default (each ability names its modes).
+pub fn defaults_for(mode: &str) -> Vec<&'static str> {
+    all().filter(|a| a.modes.contains(&mode)).map(|a| a.id).collect()
+}
+
 /// Every ability's name (what a mode may list).
 pub fn names() -> Vec<&'static str> {
     all().map(|a| a.id).collect()
@@ -69,6 +74,16 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::sdk::Access;
+
+    #[test]
+    fn an_ability_names_only_real_built_in_modes() {
+        let modes: Vec<String> = crate::keepers::kit::roles::builtins().into_iter().map(|r| r.id).collect();
+        for a in super::PACKS.iter().flat_map(|p| p.iter()) {
+            for m in a.modes {
+                assert!(modes.iter().any(|id| id == m) && *m != "system", "{} names a mode {m} that is not a built-in (System offers everything)", a.id);
+            }
+        }
+    }
 
     #[test]
     fn a_phone_can_look_but_never_change_this_mac() {

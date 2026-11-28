@@ -8,12 +8,12 @@ use crate::kernel::{DeskError, Result};
 use crate::platform;
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "battery", how: "{} says how much battery is left and whether it is charging", access: Access::Look, platforms: MAC, run: |_, _| Box::pin(battery()) },
-    Ability { id: "wifi", how: "{} says which Wi-Fi network the Mac is on and how strong the signal is", access: Access::Look, platforms: MAC, run: |_, _| Box::pin(wifi()) },
-    Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, run: |_, _| Box::pin(async { disk_space() }) },
-    Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, run: |_, _| Box::pin(open_apps()) },
-    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, run: |input, _| Box::pin(time_in(input)) },
-    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, run: |_, _| Box::pin(list_shortcuts()) },
+    Ability { id: "battery", how: "{} says how much battery is left and whether it is charging", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(battery()) },
+    Ability { id: "wifi", how: "{} says which Wi-Fi network the Mac is on and how strong the signal is", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(wifi()) },
+    Ability { id: "disk-space", how: "{} says how much space is free on the startup disk", access: Access::Look, platforms: ALL, modes: &["assistant"], run: |_, _| Box::pin(async { disk_space() }) },
+    Ability { id: "open-apps", how: "{} lists the apps open right now", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(open_apps()) },
+    Ability { id: "time-in", how: "{\"place\": \"Tokyo\"} tells the time now in a city or country (or an IANA zone like Europe/Paris)", access: Access::Look, platforms: MAC, modes: &["assistant", "companion"], run: |input, _| Box::pin(time_in(input)) },
+    Ability { id: "list-shortcuts", how: "{} lists the person's Shortcuts (from the Shortcuts app)", access: Access::Look, platforms: MAC, modes: &["assistant"], run: |_, _| Box::pin(list_shortcuts()) },
 ];
 
 async fn battery() -> Result<Done> {

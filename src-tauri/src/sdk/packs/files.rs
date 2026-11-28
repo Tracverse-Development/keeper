@@ -18,14 +18,14 @@ pub const ABILITIES: &[Ability] = &[
         how: "{\"path\": \"~/notes.txt\", \"text\": \"<the WHOLE new text, every line>\", \"why\": \"fixed 7 spellings\"} drafts a change to one text file: the person sees it beside the old text and saves it themselves (use this, not tools or a plan, to change a text file)",
         // Reads the file and writes only a draft in Keeper's own folder; the person's Save writes the file.
         access: Access::Look,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant"],
         run: |input, _| Box::pin(async move { edit_file(input) }),
     },
     Ability {
         id: "show-file",
         how: "{\"path\": \"~/notes.txt\"} shows a text file's words on the stage (the person can edit and save them there)",
         access: Access::Look,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant"],
         run: |input, _| Box::pin(async move { show_file(input) }),
     },
 ];

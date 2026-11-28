@@ -9,14 +9,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "add-event",
         how: "{\"title\": \"Dentist\", \"start\": \"2026-12-01T15:00:00-05:00\", \"end\": \"2026-12-01T16:00:00-05:00\"} puts an event on the person's calendar (RFC 3339 times with offset)",
         access: Access::Personal,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant", "companion"],
         run: |input, cx| Box::pin(add_event(input, cx)),
     },
     Ability {
         id: "find-contact",
         how: "{\"name\": \"Hannah\"} looks someone up in the person's contacts (phone numbers, emails)",
         access: Access::Personal,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant", "companion"],
         run: |input, cx| Box::pin(find_contact(input, cx)),
     },
 ];

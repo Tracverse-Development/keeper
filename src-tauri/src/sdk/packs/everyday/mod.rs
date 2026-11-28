@@ -9,8 +9,8 @@ use super::super::{input, Ability, Access, Done, ALL};
 use crate::kernel::{DeskError, Result};
 
 pub const ABILITIES: &[Ability] = &[
-    Ability { id: "calculate", how: "{\"sum\": \"15% of 80 + 2^3\"} works out a sum exactly (+ - * / ^, brackets, %, sqrt)", access: Access::Memory, platforms: ALL, run: |input, _| Box::pin(async move { calculate(input) }) },
-    Ability { id: "convert", how: "{\"value\": 5, \"from\": \"km\", \"to\": \"miles\"} converts length, weight, cooking volume, temperature, speed, area, data or time (not money)", access: Access::Memory, platforms: ALL, run: |input, _| Box::pin(async move { convert(input) }) },
+    Ability { id: "calculate", how: "{\"sum\": \"15% of 80 + 2^3\"} works out a sum exactly (+ - * / ^, brackets, %, sqrt)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], run: |input, _| Box::pin(async move { calculate(input) }) },
+    Ability { id: "convert", how: "{\"value\": 5, \"from\": \"km\", \"to\": \"miles\"} converts length, weight, cooking volume, temperature, speed, area, data or time (not money)", access: Access::Memory, platforms: ALL, modes: &["assistant", "researcher", "companion"], run: |input, _| Box::pin(async move { convert(input) }) },
 ];
 
 fn calculate(input: &serde_json::Value) -> Result<Done> {

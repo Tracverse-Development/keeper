@@ -162,6 +162,10 @@ pub struct Ability {
     pub how: &'static str,
     pub access: Access,
     pub platforms: &'static [Platform],
+    /// The built-in modes that offer it by default ("assistant", "researcher", "tutor",
+    /// "companion"; System Administrator offers everything). The person can still give it to any
+    /// mode of their own in the Studio. Declared here, so a new ability is one entry.
+    pub modes: &'static [&'static str],
     /// Validates the input and does it. Errors are plain sentences the keeper can say.
     pub run: for<'a> fn(&'a serde_json::Value, &'a Cx<'a>) -> Run<'a>,
 }

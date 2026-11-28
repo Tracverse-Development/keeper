@@ -10,14 +10,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "open-app",
         how: "{\"name\": \"Notes\"} opens a Mac app by name",
         access: Access::Open,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant"],
         run: |input, _| Box::pin(async move { open_app(input) }),
     },
     Ability {
         id: "open-website",
         how: "{\"url\": \"https://umojaark.com\"} opens a website in the browser",
         access: Access::Open,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant"],
         run: |input, _| Box::pin(async move { open_website(input) }),
     },
 ];

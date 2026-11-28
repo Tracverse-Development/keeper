@@ -60,7 +60,8 @@ pub struct Role {
     pub mood: bool,
 }
 
-/// The built-in modes as data rows (id, title, blurb, scope, tools, skills, brief).
+/// The built-in modes as data rows (id, title, blurb, scope, tools, brief). Their abilities are
+/// not listed here: each ability names the built-in modes that offer it (`sdk::Ability::modes`).
 struct Builtin {
     id: &'static str,
     title: &'static str,
@@ -68,7 +69,8 @@ struct Builtin {
     scope: &'static str,
     brief: &'static str,
     tools: Tools,
-    skills: &'static [&'static str],
+    /// Offers every ability (System Administrator), not only those that name this mode.
+    everything: bool,
     mood: bool,
 }
 
@@ -84,7 +86,7 @@ say plainly what you did and where things are now, and show it as a \"files\" pa
 or what is running, show it as it is: a live panel plus tables (devices, interfaces, folders), not a lesson. A simple status question (how much \
 storage is left, how busy the computer is) gets the live panel and at most one table or chart, with the key figure said once. Teach only when asked to explain.",
         tools: Tools::Act,
-        skills: &["*"],
+        everything: true,
         mood: false,
     },
     Builtin {
@@ -96,13 +98,7 @@ storage is left, how busy the computer is) gets the live panel and at most one t
 finding things on their computer (you can look, never change), opening apps and websites, and answering questions. To change the words \
 of one text file, draft it with edit-file (they see it and save it themselves). For other changes to files, tell them to switch to System Administrator mode.",
         tools: Tools::Look,
-        skills: &[
-            "remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine",
-            "list-reminders", "upcoming", "show-file", "edit-file", "find-video", "play-file", "find-movies",
-            // This computer, everyday: look, open, and the small reversible changes asked for in words.
-            "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word",
-            "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert",
-        ],
+        everything: false,
         mood: false,
     },
     Builtin {
@@ -119,7 +115,7 @@ and one line on what it supports. Never invent a source or a URL. You do not ope
 already found is answered from those findings; search again only for facts you do not have yet. Explain any \
 technical term (SMD, p-value, meta-analysis) in plain words the first time.",
         tools: Tools::Web,
-        skills: &["recall-actions", "ask-memory", "find-video", "calculate", "convert"],
+        everything: false,
         mood: false,
     },
     Builtin {
@@ -131,7 +127,7 @@ technical term (SMD, p-value, meta-analysis) in plain words the first time.",
 the person already knows, give one small step or hint at a time, and ask a question back. Use a quiz or flashcards panel to practise, and \
 praise effort. Give the full answer only when the person asks for it or has tried. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "list-reminders", "ask-memory", "find-video"],
+        everything: false,
         mood: false,
     },
     Builtin {
@@ -142,13 +138,13 @@ praise effort. Give the full answer only when the person asks for it or has trie
         brief: "Your mode: this person's companion. Your domain is their day: conversation, learning together, reminders, \
 routines and wellbeing. You do not operate the computer.",
         tools: Tools::None,
-        skills: &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "find-video", "time-in", "calculate", "convert"],
+        everything: false,
         mood: true,
     },
 ];
 
 fn builtin_mode(b: &Builtin) -> Role {
-    Role { id: b.id.into(), title: b.title.into(), blurb: b.blurb.into(), brief: b.brief.into(), tools: b.tools, scope: b.scope.into(), skills: b.skills.iter().map(|s| s.to_string()).collect(), resources: vec![], builtin: true, edited: false, mood: b.mood }
+    Role { id: b.id.into(), title: b.title.into(), blurb: b.blurb.into(), brief: b.brief.into(), tools: b.tools, scope: b.scope.into(), skills: if b.everything { vec!["*".into()] } else { crate::sdk::registry::defaults_for(b.id).into_iter().map(String::from).collect() }, resources: vec![], builtin: true, edited: false, mood: b.mood }
 }
 
 /// The built-in modes, as shipped.
@@ -258,6 +254,25 @@ impl Role {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn the_built_in_modes_offer_what_they_offered_before_abilities_named_their_modes() {
+        // The lists as roles.rs held them on 2026-11-27, before each ability named its own modes.
+        let before: &[(&str, &[&str])] = &[
+            ("assistant", &["remind", "add-event", "find-contact", "open-app", "open-website", "recall-actions", "ask-memory", "switch-engine", "list-reminders", "upcoming", "show-file", "edit-file", "find-video", "play-file", "find-movies", "battery", "wifi", "disk-space", "open-apps", "time-in", "list-shortcuts", "show-in-finder", "open-settings", "define-word", "dark-mode", "set-volume", "keep-awake", "screen-off", "lock-screen", "copy-text", "screenshot", "new-note", "calculate", "convert"]),
+            ("researcher", &["recall-actions", "ask-memory", "find-video", "calculate", "convert"]),
+            ("tutor", &["remind", "list-reminders", "ask-memory", "find-video"]),
+            ("companion", &["remind", "list-reminders", "upcoming", "recall-actions", "ask-memory", "switch-engine", "add-event", "find-contact", "find-video", "time-in", "calculate", "convert"]),
+        ];
+        for (mode, skills) in before {
+            let mut now = super::get(mode).skills;
+            let mut was: Vec<String> = skills.iter().map(|s| s.to_string()).collect();
+            now.sort();
+            was.sort();
+            assert_eq!(now, was, "{mode}");
+        }
+        assert_eq!(super::get("system").skills, vec!["*".to_string()]);
+    }
     #[test]
     fn companions_do_not_operate_the_computer() {
         let c = super::get("companion");

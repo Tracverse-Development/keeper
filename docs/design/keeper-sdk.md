@@ -9,6 +9,7 @@ An ability is plain data plus one function:
 | `how` | One line: an example input, then what it does. Told to the mind word for word. |
 | `access` | What it touches: `Memory` < `Look` < `Personal` < `Open` < `Change`. |
 | `platforms` | `ALL` or the systems it runs on (only these builds offer it). |
+| `modes` | The built-in modes that offer it by default (`assistant`, `researcher`, `tutor`, `companion`; System Administrator offers everything). The built-in modes never list abilities themselves. |
 | `run` | Checks the input (`sdk::input`) and does it; returns `Done`: a sentence, panels to show (`Done::said(…).showing(panel)`), rarely an `Effect`. An ability that answers a question returns `Done::answer(…)`: the mind wrote its reply before the ability ran, so the answer replaces that guess. |
 
 Abilities live in **packs** (`sdk/packs/<area>`), each exporting `ABILITIES`. The **registry**

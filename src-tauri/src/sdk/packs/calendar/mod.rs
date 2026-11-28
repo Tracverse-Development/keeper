@@ -12,7 +12,7 @@ pub const ABILITIES: &[Ability] = &[Ability {
     id: "upcoming",
     how: "{\"day\": \"tomorrow\"} shows what's on that day (\"today\" or \"tomorrow\"): calendar events and reminders together, in time order, as an agenda",
     access: Access::Personal,
-    platforms: ALL,
+    platforms: ALL, modes: &["assistant", "companion"],
     run: |input, cx| Box::pin(upcoming(input, cx)),
 }];
 

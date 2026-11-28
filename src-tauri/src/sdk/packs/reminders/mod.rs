@@ -15,14 +15,14 @@ pub const ABILITIES: &[Ability] = &[
         id: "remind",
         how: "{\"text\": \"call Maya\", \"inSeconds\": 600} or {\"text\": \"pray\", \"atLocal\": \"17:30\"} speaks a reminder later; add \"repeat\": \"daily\", \"weekdays\" or \"weekly\" (with atLocal) for one that comes back",
         access: Access::Memory,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant", "tutor", "companion"],
         run: |input, cx| Box::pin(remind(input, cx)),
     },
     Ability {
         id: "list-reminders",
         how: "{} shows every reminder still ahead, with its day and time, as an agenda (use it for \"what reminders do I have\")",
         access: Access::Memory,
-        platforms: ALL,
+        platforms: ALL, modes: &["assistant", "tutor", "companion"],
         run: |_, cx| Box::pin(list(cx)),
     },
 ];
