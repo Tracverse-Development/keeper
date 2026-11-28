@@ -91,6 +91,12 @@ pub async fn lock_screen() -> Result<()> {
 pub async fn screenshot() -> Result<Vec<u8>> {
     not_yet("Taking a screenshot")
 }
+pub fn compose_mail(_: &str) -> Result<()> {
+    Err(DeskError::Invalid("Opening an email is not supported on this system yet.".into()))
+}
+pub async fn unread_mail(_: usize) -> Result<(usize, Vec<super::Unread>)> {
+    not_yet("Reading your inbox")
+}
 pub async fn new_note(_: &str, _: &str) -> Result<()> {
     not_yet("Making a note")
 }

@@ -13,6 +13,8 @@ mod spotlight_macos;
 mod status_macos;
 #[cfg(target_os = "macos")]
 mod controls_macos;
+#[cfg(target_os = "macos")]
+mod mail_macos;
 mod status;
 #[cfg(target_os = "macos")]
 use macos as os;
@@ -29,6 +31,26 @@ use crate::kernel::Result;
 
 pub use pictures::{save_png, PICTURES_FOLDER};
 pub use status::{Battery, Volume, WiFi, ZoneTime, MAX_AWAKE_MINUTES};
+
+/// An unread message as the inbox lists it: who sent it, its subject, when it came (ISO, local).
+/// Never its words.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Unread {
+    pub from: String,
+    pub subject: String,
+    pub received: String,
+}
+
+/// Opens the person's own mail app on a filled-in `mailto:` link; nothing is sent.
+pub fn compose_mail(mailto: &str) -> Result<()> {
+    os::compose_mail(mailto)
+}
+
+/// How many unread messages the Mac's mail inbox holds, and the newest `limit` (sender, subject,
+/// when). macOS asks the person first.
+pub async fn unread_mail(limit: usize) -> Result<(usize, Vec<Unread>)> {
+    os::unread_mail(limit).await
+}
 
 pub fn open_app(name: &str) -> Result<()> {
     os::open_app(name)

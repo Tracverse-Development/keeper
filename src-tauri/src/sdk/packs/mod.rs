@@ -28,6 +28,7 @@ pub mod day;
 pub mod desktop;
 pub mod everyday;
 pub mod files;
+pub mod mail;
 pub mod personal;
 pub mod reminders;
 pub mod routines;
